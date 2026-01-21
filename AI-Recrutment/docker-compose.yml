@@ -1,0 +1,134 @@
+services:
+  keycloak-db:
+    image: postgres:16
+    container_name: keycloak-db
+    networks:
+      - ai-recruitment-network
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=keycloak
+    volumes:
+      - keycloak_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U keycloak -d keycloak" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3.4
+    container_name: keycloak
+    ports:
+      - "8090:8080"
+    networks:
+      - ai-recruitment-network
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HEALTH_ENABLED=true
+
+      # --- DB settings ---
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=keycloak
+    command: start-dev
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - ai-recruitment-network
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -z 127.0.0.1 1025 || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - ai-recruitment-network
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eureka-server:
+    build: ./eurekaserver
+    container_name: eureka-server
+    networks:
+      - ai-recruitment-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8761/actuator/health | grep UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  config-server:
+    build: ./configserver
+    container_name: config-server
+    networks:
+      - ai-recruitment-network
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:9999/actuator/health | grep UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  gateway:
+    build: ./gatewayserver
+    container_name: gateway
+    ports:
+      - "8888:8888"
+    networks:
+      - ai-recruitment-network
+    environment:
+      - DISCOVERY_SERVICE_URL=http://eureka-server:8761/eureka
+      - CONFIG_SERVICE_URL=http://config-server:9999
+      - KEYCLOAK_URL=http://keycloak:8080
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8888/actuator/health | grep UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+networks:
+  ai-recruitment-network:
+    driver: bridge
+
+volumes:
+  keycloak_pgdata:
