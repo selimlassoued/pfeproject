@@ -1,0 +1,57 @@
+server:
+  port: 8888
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: "http://keycloak:8080/realms/ai-recrutment/protocol/openid-connect/certs"
+
+  application:
+    name: gatewayserver
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: true
+    gateway:
+      routes:
+#        - id: r1
+#          uri: lb://section-microservice
+#          predicates:
+#            - Path=/api/sections/**
+#        - id: r2
+#          uri: lb://student-microservice
+#          predicates:
+#            - Path=/api/students/**
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: false
+
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    gateway:
+      access: unrestricted
+eureka:
+  client:
+    register-with-eureka: true
+    fetchRegistry: true
+    serviceUrl:
+      defaultZone: ${DISCOVERY_SERVICE_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+resilience4j.circuitbreaker:
+  configs:
+    default:
+      slidingWindowSize: 10
+      permittedNumberOfCallsInHalfOpenState: 2
+      failureRateThreshold: 50
+      waitDurationInOpenState: 10000
