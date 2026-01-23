@@ -33,19 +33,32 @@ export class App {
 
       if (keycloakEvent.type === KeycloakEventType.Ready) {
         this.authenticated = typeEventArgs<ReadyArgs>(keycloakEvent.args);
+        console.log(this.keycloak.token);
+
       }
 
       if (keycloakEvent.type === KeycloakEventType.AuthLogout) {
-        this.authenticated = false;
-      }
+        console.log(this.authenticated);              
+        this.authenticated = false;               
+      }                 
     });
   }
 
+
   login() {
+        console.log(this.keycloak.token);
+
     this.keycloak.login();
+    console.log(this.keycloak.token);
+
   }
 
   logout() {
+            console.log("bhbh");
+
+            console.log(this.keycloak.token);
+
     this.keycloak.logout();
+
   }
 }

@@ -13,7 +13,50 @@
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
-      "architect": {
+      "architect": {"build-browser": {
+  "builder": "@angular/build:application",
+  "options": {
+    "browser": "src/main.ts",
+    "tsConfig": "tsconfig.app.json",
+    "assets": [
+      {
+        "glob": "*/",
+        "input": "public"
+      }
+    ],
+    "styles": [
+      "node_modules/bootstrap/dist/css/bootstrap.min.css",
+      "src/styles.css"
+    ],
+    "scripts": [
+      "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
+    ]
+  },
+  "configurations": {
+    "production": {
+      "budgets": [
+        {
+          "type": "initial",
+          "maximumWarning": "500kB",
+          "maximumError": "1MB"
+        },
+        {
+          "type": "anyComponentStyle",
+          "maximumWarning": "4kB",
+          "maximumError": "8kB"
+        }
+      ],
+      "outputHashing": "all"
+    },
+    "development": {
+      "optimization": false,
+      "extractLicenses": false,
+      "sourceMap": true
+    }
+  },
+  "defaultConfiguration": "development"
+},
+
         "build": {
           "builder": "@angular/build:application",
           "options": {
@@ -21,7 +64,7 @@
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
-                "glob": "**/*",
+                "glob": "*/",
                 "input": "public"
               }
             ],
@@ -54,6 +97,13 @@
               ],
               "outputHashing": "all"
             },
+            "development-no-ssr": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "outputMode": "static",
+              "ssr": false
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -69,8 +119,8 @@
               "buildTarget": "hireAI:build:production"
             },
             "development": {
-              "buildTarget": "hireAI:build:development"
-            }
+  "buildTarget": "hireAI:build-browser:development"
+}
           },
           "defaultConfiguration": "development"
         },

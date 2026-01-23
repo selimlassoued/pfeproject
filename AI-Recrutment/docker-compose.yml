@@ -28,12 +28,20 @@ services:
       - KEYCLOAK_ADMIN_PASSWORD=admin
       - KC_HEALTH_ENABLED=true
 
-      # --- DB settings ---
       - KC_DB=postgres
       - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
       - KC_DB_USERNAME=keycloak
       - KC_DB_PASSWORD=keycloak
-    command: start-dev
+
+      - KC_MAIL_ENABLED=true
+      - KC_MAIL_HOST=${KC_MAIL_HOST}
+      - KC_MAIL_PORT=${KC_MAIL_PORT}
+      - KC_MAIL_FROM=${KC_MAIL_FROM}
+      - KC_MAIL_USER=${KC_MAIL_USER}
+      - KC_MAIL_PASSWORD=${KC_MAIL_PASSWORD}
+      - KC_MAIL_AUTH=${KC_MAIL_AUTH}
+      - KC_MAIL_STARTTLS=${KC_MAIL_STARTTLS}
+    command: start-dev --log-level=DEBUG
     depends_on:
       keycloak-db:
         condition: service_healthy
@@ -44,19 +52,20 @@ services:
       retries: 20
       start_period: 60s
 
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: mailhog
-    ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # Web UI
-    networks:
-      - ai-recruitment-network
-    healthcheck:
-      test: [ "CMD-SHELL", "nc -z 127.0.0.1 1025 || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+#  mailhog:
+#    image: mailhog/mailhog:latest
+#    container_name: mailhog
+#    profiles: ["dev"]
+#    ports:
+#      - "1025:1025"
+#      - "8025:8025"
+#    networks:
+#      - ai-recruitment-network
+#    healthcheck:
+#      test: [ "CMD-SHELL", "nc -z 127.0.0.1 1025 || exit 1" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 10
 
 
   rabbitmq:
@@ -109,6 +118,8 @@ services:
       - "8888:8888"
     networks:
       - ai-recruitment-network
+    extra_hosts:
+      - "localhost:host-gateway"
     environment:
       - DISCOVERY_SERVICE_URL=http://eureka-server:8761/eureka
       - CONFIG_SERVICE_URL=http://config-server:9999

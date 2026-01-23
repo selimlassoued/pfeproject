@@ -1,0 +1,5 @@
+ID client
+1000932339148-q43r6nj0rkh0irpcun8jiekdhlfsqk2i.apps.googleusercontent.com
+
+Client secrets
+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

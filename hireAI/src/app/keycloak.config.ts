@@ -24,7 +24,7 @@ export const provideKeycloakAngular = () =>
     config: {
       url: 'http://localhost:8090',
       realm: 'ai-recrutment',
-      clientId: 'recrutment-id'
+      clientId: 'recruitment-frontend'
     },
     initOptions: {
       onLoad: 'check-sso',
