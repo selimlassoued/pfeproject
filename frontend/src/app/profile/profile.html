@@ -1,15 +1,79 @@
-<div class="section">
-  <header>
-    <h1>Welcome, {{ user?.name }}</h1>
-    
-  </header>
+<div class="profile-container">
+  <h2>User Profile</h2>
 
-  <main>
-    <section class="profile-card">
-      <h2>Profile Details</h2>
-      <p><strong>Name:</strong> {{ user?.name }}</p>
-      <p><strong>Email:</strong> {{ user?.email }}</p>
-      <p><strong>Username:</strong> {{ user?.username }}</p>
-    </section>
-  </main>
+  @if (loading) {
+    <div class="status info">Loading your profile…</div>
+  }
+
+  @if (error) {
+    <div class="status error">{{ error }}</div>
+  }
+
+  @if (success) {
+    <div class="status success">{{ success }}</div>
+  }
+
+  @if (!loading) {
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+
+      <div class="form-group">
+        <label>Username</label>
+        <input formControlName="username" />
+      </div>
+
+      <div class="form-group">
+        <label>First name</label>
+        <input formControlName="firstName" />
+        @if (form.get('firstName')?.invalid && form.get('firstName')?.touched) {
+          <small>First name is required</small>
+        }
+      </div>
+
+      <div class="form-group">
+        <label>Last name</label>
+        <input formControlName="lastName" />
+        @if (form.get('lastName')?.invalid && form.get('lastName')?.touched) {
+          <small>Last name is required</small>
+        }
+      </div>
+
+      <div class="form-group">
+        <label>Email (identifier)</label>
+        <input formControlName="email" readonly />
+      </div>
+
+      <div class="form-group">
+        <label>Phone number (Tunisia)</label>
+
+        <div class="phone-row">
+          <span class="phone-prefix">+216</span>
+
+          <input
+            class="phone-input"
+            type="text"
+            formControlName="phoneNational"
+            placeholder="12345678"
+            inputmode="numeric"
+            pattern="\d*"
+            maxlength="8"
+            (input)="onPhoneInput($event)"
+          />
+        </div>
+
+        @if (form.get('phoneNational')?.invalid && form.get('phoneNational')?.touched) {
+          <small>Enter exactly 8 digits.</small>
+        }
+
+        <small class="hint">
+          Will be saved as: +216{{ form.get('phoneNational')?.value }}
+        </small>
+      </div>
+
+      <div class="actions">
+        <button type="submit" [disabled]="saving || form.invalid">
+          @if (saving) { Saving… } @else { Save changes }
+        </button>
+      </div>
+    </form>
+  }
 </div>
