@@ -5,7 +5,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: "http://keycloak:8080/realms/ai-recrutment/protocol/openid-connect/certs"
+          jwk-set-uri: "http://keycloak:8080/realms/ai-recruitment/protocol/openid-connect/certs"
 
   application:
     name: gatewayserver
