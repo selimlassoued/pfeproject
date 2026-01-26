@@ -1,1 +1,262 @@
-/* You can add global styles to this file, and also import other style files */
+:root{
+   --color-primary: #1e40bc;
+  --color-secondary: #79a4e9;
+  --color-cream: #fffce5;
+
+  --color-bg: #0b1026;
+  --color-surface: rgba(255, 255, 255, 0.06);
+  --color-surface-2: rgba(255, 255, 255, 0.10);
+
+  --color-text: #f8fafc;
+  --color-text-muted: rgba(252, 248, 248, 0.645);
+  --color-border: rgba(121, 164, 233, 0.22);
+  --color-focus: rgba(121, 164, 233, 0.38);
+
+  --font-display: "Gliker", "Dela Gothic One", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-body: "Montserrat", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  --container-max: 1120px;
+}
+
+@font-face{
+  font-family:"Dela Gothic One";
+  src:url("../public/fonts/DelaGothicOne-Regular.woff2") format("woff2");
+  font-weight:400;
+  font-style:normal;
+  font-display:swap;
+}
+
+@font-face{
+  font-family:"Gliker";
+  src:url("../public/fonts/Gliker-SemiBold.woff2") format("woff2");
+  font-weight:600;
+  font-style:normal;
+  font-display:swap;
+}
+
+@font-face{
+  font-family:"Montserrat";
+  src:url("../public/fonts/Montserrat-VariableFont_wght.woff2") format("woff2");
+  font-weight:300 700;
+  font-style:normal;
+  font-display:swap;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body{
+  margin: 0;
+  font-family: var(--font-body);
+  line-height: 1.5;
+  color: var(--color-text);
+  background:
+    radial-gradient(1200px 650px at 12% -10%, rgba(121,164,233,0.20), transparent 60%),
+    radial-gradient(900px 520px at 92% 0%, rgba(30,64,188,0.26), transparent 55%),
+    var(--color-bg);
+}
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--color-secondary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; border-radius: 10px; }
+.container{width:min(100% - 2rem,var(--container-max));margin-inline:auto}
+
+/* Typography */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--color-cream);
+}
+p { margin: 0; }
+.text-muted { color: var(--color-text-muted) !important; }
+
+/* Layout helpers */
+.section { padding: var(--space-12) 0; }
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+.section-title { font-size: 1.6rem; }
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+@media (max-width: 960px) { .grid-3 { grid-template-columns: 1fr; } }
+
+/* Cards */
+.card {
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.08),
+    rgba(255,255,255,0.05)
+  );
+  border: 1px solid rgba(121,164,233,0.24);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-8);
+  backdrop-filter: blur(10px);
+}
+
+.card--hover {
+  transition: transform 200ms ease, border-color 200ms ease, background 200ms ease;
+}
+.card--hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(121,164,233,0.35);
+  background: rgba(255,255,255,0.05);
+}
+
+
+.card .text-muted {
+  color: rgba(248, 250, 252, 0.85);
+}
+/* Buttons */
+.btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: 0.85rem 1.1rem;
+  font: 600 1rem/1 var(--font-body);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  user-select: none;
+  white-space: nowrap;
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, border-color 200ms ease;
+}
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+.btn-primary:hover { box-shadow: var(--shadow-lg); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.06); }
+
+/* Pills / badges */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(121,164,233,0.25);
+  background: rgba(121,164,233,0.10);
+  color: var(--color-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Navbar (shared) */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(11, 16, 38, 0.72);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+.navbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) 0;
+  gap: var(--space-6);
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.brand img {
+  width: 150px;
+  height: 50px;
+  border-radius: 14px;
+  object-fit: cover;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.nav-links {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+.nav-links a {
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  border: 1px solid transparent;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+.nav-links a:hover {
+  background: rgba(121, 164, 233, 0.10);
+  border-color: var(--color-border);
+  text-decoration: none;
+}
+
+/* Hero helpers (shared) */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: rgba(121,164,233,0.08);
+  color: var(--color-cream);
+  font-size: 0.875rem;
+}
+
+/* Forms (shared) */
+.input, input[type="text"], input[type="email"], input[type="password"], textarea, select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  color: var(--color-text);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.95rem;
+}
+input::placeholder, textarea::placeholder { color: rgba(248, 250, 252, 0.45); }
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 0 3px rgba(121,164,233,0.35);
+}
+
+/* Footer */
+.footer {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-10) 0;
+  color: var(--color-text-muted);
+}
