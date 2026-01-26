@@ -1,0 +1,71 @@
+/* Bootstrap navbar themed to HireAI tokens */
+.hireai-nav {
+  background: rgba(11, 16, 38, 0.72) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hireai-brand {
+  font-family: var(--font-display);
+  color: var(--color-cream) !important;
+  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: .6rem;
+}
+
+.hireai-brand-sub {
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  font-size: .9rem;
+  font-weight: 500;
+}
+
+.hireai-link {
+  color: var(--color-text) !important;
+  border-radius: var(--radius-pill);
+  padding: 0.55rem 0.85rem !important;
+  border: 1px solid transparent;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+
+.hireai-link:hover,
+.hireai-link:focus {
+  background: rgba(121, 164, 233, 0.10);
+  border-color: var(--color-border);
+}
+
+.hireai-dropdown {
+  background: rgba(11, 16, 38, 0.92) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 14px;
+  padding: .4rem;
+  box-shadow: var(--shadow-md);
+}
+
+.hireai-dd-item,
+.hireai-dd-btn {
+  color: var(--color-text) !important;
+  border-radius: 12px;
+  padding: .6rem .75rem;
+}
+
+.hireai-dd-item:hover,
+.hireai-dd-btn:hover {
+  background: rgba(121, 164, 233, 0.12) !important;
+}
+
+.hireai-dd-btn {
+  background: transparent;
+  border: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.hireai-toggler {
+  border-color: rgba(121, 164, 233, 0.35) !important;
+}
+
+.hireai-nav .navbar-toggler-icon {
+  filter: invert(1) grayscale(1);
+}
