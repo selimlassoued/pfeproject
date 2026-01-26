@@ -1,45 +1,79 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
+<nav class="navbar navbar-expand-lg hireai-nav">
   <div class="container-fluid">
-    <a class="navbar-brand" href="#">Gestion des Produits</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <!-- Brand -->
+    <a class="navbar-brand hireai-brand" routerLink="/">
+      <img src="/img/logo.png" alt="HireAI Logo" class="hireai-logo" />
+    </a>
+
+    <!-- Mobile toggle -->
+    <button
+      class="navbar-toggler hireai-toggler"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#navbarContent"
+      aria-controls="navbarContent"
+      aria-expanded="false"
+      aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+
+    <div class="collapse navbar-collapse" id="navbarContent">
+
+      <!-- Left: public navigation -->
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-       
-              
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Produits
+        <li class="nav-item">
+          <a class="nav-link hireai-link" routerLink="/jobs">
+            Open Positions
           </a>
-          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-      
-            <li><a class="dropdown-item"  routerLink="/produits" *kaHasRoles="['ADMIN']; checkRealm:true " >Lister</a></li> 
+        </li>
+
+        <li class="nav-item" *kaHasRoles="['CANDIDATE']; checkRealm:true">
+          <a class="nav-link hireai-link" routerLink="/applications">
+            My Applications
+          </a>
+        </li>
+      </ul>
+
+      <!-- Right: auth / profile -->
+      <ul class="navbar-nav ms-auto m-2">
+
+        @if (authenticated) {
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/profile">
+              My Profile
+            </a>
+          </li>
+        }
+
+        <li class="nav-item dropdown">
+          <a
+            class="nav-link dropdown-toggle hireai-link"
+            href="#"
+            id="authDropdown"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false">
+            @if (authenticated) { Account } @else { Sign in }
+          </a>
+
+          <ul class="dropdown-menu dropdown-menu-end hireai-dropdown" aria-labelledby="authDropdown">
+            @if (!authenticated) {
+              <li>
+                <button class="dropdown-item hireai-dd-btn" type="button" (click)="login()">
+                  Sign in
+                </button>
+              </li>
+            } @else {
+              <li>
+                <button class="dropdown-item hireai-dd-btn" type="button" (click)="logout()">
+                  Sign out
+                </button>
+              </li>
+            }
           </ul>
         </li>
       </ul>
 
-        
-      <ul class="navbar-nav ms-auto m-2" >    
-       <li> <a routerLink="/profile" class="nav-link dropdown-toggle">My Profile</a>   </li> 
-        <li class="nav-item dropdown">
-        
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-           Connexion
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-             @if (!authenticated) {
-                <button class="action-item" (click)="login()">Login</button>
-              } @else {
-              <button class="action-item" (click)="logout()">Logout</button>
-              }
-
-          </ul>
-        </li>
-      </ul>
-        
-    
-      
     </div>
   </div>
 </nav>
