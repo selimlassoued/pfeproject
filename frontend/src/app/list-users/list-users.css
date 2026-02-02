@@ -1,0 +1,269 @@
+.users-page{
+  padding: var(--space-12) 0 var(--space-16);
+}
+
+.users-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.users-title{
+  margin-top: var(--space-3);
+  font-size: clamp(1.8rem, 2.2vw, 2.2rem);
+  line-height: 1.15;
+}
+
+.users-actions{
+  display:flex;
+  gap: var(--space-3);
+  align-items:center;
+  flex-wrap: wrap;
+}
+
+.search-wrap{
+  display:flex;
+  gap: var(--space-3);
+  align-items:center;
+}
+
+.search-wrap .input{
+  width: min(420px, 70vw);
+  height: 44px;
+}
+
+.users-card{
+  padding: var(--space-10);
+  border: 1px solid rgba(121,164,233,0.26);
+  box-shadow: var(--shadow-md);
+}
+
+.table-head{
+  display:flex;
+  justify-content:space-between;
+  gap: var(--space-6);
+  align-items:center;
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid rgba(121,164,233,0.18);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.table-wrap{
+  overflow:auto;
+  border-radius: 16px;
+  border: 1px solid rgba(121,164,233,0.18);
+}
+
+.users-table{
+  width:100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  background: rgba(255,255,255,0.02);
+}
+
+.users-table thead th{
+  text-align:left;
+  font-weight: 800;
+  color: rgba(255,255,255,0.92);
+  padding: 0.85rem 0.9rem;
+  border-bottom: 1px solid rgba(121,164,233,0.18);
+  background: rgba(255,255,255,0.03);
+}
+
+.users-table tbody td{
+  padding: 0.85rem 0.9rem;
+  border-bottom: 1px solid rgba(121,164,233,0.12);
+  vertical-align: middle;
+}
+
+.row-click{
+  cursor:pointer;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.row-click:hover{
+  background: rgba(121,164,233,0.07);
+}
+
+.u-main{ display:flex; flex-direction:column; gap:.15rem; }
+.u-name{ font-weight: 800; color: var(--color-cream); font-size: .98rem; }
+.u-username{ font-size: .9rem; }
+
+.empty{
+  text-align:center;
+  padding: 1.5rem !important;
+}
+
+.details-card{
+  padding: var(--space-10);
+  border: 1px solid rgba(121,164,233,0.26);
+  box-shadow: var(--shadow-md);
+}
+
+.details-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap: var(--space-6);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid rgba(121,164,233,0.18);
+  margin-bottom: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.details-title{
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: 1.25rem;
+  margin-bottom: .25rem;
+}
+
+.details-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+@media (max-width: 960px){
+  .details-grid{ grid-template-columns: 1fr; }
+  .users-table{ min-width: 760px; }
+}
+
+.detail .label{
+  font-weight: 800;
+  color: rgba(255,255,255,0.92);
+  margin-bottom: .35rem;
+}
+
+.attrs{
+  margin-top: var(--space-10);
+  padding-top: var(--space-6);
+  border-top: 1px solid rgba(121,164,233,0.18);
+}
+
+.attrs-title{
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: 1.05rem;
+  margin-bottom: var(--space-4);
+}
+
+.attrs-grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 860px){
+  .attrs-grid{ grid-template-columns: 1fr; }
+}
+
+.attr{
+  padding: .9rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(121,164,233,.18);
+  background: rgba(255,255,255,.04);
+}
+
+.attr-key{
+  font-weight: 900;
+  color: var(--color-cream);
+  margin-bottom: .25rem;
+}
+
+/* status pills */
+.pill-success{
+  background: rgba(120, 255, 197, 0.10) !important;
+  border-color: rgba(120, 255, 197, 0.25) !important;
+  color: rgba(200,255,235,0.95) !important;
+}
+
+.pill-warning{
+  background: rgba(255, 206, 120, 0.10) !important;
+  border-color: rgba(255, 206, 120, 0.25) !important;
+  color: rgba(255,230,200,0.95) !important;
+}
+
+.pill-danger{
+  background: rgba(255, 120, 120, 0.10) !important;
+  border-color: rgba(255, 120, 120, 0.25) !important;
+  color: rgba(255,200,200,0.95) !important;
+}
+
+/* ===========================
+   SELECT (the closed input)
+=========================== */
+.users-actions select.input {
+  width: 180px; /* you can change */
+  height: 44px;
+
+  padding: 10px 44px 10px 14px; /* space for arrow */
+  border-radius: 18px; /* ✅ shape */
+  border: 1px solid rgba(255, 255, 255, 0.18);
+
+  background-color: #0b1220; /* dark */
+  color: #fff;
+
+  font-size: 15px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  /* remove default ugly styles */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  transition: all 0.2s ease;
+}
+
+/* Hover effect for the select input itself */
+.users-actions select.input:hover {
+  border-color: rgba(255, 255, 255, 0.223);
+  background: #101a2e;
+}
+
+/* Focus ring */
+.users-actions select.input:focus {
+  outline: none;
+  border-color: rgba(148, 163, 184, 0.8);
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+}
+
+/* ===========================
+   CUSTOM ARROW (dropdown icon)
+=========================== */
+.users-actions .select-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.users-actions .select-wrap::after {
+  content: "▾";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  font-size: 14px;
+}
+
+/* ===========================
+   OPTIONS (opened dropdown)
+=========================== */
+.users-actions select.input option {
+  background-color: #0b2013; /* dark dropdown background */
+  color: #ffffff;
+  padding: 10px;
+}
+
+/* ✅ Selected option (dark grey) */
+.users-actions select.input option:checked {
+  background: #494b48; /* dark grey selected */
+  color: #ffffff;
+}

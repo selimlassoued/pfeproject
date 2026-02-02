@@ -4,6 +4,8 @@ import { canActivateAuthRole } from './guards/auth-role.guard';
 import { Forbidden } from './forbidden/forbidden';
 import { Profile } from './profile/profile';
 import { Hero } from './hero/hero';
+import { ListUsers } from './list-users/list-users';
+import { UserDetails } from './user-details/user-details';
 
 export const routes: Routes = [
   //{ path: 'profile', redirectTo: 'profile', pathMatch: 'full' }, 
@@ -19,4 +21,7 @@ export const routes: Routes = [
 
   //{ path: '**', redirectTo: 'profile' }, 
   { path: '', component: Hero },
+  {path:'listUsers',component:ListUsers,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
+  {path:'user/:id',component:UserDetails,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }}
+
 ];

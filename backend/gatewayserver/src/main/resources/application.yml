@@ -1,5 +1,13 @@
 server:
   port: 8888
+
+app:
+  keycloak-admin:
+    base-url: http://keycloak:8080
+    realm: ai-recruitment
+    client-id: hireAI-backend
+    client-secret: ${KC_BACKEND_CLIENT_SECRET}
+
 spring:
   security:
     oauth2:
@@ -29,6 +37,22 @@ spring:
           discovery:
             locator:
               enabled: false
+
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:4200"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+            allowCredentials: true
 
 
 
