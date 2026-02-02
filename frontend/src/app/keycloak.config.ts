@@ -8,9 +8,15 @@ import {
   UserActivityService
 } from 'keycloak-angular';
 
-const localhostCondition = createInterceptorCondition<IncludeBearerTokenCondition>({
-  urlPattern: /^(http:\/\/localhost:8090)(\/.*)?$/i
-});
+const keycloakCondition =
+  createInterceptorCondition<IncludeBearerTokenCondition>({
+    urlPattern: /^(http:\/\/localhost:8090)(\/.*)?$/i
+  });
+
+const gatewayCondition =
+  createInterceptorCondition<IncludeBearerTokenCondition>({
+    urlPattern: /^(http:\/\/localhost:8888)(\/.*)?$/i
+  });
 
 export const provideKeycloakAngular = () =>
   provideKeycloak({
@@ -35,7 +41,7 @@ export const provideKeycloakAngular = () =>
       UserActivityService,
       {
         provide: INCLUDE_BEARER_TOKEN_INTERCEPTOR_CONFIG,
-        useValue: [localhostCondition]
+        useValue: [keycloakCondition, gatewayCondition]
       }
     ]
   });

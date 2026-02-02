@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { KeycloakAccountService } from '../services/keycloak-account-service';
 import { User } from '../model/user.model';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-profile',
@@ -20,7 +22,7 @@ export class Profile implements OnInit {
   user?: User;
   form: FormGroup;
 
-  constructor(private fb: FormBuilder, private account: KeycloakAccountService) {
+  constructor(private fb: FormBuilder, private account: KeycloakAccountService,private snackBar: MatSnackBar) {
     this.form = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
       firstName: ['', Validators.required],
@@ -43,9 +45,9 @@ export class Profile implements OnInit {
       this.user = await this.account.getUser();
 
       const phoneNational = (this.user.phoneNumber ?? '')
-        .replace(/^\+216/, '')        // remove prefix if present
-        .replace(/\D/g, '')           // keep digits only
-        .slice(0, 8);                 // max 8 digits
+        .replace(/^\+216/, '')        
+        .replace(/\D/g, '')           
+        .slice(0, 8);                 
 
       this.form.patchValue({
         username: this.user.username ?? '',
@@ -61,7 +63,6 @@ export class Profile implements OnInit {
     }
   }
 
-  // called from template on input to keep only 8 digits
   onPhoneInput(event: Event) {
     const input = event.target as HTMLInputElement;
     const digits = (input.value ?? '').replace(/\D/g, '').slice(0, 8);
@@ -91,7 +92,7 @@ export class Profile implements OnInit {
         username: raw.username.trim(),
         firstName: raw.firstName.trim(),
         lastName: raw.lastName.trim(),
-        email: this.user.email, // identifier (do not change)
+        email: this.user.email, 
         phoneNumber: phoneNumber,
       };
 
@@ -100,6 +101,16 @@ export class Profile implements OnInit {
     } catch (e: any) {
       if (e?.status === 409) {
         this.error = 'Username already taken.';
+        this.snackBar.open('Username already taken!', 'Close', {
+          duration: 5000,
+          panelClass: ['error-snackbar']
+        });
+        Swal.fire({
+          icon: 'warning',
+          title: 'Are you sure?',
+          showCancelButton: true,
+        });
+
       } else {
         this.error = 'Update failed.';
       }

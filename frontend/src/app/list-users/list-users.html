@@ -1,0 +1,131 @@
+<section class="users-page">
+  <div class="container">
+    <header class="users-header">
+      <div>
+        <span class="pill">Admin</span>
+        <h2 class="users-title">Users</h2>
+        <p class="text-muted">
+          Browse accounts, inspect profile attributes, and prepare for role management.
+        </p>
+      </div>
+
+      <div class="users-actions">
+  <div class="search-wrap" style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:center;">
+    <!-- live search -->
+    <input
+      class="input"
+      type="text"
+      [ngModel]="search"
+      (ngModelChange)="onSearchChange($event)"
+      placeholder="Search by username / name / email…"
+      style="min-width: 260px;"
+    />
+
+    <!-- enabled filter -->
+    <select class="input" [(ngModel)]="enabledFilter" (ngModelChange)="onFiltersChange()">
+      <option value="ALL">All statuses</option>
+      <option value="ENABLED">Enabled</option>
+      <option value="DISABLED">Disabled</option>
+    </select>
+
+    <!-- role filter -->
+    <select class="input" [(ngModel)]="roleFilter" (ngModelChange)="onFiltersChange()">
+      <option value="ALL">All roles</option>
+      @for (r of rolesOptions; track r) {
+        <option [value]="r">{{ r }}</option>
+      }
+    </select>
+
+    <!-- optional manual buttons -->
+    <button class="btn btn-ghost" type="button" (click)="load()">
+      Apply
+    </button>
+  </div>
+
+  <button class="btn btn-primary" type="button" (click)="load()">
+    Refresh
+  </button>
+</div>
+
+    </header>
+
+    @if (loading) {
+    <div class="status status--info">Loading users…</div>
+    }
+
+    @if (error) {
+    <div class="status status--error">{{ error }}</div>
+    }
+
+    @if (!loading) {
+    <div class="card users-card">
+      <div class="table-head">
+        <div class="text-muted">
+          Showing <strong style="color: var(--color-cream)">{{ users.length }}</strong> users
+        </div>
+        <div class="text-muted" style="font-size:.92rem;">
+          Click a row to see full attributes
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (u of users; track u.id) {
+            <tr class="row-click" (click)="goToUser(u)">
+              <td>
+                <div class="u-main">
+                  <div class="u-name">
+                    {{ u.firstName || '—' }} {{ u.lastName || '' }}
+                  </div>
+                  <div class="text-muted u-username">
+                    {{ u.username || '—' }}
+                  </div>
+                </div>
+              </td>
+
+              <td class="text-muted">{{ u.email || '—' }}</td>
+
+              <td class="text-muted">{{ u.phoneNumber || '—' }}</td>
+
+              <td>
+                <span class="pill pill-role">{{ u.role || '—' }}</span>
+              </td>
+
+              <td>
+                <span class="pill" [ngClass]="statusPill(u.enabled).cls">
+                  {{ statusPill(u.enabled).text }}
+                </span>
+              </td>
+
+              <td class="text-muted">
+                {{ formatDate(u.createdTimestamp) }}
+              </td>
+            </tr>
+            }
+
+            @if (users.length === 0) {
+            <tr>
+              <td colspan="6" class="empty text-muted">No users found.</td>
+            </tr>
+            }
+          </tbody>
+
+        </table>
+      </div>
+    </div>
+    }
+
+  </div>
+</section>

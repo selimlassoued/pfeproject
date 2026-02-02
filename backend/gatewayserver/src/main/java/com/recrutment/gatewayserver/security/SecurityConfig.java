@@ -12,7 +12,12 @@ import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
 import reactor.core.publisher.Mono;
+import org.springframework.web.cors.reactive.CorsConfigurationSource;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableWebFluxSecurity
@@ -24,6 +29,19 @@ public class SecurityConfig {
                 .withJwkSetUri("http://keycloak:8080/realms/ai-recruitment/protocol/openid-connect/certs")
                 .build();
     }
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of("http://localhost:4200"));
+        config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
 
 
     @Bean
@@ -32,6 +50,7 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> //exchanges.pathMatchers(HttpMethod.GET).authenticated()
                         exchanges.pathMatchers("/actuator/health/**","/actuator/info").permitAll()
                                 .pathMatchers("/actuator/**").hasRole("HR")
+                                .pathMatchers("/api/admin/**").hasRole("ADMIN")
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
                         //.jwt(Customizer.withDefaults())

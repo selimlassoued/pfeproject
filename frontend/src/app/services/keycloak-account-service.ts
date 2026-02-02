@@ -45,7 +45,6 @@ export class KeycloakAccountService {
     p.username = user.username;
     p.firstName = user.firstName;
     p.lastName = user.lastName;
-    // email intentionally NOT changed
     this.setAttr(p, 'phoneNumber', user.phoneNumber);
 
     await firstValueFrom(this.http.post<void>(this.accountUrl, p));

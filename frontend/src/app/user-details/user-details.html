@@ -1,0 +1,143 @@
+<section class="user-details-page">
+  <div class="container">
+
+    <div class="topbar">
+      <button class="btn btn-ghost" type="button" (click)="back()">← Back</button>
+
+      @if (user) {
+        <div class="topbar-right">
+          <span class="pill pill-role">{{ roleLabel(user.roles) }}</span>
+          <span class="pill" [ngClass]="statusPill(user.enabled).cls">
+            {{ statusPill(user.enabled).text }}
+          </span>
+        </div>
+      }
+    </div>
+
+    <header class="header">
+      <div>
+        <span class="pill">Admin</span>
+        <h2 class="title">User Details</h2>
+        <p class="text-muted">Inspect account details, attributes, and manage access.</p>
+      </div>
+
+      @if (user) {
+        <div class="header-actions">
+          <button
+            class="btn btn-ghost"
+            type="button"
+            [disabled]="acting || deleting"
+            (click)="toggleBlock()">
+            {{ (user.enabled ?? true) ? 'Block user' : 'Unblock user' }}
+          </button>
+
+          <button
+            class="btn btn-primary danger"
+            type="button"
+            [disabled]="acting || deleting"
+            (click)="deleteUser()">
+            @if (deleting) { Deleting… } @else { Delete account }
+          </button>
+        </div>
+      }
+    </header>
+
+    @if (loading) {
+      <div class="status status--info">Loading user…</div>
+    }
+
+    @if (error) {
+      <div class="status status--error">{{ error }}</div>
+    }
+
+    @if (!loading && user) {
+
+      <div class="card summary-card">
+        <div class="summary-top">
+          <div>
+            <div class="name">
+              {{ user.firstName || '—' }} {{ user.lastName || '' }}
+            </div>
+            <div class="meta text-muted">
+              <span><span class="k">Username:</span> {{ user.username || '—' }}</span>
+              <span class="dot">•</span>
+              <span><span class="k">ID:</span> {{ user.id }}</span>
+            </div>
+          </div>
+
+          <div class="mini">
+            <div class="mini-item">
+              <div class="label">Created</div>
+              <div class="value text-muted">{{ formatDate(user.createdTimestamp) }}</div>
+            </div>
+            <div class="mini-item">
+              <div class="label">Phone</div>
+              <div class="value text-muted">{{ user.phoneNumber || '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="item">
+            <div class="label">Email</div>
+            <div class="value text-muted">{{ user.email || '—' }}</div>
+          </div>
+
+          <div class="item">
+            <div class="label">Status</div>
+            <div class="value">
+              <span class="pill" [ngClass]="statusPill(user.enabled).cls">
+                {{ statusPill(user.enabled).text }}
+              </span>
+            </div>
+          </div>
+
+          <div class="item">
+            <div class="label">Role</div>
+            <div class="value">
+              <span class="pill pill-role">{{ roleLabel(user.roles) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card roles-card">
+        <div class="roles-top">
+          <div>
+            <div class="card-title">Change roles</div>
+            <div class="text-muted">Candidate is mandatory. Choose one main role (optional).</div>
+          </div>
+
+          <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+            <button class="btn btn-ghost" type="button" [disabled]="acting" (click)="clearMainRole()">
+              Candidate only
+            </button>
+
+            <button class="btn btn-primary" type="button" [disabled]="acting" (click)="saveRoles()">
+              @if (acting) { Saving… } @else { Save roles }
+            </button>
+          </div>
+        </div>
+
+        <div class="roles-grid">
+          <label class="role-chip disabled">
+            <input type="checkbox" checked disabled />
+            <span class="chip">CANDIDATE</span>
+          </label>
+
+          <label class="role-chip">
+            <input type="radio" name="mainRole" value="RECRUITER" [(ngModel)]="selectedMainRole" />
+            <span class="chip">RECRUITER</span>
+          </label>
+
+          <label class="role-chip">
+            <input type="radio" name="mainRole" value="ADMIN" [(ngModel)]="selectedMainRole" />
+            <span class="chip">ADMIN</span>
+          </label>
+        </div>
+      </div>
+
+
+    }
+  </div>
+</section>
