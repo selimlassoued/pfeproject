@@ -1,44 +1,36 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-interface JobPreview {
-  title: string;
-  location: string;
-  type: string;
-  status: string;
-  tags: string[];
-}
+import { JobService } from '../services/job.service';
+import { JobOffer } from '../model/jobOffer.model';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-hero',
-  imports: [CommonModule],
+  standalone: true,
+  imports: [CommonModule, RouterLink],
   templateUrl: './hero.html',
   styleUrl: './hero.css',
 })
-export class Hero {
-  jobs: JobPreview[] = [
-    {
-      title: 'Software Engineer Intern',
-      location: 'Remote',
-      type: 'Internship',
-      status: 'New',
-      tags: ['Java', 'Spring Boot', 'SQL'],
-    },
-    {
-      title: 'QA Automation Engineer',
-      location: 'Hybrid',
-      type: 'Full-time',
-      status: 'Open',
-      tags: ['Selenium', 'API testing', 'CI/CD'],
-    },
-    {
-      title: 'Business Analyst',
-      location: 'On-site',
-      type: 'Full-time',
-      status: 'Open',
-      tags: ['Requirements', 'Stakeholders', 'Documentation'],
-    },
-  ];
+export class Hero implements OnInit {
+
+  jobs: JobOffer[] = [];
+  loading = true;
+  error: string | null = null;
+
+  constructor(private jobService: JobService) {}
+
+  ngOnInit(): void {
+    this.jobService.getAllJobs().subscribe({
+      next: (data) => {
+        this.jobs = data;
+        this.loading = false;
+      },
+      error: () => {
+        this.error = 'Failed to load jobs';
+        this.loading = false;
+      },
+    });
+  }
 
   scrollToCandidate() {
     document.getElementById('candidate')?.scrollIntoView({ behavior: 'smooth' });

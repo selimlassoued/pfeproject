@@ -111,6 +111,7 @@
 }
 
 .hint{
+  margin-left: 2%;
   margin-top: 0.6rem;
   color: rgba(248,250,252,0.62);
   font-size: 0.9rem;
