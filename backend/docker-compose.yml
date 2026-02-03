@@ -138,6 +138,38 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
+  job-db:
+    image: postgres:16
+    container_name: job-db
+    networks:
+      - ai-recruitment-network
+    environment:
+      - POSTGRES_DB=jobdb
+      - POSTGRES_USER=jobuser
+      - POSTGRES_PASSWORD=jobpass
+    ports:
+      - "5434:5432"
+    volumes:
+      - job_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U jobuser -d jobdb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  job-microservice:
+    build: ./job-microservice
+    container_name: job-microservice
+    networks:
+      - ai-recruitment-network
+    ports:
+      - "8082:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://job-db:5432/jobdb
+      - SPRING_DATASOURCE_USERNAME=jobuser
+      - SPRING_DATASOURCE_PASSWORD=jobpass
+    depends_on:
+      job-db:
+        condition: service_healthy
 
 networks:
   ai-recruitment-network:
@@ -145,3 +177,4 @@ networks:
 
 volumes:
   keycloak_pgdata:
+  job_pgdata:

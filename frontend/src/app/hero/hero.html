@@ -36,7 +36,9 @@
       </p>
 
       <div style="display:flex; gap:.75rem; flex-wrap:wrap; margin-top:1.5rem;">
-        <button class="btn btn-primary" type="button">Browse Jobs</button>
+<button class="btn btn-primary" type="button" [routerLink]="['/browse']">
+  Browse Jobs
+</button>
         <button class="btn btn-ghost" type="button" (click)="scrollToCandidate()">For Candidates</button>
       </div>
 
@@ -93,23 +95,22 @@
           {{ job.title }}
         </div>
         <div class="text-muted" style="margin-top:.25rem;font-size:.9rem;">
-          {{ job.location }} • {{ job.type }}
+          {{ job.location }} • {{ job.employmentType}}
         </div>
       </div>
 
-      <span class="pill">{{ job.status }}</span>
+      <span class="pill">{{ job.jobStatus }}</span>
     </div>
 
-    <p class="text-muted" style="margin-top:.6rem;font-size:.9rem;">
-      {{ job.tags.join(' • ') }}
-    </p>
   </div>
 </div>
 
 
     <div style="margin-top:1.25rem; display:flex; gap:.75rem; flex-wrap:wrap;">
-      <button class="btn btn-primary" type="button">Sign in to apply</button>
-      <button class="btn btn-ghost" type="button">View all jobs</button>
+      <button class="btn btn-primary" type="button" >Sign in to apply</button>
+<button class="btn btn-ghost" type="button" [routerLink]="['/browse']">
+  View all jobs
+</button>
     </div>
   </div>
 </aside>

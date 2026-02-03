@@ -1,0 +1,143 @@
+<section class="container" style="padding: 3.5rem 0;">
+  <header style="margin-bottom: 1.25rem;">
+    <span class="pill">Jobs</span>
+    <h2 class="section-title">Browse open positions</h2>
+    <p class="text-muted">
+      Explore our current opportunities and apply when you’re ready.
+    </p>
+  </header>
+
+  <!-- Search + Filters -->
+  <div class="jobs-toolbar card" style="padding: 1rem; margin-bottom: 1.25rem;">
+    <div class="jobs-toolbar-grid">
+      <div class="field">
+        <label class="toolbar-label">Search</label>
+        <input
+          class="input"
+          type="text"
+          [value]="query"
+          (input)="onQueryChange($event)"
+          placeholder="Search by title, location, description…"
+        />
+      </div>
+
+      <div class="field">
+        <label class="toolbar-label">Employment type</label>
+        <select class="input" [value]="employmentType" (change)="onEmploymentTypeChange($event)">
+          <option value="">All</option>
+          <option *ngFor="let t of employmentTypes" [value]="t">{{ t }}</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="toolbar-label">Status</label>
+        <select class="input" [value]="status" (change)="onStatusChange($event)">
+          <option value="">All</option>
+          <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="toolbar-label">Salary</label>
+        <select class="input" [value]="salaryRange" (change)="onSalaryRangeChange($event)">
+          <option value="any">Any</option>
+          <option value="specified">Specified only</option>
+          <option value="0-1000">0–1000 TND</option>
+          <option value="1000-2000">1000–2000 TND</option>
+          <option value="2000-5000">2000–5000 TND</option>
+          <option value="5000+">5000+ TND</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="toolbar-footer">
+      <div class="text-muted">
+        Showing <strong>{{ filteredJobs.length }}</strong> of <strong>{{ jobs.length }}</strong>
+      </div>
+
+      <button class="btn btn-ghost" type="button" (click)="resetFilters()" [disabled]="!hasActiveFilters()">
+        Reset
+      </button>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="status status--info">Loading jobs…</div>
+  }
+
+  @if (error) {
+    <div class="status status--error">{{ error }}</div>
+  }
+
+  @if (!loading && !error && filteredJobs.length === 0) {
+    <div class="status status--muted">
+      No job offers match your search.
+    </div>
+  }
+
+  @if (!loading && !error && filteredJobs.length > 0) {
+    <div style="display:grid; gap:1rem;">
+      <article
+        *ngFor="let job of filteredJobs"
+        class="card card--hover"
+        style="padding:1.25rem;"
+      >
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;">
+          <div>
+            <h3 style="margin:0;font-size:1.1rem;font-family:var(--font-display);">
+              {{ job.title }}
+            </h3>
+
+            <div class="text-muted" style="margin-top:.35rem;">
+              {{ job.location }} • {{ job.employmentType }}
+            </div>
+          </div>
+
+          <span class="pill">{{ badgeText(job) }}</span>
+        </div>
+
+        <p class="text-muted" style="margin-top:.75rem;">
+          {{ job.description }}
+        </p>
+
+        <div
+          style="
+            margin-top: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+          "
+        >
+          <div class="text-muted">
+            {{ salaryText(job) }}
+          </div>
+
+          <div style="display:flex; gap:.5rem;">
+            <button class="btn btn-ghost" type="button" [routerLink]="['/jobs', job.id]">View details</button>
+            <button class="btn btn-primary" type="button">Apply</button>
+          </div>
+        </div>
+        @if ((job.requirements?.length ?? 0) > 0) {
+  <div style="margin-top:.75rem;">
+    <div class="text-muted" style="font-size:.9rem; margin-bottom:.35rem;">
+      Requirements
+    </div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:.4rem;">
+      <span class="pill"
+            *ngFor="let r of (job.requirements ?? []).slice(0, 4)">
+        {{ r.category }}: {{ r.description }}
+      </span>
+
+      @if ((job.requirements?.length ?? 0) > 4) {
+        <span class="pill">+{{ (job.requirements?.length ?? 0) - 4 }} more</span>
+      }
+    </div>
+  </div>
+}
+      </article>
+    </div>
+  }
+</section>

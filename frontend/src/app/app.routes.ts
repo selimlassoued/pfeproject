@@ -4,6 +4,8 @@ import { canActivateAuthRole } from './guards/auth-role.guard';
 import { Forbidden } from './forbidden/forbidden';
 import { Profile } from './profile/profile';
 import { Hero } from './hero/hero';
+import { BrowseJobsComponent } from './browse-jobs/browse-jobs';
+import { JobDetails } from './job-details/job-details';
 
 export const routes: Routes = [
   //{ path: 'profile', redirectTo: 'profile', pathMatch: 'full' }, 
@@ -19,4 +21,6 @@ export const routes: Routes = [
 
   //{ path: '**', redirectTo: 'profile' }, 
   { path: '', component: Hero },
+  { path: 'browse', component: BrowseJobsComponent },
+  { path: 'jobs/:id', component: JobDetails },
 ];
