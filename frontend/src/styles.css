@@ -154,14 +154,20 @@ p { margin: 0; }
   color: #fff;
   box-shadow: var(--shadow-md);
 }
-.btn-primary:hover { box-shadow: var(--shadow-lg); }
+.btn-primary:hover {
+ box-shadow: var(--shadow-lg);
+background: linear-gradient(135deg, rgba(30,64,188,0.85), rgba(121,164,233,0.85));
+ }
 
 .btn-ghost {
   background: transparent;
   color: var(--color-text);
   border-color: var(--color-border);
 }
-.btn-ghost:hover { background: rgba(255,255,255,0.06); }
+.btn-ghost:hover { 
+background: rgba(255,255,255,0.06);
+border:  1px solid var(--color-border);
+color: var(--color-text); }
 
 /* Pills / badges */
 .pill {

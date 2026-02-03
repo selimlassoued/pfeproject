@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: job-microcervice
+  datasource:
+    url: jdbc:postgresql://job-db:5432/jobdb
+    username: jobuser
+    password: jobpass
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"

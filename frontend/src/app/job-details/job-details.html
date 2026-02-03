@@ -1,0 +1,109 @@
+<section class="container" style="padding: 3rem 0;">
+  <div class="header-row">
+    <div>
+      <span class="pill">Job</span>
+      <h2 class="title">Job details</h2>
+      <p class="text-muted">Review the role and apply when you’re ready.</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" type="button" [routerLink]="['/browse']">← Back</button>
+      <button class="btn btn-primary" type="button" [disabled]="loading() || !job()" >
+        Apply
+      </button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="card" style="margin-top: 1.25rem;">
+      <div class="text-muted">Loading job details…</div>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="card" style="margin-top: 1.25rem; border-color: rgba(255,80,80,.35);">
+      <div style="font-weight:700; color: var(--color-cream);">Something went wrong</div>
+      <p class="text-muted" style="margin-top:.5rem;">{{ error() }}</p>
+    </div>
+  }
+
+  @if (!loading() && job()) {
+    <article class="card details-card" style="margin-top: 1.25rem;">
+      <div class="top">
+        <div>
+          <h3 class="job-title">{{ job()!.title }}</h3>
+          <div class="meta text-muted">
+            {{ job()!.location }} • {{ job()!.employmentType }}
+          </div>
+        </div>
+
+        <span class="pill">{{ job()!.jobStatus }}</span>
+      </div>
+
+      <div class="grid">
+        <div class="info-block">
+          <div class="label">Salary</div>
+          <div class="value">{{ salaryText() }}</div>
+        </div>
+
+        <div class="info-block">
+          <div class="label">Employment</div>
+          <div class="value">{{ job()!.employmentType ?? '—' }}</div>
+        </div>
+
+        <div class="info-block">
+          <div class="label">Status</div>
+          <div class="value">{{ job()!.jobStatus ?? '—' }}</div>
+        </div>
+
+        <div class="info-block">
+          <div class="label">Reference</div>
+          <div class="value mono">{{ job()!.id }}</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div>
+        <div class="section-title">Description</div>
+        <p class="desc text-muted">{{ job()!.description }}</p>
+      </div>
+
+      <div class="divider"></div>
+
+<div>
+  <div class="section-title">Requirements</div>
+
+  @if ((job()!.requirements?.length ?? 0) === 0) {
+    <p class="text-muted">No requirements listed.</p>
+  }
+
+  @if ((job()!.requirements?.length ?? 0) > 0) {
+    <div style="display:grid; gap:.75rem; margin-top:.75rem;">
+      <div class="card" style="padding: .85rem;" *ngFor="let r of job()!.requirements">
+        <div class="section-title" style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+          <strong>{{ r.category }}</strong>
+        </div>
+
+        <div class="text-muted" style="margin-top:.35rem;">
+          {{ r.description }}
+        </div>
+
+        <div class="text-muted" style="margin-top:.35rem;" *ngIf="r.minYears != null || r.maxYears != null">
+          Experience:
+          <span *ngIf="r.minYears != null">{{ r.minYears }}+</span>
+          <span *ngIf="r.minYears == null && r.maxYears != null">Up to {{ r.maxYears }}</span>
+          years
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+      <div class="footer">
+        <button class="btn btn-ghost" type="button" [routerLink]="['/browse']">Back to jobs</button>
+        <button class="btn btn-primary" type="button" >Apply now</button>
+      </div>
+    </article>
+  }
+</section>

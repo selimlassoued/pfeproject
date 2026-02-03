@@ -57,7 +57,7 @@
 
           <div class="form-group">
             <label>First name</label>
-            <input class="input" formControlName="firstName" placeholder="Zina" />
+            <input class="input" formControlName="firstName" placeholder="First Name" />
             @if (form.get('firstName')?.invalid && form.get('firstName')?.touched) {
               <small class="field-error">First name is required</small>
             }
@@ -65,7 +65,7 @@
 
           <div class="form-group">
             <label>Last name</label>
-            <input class="input" formControlName="lastName" placeholder="Darras" />
+            <input class="input" formControlName="lastName" placeholder="Last Name" />
             @if (form.get('lastName')?.invalid && form.get('lastName')?.touched) {
               <small class="field-error">Last name is required</small>
             }
