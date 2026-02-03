@@ -1,0 +1,39 @@
+.jobs-toolbar-grid{
+  display:grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 1rem;
+  align-items:end;
+}
+@media (max-width: 960px){
+  .jobs-toolbar-grid{ grid-template-columns: 1fr; }
+}
+
+.toolbar-label{
+  display:block;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 0.5rem;
+}
+
+.toolbar-footer{
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(121,164,233,0.18);
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+select {
+  background-color: #1b2236;   /* dark control background */
+  color: #f5f7ff;              /* text color */
+}
+
+select option {
+  background-color: #1b2236;   /* dropdown background */
+  color: #f5f7ff;              /* dropdown text */
+}
+select:hover {
+  border-color: rgba(121, 164, 233, 0.758);
+}

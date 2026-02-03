@@ -26,8 +26,6 @@ export class Profile implements OnInit {
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
       email: [{ value: '', disabled: true }],
-
-      // ✅ 8 digits only (Tunisia national number)
       phoneNational: ['', [Validators.pattern(/^\d{8}$/)]],
     });
   }
