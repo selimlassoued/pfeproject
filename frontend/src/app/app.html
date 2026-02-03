@@ -19,19 +19,47 @@
 
     <div class="collapse navbar-collapse" id="navbarContent">
 
-      <!-- Left: public navigation -->
+      <!-- Left: navigation -->
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li class="nav-item">
-          <a class="nav-link hireai-link" routerLink="/browse">
-            Open Positions
-          </a>
-        </li>
 
-        <li class="nav-item" *kaHasRoles="['CANDIDATE']; checkRealm:true">
-          <a class="nav-link hireai-link" routerLink="/applications">
-            My Applications
-          </a>
-        </li>
+        <!-- ✅ ADMIN NAV -->
+        <ng-container *kaHasRoles="['ADMIN']; checkRealm:true">
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/admin/dashboard">
+              Dashboard
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/listUsers">
+              Users
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/admin/roles">
+              Roles
+            </a>
+          </li>
+        </ng-container>
+
+        <!-- ✅ NON-ADMIN NAV (Visitor + Candidate) -->
+        <ng-container *kaHasRoles="['ADMIN']; checkRealm:true; negate:true">
+
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/jobs">
+              Open Positions
+            </a>
+          </li>
+
+          <li class="nav-item" *kaHasRoles="['CANDIDATE']; checkRealm:true">
+            <a class="nav-link hireai-link" routerLink="/applications">
+              My Applications
+            </a>
+          </li>
+
+        </ng-container>
+
       </ul>
 
       <!-- Right: auth / profile -->
@@ -72,6 +100,7 @@
             }
           </ul>
         </li>
+
       </ul>
 
     </div>

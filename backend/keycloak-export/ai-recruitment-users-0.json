@@ -1,0 +1,122 @@
+{
+  "realm" : "ai-recruitment",
+  "users" : [ {
+    "id" : "ff80526a-11f1-44d7-9aea-5f54b1a3b685",
+    "username" : "admin",
+    "firstName" : "abdeslem",
+    "lastName" : "ye halewaa",
+    "emailVerified" : false,
+    "attributes" : {
+      "phoneNumber" : [ "+21622111199" ]
+    },
+    "enabled" : true,
+    "createdTimestamp" : 1769521880979,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "bc505677-0466-41d9-a0b1-06686862079f",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1769521916166,
+      "secretData" : "{\"value\":\"9fsa9HwzN3fXJRK0ao2wEY5YPevqw6jJlQjjhAejWxc=\",\"salt\":\"eNkkdVa/7WhdIiPQwUJFlA==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":5,\"algorithm\":\"argon2\",\"additionalParameters\":{\"hashLength\":[\"32\"],\"memory\":[\"7168\"],\"type\":[\"id\"],\"version\":[\"1.3\"],\"parallelism\":[\"1\"]}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "ADMIN", "default-roles-ai-recruitment" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "6be3c307-ae19-4956-a647-df276f170c02",
+    "username" : "lassoued",
+    "firstName" : "selim",
+    "lastName" : "lassoued",
+    "email" : "lassouedselim41@gmail.com",
+    "emailVerified" : true,
+    "attributes" : {
+      "phoneNumber" : [ "+21623567888" ]
+    },
+    "enabled" : true,
+    "createdTimestamp" : 1769426619377,
+    "totp" : false,
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "federatedIdentities" : [ {
+      "identityProvider" : "google",
+      "userId" : "115573191620905930981",
+      "userName" : "lassouedselim41@gmail.com"
+    } ],
+    "realmRoles" : [ "default-roles-ai-recruitment" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "20ea4566-6929-467e-af6d-f604b7a5479c",
+    "username" : "selimlassoued",
+    "firstName" : "selim",
+    "lastName" : "lassoued",
+    "email" : "selim.lass31@gmail.com",
+    "emailVerified" : true,
+    "attributes" : {
+      "phoneNumber" : [ "+21629176273" ]
+    },
+    "enabled" : true,
+    "createdTimestamp" : 1769426882725,
+    "totp" : false,
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "federatedIdentities" : [ {
+      "identityProvider" : "google",
+      "userId" : "107244734572999659215",
+      "userName" : "selim.lass31@gmail.com"
+    }, {
+      "identityProvider" : "github",
+      "userId" : "151998035",
+      "userName" : "selimlassoued"
+    } ],
+    "realmRoles" : [ "default-roles-ai-recruitment" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "cdff45d2-70e5-4ae5-b750-09d269a4c96c",
+    "username" : "selimlassoued@ieee.org",
+    "firstName" : "selim",
+    "lastName" : "lassoued",
+    "email" : "selimlassoued@ieee.org",
+    "emailVerified" : true,
+    "attributes" : {
+      "phoneNumber" : [ "+21611111111" ]
+    },
+    "enabled" : true,
+    "createdTimestamp" : 1769427008029,
+    "totp" : false,
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "federatedIdentities" : [ {
+      "identityProvider" : "google",
+      "userId" : "103163869120793608567",
+      "userName" : "selimlassoued@ieee.org"
+    } ],
+    "realmRoles" : [ "default-roles-ai-recruitment" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "028ccd48-e45a-4f8f-b0bb-06ccce1ff5fe",
+    "username" : "service-account-hireai-backend",
+    "emailVerified" : false,
+    "enabled" : true,
+    "createdTimestamp" : 1769180818459,
+    "totp" : false,
+    "serviceAccountClientId" : "hireAI-backend",
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-ai-recruitment" ],
+    "clientRoles" : {
+      "realm-management" : [ "view-users", "manage-users", "view-realm" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  } ]
+}

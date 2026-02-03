@@ -6,6 +6,8 @@ import { Profile } from './profile/profile';
 import { Hero } from './hero/hero';
 import { BrowseJobsComponent } from './browse-jobs/browse-jobs';
 import { JobDetails } from './job-details/job-details';
+import { ListUsers } from './list-users/list-users';
+import { UserDetails } from './user-details/user-details';
 
 export const routes: Routes = [
   //{ path: 'profile', redirectTo: 'profile', pathMatch: 'full' }, 
@@ -23,4 +25,7 @@ export const routes: Routes = [
   { path: '', component: Hero },
   { path: 'browse', component: BrowseJobsComponent },
   { path: 'jobs/:id', component: JobDetails },
+  {path:'listUsers',component:ListUsers,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
+  {path:'user/:id',component:UserDetails,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }}
+
 ];

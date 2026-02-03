@@ -126,6 +126,7 @@ services:
       - DISCOVERY_SERVICE_URL=http://eureka-server:8761/eureka
       - CONFIG_SERVICE_URL=http://config-server:9999
       - KEYCLOAK_URL=http://keycloak:8080
+      - KC_BACKEND_CLIENT_SECRET=${KC_BACKEND_CLIENT_SECRET}
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://localhost:8888/actuator/health | grep UP || exit 1"]
       interval: 10s
