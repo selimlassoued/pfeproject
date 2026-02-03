@@ -61,4 +61,8 @@ export class App {
     this.keycloak.logout();
 
   }
+  isAdmin(): boolean {
+  return this.keycloak.hasRealmRole('ADMIN');
+}
+
 }
