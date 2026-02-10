@@ -19,6 +19,12 @@ public class GatewayserverApplication {
     public RouteLocator MyRouteConfig(RouteLocatorBuilder routeLocatorBuilder)
     {
         return routeLocatorBuilder.routes()
+                .route("application-microservice", r -> r
+                .path("/api/applications/**")
+                .uri("lb://application-microservice"))
+                .route("job-microservice", r -> r
+                .path("/api/jobs/**")
+                .uri("lb://job-microservice"))
                 .build();
     }
 }

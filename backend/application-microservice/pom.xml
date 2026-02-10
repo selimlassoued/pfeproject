@@ -11,11 +11,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.zaina</groupId>
-    <artifactId>job-microservice</artifactId>
+    <groupId>com.recrutment</groupId>
+    <artifactId>application-microservice</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>job-microservice</name>
-    <description>job-microservice</description>
+    <name>application-microservice</name>
+    <description>application-microservice</description>
 
     <properties>
         <java.version>21</java.version>
@@ -23,16 +23,11 @@
     </properties>
 
     <dependencies>
-        <!-- Web (MVC) -->
+
+        <!-- Web (controllers + multipart) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
-        </dependency>
-
-        <!-- Actuator -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
         <!-- JPA -->
@@ -48,24 +43,26 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Spring Cloud Config -->
+        <!-- Config + Eureka (same architecture as your other services) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
 
-        <!-- Eureka Client -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
-        <!-- Devtools -->
+        <!-- Security (JWT) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
 
         <!-- Lombok -->
@@ -81,6 +78,16 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
 
     </dependencies>
 
@@ -98,6 +105,8 @@
 
     <build>
         <plugins>
+
+            <!-- ✅ THIS is what makes Lombok generate getters/builders during Maven build -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -123,6 +132,7 @@
                     </excludes>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 
