@@ -36,6 +36,7 @@ export class JobDetails {
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
+    console.log(id);
     if (!id) {
       this.loading.set(false);
       this.error.set('Missing job id in URL.');

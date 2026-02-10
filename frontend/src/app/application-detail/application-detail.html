@@ -1,0 +1,161 @@
+<div class="ad-page">
+  <ng-container *ngIf="!loading && app; else stateTpl">
+
+    <!-- Header -->
+    <div class="ad-header">
+
+      <div class="ad-head-left">
+        <div>
+
+          <!-- ✅ Breadcrumb row with Back button -->
+          <div class="ad-breadcrumb-row">
+            <button class="ad-back" type="button" (click)="backToList()" aria-label="Back">
+              ← Back
+            </button>
+
+            <span class="ad-breadcrumb-sep">•</span>
+
+            <span class="ad-breadcrumb">Applications / Detail</span>
+          </div>
+
+          <h2 class="ad-title">Application</h2>
+          <p class="ad-subtitle">
+            Review candidate information, job reference, and download the CV.
+          </p>
+        </div>
+      </div>
+
+      <div class="ad-actions">
+        <span class="ad-status" [ngClass]="(app.status || '').toLowerCase()">
+          {{ app.status }}
+        </span>
+
+        <button class="btn btn-ghost" type="button" (click)="downloadCv()">
+          ⬇ Download CV
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Card -->
+    <section class="ad-card">
+
+      <!-- Left panel -->
+      <div class="ad-left">
+        <div class="ad-avatar">
+          {{ (app.candidateName || app.candidateUserId || 'U').slice(0,1) | uppercase }}
+        </div>
+
+        <div class="ad-name">
+          {{ app.candidateName || 'Unknown candidate' }}
+        </div>
+
+        <div class="ad-meta mono">
+          {{ app.candidateUserId }}
+        </div>
+
+        <button class="ad-linkbtn" type="button" (click)="goToUser()">
+          View candidate profile →
+        </button>
+
+        <div class="ad-divider"></div>
+
+        <div class="ad-mini">
+          <div class="ad-mini-label">Applied</div>
+          <div class="ad-mini-value">{{ app.appliedAt | date:'medium' }}</div>
+        </div>
+
+        <div class="ad-mini">
+          <div class="ad-mini-label">Application ID</div>
+          <div class="ad-mini-value mono">{{ app.applicationId }}</div>
+        </div>
+      </div>
+
+      <div class="ad-right">
+
+        <div class="ad-block">
+          <div class="ad-block-head">
+            <div>
+              <div class="ad-block-title">Job</div>
+              <div class="ad-block-sub">Job reference and title</div>
+            </div>
+
+            <button class="ad-chip" type="button" (click)="goToJob()">
+              Open job →
+            </button>
+          </div>
+
+          <div class="ad-block-body">
+            <div class="ad-kv">
+              <div class="ad-k">Title</div>
+              <div class="ad-v">
+                {{ app.jobTitle || 'Unknown job title' }}
+              </div>
+            </div>
+
+            <div class="ad-kv">
+              <div class="ad-k">Job ID</div>
+              <div class="ad-v mono">{{ app.jobId }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ad-grid2">
+
+          <div class="ad-block">
+            <div class="ad-block-head">
+              <div>
+                <div class="ad-block-title">GitHub</div>
+                <div class="ad-block-sub">Candidate repository/profile link</div>
+              </div>
+            </div>
+
+            <div class="ad-block-body">
+              <a class="ad-url"
+                 [href]="app.githubUrl"
+                 target="_blank"
+                 rel="noopener">
+                {{ app.githubUrl || '—' }}
+              </a>
+            </div>
+          </div>
+
+          <!-- CV -->
+          <div class="ad-block">
+            <div class="ad-block-head">
+              <div>
+                <div class="ad-block-title">CV</div>
+                <div class="ad-block-sub">File name and type</div>
+              </div>
+            </div>
+
+            <div class="ad-block-body">
+              <div class="ad-kv">
+                <div class="ad-k">File</div>
+                <div class="ad-v mono">{{ app.cvFileName || 'cv.pdf' }}</div>
+              </div>
+
+              <div class="ad-kv">
+                <div class="ad-k">Type</div>
+                <div class="ad-v mono">{{ app.cvContentType || 'application/pdf' }}</div>
+              </div>
+
+              <button class="btn btn-primary" type="button" (click)="downloadCv()">
+                Download CV
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer row -->
+       
+
+      </div>
+    </section>
+
+  </ng-container>
+
+  <ng-template #stateTpl>
+    <div *ngIf="loading" class="ad-state">Loading…</div>
+    <div *ngIf="error" class="ad-error">{{ error }}</div>
+  </ng-template>
+</div>

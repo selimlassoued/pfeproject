@@ -1,0 +1,55 @@
+<section class="container" style="padding: 3rem 0;">
+  <div class="header-row">
+    <div>
+      <span class="pill">Application</span>
+      <h2 class="title">Apply to this job</h2>
+      <p class="text-muted">Submit your GitHub link and your CV (PDF only).</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" type="button" (click)="goBack()">← Back</button>
+      <button class="btn btn-primary" type="button" [disabled]="submitting()" (click)="submit()">
+        Submit
+      </button>
+    </div>
+  </div>
+
+  <article class="card" style="margin-top: 1.25rem;">
+    <form [formGroup]="form" (ngSubmit)="submit()" style="display:grid; gap: 1rem;">
+
+      <div>
+        <label class="text-muted">GitHub link</label>
+        <input class="input" type="text" formControlName="githubUrl" placeholder="https://github.com/username" />
+        <div class="text-muted" style="margin-top:.35rem;"
+             *ngIf="form.get('githubUrl')?.touched && form.get('githubUrl')?.invalid">
+          Please enter a valid URL.
+        </div>
+      </div>
+
+      <div>
+        <label class="text-muted">CV file (PDF only)</label>
+        <input
+          class="input"
+          type="file"
+          accept="application/pdf,.pdf"
+          (change)="onFileChange($event)"
+        />
+        <div class="text-muted" style="margin-top:.35rem;" *ngIf="cvName()">
+          Selected: <span class="mono">{{ cvName() }}</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="display:flex; gap:.75rem; justify-content:flex-end; flex-wrap:wrap;">
+        <button class="btn btn-ghost" type="button" (click)="goBack()">Cancel</button>
+        <button class="btn btn-primary" type="submit" [disabled]="submitting() || form.invalid || !cvFile()">
+          Submit application
+        </button>
+      </div>
+
+      <div class="text-muted" *ngIf="error()">{{ error() }}</div>
+      <div class="text-muted" *ngIf="success()">{{ success() }}</div>
+    </form>
+  </article>
+</section>
