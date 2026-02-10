@@ -33,6 +33,12 @@ services:
       - KC_DB_USERNAME=keycloak
       - KC_DB_PASSWORD=keycloak
 
+      - KC_HOSTNAME=localhost
+      - KC_HOSTNAME_PORT=8090
+      - KC_HOSTNAME_STRICT=false
+      - KC_PROXY=edge
+      - KC_HTTP_ENABLED=true
+
       - KC_MAIL_ENABLED=true
       - KC_MAIL_HOST=${KC_MAIL_HOST}
       - KC_MAIL_PORT=${KC_MAIL_PORT}
@@ -139,6 +145,7 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
+
   job-db:
     image: postgres:16
     container_name: job-db
@@ -157,6 +164,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
   job-microservice:
     build: ./job-microservice
     container_name: job-microservice
@@ -168,8 +176,50 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://job-db:5432/jobdb
       - SPRING_DATASOURCE_USERNAME=jobuser
       - SPRING_DATASOURCE_PASSWORD=jobpass
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
     depends_on:
       job-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  application-db:
+    image: postgres:16
+    container_name: application-db
+    networks:
+      - ai-recruitment-network
+    environment:
+      - POSTGRES_DB=appdb
+      - POSTGRES_USER=appuser
+      - POSTGRES_PASSWORD=apppass
+    ports:
+      - "5435:5432"
+    volumes:
+      - app_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U appuser -d appdb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  application-microservice:
+    build: ./application-microservice
+    container_name: application-microservice
+    networks:
+      - ai-recruitment-network
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://application-db:5432/appdb
+      - SPRING_DATASOURCE_USERNAME=appuser
+      - SPRING_DATASOURCE_PASSWORD=apppass
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      application-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
         condition: service_healthy
 
 networks:
@@ -179,3 +229,4 @@ networks:
 volumes:
   keycloak_pgdata:
   job_pgdata:
+  app_pgdata:
