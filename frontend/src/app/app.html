@@ -19,6 +19,11 @@
 
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
+        <li class="nav-item">
+          <a class="nav-link hireai-link" routerLink="/browse">
+            Open Positions
+          </a>
+        </li> 
         <ng-container *kaHasRoles="['ADMIN']; checkRealm:true">
           <li class="nav-item">
             <a class="nav-link hireai-link" routerLink="/admin/dashboard">
