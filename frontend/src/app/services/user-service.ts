@@ -31,7 +31,6 @@ export class UserService {
     return (users ?? []).map(u => this.normalizeRow(u));
   }
 
-  // ✅ fetch one user by id
   async getUser(id: string): Promise<AdminUserRow> {
     const u = await firstValueFrom(
       this.http.get<AdminUserRow>(`${this.baseUrl}/users/${id}`)
@@ -39,7 +38,6 @@ export class UserService {
     return this.normalizeRow(u);
   }
 
-  // ✅ list allowed roles (GET /api/admin/roles)
   async allowedRoles(): Promise<string[]> {
     const roles = await firstValueFrom(
       this.http.get<string[]>(`${this.baseUrl}/roles`)
@@ -47,14 +45,12 @@ export class UserService {
     return (roles ?? []).map(r => String(r).toUpperCase());
   }
 
-  // ✅ update user roles (PUT /api/admin/users/{id}/roles)
   async updateRoles(id: string, roles: string[]): Promise<void> {
     await firstValueFrom(
       this.http.put<void>(`${this.baseUrl}/users/${id}/roles`, { roles })
     );
   }
 
-  // ✅ block/unblock: use the endpoints you actually created
   async setEnabled(id: string, enabled: boolean): Promise<void> {
     const url = enabled
       ? `${this.baseUrl}/users/${id}/unblock`
@@ -63,7 +59,6 @@ export class UserService {
     await firstValueFrom(this.http.put<void>(url, null));
   }
 
-  // ✅ delete user (DELETE /api/admin/users/{id})
   async deleteUser(id: string): Promise<void> {
     await firstValueFrom(
       this.http.delete<void>(`${this.baseUrl}/users/${id}`)

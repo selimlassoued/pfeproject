@@ -1,11 +1,9 @@
 <nav class="navbar navbar-expand-lg hireai-nav">
   <div class="container-fluid">
-    <!-- Brand -->
     <a class="navbar-brand hireai-brand" routerLink="/">
       <img src="logo.png" alt="HireAI Logo" class="hireai-logo" />
     </a>
 
-    <!-- Mobile toggle -->
     <button
       class="navbar-toggler hireai-toggler"
       type="button"
@@ -19,10 +17,8 @@
 
     <div class="collapse navbar-collapse" id="navbarContent">
 
-      <!-- Left: navigation -->
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-        <!-- ✅ ADMIN NAV -->
         <ng-container *kaHasRoles="['ADMIN']; checkRealm:true">
           <li class="nav-item">
             <a class="nav-link hireai-link" routerLink="/admin/dashboard">
@@ -43,12 +39,11 @@
           </li>
         </ng-container>
 
-        <!-- ✅ NON-ADMIN NAV (Visitor + Candidate) -->
         <ng-container *kaHasRoles="['ADMIN']; checkRealm:true; negate:true">
 
           <li class="nav-item">
-            <a class="nav-link hireai-link" routerLink="/jobs">
-              Open Positions
+            <a class="nav-link hireai-link" routerLink="/listApplications">
+              list applications
             </a>
           </li>
 
@@ -62,7 +57,6 @@
 
       </ul>
 
-      <!-- Right: auth / profile -->
       <ul class="navbar-nav ms-auto m-2">
 
         @if (authenticated) {
