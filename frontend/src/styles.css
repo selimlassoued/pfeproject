@@ -255,6 +255,34 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px rgba(121,164,233,0.35);
 }
 
+/* --- Invalid field styling (Angular) --- */
+input.ng-invalid.ng-touched,
+textarea.ng-invalid.ng-touched,
+select.ng-invalid.ng-touched,
+.input.ng-invalid.ng-touched,
+input.ng-invalid.ng-dirty,
+textarea.ng-invalid.ng-dirty,
+select.ng-invalid.ng-dirty,
+.input.ng-invalid.ng-dirty {
+  border-color: rgba(211, 47, 47, 0.85) !important;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.25) !important;
+}
+
+/* Optional: keep the same invalid look when focused */
+input.ng-invalid.ng-touched:focus,
+textarea.ng-invalid.ng-touched:focus,
+select.ng-invalid.ng-touched:focus,
+.input.ng-invalid.ng-touched:focus,
+input.ng-invalid.ng-dirty:focus,
+textarea.ng-invalid.ng-dirty:focus,
+select.ng-invalid.ng-dirty:focus,
+.input.ng-invalid.ng-dirty:focus {
+  outline: none;
+  border-color: rgba(211, 47, 47, 0.95) !important;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.35) !important;
+}
+
+
 /* Footer */
 .footer {
   border-top: 1px solid var(--color-border);

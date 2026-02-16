@@ -64,5 +64,8 @@ export class App {
   isAdmin(): boolean {
   return this.keycloak.hasRealmRole('ADMIN');
 }
+isRecruiter(): boolean {
+  return this.keycloak.hasRealmRole('RECRUITER');
+}
 
 }

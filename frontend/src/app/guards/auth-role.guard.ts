@@ -11,9 +11,11 @@ const isAccessAllowed = async (
 
  
   const requiredRole = route.data['role'];
+  const allowedRoles = route.data['allowedRoles'];
 
 
-  if (!requiredRole) {
+
+  if (!requiredRole && !allowedRoles) {
     return false;
   }
 
@@ -24,8 +26,16 @@ const isAccessAllowed = async (
  
   
  
-  if (authenticated && hasRequiredRole(requiredRole)) {
-    return true;
+  if (requiredRole) {
+    if (authenticated && hasRequiredRole(requiredRole)) {
+      return true;
+    }
+  }
+
+  if (allowedRoles && Array.isArray(allowedRoles)) {
+    if (authenticated && allowedRoles.some(role => hasRequiredRole(role))) {
+      return true;
+    }
   }
 
   const router = inject(Router);

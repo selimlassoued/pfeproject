@@ -1,0 +1,277 @@
+<section class="container" style="padding: var(--space-12) 0;">
+  <header class="addjob-head">
+    <div class="kicker">
+      <span class="pill">Recruiter</span>
+      <span class="text-muted">Job Management</span>
+    </div>
+
+    <div class="addjob-titleRow">
+      <div>
+        <h2 class="section-title">Update job offer</h2>
+        <p class="text-muted" style="margin-top: var(--space-2);">
+          Modify details, salary, and requirements. Changes take effect immediately.
+        </p>
+      </div>
+
+      <div class="addjob-actions">
+        <button class="btn btn-ghost" type="button" (click)="cancel()" [disabled]="saving || loading">
+          Cancel
+        </button>
+
+        <div style="display:flex; gap: var(--space-3); flex-wrap: wrap;">
+          <button
+            class="btn btn-ghost"
+            type="button"
+            [disabled]="saving || loading"
+            (click)="submitAs('DRAFT')"
+          >
+            @if (saving && status === 'DRAFT') { Saving… } @else { Save as Draft }
+          </button>
+
+          <button
+            class="btn btn-primary"
+            type="button"
+            [disabled]="saving || loading"
+            (click)="submitAs('PUBLISHED')"
+          >
+            @if (saving && status === 'PUBLISHED') { Publishing… } @else { Publish }
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  @if (loading) {
+    <div class="status-card status-card--info card" style="padding: var(--space-6); margin-bottom: var(--space-6);">
+      <div class="status-dot status-dot--info"></div>
+      <div>Loading job…</div>
+    </div>
+  }
+
+  @if (error) {
+    <div class="status-card status-card--error card" style="padding: var(--space-6); margin-bottom: var(--space-6);">
+      <div class="status-dot status-dot--error"></div>
+      <div>
+        <div style="font-weight:700; color: var(--color-cream);">Something went wrong</div>
+        <div class="text-muted" style="margin-top: .25rem;">{{ error }}</div>
+      </div>
+    </div>
+  }
+
+  @if (!loading) {
+    <form id="editJobForm" class="addjob-grid" [formGroup]="form" (ngSubmit)="submit()">
+      <section class="card addjob-panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Job details</div>
+            <div class="text-muted" style="margin-top:.25rem;">Core information visible to candidates.</div>
+          </div>
+          <span class="pill">Step 1</span>
+        </div>
+
+        <div class="field">
+          <label class="toolbar-label">Title <span style="color:var(--color-secondary)">*</span></label>
+          <input
+            class="input"
+            type="text"
+            placeholder="e.g. Frontend Developer"
+            formControlName="title"
+          />
+          @if (form.get('title')?.touched && form.get('title')?.invalid) {
+            <div class="text-muted" style="margin-top:.35rem;">Title is required.</div>
+          }
+        </div>
+
+        <div class="addjob-row2">
+          <div class="field">
+            <label class="toolbar-label">Location <span style="color:var(--color-secondary)">*</span></label>
+            <input
+              class="input"
+              type="text"
+              placeholder="In Person / Remote / Hybrid"
+              formControlName="location"
+            />
+            @if (form.get('location')?.touched && form.get('location')?.invalid) {
+              <div class="text-muted" style="margin-top:.35rem;">Location is required.</div>
+            }
+          </div>
+
+          <div class="field">
+            <label class="toolbar-label">Employment type <span style="color:var(--color-secondary)">*</span></label>
+            <select class="input" formControlName="employmentType">
+              <option value="" disabled>Select type</option>
+              <option value="FULL_TIME">FULL_TIME</option>
+              <option value="PART_TIME">PART_TIME</option>
+              <option value="CONTRACT">CONTRACT</option>
+              <option value="INTERNSHIP">INTERNSHIP</option>
+            </select>
+            @if (form.get('employmentType')?.touched && form.get('employmentType')?.invalid) {
+              <div class="text-muted" style="margin-top:.35rem;">Employment type is required.</div>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="toolbar-label">Description <span style="color:var(--color-secondary)">*</span></label>
+          <textarea class="input" rows="7" formControlName="description"
+            placeholder="Responsibilities, stack, team, benefits, process…"></textarea>
+          @if (c('description')?.touched && c('description')?.invalid) {
+            <div class="hint">Description is required (min 10 chars).</div>
+          }
+        </div>
+      </section>
+
+      <section class="card addjob-panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Publishing</div>
+            <div class="text-muted" style="margin-top:.25rem;">Control visibility and salary range.</div>
+          </div>
+          <span class="pill">Step 2</span>
+        </div>
+
+        <div class="salary-box">
+          <div class="salary-head">
+            <div>
+              <div style="font-family: var(--font-display); color: var(--color-cream);">Salary</div>
+              <div class="text-muted" style="margin-top:.2rem;">Optional. If set, candidates see it.</div>
+            </div>
+            <span class="pill">TND</span>
+          </div>
+
+          <div class="addjob-row2" style="margin-top: var(--space-4);">
+            <div class="salary-grid">
+              <div class="field">
+                <label class="toolbar-label">Min</label>
+                <input class="input" type="number" formControlName="minSalary" placeholder="e.g. 1200" />
+              </div>
+
+              <div class="field">
+                <label class="toolbar-label">Max</label>
+                <input class="input" type="number" formControlName="maxSalary" placeholder="e.g. 2500" />
+              </div>
+            </div>
+          </div>
+
+          <div class="text-muted" style="margin-top:.5rem; font-size:.9rem;">
+            Tip: keep min ≤ max. Leave empty if you don't want to specify.
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="mini-actions" style="justify-content: space-between;">
+          <button class="btn btn-ghost" type="button" (click)="cancel()" [disabled]="saving">
+            Cancel
+          </button>
+
+          <div style="display:flex; gap: var(--space-3); flex-wrap: wrap;">
+            <button
+              class="btn btn-ghost"
+              type="button"
+              [disabled]="saving"
+              (click)="submitAs('DRAFT')"
+            >
+              @if (saving && status === 'DRAFT') { Saving… } @else { Save as Draft }
+            </button>
+
+            <button
+              class="btn btn-primary"
+              type="button"
+              [disabled]="saving"
+              (click)="submitAs('PUBLISHED')"
+            >
+              @if (saving && status === 'PUBLISHED') { Publishing… } @else { Publish }
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card addjob-panel addjob-wide">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">Requirements</div>
+            <div class="text-muted" style="margin-top:.25rem;">
+              Add up to anything you want: skills, experience, education, languages…
+            </div>
+          </div>
+
+          <button class="btn btn-ghost" type="button" (click)="addRequirement()">
+            + Add requirement
+          </button>
+        </div>
+
+        <div formArrayName="requirements" class="req-list">
+          <div class="req-item" *ngFor="let r of requirements().controls; let i = index" [formGroupName]="i">
+            <div class="req-top">
+              <div class="req-meta">
+                <span class="pill">#{{ i + 1 }}</span>
+                <span class="text-muted">Requirement</span>
+              </div>
+
+              <button class="btn btn-ghost" type="button" (click)="removeRequirement(i)">
+                Remove
+              </button>
+            </div>
+
+            <div class="req-grid">
+              <div class="field">
+                <label class="toolbar-label">Category<span style="color:var(--color-secondary)">*</span></label>
+                <select class="input" formControlName="category">
+                  <option value="" disabled>Select category</option>
+                  <option value="SKILL">SKILL</option>
+                  <option value="EXPERIENCE">EXPERIENCE</option>
+                  <option value="EDUCATION">EDUCATION</option>
+                  <option value="CERTIFICATION">CERTIFICATION</option>
+                  <option value="LANGUAGE">LANGUAGE</option>
+                </select>
+              </div>
+
+              <div class="field req-desc">
+                <label class="toolbar-label">Description <span style="color:var(--color-secondary)">*</span></label>
+                <input class="input" type="text" formControlName="description"
+                  placeholder="e.g. Angular 16+, English B2, 2+ years Spring Boot…" />
+              </div>
+
+              <div class="field req-desc">
+                <label class="toolbar-label">Weight<span style="color:var(--color-secondary)">*</span></label>
+                <input class="input" type="number" formControlName="weight" placeholder="e.g. 5" />
+                @if (r.get('weight')?.touched && r.get('weight')?.invalid) {
+                  <div class="text-muted" style="margin-top:.35rem;">Weight is required and must be a number.</div>
+                }
+              </div>
+
+              <div class="field">
+                <label class="toolbar-label">Minimum years required</label>
+                <input class="input" type="number" formControlName="minYears" placeholder="e.g. 1" />
+              </div>
+
+              <div class="field">
+                <label class="toolbar-label">Maximum years required</label>
+                <input class="input" type="number" formControlName="maxYears" placeholder="e.g. 3" />
+              </div>
+            </div>
+
+            @if (r.touched && r.invalid) {
+              <div class="hint">Category + description are required.</div>
+            }
+          </div>
+
+          @if (requirements().length === 0) {
+            <div class="empty card" style="padding: var(--space-6);">
+              <div style="font-family: var(--font-display); color: var(--color-cream);">
+                No requirements yet
+              </div>
+              <div class="text-muted" style="margin-top:.35rem;">
+                Add requirements to help matching and ranking candidates.
+              </div>
+              <button class="btn btn-primary" type="button" style="margin-top: var(--space-4);" (click)="addRequirement()">
+                + Add your first requirement
+              </button>
+            </div>
+          }
+        </div>
+      </section>
+    </form>
+  }
+</section>
