@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { JobService } from '../services/job.service';
 import { JobOffer } from '../model/jobOffer.model';
 import { RouterLink } from "@angular/router";
+import { AuthService } from '../services/AuthService.service';
+
 
 type SalaryRange = 'any' | 'specified' | '0-1000' | '1000-2000' | '2000-5000' | '5000+';
 
@@ -19,20 +21,26 @@ export class BrowseJobsComponent implements OnInit {
   loading = false;
   error: string | null = null;
 
-  // UI state
   query = '';
   employmentType = '';
   status = '';
   salaryRange: SalaryRange = 'any';
 
-  // dropdown options (derived from data)
   employmentTypes: string[] = [];
   statuses: string[] = [];
 
-  constructor(private jobService: JobService) {}
+  constructor(private jobService: JobService, private authService: AuthService) {}
 
   ngOnInit(): void {
     this.fetchJobs();
+  }
+
+  get isRecruiter(): boolean {
+    return this.authService.isRecruiter();
+  }
+
+  get isAdmin(): boolean {
+    return this.authService.isAdmin();
   }
 
   fetchJobs(): void {
@@ -43,7 +51,6 @@ export class BrowseJobsComponent implements OnInit {
       next: (data) => {
         this.jobs = data ?? [];
 
-        // build filter options from incoming data
         this.employmentTypes = this.uniqueNonEmpty(this.jobs.map(j => j.employmentType ?? ''));
         this.statuses = this.uniqueNonEmpty(this.jobs.map(j => j.jobStatus ?? ''));
 
@@ -62,7 +69,6 @@ export class BrowseJobsComponent implements OnInit {
     });
   }
 
-  // --------- handlers ----------
   onQueryChange(e: Event): void {
     const v = (e.target as HTMLInputElement).value ?? '';
     this.query = v;
@@ -96,7 +102,6 @@ export class BrowseJobsComponent implements OnInit {
     return !!(this.query.trim() || this.employmentType || this.status || this.salaryRange !== 'any');
   }
 
-  // --------- filtering ----------
   applyFilters(): void {
     const q = this.query.trim().toLowerCase();
 
@@ -138,7 +143,6 @@ export class BrowseJobsComponent implements OnInit {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }
 
-  // --------- existing helpers ----------
   salaryText(job: JobOffer): string {
     const min = job.minSalary ?? null;
     const max = job.maxSalary ?? null;
@@ -151,5 +155,29 @@ export class BrowseJobsComponent implements OnInit {
 
   badgeText(job: JobOffer): string {
     return job.jobStatus ?? 'UNKNOWN';
+  }
+
+  getVisibleJobs(): JobOffer[] {
+    // Recruiters and admins see all jobs
+    if (this.isRecruiter || this.isAdmin) {
+      return this.filteredJobs;
+    }
+    // Candidates see only published jobs
+    return this.filteredJobs.filter(job => job.jobStatus === 'PUBLISHED');
+  }
+
+  deleteJob(id: string): void {
+    if (confirm('Are you sure you want to delete this job offer?')) {
+      this.jobService.deleteJob(id).subscribe({
+        next: () => {
+          this.jobs = this.jobs.filter(j => j.id !== id);
+          this.applyFilters();
+        },
+        error: (err) => {
+          console.error('Delete failed:', err);
+          alert('Failed to delete job offer.');
+        }
+      });
+    }
   }
 }
