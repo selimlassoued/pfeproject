@@ -3,7 +3,7 @@
     <div>
       <span class="pill">Job</span>
       <h2 class="title">Job details</h2>
-      <p class="text-muted">Review the role and apply when you’re ready.</p>
+      <p class="text-muted">Review the role and apply when you're ready.</p>
     </div>
 
     <div class="actions">
@@ -71,38 +71,48 @@
 
       <div class="divider"></div>
 
-<div>
-  <div class="section-title">Requirements</div>
+      <div>
+        <div class="section-title">Requirements</div>
 
-  @if ((job()!.requirements?.length ?? 0) === 0) {
-    <p class="text-muted">No requirements listed.</p>
-  }
+        @if ((job()!.requirements?.length ?? 0) === 0) {
+          <p class="text-muted">No requirements listed.</p>
+        }
 
-  @if ((job()!.requirements?.length ?? 0) > 0) {
-    <div style="display:grid; gap:.75rem; margin-top:.75rem;">
-      <div class="card" style="padding: .85rem;" *ngFor="let r of job()!.requirements">
-        <div class="section-title" style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
-          <strong>{{ r.category }}</strong>
-        </div>
+        @if ((job()!.requirements?.length ?? 0) > 0) {
+          <div style="display:grid; gap:.75rem; margin-top:.75rem;">
+            <div class="card" style="padding: .85rem;" *ngFor="let r of job()!.requirements">
+              <div class="section-title" style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+                <strong>{{ r.category }}</strong>
+              </div>
 
-        <div class="text-muted" style="margin-top:.35rem;">
-          {{ r.description }}
-        </div>
+              <div class="text-muted" style="margin-top:.35rem;">
+                {{ r.description }}
+              </div>
 
-        <div class="text-muted" style="margin-top:.35rem;" *ngIf="r.minYears != null || r.maxYears != null">
-          Experience:
-          <span *ngIf="r.minYears != null">{{ r.minYears }}+</span>
-          <span *ngIf="r.minYears == null && r.maxYears != null">Up to {{ r.maxYears }}</span>
-          years
-        </div>
+              <div class="text-muted" style="margin-top:.35rem;" *ngIf="r.minYears != null || r.maxYears != null">
+                Experience:
+                <span *ngIf="r.minYears != null">{{ r.minYears }}+</span>
+                <span *ngIf="r.minYears == null && r.maxYears != null">Up to {{ r.maxYears }}</span>
+                years
+              </div>
+            </div>
+          </div>
+        }
       </div>
-    </div>
-  }
-</div>
 
       <div class="footer">
+        @if (!isRecruiter && !isAdmin) {
+          <button class="btn btn-primary" type="button" [routerLink]="['/apply', job()!.id]">Apply now</button>
+        }
         <button class="btn btn-ghost" type="button" [routerLink]="['/browse']">Back to jobs</button>
-        <button class="btn btn-primary" type="button"[routerLink]="['/apply', job()!.id]" >Apply now</button>
+        @if (isRecruiter || isAdmin) {
+          <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job()!.id]">
+            Edit
+          </button>
+          <button class="btn btn-ghost" type="button" (click)="deleteJob(job()!.id)" style="color: var(--color-secondary);">
+            Delete
+          </button>
+        }
       </div>
     </article>
   }

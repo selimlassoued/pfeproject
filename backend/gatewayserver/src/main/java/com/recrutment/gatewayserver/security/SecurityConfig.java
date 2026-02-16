@@ -50,25 +50,25 @@ public class SecurityConfig {
         serverHttpSecurity
                 .authorizeExchange(exchanges -> //exchanges.pathMatchers(HttpMethod.GET).authenticated()
                         exchanges.pathMatchers("/actuator/health/**","/actuator/info").permitAll()
-                                .pathMatchers("/actuator/**").hasRole("HR")
+                                .pathMatchers("/actuator/**").hasRole("RECRUITER")
                                 .pathMatchers("/api/admin/**").hasRole("ADMIN")
 
                                 .pathMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
 
-                .pathMatchers(HttpMethod.POST, "/api/jobs/**").hasAnyRole("HR", "ADMIN")
-                .pathMatchers(HttpMethod.PUT, "/api/jobs/**").hasAnyRole("HR", "ADMIN")
-                .pathMatchers(HttpMethod.PATCH, "/api/jobs/**").hasAnyRole("HR", "ADMIN")
-                .pathMatchers(HttpMethod.DELETE, "/api/jobs/**").hasAnyRole("HR", "ADMIN")
+                .pathMatchers(HttpMethod.POST, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
+                .pathMatchers(HttpMethod.PUT, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
+                .pathMatchers(HttpMethod.PATCH, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
+                .pathMatchers(HttpMethod.DELETE, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
                  .pathMatchers(HttpMethod.POST, "/api/applications/**").hasRole("CANDIDATE")
                  .pathMatchers(HttpMethod.GET, "/api/applications/me").hasRole("CANDIDATE")
 
-                .pathMatchers(HttpMethod.GET, "/api/applications/*/cv").hasAnyRole("HR","ADMIN")
-                 .pathMatchers(HttpMethod.GET, "/api/applications/**").hasAnyRole("HR","ADMIN")
+                .pathMatchers(HttpMethod.GET, "/api/applications/*/cv").hasAnyRole("RECRUITER","ADMIN")
+                 .pathMatchers(HttpMethod.GET, "/api/applications/**").hasAnyRole("RECRUITER","ADMIN")
 
-                .pathMatchers(HttpMethod.PUT, "/api/applications/**").hasAnyRole("HR","ADMIN")
-                .pathMatchers(HttpMethod.PATCH, "/api/applications/**").hasAnyRole("HR","ADMIN")
+                .pathMatchers(HttpMethod.PUT, "/api/applications/**").hasAnyRole("RECRUITER","ADMIN")
+                .pathMatchers(HttpMethod.PATCH, "/api/applications/**").hasAnyRole("RECRUITER","ADMIN")
 
-                .pathMatchers(HttpMethod.DELETE, "/api/applications/**").hasAnyRole("HR","ADMIN"))
+                .pathMatchers(HttpMethod.DELETE, "/api/applications/**").hasAnyRole("RECRUITER","ADMIN"))
 
                 .oauth2ResourceServer(oauth2 -> oauth2
                         //.jwt(Customizer.withDefaults())

@@ -11,6 +11,8 @@ import { UserDetails } from './user-details/user-details';
 import { Application } from './application/application';
 import { ListApplications } from './list-applications/list-applications';
 import { ApplicationDetail } from './application-detail/application-detail';
+import { AddJob } from './add-job/add-job';
+import { UpdateJob } from './update-job/update-job';
 
 export const routes: Routes = [
   //{ path: 'profile', redirectTo: 'profile', pathMatch: 'full' }, 
@@ -32,6 +34,7 @@ export const routes: Routes = [
   {path:'user/:id',component:UserDetails,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
   { path: 'apply/:jobId', component: Application },
   {path:'listApplications',component:ListApplications},
-  {path:'application/:id',component:ApplicationDetail}
-
+  {path:'application/:id',component:ApplicationDetail},
+  {path:'add-job', component:AddJob, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
+  {path:'edit-job/:id', component:UpdateJob, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
 ];
