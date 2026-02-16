@@ -1,3 +1,4 @@
+/* list-applications.css */
 .apps-page {
   width: min(100% - 2rem, var(--container-max));
   margin-inline: auto;
@@ -97,49 +98,15 @@
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.88rem;
   color: rgba(248, 250, 252, 0.92);
 }
 
 .sub-id {
-  margin-top: 0.3rem;
-  font-size: 0.78rem;
-  opacity: 0.65;
-}
-
-.link-btn {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 700;
-  color: var(--color-secondary);
-  text-align: left;
-}
-
-.link-btn:hover {
-  text-decoration: underline;
-}
-
-.app-link {
-  color: var(--color-secondary);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.app-link:hover {
-  text-decoration: underline;
-}
-
-.links-col {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
+  margin-top: 0.25rem;
+  opacity: 0.7;
+  font-size: 0.82rem;
 }
 
 /* status pill */
@@ -156,32 +123,23 @@
   white-space: nowrap;
 }
 
-.app-status.applied {
-  background: rgba(121, 164, 233, 0.1);
-}
-
-.app-status.under_review {
-  background: rgba(121, 164, 233, 0.14);
-}
-
+.app-status.applied { background: rgba(121, 164, 233, 0.1); }
+.app-status.under_review { background: rgba(121, 164, 233, 0.14); }
 .app-status.interview_phase {
   background: rgba(255, 252, 229, 0.1);
   color: var(--color-cream);
   border-color: rgba(255, 252, 229, 0.18);
 }
-
 .app-status.offer {
   background: rgba(121, 233, 170, 0.1);
   border-color: rgba(121, 233, 170, 0.18);
   color: rgba(200, 255, 230, 0.95);
 }
-
 .app-status.rejected {
   background: rgba(233, 121, 121, 0.12);
   border-color: rgba(233, 121, 121, 0.2);
   color: rgba(255, 220, 220, 0.95);
 }
-
 .app-status.hired {
   background: rgba(121, 233, 170, 0.14);
   border-color: rgba(121, 233, 170, 0.22);
@@ -196,6 +154,114 @@
   border-radius: var(--radius-2xl);
   background: rgba(255, 255, 255, 0.04);
   color: var(--color-text-muted);
+}
+
+/* ✅ Pagination */
+.apps-pager{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: var(--space-4);
+  padding: .85rem 1rem;
+  border-top: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(11, 16, 38, 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.apps-pager-left,
+.apps-pager-mid,
+.apps-pager-right{
+  display:flex;
+  align-items:center;
+  gap: .6rem;
+}
+
+.apps-pager-label{
+  color: var(--color-text-muted);
+  font-size: .9rem;
+  font-weight: 700;
+  opacity: .9;
+}
+
+.apps-pager-select{
+  min-width: 92px;
+  padding-right: 2.2rem;
+}
+
+.apps-pager-mid{
+  color: rgba(248,250,252,.78);
+  font-size: .92rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.apps-pager-mid .mono{
+  font-size: .92rem;
+  opacity: .95;
+}
+
+.apps-pager-right{
+  gap: .7rem;
+  justify-content:flex-end;
+}
+
+.apps-pageBtns{
+  display:flex;
+  align-items:center;
+  gap: .35rem;
+  padding: .3rem .45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(255,255,255,0.03);
+}
+
+.apps-ellipsis{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width: 26px;
+  height: 32px;
+  color: rgba(248,250,252,.55);
+  user-select: none;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.apps-pageBtn{
+  min-width: 34px;
+  height: 32px;
+  padding: 0 .6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(255,255,255,0.02);
+  color: rgba(248,250,252,.88);
+  font-weight: 900;
+  font-size: .88rem;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.apps-pageBtn:hover:not(:disabled){
+  background: rgba(121, 164, 233, 0.10);
+  border-color: rgba(121, 164, 233, 0.32);
+  transform: translateY(-1px);
+}
+
+.apps-pageBtn.active{
+  background: rgba(121, 164, 233, 0.18);
+  border-color: rgba(121, 164, 233, 0.45);
+  color: var(--color-cream);
+  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.12);
+}
+
+.apps-pageBtn:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.apps-pager .btn[disabled]{
+  opacity: .55;
+  cursor: not-allowed;
 }
 
 /* responsive */
@@ -217,10 +283,88 @@
   .apps-table {
     min-width: 980px;
   }
+
+  .apps-pager{
+    flex-direction: column;
+    align-items: stretch;
+    gap: .75rem;
+  }
+
+  .apps-pager-left,
+  .apps-pager-mid,
+  .apps-pager-right{
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .apps-pager-mid{
+    justify-content: center;
+  }
+
+  .apps-pageBtns{
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: thin;
+  }
+
+  .apps-pageBtn{
+    flex: 0 0 auto;
+  }
 }
-.sub-id {
-  margin-top: 0.25rem;
-  opacity: 0.7;
-  font-size: 0.82rem;
+/* ✅ Make native selects render in dark mode (helps Chrome/Edge) */
+.apps-page select,
+.apps-page select.input {
+  color-scheme: dark;
 }
 
+/* ✅ Style the select control itself (closed state) */
+.apps-page select.input,
+.apps-pager-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  border-radius: 14px;
+
+  padding: 0.7rem 2.4rem 0.7rem 0.9rem; /* room for arrow */
+  line-height: 1.1;
+  outline: none;
+}
+
+/* hover/focus */
+.apps-page select.input:hover,
+.apps-pager-select:hover {
+  border-color: rgba(121, 164, 233, 0.35);
+}
+
+.apps-page select.input:focus,
+.apps-pager-select:focus {
+  border-color: rgba(121, 164, 233, 0.55);
+  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.14);
+}
+
+/* ✅ Try to style the dropdown list (options) */
+.apps-page select option {
+  background: #0b1026;  /* dark popup background */
+  color: rgba(248, 250, 252, 0.95);
+}
+
+/* ✅ Add a custom arrow */
+.apps-pager-left,
+.apps-filters {
+  position: relative;
+}
+
+.apps-pager-select {
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(248,250,252,.75) 50%),
+    linear-gradient(135deg, rgba(248,250,252,.75) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}

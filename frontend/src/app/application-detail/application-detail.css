@@ -321,3 +321,95 @@
     grid-template-columns: 1fr;
   }
 }
+/* ✅ Status editor: make it look like a premium pill control */
+.ad-status-edit{
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .45rem .55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+}
+
+/* ✅ Select styled to match chips/buttons */
+.ad-status-edit select.input{
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  height: 40px;
+  min-width: 190px;
+  padding: 0 2.6rem 0 .95rem;
+
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: rgba(11, 16, 38, 0.55);
+  color: rgba(248, 250, 252, 0.92);
+
+  font-weight: 900;
+  letter-spacing: .02em;
+  cursor: pointer;
+  outline: none;
+}
+
+/* ✅ Custom dropdown arrow */
+.ad-status-edit{
+  position: relative;
+}
+.ad-status-edit::after{
+  content: "▾";
+  position: absolute;
+  right: 190px; /* aligns arrow at end of select (adjust if needed) */
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: rgba(248, 250, 252, 0.65);
+  font-size: .9rem;
+  font-weight: 900;
+}
+
+/* If your select min-width changes, adjust arrow positioning */
+@media (max-width: 900px){
+  .ad-status-edit::after{
+    right: 16px;
+  }
+}
+
+/* ✅ Focus ring like your UI */
+.ad-status-edit select.input:focus{
+  border-color: rgba(121, 164, 233, 0.55);
+  box-shadow: 0 0 0 4px rgba(121, 164, 233, 0.12);
+}
+
+/* ✅ Buttons inside editor should look compact */
+.ad-status-edit .btn{
+  height: 40px;
+  border-radius: 999px;
+  padding: 0 .95rem;
+  white-space: nowrap;
+}
+
+/* ✅ Better layout on small screens */
+@media (max-width: 900px){
+  .ad-status-edit{
+    width: 100%;
+    justify-content: flex-start;
+    border-radius: var(--radius-xl);
+    padding: .75rem;
+  }
+
+  .ad-status-edit select.input{
+    width: 100%;
+    min-width: unset;
+    border-radius: var(--radius-xl);
+    padding-right: 2.6rem;
+  }
+
+  .ad-status-edit .btn{
+    width: auto;
+  }
+}
+

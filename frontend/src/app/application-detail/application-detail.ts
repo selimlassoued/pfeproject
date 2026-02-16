@@ -3,14 +3,17 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-application-detail',
-  imports: [CommonModule],
+  imports: [CommonModule,FormsModule],
   templateUrl: './application-detail.html',
   styleUrl: './application-detail.css',
 })
 export class ApplicationDetail implements OnInit {
+  newStatus = '';
+  updatingStatus = false;
   app: ApplicationDto | null = null;
   loading = false;
   error: string | null = null;
@@ -32,6 +35,7 @@ export class ApplicationDetail implements OnInit {
     this.appService.getOne(id).subscribe({
       next: (data) => {
         this.app = data;
+        this.newStatus = data.status;
         this.loading = false;
       },
       error: (err) => {
@@ -65,5 +69,23 @@ export class ApplicationDetail implements OnInit {
   }
   backToList(): void {
   this.router.navigate(['/listApplications']);
-}
+  }
+  updateStatus() {
+  if (!this.app?.applicationId) return;
+  if (!this.newStatus) return;
+
+  this.updatingStatus = true;
+
+  this.appService.updateApplicationStatus(this.app.applicationId, this.newStatus).subscribe({
+    next: (updated) => {
+      this.app = updated;
+      this.updatingStatus = false;
+    },
+    error: (err) => {
+      this.error = err?.error?.message || 'Failed to update status';
+      this.updatingStatus = false;
+    },
+  });
+  }
+
 }

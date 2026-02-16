@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AdminUserRow } from '../model/admin_users.type';
+import { PageResponse } from '../model/page-response';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -89,4 +90,30 @@ export class UserService {
       role
     };
   }
+
+  async listUsersPaged(opts?: {
+  page?: number;
+  size?: number;
+  search?: string;
+}): Promise<PageResponse<AdminUserRow>> {
+
+  const page = opts?.page ?? 0;
+  const size = opts?.size ?? 20;
+  const search = (opts?.search ?? '').trim();
+
+  let params = new HttpParams()
+    .set('page', String(page))
+    .set('size', String(size));
+
+  if (search) params = params.set('search', search);
+
+  const res = await firstValueFrom(
+    this.http.get<PageResponse<AdminUserRow>>(`${this.baseUrl}/users/paged`, { params })
+  );
+
+  return {
+    ...res,
+    content: (res?.content ?? []).map(u => this.normalizeRow(u)),
+  };
+}
 }

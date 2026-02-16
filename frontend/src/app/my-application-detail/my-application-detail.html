@@ -1,0 +1,220 @@
+<!-- my-application-detail.html -->
+<div class="cad-page">
+  <ng-container *ngIf="!loading && app; else stateTpl">
+
+    <!-- HERO -->
+    <section class="cad-hero">
+      <div class="cad-hero-left">
+        <button class="cad-back" type="button" (click)="backToList()">← Back</button>
+
+        <div class="cad-hero-titleRow">
+          <span class="cad-badge">My Application</span>
+          <h2 class="cad-title">Application Tracker</h2>
+        </div>
+
+        <p class="cad-subtitle">
+          Here’s what you submitted and where your application currently stands.
+        </p>
+
+        <div class="cad-metaRow">
+          <div class="cad-meta">
+            <div class="cad-meta-k">Applied</div>
+            <div class="cad-meta-v">{{ app.appliedAt | date:'medium' }}</div>
+          </div>
+
+          <div class="cad-meta">
+            <div class="cad-meta-k">Application ID</div>
+            <div class="cad-meta-v mono">{{ app.applicationId }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cad-hero-right">
+        <span class="cad-status" [ngClass]="(app.status || '').toLowerCase()">
+          {{ app.status }}
+        </span>
+
+        <div class="cad-actions">
+          <button class="btn btn-ghost" type="button" (click)="goToJob()">
+            Open job →
+          </button>
+          <button class="btn btn-primary" type="button" (click)="downloadCv()">
+            ⬇ Download CV
+          </button>
+        </div>
+
+        <!-- Progress Timeline -->
+        <div class="cad-progress">
+          <div class="cad-progress-title">Progress</div>
+
+          <div class="cad-steps">
+            <div class="cad-step" [class.active]="isStepActive('APPLIED')" [class.done]="isStepDone('APPLIED')">
+              <span class="dot"></span>
+              <div class="label">Applied</div>
+            </div>
+
+            <div class="cad-step" [class.active]="isStepActive('UNDER_REVIEW')" [class.done]="isStepDone('UNDER_REVIEW')">
+              <span class="dot"></span>
+              <div class="label">Under review</div>
+            </div>
+
+            <div class="cad-step" [class.active]="isStepActive('INTERVIEW_PHASE')" [class.done]="isStepDone('INTERVIEW_PHASE')">
+              <span class="dot"></span>
+              <div class="label">Interview phase</div>
+            </div>
+
+            <div class="cad-step" [class.active]="isStepActive('OFFER')" [class.done]="isStepDone('OFFER')">
+              <span class="dot"></span>
+              <div class="label">Offer</div>
+            </div>
+
+            <div class="cad-step" [class.active]="isStepActive('HIRED')" [class.done]="isStepDone('HIRED')">
+              <span class="dot"></span>
+              <div class="label">Hired</div>
+            </div>
+
+            <div class="cad-step danger" [class.active]="isStepActive('REJECTED')" [class.done]="isStepDone('REJECTED')">
+              <span class="dot"></span>
+              <div class="label">Rejected</div>
+            </div>
+          </div>
+
+          <div class="cad-progress-note" *ngIf="(app.status || '') === 'REJECTED'">
+            This application was marked as rejected.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTENT GRID -->
+    <section class="cad-grid">
+
+      <!-- Job -->
+      <article class="cad-card">
+        <div class="cad-card-head">
+          <div>
+            <div class="cad-card-title">Job</div>
+            <div class="cad-card-sub">The role you applied for</div>
+          </div>
+          <button class="cad-chip" type="button" (click)="goToJob()">Open →</button>
+        </div>
+
+        <div class="cad-card-body">
+          <div class="cad-kv">
+            <div class="cad-k">Title</div>
+            <div class="cad-v">{{ app.jobTitle || '—' }}</div>
+          </div>
+          <div class="cad-kv">
+            <div class="cad-k">Job ID</div>
+            <div class="cad-v mono">{{ app.jobId }}</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- GitHub -->
+      <article class="cad-card">
+        <div class="cad-card-head">
+          <div>
+            <div class="cad-card-title">GitHub</div>
+            <div class="cad-card-sub">Link you submitted</div>
+          </div>
+        </div>
+
+        <div class="cad-card-body">
+          <a class="cad-url"
+             [href]="app.githubUrl"
+             target="_blank"
+             rel="noopener">
+            {{ app.githubUrl || '—' }}
+          </a>
+
+          <div class="cad-hint">
+            Tip: keep your pinned projects updated, recruiters often check them first.
+          </div>
+        </div>
+      </article>
+
+      <!-- CV -->
+      <article class="cad-card cad-card-wide">
+        <div class="cad-card-head">
+          <div>
+            <div class="cad-card-title">CV</div>
+            <div class="cad-card-sub">Your uploaded document</div>
+          </div>
+          <button class="cad-chip" type="button" (click)="downloadCv()">Download →</button>
+        </div>
+
+        <div class="cad-card-body cad-cv">
+          <div class="cad-file">
+            <div class="cad-file-icon">PDF</div>
+            <div class="cad-file-info">
+              <div class="cad-file-name mono">{{ app.cvFileName || 'cv.pdf' }}</div>
+              <div class="cad-file-type mono">{{ app.cvContentType || 'application/pdf' }}</div>
+            </div>
+          </div>
+
+          <!-- ✅ Edit block (only while APPLIED) -->
+          <div class="cad-edit" *ngIf="canEdit()">
+            <div class="cad-edit-head">
+              <div>
+                <div class="cad-edit-title">Edit submission</div>
+                <div class="cad-edit-sub">
+                  You can update your GitHub link and CV while it’s still APPLIED.
+                </div>
+              </div>
+
+              <button class="cad-chip" type="button" (click)="toggleEdit()">
+                {{ editing() ? 'Close' : 'Edit' }}
+              </button>
+            </div>
+
+            <div class="cad-edit-body" *ngIf="editing()">
+              <form [formGroup]="form" class="cad-edit-form">
+
+                <div class="cad-field">
+                  <label class="cad-label">GitHub link</label>
+                  <input class="input" type="text" formControlName="githubUrl" placeholder="https://github.com/username" />
+                  <div class="cad-field-err" *ngIf="form.get('githubUrl')?.touched && form.get('githubUrl')?.invalid">
+                    Please enter a valid URL.
+                  </div>
+                </div>
+
+                <div class="cad-field">
+                  <label class="cad-label">Replace CV (PDF)</label>
+                  <input class="input" type="file" accept="application/pdf,.pdf" (change)="onCvChange($event)" />
+                  <div class="cad-filepick" *ngIf="newCvName()">
+                    Selected: <span class="mono">{{ newCvName() }}</span>
+                  </div>
+                </div>
+
+                <div class="cad-edit-actions">
+                  <button class="btn btn-ghost" type="button" (click)="toggleEdit()" [disabled]="saving()">Cancel</button>
+                  <button class="btn btn-primary" type="button" (click)="saveChanges()" [disabled]="saving()">
+                    {{ saving() ? 'Saving…' : 'Save changes' }}
+                  </button>
+                </div>
+
+                <div class="cad-msg cad-msg-ok" *ngIf="success()">{{ success() }}</div>
+                <div class="cad-msg cad-msg-err" *ngIf="error">{{ error }}</div>
+              </form>
+            </div>
+          </div>
+
+          <div class="cad-divider"></div>
+
+          <div class="cad-cv-actions">
+            <button class="btn btn-primary" type="button" (click)="downloadCv()">⬇ Download CV</button>
+            <button class="btn btn-ghost" type="button" (click)="backToList()">Back to My Applications</button>
+          </div>
+        </div>
+      </article>
+
+    </section>
+
+  </ng-container>
+
+  <ng-template #stateTpl>
+    <div *ngIf="loading" class="cad-state">Loading…</div>
+    <div *ngIf="error" class="cad-error">{{ error }}</div>
+  </ng-template>
+</div>

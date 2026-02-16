@@ -82,18 +82,30 @@ export class Application {
     this.submitting.set(true);
 
     this.appService.applyToJob(this.jobId, {
-      githubUrl: this.form.value.githubUrl,
-      cv: this.cvFile()!,
-    }).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.success.set('Application submitted successfully.');
-      },
-      error: (err) => {
-        this.submitting.set(false);
-        this.error.set(err?.error?.message ?? 'Failed to submit application.');
-      },
-    });
+  githubUrl: this.form.value.githubUrl,
+  cv: this.cvFile()!,
+}).subscribe({
+  next: (res) => {
+    this.submitting.set(false);
+    this.success.set('Application submitted successfully.');
+
+    // redirect to details page you already use in HR list: /application/:id
+    setTimeout(() => {
+      this.router.navigate(['/application', res.applicationId]);
+    }, 600);
+  },
+  error: (err) => {
+    this.submitting.set(false);
+
+    if (err?.status === 409) {
+      this.error.set('You already applied to this job.');
+      return;
+    }
+
+    this.error.set(err?.error?.message ?? 'Failed to submit application.');
+  },
+});
+
   }
 
   goBack() {
