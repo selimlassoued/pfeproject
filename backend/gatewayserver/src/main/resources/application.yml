@@ -24,6 +24,14 @@ spring:
       enabled: true
     gateway:
       routes:
+        - id: application-microservice
+          uri: lb://application-microservice
+          predicates:
+            - Path=/api/applications/**
+        - id: job-microservice
+          uri: lb://job-microservice
+          predicates:
+            - Path=/api/jobs/**
 #        - id: r1
 #          uri: lb://section-microservice
 #          predicates:

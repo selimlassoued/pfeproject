@@ -1,0 +1,76 @@
+<div class="apps-page">
+  <div class="apps-head">
+    <div>
+      <h2 class="apps-title">Applications</h2>
+      <p class="apps-subtitle">Search and review candidate applications.</p>
+    </div>
+
+    <div class="apps-filters">
+      <input class="input" placeholder="applicationId" [(ngModel)]="applicationId" />
+      <input class="input" placeholder="job title" [(ngModel)]="jobTitle" />
+      <input class="input" placeholder="candidate name" [(ngModel)]="candidateName" />
+
+      <select class="input" [(ngModel)]="status">
+        <option value="">All statuses</option>
+        <option value="APPLIED">APPLIED</option>
+        <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+        <option value="INTERVIEW_PHASE">INTERVIEW_PHASE</option>
+        <option value="OFFER">OFFER</option>
+        <option value="REJECTED">REJECTED</option>
+        <option value="HIRED">HIRED</option>
+      </select>
+
+      <button class="btn btn-primary" (click)="load()">Search</button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="apps-state">Loading...</div>
+  <div *ngIf="error" class="apps-error">{{ error }}</div>
+
+  <div *ngIf="!loading && applications.length > 0" class="apps-tableWrap">
+    <table class="apps-table">
+      <thead>
+        <tr>
+          <th>Application</th>
+          <th>Job</th>
+          <th>Candidate</th>
+          <th>Status</th>
+          <th>Applied At</th>
+          <th>CV</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let app of applications" (click)="openDetails(app)" style="cursor:pointer;">
+          <td class="mono">{{ app.applicationId }}</td>
+
+          <td>
+            <div>{{ app.jobTitle || '—' }}</div>
+            <div class="sub-id mono">{{ app.jobId }}</div>
+          </td>
+
+          <td>
+            <div>{{ app.candidateName || '—' }}</div>
+            <div class="sub-id mono">{{ app.candidateUserId }}</div>
+          </td>
+
+          <td>
+            <span class="app-status" [ngClass]="statusClass(app.status)">
+              {{ app.status }}
+            </span>
+          </td>
+
+          <td>{{ app.appliedAt | date:'medium' }}</td>
+
+          <td (click)="$event.stopPropagation()">
+            <button class="btn btn-ghost" (click)="downloadCv(app)">Download</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="!loading && applications.length === 0" class="apps-empty">
+    No applications found.
+  </div>
+</div>
