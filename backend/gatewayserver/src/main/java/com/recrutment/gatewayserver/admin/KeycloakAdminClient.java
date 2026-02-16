@@ -166,4 +166,22 @@ public class KeycloakAdminClient {
                         .bodyToMono(Void.class)
         );
     }
+    public Mono<Long> countUsers(String search) {
+        var builder = UriComponentsBuilder
+                .fromUriString(adminBase() + "/users/count");
+
+        Optional.ofNullable(search)
+                .filter(s -> !s.isBlank())
+                .ifPresent(s -> builder.queryParam("search", s));
+
+        String url = builder.toUriString();
+
+        return serviceToken().flatMap(token ->
+                webClient.get()
+                        .uri(url)
+                        .headers(h -> h.setBearerAuth(token))
+                        .retrieve()
+                        .bodyToMono(Long.class)
+        );
+    }
 }

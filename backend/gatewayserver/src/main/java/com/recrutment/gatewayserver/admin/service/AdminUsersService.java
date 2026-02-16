@@ -136,4 +136,7 @@ public class AdminUsersService {
     public Mono<Void> deleteUser(String userId) {
         return kc.deleteUser(userId);
     }
+    public Mono<Long> countUsers(int first, int max, String search) {
+        return kc.countUsers(search);
+    }
 }
