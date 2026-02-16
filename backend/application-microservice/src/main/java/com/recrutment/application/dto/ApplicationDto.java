@@ -22,7 +22,6 @@ public class ApplicationDto {
     private String cvFileName;
     private String cvContentType;
 
-    // ✅ NEW (enriched)
     private String jobTitle;
     private String candidateName;
 }
