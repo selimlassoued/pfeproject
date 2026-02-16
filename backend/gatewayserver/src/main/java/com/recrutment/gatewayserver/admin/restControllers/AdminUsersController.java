@@ -1,5 +1,6 @@
 package com.recrutment.gatewayserver.admin.restControllers;
 
+import com.recrutment.gatewayserver.admin.dto.PageResponse;
 import com.recrutment.gatewayserver.admin.service.AdminUsersService;
 import com.recrutment.gatewayserver.admin.dto.KcDtos.KcUser;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -75,4 +76,28 @@ public class AdminUsersController {
     }
 
     public record UpdateRolesRequest(List<String> roles) {}
+
+    @GetMapping("/users/paged")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Mono<PageResponse<KcUser>> listUsersPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search
+    ) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+
+        int first = safePage * safeSize;
+
+        Mono<List<KcUser>> usersMono = service.listUsers(first, safeSize, search);
+        Mono<Long> countMono = service.countUsers(first, safeSize, search);
+
+        return Mono.zip(usersMono, countMono)
+                .map(t -> {
+                    List<KcUser> content = t.getT1();
+                    long total = t.getT2();
+                    int totalPages = (int) Math.ceil(total / (double) safeSize);
+                    return new PageResponse<>(content, safePage, safeSize, total, totalPages);
+                });
+    }
 }

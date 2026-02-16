@@ -1,0 +1,178 @@
+/* my-applications.css (for the template you posted) */
+
+.apps-page{
+  width: min(100% - 2rem, var(--container-max, 1200px));
+  margin-inline: auto;
+  padding: var(--space-12, 3rem) 0;
+}
+
+.apps-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: var(--space-6, 1.25rem);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-8, 2rem);
+}
+
+.apps-title{
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  letter-spacing: -0.02em;
+  font-size: 1.85rem;
+  margin: 0;
+}
+
+.apps-subtitle{
+  margin: var(--space-2, .5rem) 0 0;
+  color: var(--color-text-muted);
+  font-size: .95rem;
+  max-width: 62ch;
+}
+
+/* states */
+.apps-state{
+  color: var(--color-text-muted);
+  padding: var(--space-6, 1.5rem);
+}
+
+.apps-error{
+  padding: var(--space-6, 1.5rem);
+  border-radius: var(--radius-xl, 16px);
+  border: 1px solid rgba(233, 121, 121, 0.25);
+  background: rgba(233, 121, 121, 0.10);
+  color: rgba(255, 220, 220, 0.95);
+}
+
+/* table wrapper card */
+.apps-tableWrap{
+  border-radius: var(--radius-2xl, 24px);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+/* table */
+.apps-table{
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.apps-table thead th{
+  text-align: left;
+  padding: 1rem 1rem;
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: .95rem;
+  background: rgba(11, 16, 38, 0.55);
+  border-bottom: 1px solid rgba(121, 164, 233, 0.18);
+}
+
+.apps-table tbody td{
+  padding: .95rem 1rem;
+  border-bottom: 1px solid rgba(121, 164, 233, 0.14);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.apps-table tbody tr{
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.apps-table tbody tr:hover{
+  background: rgba(121, 164, 233, 0.06);
+}
+
+.apps-table tbody tr:active{
+  transform: translateY(0.5px);
+}
+
+.apps-table tbody tr:last-child td{
+  border-bottom: none;
+}
+
+/* job id */
+.sub-id{
+  margin-top: .3rem;
+  font-size: .82rem;
+  opacity: .7;
+}
+
+/* mono helper */
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: .88rem;
+  color: rgba(248, 250, 252, 0.92);
+}
+
+/* status pill */
+.app-status{
+  display: inline-flex;
+  align-items: center;
+  padding: .32rem .7rem;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid rgba(121, 164, 233, 0.25);
+  background: rgba(121, 164, 233, 0.10);
+  color: var(--color-secondary);
+  font-size: .85rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* status variants (matches your statusClass -> lowercased with underscores) */
+.app-status.applied{
+  background: rgba(121, 164, 233, 0.10);
+}
+
+.app-status.under_review{
+  background: rgba(121, 164, 233, 0.14);
+}
+
+.app-status.interview_phase{
+  background: rgba(255, 252, 229, 0.10);
+  color: var(--color-cream);
+  border-color: rgba(255, 252, 229, 0.18);
+}
+
+.app-status.offer{
+  background: rgba(121, 233, 170, 0.10);
+  border-color: rgba(121, 233, 170, 0.18);
+  color: rgba(200, 255, 230, 0.95);
+}
+
+.app-status.rejected{
+  background: rgba(233, 121, 121, 0.12);
+  border-color: rgba(233, 121, 121, 0.20);
+  color: rgba(255, 220, 220, 0.95);
+}
+
+.app-status.hired{
+  background: rgba(121, 233, 170, 0.14);
+  border-color: rgba(121, 233, 170, 0.22);
+  color: rgba(200, 255, 230, 1);
+}
+
+/* empty state */
+.apps-empty{
+  margin-top: var(--space-8, 2rem);
+  text-align: center;
+  padding: var(--space-12, 3rem);
+  border: 1px dashed rgba(121, 164, 233, 0.30);
+  border-radius: var(--radius-2xl, 24px);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-muted);
+}
+
+/* responsive */
+@media (max-width: 900px){
+  .apps-tableWrap{
+    overflow-x: auto;
+  }
+
+  .apps-table{
+    min-width: 720px;
+  }
+}

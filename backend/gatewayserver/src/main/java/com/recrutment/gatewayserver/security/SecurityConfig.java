@@ -61,6 +61,7 @@ public class SecurityConfig {
                 .pathMatchers(HttpMethod.DELETE, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
                  .pathMatchers(HttpMethod.POST, "/api/applications/**").hasRole("CANDIDATE")
                  .pathMatchers(HttpMethod.GET, "/api/applications/me").hasRole("CANDIDATE")
+                .pathMatchers(HttpMethod.PATCH, "/api/applications/me/**").hasRole("CANDIDATE")
 
                 .pathMatchers(HttpMethod.GET, "/api/applications/*/cv").hasAnyRole("RECRUITER","ADMIN")
                  .pathMatchers(HttpMethod.GET, "/api/applications/**").hasAnyRole("RECRUITER","ADMIN")

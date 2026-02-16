@@ -1,0 +1,46 @@
+<div class="apps-page">
+  <div class="apps-head">
+    <div>
+      <h2 class="apps-title">My Applications</h2>
+      <p class="apps-subtitle">Track your applications and their status.</p>
+    </div>
+
+    <button class="btn btn-primary" (click)="load()">Refresh</button>
+  </div>
+
+  <div *ngIf="loading" class="apps-state">Loading...</div>
+  <div *ngIf="error" class="apps-error">{{ error }}</div>
+
+  <div *ngIf="!loading && applications.length > 0" class="apps-tableWrap">
+    <table class="apps-table">
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Status</th>
+          <th>Applied At</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let app of applications" (click)="openDetails(app)" style="cursor:pointer;">
+          <td>
+            <div>{{ app.jobTitle || '—' }}</div>
+            <div class="sub-id mono">{{ app.jobId }}</div>
+          </td>
+
+          <td>
+            <span class="app-status" [ngClass]="statusClass(app.status)">
+              {{ app.status }}
+            </span>
+          </td>
+
+          <td>{{ app.appliedAt | date:'medium' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="!loading && applications.length === 0" class="apps-empty">
+    You haven't applied to any jobs yet.
+  </div>
+</div>

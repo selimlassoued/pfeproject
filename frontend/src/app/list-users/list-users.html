@@ -10,122 +10,208 @@
       </div>
 
       <div class="users-actions">
-  <div class="search-wrap" style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:center;">
-    <!-- live search -->
-    <input
-      class="input"
-      type="text"
-      [ngModel]="search"
-      (ngModelChange)="onSearchChange($event)"
-      placeholder="Search by username / name / email…"
-      style="min-width: 260px;"
-    />
+        <div class="search-wrap">
+          <input
+            class="input"
+            type="text"
+            [ngModel]="search"
+            (ngModelChange)="onSearchChange($event)"
+            placeholder="Search by username / name / email…"
+            style="min-width: 260px;"
+          />
 
-    <!-- enabled filter -->
-    <select class="input" [(ngModel)]="enabledFilter" (ngModelChange)="onFiltersChange()">
-      <option value="ALL">All statuses</option>
-      <option value="ENABLED">Enabled</option>
-      <option value="DISABLED">Disabled</option>
-    </select>
+          <select class="input" [(ngModel)]="enabledFilter" (ngModelChange)="onFiltersChange()">
+            <option value="ALL">All statuses</option>
+            <option value="ENABLED">Enabled</option>
+            <option value="DISABLED">Disabled</option>
+          </select>
 
-    <!-- role filter -->
-    <select class="input" [(ngModel)]="roleFilter" (ngModelChange)="onFiltersChange()">
-      <option value="ALL">All roles</option>
-      @for (r of rolesOptions; track r) {
-        <option [value]="r">{{ r }}</option>
-      }
-    </select>
+          <select class="input" [(ngModel)]="roleFilter" (ngModelChange)="onFiltersChange()">
+            <option value="ALL">All roles</option>
+            @for (r of rolesOptions; track r) {
+              <option [value]="r">{{ r }}</option>
+            }
+          </select>
 
-    <!-- optional manual buttons -->
-    <button class="btn btn-ghost" type="button" (click)="load()">
-      Apply
-    </button>
-  </div>
+          <button class="btn btn-ghost" type="button" (click)="refresh()">Apply</button>
+        </div>
 
-  <button class="btn btn-primary" type="button" (click)="load()">
-    Refresh
-  </button>
-</div>
-
+        <button class="btn btn-primary" type="button" (click)="refresh()">Refresh</button>
+      </div>
     </header>
 
     @if (loading) {
-    <div class="status status--info">Loading users…</div>
+      <div class="status status--info">Loading users…</div>
     }
 
     @if (error) {
-    <div class="status status--error">{{ error }}</div>
+      <div class="status status--error">{{ error }}</div>
     }
 
     @if (!loading) {
-    <div class="card users-card">
-      <div class="table-head">
-        <div class="text-muted">
-          Showing <strong style="color: var(--color-cream)">{{ users.length }}</strong> users
+      <div class="card users-card">
+        <div class="table-head">
+          <div class="text-muted">
+            Showing <strong style="color: var(--color-cream)">{{ users.length }}</strong> users
+            <span class="text-muted">•</span>
+            <span class="text-muted">
+              Total <strong style="color: var(--color-cream)">{{ totalElements }}</strong>
+            </span>
+          </div>
+
+          <div class="text-muted" style="font-size:.92rem;">
+            Click a row to see full attributes
+          </div>
         </div>
-        <div class="text-muted" style="font-size:.92rem;">
-          Click a row to see full attributes
+
+        <div class="table-wrap">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              @for (u of users; track u.id) {
+                <tr class="row-click" (click)="goToUser(u)">
+                  <td>
+                    <div class="u-main">
+                      <div class="u-name">{{ u.firstName || '—' }} {{ u.lastName || '' }}</div>
+                      <div class="text-muted u-username">{{ u.username || '—' }}</div>
+                    </div>
+                  </td>
+
+                  <td class="text-muted">{{ u.email || '—' }}</td>
+                  <td class="text-muted">{{ u.phoneNumber || '—' }}</td>
+
+                  <td><span class="pill pill-role">{{ u.role || '—' }}</span></td>
+
+                  <td>
+                    <span class="pill" [ngClass]="statusPill(u.enabled).cls">
+                      {{ statusPill(u.enabled).text }}
+                    </span>
+                  </td>
+
+                  <td class="text-muted">{{ formatDate(u.createdTimestamp) }}</td>
+                </tr>
+              }
+
+              @if (users.length === 0) {
+                <tr>
+                  <td colspan="6" class="empty text-muted">No users found.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      <div class="table-wrap">
-        <table class="users-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Created</th>
-            </tr>
-          </thead>
+        <!-- ✅ Pagination -->
+        @if (totalElements > 0) {
+          <div class="users-pager">
+            <!-- left: rows dropdown -->
+            <div class="users-pager-left">
+              <span class="users-pager-label">Rows</span>
 
-          <tbody>
-            @for (u of users; track u.id) {
-            <tr class="row-click" (click)="goToUser(u)">
-              <td>
-                <div class="u-main">
-                  <div class="u-name">
-                    {{ u.firstName || '—' }} {{ u.lastName || '' }}
+              <div class="rows-dd">
+                <button
+                  type="button"
+                  class="rows-btn"
+                  (click)="toggleRows()"
+                  [attr.aria-expanded]="rowsOpen"
+                >
+                  <span class="mono">{{ pageSize }}</span>
+                  <span class="rows-caret">▾</span>
+                </button>
+
+                @if (rowsOpen) {
+                  <div class="rows-menu" role="listbox">
+                    @for (opt of rowsOptions; track opt) {
+                      <button
+                        type="button"
+                        class="rows-item"
+                        [class.active]="opt === pageSize"
+                        (click)="setPageSize(opt)"
+                      >
+                        {{ opt }}
+                      </button>
+                    }
                   </div>
-                  <div class="text-muted u-username">
-                    {{ u.username || '—' }}
-                  </div>
-                </div>
-              </td>
+                }
+              </div>
+            </div>
 
-              <td class="text-muted">{{ u.email || '—' }}</td>
+            <!-- mid: info -->
+            <div class="users-pager-mid">
+              Page <span class="mono">{{ pageIndex + 1 }}</span>
+              of <span class="mono">{{ totalPages }}</span>
+              • <span class="mono">{{ totalElements }}</span> total
+            </div>
 
-              <td class="text-muted">{{ u.phoneNumber || '—' }}</td>
+            <!-- right: nav -->
+            <div class="users-pager-right">
+              <button class="btn btn-ghost" type="button" (click)="first()" [disabled]="pageIndex === 0">
+                « First
+              </button>
 
-              <td>
-                <span class="pill pill-role">{{ u.role || '—' }}</span>
-              </td>
+              <button class="btn btn-ghost" type="button" (click)="prev()" [disabled]="pageIndex === 0">
+                ← Prev
+              </button>
 
-              <td>
-                <span class="pill" [ngClass]="statusPill(u.enabled).cls">
-                  {{ statusPill(u.enabled).text }}
+              <div class="users-pageBtns" *ngIf="totalPages > 1">
+                <button
+                  class="users-pageBtn"
+                  type="button"
+                  (click)="goToPage(0)"
+                  [class.active]="pageIndex === 0"
+                  *ngIf="pages().length && pages()[0] > 0"
+                >
+                  1
+                </button>
+
+                <span class="users-ellipsis" *ngIf="pages().length && pages()[0] > 1">…</span>
+
+                <button
+                  class="users-pageBtn"
+                  type="button"
+                  *ngFor="let p of pages()"
+                  (click)="goToPage(p)"
+                  [class.active]="p === pageIndex"
+                >
+                  {{ p + 1 }}
+                </button>
+
+                <span class="users-ellipsis" *ngIf="pages().length && pages()[pages().length - 1] < totalPages - 2">
+                  …
                 </span>
-              </td>
 
-              <td class="text-muted">
-                {{ formatDate(u.createdTimestamp) }}
-              </td>
-            </tr>
-            }
+                <button
+                  class="users-pageBtn"
+                  type="button"
+                  (click)="goToPage(totalPages - 1)"
+                  [class.active]="pageIndex === totalPages - 1"
+                  *ngIf="pages().length && pages()[pages().length - 1] < totalPages - 1"
+                >
+                  {{ totalPages }}
+                </button>
+              </div>
 
-            @if (users.length === 0) {
-            <tr>
-              <td colspan="6" class="empty text-muted">No users found.</td>
-            </tr>
-            }
-          </tbody>
+              <button class="btn btn-ghost" type="button" (click)="next()" [disabled]="pageIndex + 1 >= totalPages">
+                Next →
+              </button>
 
-        </table>
+              <button class="btn btn-ghost" type="button" (click)="last()" [disabled]="pageIndex === totalPages - 1">
+                Last »
+              </button>
+            </div>
+          </div>
+        }
       </div>
-    </div>
     }
-
   </div>
 </section>

@@ -44,16 +44,16 @@
           </li>
         </ng-container>
 
-        <ng-container *kaHasRoles="['ADMIN']; checkRealm:true; negate:true">
+        <ng-container >
 
-          <li class="nav-item">
+          <li class="nav-item" *kaHasRoles="['ADMIN']; checkRealm:true; negate:true">
             <a class="nav-link hireai-link" routerLink="/listApplications">
               list applications
             </a>
           </li>
 
           <li class="nav-item" *kaHasRoles="['CANDIDATE']; checkRealm:true">
-            <a class="nav-link hireai-link" routerLink="/applications">
+            <a class="nav-link hireai-link" routerLink="/my-applications">
               My Applications
             </a>
           </li>
