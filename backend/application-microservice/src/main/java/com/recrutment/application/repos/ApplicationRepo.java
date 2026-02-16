@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 public interface ApplicationRepo extends JpaRepository<Application, UUID> {
     List<Application> findByJobId(UUID jobId);
     List<Application> findByCandidateUserId(String candidateUserId);
@@ -16,5 +19,6 @@ public interface ApplicationRepo extends JpaRepository<Application, UUID> {
 
     List<Application> findByJobIdAndStatus(UUID jobId, ApplicationStatus status);
     List<Application> findByApplicationId(UUID applicationId);
+    Page<Application> findByStatus(ApplicationStatus status, Pageable pageable);
 
 }

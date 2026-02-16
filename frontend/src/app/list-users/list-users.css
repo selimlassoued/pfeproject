@@ -28,10 +28,10 @@
   display:flex;
   gap: var(--space-3);
   align-items:center;
+  flex-wrap: wrap;
 }
 
 .search-wrap .input{
-  width: min(420px, 70vw);
   height: 44px;
 }
 
@@ -82,7 +82,7 @@
 
 .row-click{
   cursor:pointer;
-  transition: background-color 180ms ease, border-color 180ms ease;
+  transition: background-color 180ms ease;
 }
 
 .row-click:hover{
@@ -98,94 +98,11 @@
   padding: 1.5rem !important;
 }
 
-.details-card{
-  padding: var(--space-10);
-  border: 1px solid rgba(121,164,233,0.26);
-  box-shadow: var(--shadow-md);
-}
-
-.details-top{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap: var(--space-6);
-  padding-bottom: var(--space-6);
-  border-bottom: 1px solid rgba(121,164,233,0.18);
-  margin-bottom: var(--space-8);
-  flex-wrap: wrap;
-}
-
-.details-title{
-  font-family: var(--font-display);
-  color: var(--color-cream);
-  font-size: 1.25rem;
-  margin-bottom: .25rem;
-}
-
-.details-grid{
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-6);
-}
-
-@media (max-width: 960px){
-  .details-grid{ grid-template-columns: 1fr; }
-  .users-table{ min-width: 760px; }
-}
-
-.detail .label{
-  font-weight: 800;
-  color: rgba(255,255,255,0.92);
-  margin-bottom: .35rem;
-}
-
-.attrs{
-  margin-top: var(--space-10);
-  padding-top: var(--space-6);
-  border-top: 1px solid rgba(121,164,233,0.18);
-}
-
-.attrs-title{
-  font-family: var(--font-display);
-  color: var(--color-cream);
-  font-size: 1.05rem;
-  margin-bottom: var(--space-4);
-}
-
-.attrs-grid{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-@media (max-width: 860px){
-  .attrs-grid{ grid-template-columns: 1fr; }
-}
-
-.attr{
-  padding: .9rem;
-  border-radius: var(--radius-xl);
-  border: 1px solid rgba(121,164,233,.18);
-  background: rgba(255,255,255,.04);
-}
-
-.attr-key{
-  font-weight: 900;
-  color: var(--color-cream);
-  margin-bottom: .25rem;
-}
-
 /* status pills */
 .pill-success{
   background: rgba(120, 255, 197, 0.10) !important;
   border-color: rgba(120, 255, 197, 0.25) !important;
   color: rgba(200,255,235,0.95) !important;
-}
-
-.pill-warning{
-  background: rgba(255, 206, 120, 0.10) !important;
-  border-color: rgba(255, 206, 120, 0.25) !important;
-  color: rgba(255,230,200,0.95) !important;
 }
 
 .pill-danger{
@@ -194,76 +111,187 @@
   color: rgba(255,200,200,0.95) !important;
 }
 
-/* ===========================
-   SELECT (the closed input)
-=========================== */
-.users-actions select.input {
-  width: 180px; /* you can change */
-  height: 44px;
+/* =========================
+   Pagination bar
+========================= */
+.users-pager{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: var(--space-4);
+  padding: .85rem 1rem;
+  margin-top: var(--space-6);
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(11, 16, 38, 0.35);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+}
 
-  padding: 10px 44px 10px 14px; /* space for arrow */
-  border-radius: 18px; /* ✅ shape */
-  border: 1px solid rgba(255, 255, 255, 0.18);
+.users-pager-left,
+.users-pager-mid,
+.users-pager-right{
+  display:flex;
+  align-items:center;
+  gap: .6rem;
+}
 
-  background-color: #0b1220; /* dark */
-  color: #fff;
+.users-pager-label{
+  color: var(--color-text-muted);
+  font-size: .9rem;
+  font-weight: 800;
+  opacity: .9;
+}
 
-  font-size: 15px;
-  font-weight: 600;
+.users-pager-mid{
+  color: rgba(248,250,252,.78);
+  font-size: .92rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
 
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.users-pageBtns{
+  display:flex;
+  align-items:center;
+  gap: .35rem;
+  padding: .25rem .35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.16);
+  background: rgba(255,255,255,0.03);
+}
+
+.users-ellipsis{
+  color: rgba(248,250,252,.55);
+  padding: 0 .25rem;
+  user-select: none;
+}
+
+.users-pageBtn{
+  min-width: 34px;
+  height: 32px;
+  padding: 0 .55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(255,255,255,0.02);
+  color: rgba(248,250,252,.88);
+  font-weight: 900;
+  font-size: .88rem;
   cursor: pointer;
-
-  /* remove default ugly styles */
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-
-  transition: all 0.2s ease;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
 }
 
-/* Hover effect for the select input itself */
-.users-actions select.input:hover {
-  border-color: rgba(255, 255, 255, 0.223);
-  background: #101a2e;
+.users-pageBtn:hover{
+  background: rgba(121, 164, 233, 0.10);
+  border-color: rgba(121, 164, 233, 0.30);
+  transform: translateY(-1px);
 }
 
-/* Focus ring */
-.users-actions select.input:focus {
-  outline: none;
-  border-color: rgba(148, 163, 184, 0.8);
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+.users-pageBtn.active{
+  background: rgba(121, 164, 233, 0.16);
+  border-color: rgba(121, 164, 233, 0.40);
+  color: var(--color-cream);
+  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.12);
 }
 
-/* ===========================
-   CUSTOM ARROW (dropdown icon)
-=========================== */
-.users-actions .select-wrap {
+/* =========================
+   Custom Rows dropdown (fixes white select)
+========================= */
+.rows-dd{
   position: relative;
-  display: inline-block;
 }
 
-.users-actions .select-wrap::after {
-  content: "▾";
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.7);
-  pointer-events: none;
-  font-size: 14px;
+.rows-btn{
+  min-width: 92px;
+  height: 40px;
+  padding: 0 .9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: rgba(255,255,255,0.04);
+  color: rgba(248, 250, 252, 0.95);
+  font-weight: 900;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: .6rem;
+  cursor:pointer;
 }
 
-/* ===========================
-   OPTIONS (opened dropdown)
-=========================== */
-.users-actions select.input option {
-  background-color: #0b2013; /* dark dropdown background */
-  color: #ffffff;
-  padding: 10px;
+.rows-btn:hover{
+  border-color: rgba(121, 164, 233, 0.34);
+  background: rgba(121,164,233,0.08);
 }
 
-/* ✅ Selected option (dark grey) */
-.users-actions select.input option:checked {
-  background: #494b48; /* dark grey selected */
-  color: #ffffff;
+.rows-caret{
+  opacity: .8;
+  font-size: .9rem;
+  transform: translateY(-1px);
+}
+
+.rows-menu{
+  position:absolute;
+  left: 0;
+  top: calc(100% + 10px); /* opens downward (visible) */
+  min-width: 100%;
+  z-index: 50;
+
+  border-radius: 14px;
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: rgba(11, 16, 38, 0.92);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 42px rgba(0,0,0,.35);
+  padding: .35rem;
+}
+
+.rows-item{
+  width: 100%;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(248, 250, 252, 0.92);
+  font-weight: 900;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.rows-item:hover{
+  background: rgba(121, 164, 233, 0.14);
+  border-color: rgba(121, 164, 233, 0.20);
+}
+
+.rows-item.active{
+  background: rgba(121, 164, 233, 0.22);
+  border-color: rgba(121, 164, 233, 0.38);
+  color: var(--color-cream);
+}
+
+/* responsive pager */
+@media (max-width: 900px){
+  .users-pager{
+    flex-direction: column;
+    align-items: stretch;
+    gap: .75rem;
+  }
+
+  .users-pager-left,
+  .users-pager-mid,
+  .users-pager-right{
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .users-pager-mid{
+    justify-content: center;
+  }
+
+  .users-pageBtns{
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: thin;
+  }
 }

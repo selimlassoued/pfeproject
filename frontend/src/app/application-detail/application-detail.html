@@ -25,10 +25,32 @@
         </div>
       </div>
 
+      <!-- ✅ Actions -->
       <div class="ad-actions">
         <span class="ad-status" [ngClass]="(app.status || '').toLowerCase()">
           {{ app.status }}
         </span>
+
+        <!-- ✅ NEW: update status -->
+        <div class="ad-status-edit">
+          <select class="input" [(ngModel)]="newStatus">
+            <option value="APPLIED">APPLIED</option>
+            <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+            <option value="INTERVIEW_PHASE">INTERVIEW_PHASE</option>
+            <option value="OFFER">OFFER</option>
+            <option value="REJECTED">REJECTED</option>
+            <option value="HIRED">HIRED</option>
+          </select>
+
+          <button
+            class="btn btn-primary"
+            type="button"
+            (click)="updateStatus()"
+            [disabled]="updatingStatus || !newStatus || newStatus === app.status"
+          >
+            {{ updatingStatus ? 'Updating…' : 'Update Status' }}
+          </button>
+        </div>
 
         <button class="btn btn-ghost" type="button" (click)="downloadCv()">
           ⬇ Download CV
@@ -70,6 +92,7 @@
         </div>
       </div>
 
+      <!-- Right panel -->
       <div class="ad-right">
 
         <div class="ad-block">
@@ -145,9 +168,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Footer row -->
-       
 
       </div>
     </section>

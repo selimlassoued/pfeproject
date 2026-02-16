@@ -8,7 +8,6 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
-/* HERO */
 .ad2-hero{
   display:flex;
   justify-content:space-between;
@@ -75,7 +74,6 @@
   color: rgba(248,250,252,.85);
 }
 
-/* STATUS PILL */
 .ad2-status{
   display:inline-flex;
   align-items:center;
@@ -173,7 +171,6 @@
   margin: .25rem 0;
 }
 
-/* Candidate */
 .ad2-userRow{
   display:flex;
   align-items:center;
@@ -222,14 +219,12 @@
   font-weight: 800;
 }
 
-/* Job */
 .ad2-jobTitle{
   color: rgba(248,250,252,.98);
   font-size: 1.2rem;
   font-weight: 950;
 }
 
-/* Links */
 .ad2-url{
   color: var(--color-secondary);
   text-decoration:none;
@@ -238,7 +233,6 @@
 }
 .ad2-url:hover{ text-decoration: underline; }
 
-/* Timeline */
 .ad2-steps{
   display:grid;
   gap:.65rem;
@@ -278,7 +272,6 @@
   margin-top: .35rem;
 }
 
-/* State */
 .ad2-state{
   color: var(--color-text-muted);
   padding: 1rem 0;
@@ -291,7 +284,6 @@
   color: rgba(255, 220, 220, 0.95);
 }
 
-/* Responsive */
 @media (max-width: 980px){
   .ad2-grid{ grid-template-columns: 1fr; }
   .ad2-kvGrid{ grid-template-columns: 1fr; }
