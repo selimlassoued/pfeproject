@@ -82,6 +82,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- RabbitMQ publisher (audit + notifications) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
     </dependencies>
 
     <dependencyManagement>

@@ -6,6 +6,8 @@ import com.recrutment.application.dto.ApplicationDto;
 import com.recrutment.application.dto.PageResponse;
 import com.recrutment.application.entities.Application;
 import com.recrutment.application.enums.ApplicationStatus;
+import com.recrutment.application.messaging.AppEventMessage;
+import com.recrutment.application.messaging.AppEventPublisher;
 import com.recrutment.application.repos.ApplicationRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,12 +26,14 @@ import org.springframework.data.domain.Pageable;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class ApplicationService {
+    private final AppEventPublisher eventPublisher;
 
     private final ApplicationRepo repo;
     private final JobClient jobClient;
@@ -227,11 +231,12 @@ public class ApplicationService {
         return toDto(repo.save(app));
     }
     @Transactional
-    public ApplicationDto updateStatus(UUID id, ApplicationStatus status) {
+    public ApplicationDto updateStatus(UUID id, ApplicationStatus status, String actorUserId) {
 
         if (status == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status is required.");
         }
+        String actorId = (actorUserId != null && !actorUserId.isBlank()) ? actorUserId : "SYSTEM";
 
         Application app = repo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -239,9 +244,50 @@ public class ApplicationService {
                         "Application not found: " + id
                 ));
 
-        app.setStatus(status);
+        ApplicationStatus oldStatus = app.getStatus();
+        UUID jobId = app.getJobId();
+        String candidateUserId = app.getCandidateUserId();
 
-        return toDto(repo.save(app));
+        app.setStatus(status);
+        Application saved = repo.save(app);
+        ApplicationDto result = toDto(saved);
+
+        // build changes diff
+        Map<String, Object> changes = java.util.Map.of(
+                "status", java.util.Map.of(
+                        "old", oldStatus.name(),
+                        "new", status.name()
+                )
+        );
+
+        // build payload for downstream consumers (notifications)
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("jobId", jobId.toString());
+        payload.put("candidateUserId", candidateUserId);
+        payload.put("oldStatus", oldStatus.name());
+        payload.put("newStatus", status.name());
+
+        AppEventMessage evt = new AppEventMessage();
+        evt.setEventType("APPLICATION_STATUS_UPDATE");
+        evt.setProducer("application-microservice");
+
+        AppEventMessage.Actor actor = new AppEventMessage.Actor();
+        actor.setUserId(actorId);
+        evt.setActor(actor);
+
+        AppEventMessage.Target target = new AppEventMessage.Target();
+        target.setType("APPLICATION");
+        target.setId(id.toString());
+        evt.setTarget(target);
+
+        evt.setChanges(changes);
+        evt.setPayload(payload);
+
+        // audit event
+        eventPublisher.publish("audit.application", evt);
+        // later: also publish notify.application.status with same payload
+
+        return result;
     }
 
     @Transactional(readOnly = true)

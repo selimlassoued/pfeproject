@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 @RequestMapping("/api/jobs")
 @RequiredArgsConstructor
@@ -27,15 +26,23 @@ public class JobOfferController {
         return service.getJobOfferById(id);
     }
 
+    public static final String ACTOR_USER_ID_HEADER = "X-Actor-User-Id";
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public JobOfferDto create(@RequestBody JobOfferDto dto) {
-        return service.createJobOffer(dto);
+    public JobOfferDto create(
+            @RequestBody JobOfferDto dto,
+            @RequestHeader(name = ACTOR_USER_ID_HEADER, required = false) String actorUserId) {
+        return service.createJobOffer(dto, actorUserId);
     }
 
     @PutMapping("/{id}")
-    public JobOfferDto update(@PathVariable UUID id, @RequestBody JobOfferDto dto) {
-        return service.updateJobOffer(id, dto);
+    public JobOfferDto update(
+            @PathVariable UUID id,
+            @RequestBody JobOfferDto dto,
+            @RequestParam(required = false) String reason,
+            @RequestHeader(name = ACTOR_USER_ID_HEADER, required = false) String actorUserId) {
+        return service.updateJobOffer(id, dto, reason, actorUserId);
     }
 
     @DeleteMapping("/{id}")

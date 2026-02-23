@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.recrutment</groupId>
-    <artifactId>application-microservice</artifactId>
+    <artifactId>audit-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>application-microservice</name>
-    <description>application-microservice</description>
+    <name>audit-service</name>
+    <description>audit-service</description>
 
     <properties>
         <java.version>21</java.version>
@@ -24,10 +24,22 @@
 
     <dependencies>
 
-        <!-- Web (controllers + multipart) -->
+        <!-- Web (MVC) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <!-- Actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- RabbitMQ (consume events) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
         <!-- JPA -->
@@ -43,29 +55,25 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Config + Eureka (same architecture as your other services) -->
+        <!-- Config Client (reads from config-server) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
 
+        <!-- Eureka Client (registers to eureka-server) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
-        <!-- Security (JWT) -->
+        <!-- Validation (optional but recommended) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
+            <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-        </dependency>
-
-        <!-- Lombok -->
+        <!-- Lombok (optional) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -81,19 +89,9 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <artifactId>spring-boot-starter-amqp-test</artifactId>
+            <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-
-        <!-- RabbitMQ publisher (audit + notifications) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-amqp</artifactId>
-        </dependency>
-
 
     </dependencies>
 
@@ -112,7 +110,7 @@
     <build>
         <plugins>
 
-            <!-- ✅ THIS is what makes Lombok generate getters/builders during Maven build -->
+            <!-- Lombok annotation processing (recommended if you use Lombok) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
