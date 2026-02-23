@@ -134,9 +134,11 @@ public class ApplicationController {
     @PatchMapping("/{id}/status")
     public ApplicationDto updateStatus(
             @PathVariable UUID id,
-            @RequestParam ApplicationStatus status
+            @RequestParam ApplicationStatus status,
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        return service.updateStatus(id, status);
+        String actorUserId = (jwt != null && jwt.getSubject() != null) ? jwt.getSubject() : "SYSTEM";
+        return service.updateStatus(id, status, actorUserId);
     }
 
     @GetMapping("/paged")

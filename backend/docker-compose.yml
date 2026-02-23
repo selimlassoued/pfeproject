@@ -222,6 +222,42 @@ services:
       config-server:
         condition: service_healthy
 
+  audit-db:
+    image: postgres:16
+    container_name: audit-db
+    networks:
+      - ai-recruitment-network
+    environment:
+      - POSTGRES_DB=auditdb
+      - POSTGRES_USER=audituser
+      - POSTGRES_PASSWORD=auditpass
+    volumes:
+      - audit_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U audituser -d auditdb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  audit-service:
+    build: ./audit-service
+    container_name: audit-service
+    networks:
+      - ai-recruitment-network
+    environment:
+      - CONFIG_SERVICE_URL=http://config-server:9999
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      audit-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+
 networks:
   ai-recruitment-network:
     driver: bridge
@@ -230,3 +266,4 @@ volumes:
   keycloak_pgdata:
   job_pgdata:
   app_pgdata:
+  audit_pgdata:

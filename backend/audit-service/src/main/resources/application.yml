@@ -1,6 +1,5 @@
 spring:
   application:
-    name: application-microservice
-
+    name: audit-service
   config:
     import: optional:configserver:${CONFIG_SERVICE_URL:http://config-server:9999}

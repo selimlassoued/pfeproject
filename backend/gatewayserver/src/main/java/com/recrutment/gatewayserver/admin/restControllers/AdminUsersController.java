@@ -4,6 +4,9 @@ import com.recrutment.gatewayserver.admin.dto.PageResponse;
 import com.recrutment.gatewayserver.admin.service.AdminUsersService;
 import com.recrutment.gatewayserver.admin.dto.KcDtos.KcUser;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -12,6 +15,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/admin")
 public class AdminUsersController {
+
 
     private final AdminUsersService service;
 
@@ -35,19 +39,32 @@ public class AdminUsersController {
         return service.getProfile(id);
     }
 
+    public record BlockUnblockRequest(String reason) {}
+
+    private static Mono<String> getActorUserId() {
+        return ReactiveSecurityContextHolder.getContext()
+                .map(ctx -> ctx.getAuthentication())
+                .filter(a -> a != null && a.getPrincipal() instanceof Jwt)
+                .map(a -> ((Jwt) a.getPrincipal()).getSubject())
+                .defaultIfEmpty("SYSTEM");
+    }
+
     // ✅ block
     @PutMapping("/users/{id}/block")
     @PreAuthorize("hasRole('ADMIN')")
-    public Mono<Void> blockUser(@PathVariable String id) {
-        return service.blockUser(id);
+    public Mono<Void> blockUser(@PathVariable String id, @RequestBody(required = false) BlockUnblockRequest request) {
+        String reason = request != null && request.reason() != null ? request.reason() : "Blocked by admin";
+        return getActorUserId().flatMap(actorId -> service.blockUser(id, reason, actorId));
     }
 
     // ✅ unblock
     @PutMapping("/users/{id}/unblock")
     @PreAuthorize("hasRole('ADMIN')")
-    public Mono<Void> unblockUser(@PathVariable String id) {
-        return service.unblockUser(id);
+    public Mono<Void> unblockUser(@PathVariable String id, @RequestBody(required = false) BlockUnblockRequest request) {
+        String reason = request != null && request.reason() != null ? request.reason() : "Unblocked by admin";
+        return getActorUserId().flatMap(actorId -> service.unblockUser(id, reason, actorId));
     }
+    public record UpdateRolesRequest(List<String> roles, String reason) {}
 
     // ✅ delete
     @DeleteMapping("/users/{id}")
@@ -66,7 +83,8 @@ public class AdminUsersController {
     @PreAuthorize("hasRole('ADMIN')")
     public Mono<Void> updateUserRoles(@PathVariable String id, @RequestBody UpdateRolesRequest req) {
         Set<String> requested = new HashSet<>(req.roles() == null ? List.of() : req.roles());
-        return service.updateAllowedRoles(id, requested);
+        String reason = req.reason() != null ? req.reason() : "Roles updated by admin";
+        return getActorUserId().flatMap(actorId -> service.updateAllowedRoles(id, requested, reason, actorId));
     }
 
     @GetMapping("/roles")
@@ -74,8 +92,6 @@ public class AdminUsersController {
     public List<String> allowedRoles() {
         return service.allowedRoles();
     }
-
-    public record UpdateRolesRequest(List<String> roles) {}
 
     @GetMapping("/users/paged")
     @PreAuthorize("hasRole('ADMIN')")
