@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormArray, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import Swal from 'sweetalert2';
 import { JobService } from '../services/job.service';
 import { JobOffer } from '../model/jobOffer.model';
 import { RequirementCategory } from '../model/jobRequirement.model';
@@ -175,9 +176,26 @@ private readonly fb = inject(FormBuilder);
 
     const payload = this.buildPayload();
 
+    const reasonResult = await Swal.fire({
+      title: 'Reason for update',
+      text: 'Optionally provide a reason for this change (stored in audit log).',
+      input: 'textarea',
+      inputPlaceholder: 'e.g. Salary adjustment, requirements updated…',
+      inputAttributes: { rows: '3' },
+      showCancelButton: true,
+      confirmButtonText: 'Save',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (reasonResult.isDismissed && reasonResult.dismiss === Swal.DismissReason.cancel) {
+      return;
+    }
+
+    const reason = typeof reasonResult.value === 'string' ? reasonResult.value.trim() : undefined;
+
     this.saving = true;
     try {
-      await firstValueFrom(this.jobService.updateJob(this.jobId!, payload));
+      await firstValueFrom(this.jobService.updateJob(this.jobId!, payload, reason));
       await this.router.navigate(['/browse']);
     } catch (e: any) {
       if (e?.status) this.error = `Update failed (HTTP ${e.status}).`;
