@@ -22,8 +22,12 @@ export class JobService {
   createJob(payload: Omit<JobOffer, 'id'>): Observable<JobOffer> {
   return this.http.post<JobOffer>(this.API_URL, payload);
   }
-  updateJob(id: string, payload: Omit<JobOffer, 'id'>): Observable<JobOffer> {
-  return this.http.put<JobOffer>(`${this.API_URL}/${id}`, payload);
+  updateJob(id: string, payload: Omit<JobOffer, 'id'>, reason?: string): Observable<JobOffer> {
+    let url = `${this.API_URL}/${id}`;
+    if (reason != null && reason.trim() !== '') {
+      url += '?reason=' + encodeURIComponent(reason.trim());
+    }
+    return this.http.put<JobOffer>(url, payload);
   }
 
   deleteJob(id: string): Observable<void> {

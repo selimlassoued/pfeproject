@@ -46,18 +46,23 @@ export class UserService {
     return (roles ?? []).map(r => String(r).toUpperCase());
   }
 
-  async updateRoles(id: string, roles: string[]): Promise<void> {
+  async updateRoles(id: string, roles: string[], reason?: string): Promise<void> {
+    const body: { roles: string[]; reason?: string } = { roles };
+    if (reason) {
+      body.reason = reason;
+    }
     await firstValueFrom(
-      this.http.put<void>(`${this.baseUrl}/users/${id}/roles`, { roles })
+      this.http.put<void>(`${this.baseUrl}/users/${id}/roles`, body)
     );
   }
 
-  async setEnabled(id: string, enabled: boolean): Promise<void> {
+  async setEnabled(id: string, enabled: boolean, reason?: string): Promise<void> {
     const url = enabled
       ? `${this.baseUrl}/users/${id}/unblock`
       : `${this.baseUrl}/users/${id}/block`;
 
-    await firstValueFrom(this.http.put<void>(url, null));
+    const body = reason ? { reason } : null;
+    await firstValueFrom(this.http.put<void>(url, body));
   }
 
   async deleteUser(id: string): Promise<void> {
