@@ -9,12 +9,13 @@ import {
   ReadyArgs
 } from 'keycloak-angular';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { NotificationsMenu } from './notification-menu/notification-menu';
 
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet,RouterLink,HasRolesDirective],
+  imports: [RouterOutlet, RouterLink, HasRolesDirective, NotificationsMenu],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

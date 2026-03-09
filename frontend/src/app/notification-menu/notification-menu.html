@@ -1,0 +1,72 @@
+<button class="notif-button" type="button" (click)="toggle()">
+  <span class="notif-icon">🔔</span>
+  <span *ngIf="unreadCount > 0" class="notif-badge">{{ unreadCount }}</span>
+</button>
+
+<!-- ── Dropdown ── -->
+<div class="notif-dropdown" *ngIf="open">
+  <div class="notif-header">
+    <span class="notif-title">Notifications</span>
+    <button type="button" class="notif-link" (click)="markAllRead()" *ngIf="unreadCount > 0">
+      Mark all read
+    </button>
+  </div>
+
+  <div *ngIf="notifications.length === 0" class="notif-empty">
+    You're all caught up 🎉
+  </div>
+
+  <div class="notif-list" *ngIf="notifications.length > 0">
+    <div
+      *ngFor="let n of notifications"
+      class="notif-item"
+      [class.notif-item--unread]="!n.read"
+      [class.notif-item--active]="selectedNotif?.id === n.id"
+      (click)="selectNotif(n)">
+
+      <div class="notif-item-left">
+        <span class="notif-dot" *ngIf="!n.read"></span>
+        <span class="notif-type-icon">{{ getTypeIcon(n.type) }}</span>
+      </div>
+
+      <div class="notif-item-main">
+        <div class="notif-item-title">{{ n.title }}</div>
+        <div class="notif-item-time">{{ timeAgo(n.createdAt) }}</div>
+      </div>
+
+      <span class="notif-chevron" [class.notif-chevron--open]="selectedNotif?.id === n.id">›</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Detail card (appears next to dropdown) ── -->
+<div class="notif-detail-card" *ngIf="selectedNotif && open">
+
+  <div class="ndc-header">
+    <span class="ndc-type-pill" [ngClass]="'ndc-type-' + selectedNotif.type">
+      <span class="ndc-type-icon">{{ getTypeIcon(selectedNotif.type) }}</span>
+      {{ getTypeLabel(selectedNotif.type) }}
+    </span>
+    <button class="ndc-close" type="button" (click)="closeDetail()">✕</button>
+  </div>
+
+  <div class="ndc-title">{{ selectedNotif.title }}</div>
+  <div class="ndc-time">{{ formatDate(selectedNotif.createdAt) }}</div>
+
+  <div class="ndc-divider"></div>
+
+  <div class="ndc-body">{{ selectedNotif.body }}</div>
+
+  <div class="ndc-footer" *ngIf="!selectedNotif.read">
+    <button class="ndc-mark-btn" type="button" (click)="markRead(selectedNotif)">
+      ✓ Mark as read
+    </button>
+  </div>
+  <div class="ndc-read-badge" *ngIf="selectedNotif.read">
+    ✓ Read
+  </div>
+
+</div>
+
+<!-- ── Backdrop to close ── -->
+<div class="notif-backdrop" *ngIf="open" (click)="close()"></div>

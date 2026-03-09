@@ -67,11 +67,11 @@ public class AdminUsersController {
     public record UpdateRolesRequest(List<String> roles, String reason) {}
 
     // ✅ delete
-    @DeleteMapping("/users/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public Mono<Void> deleteUser(@PathVariable String id) {
-        return service.deleteUser(id);
-    }
+//    @DeleteMapping("/users/{id}")
+//    @PreAuthorize("hasRole('ADMIN')")
+//    public Mono<Void> deleteUser(@PathVariable String id) {
+//        return service.deleteUser(id);
+//    }
 
     @GetMapping("/users/{id}/roles")
     @PreAuthorize("hasRole('ADMIN')")
@@ -115,5 +115,15 @@ public class AdminUsersController {
                     int totalPages = (int) Math.ceil(total / (double) safeSize);
                     return new PageResponse<>(content, safePage, safeSize, total, totalPages);
                 });
+    }
+
+    @GetMapping("/internal/users/{id}/email")
+    public Mono<Map<String, String>> getUserEmail(@PathVariable String id) {
+        return service.getProfile(id)
+                .map(user -> java.util.Map.of(
+                        "email", user.email() != null ? user.email() : "",
+                        "firstName", user.firstName() != null ? user.firstName() : "",
+                        "lastName", user.lastName() != null ? user.lastName() : ""
+                ));
     }
 }

@@ -15,6 +15,10 @@ import { AddJob } from './add-job/add-job';
 import { UpdateJob } from './update-job/update-job';
 import { MyApplications } from './my-applications/my-applications';
 import { MyApplicationDetail } from './my-application-detail/my-application-detail';
+import { NotificationsMenu } from './notification-menu/notification-menu';
+import { AdminDashboard } from './admin-dashboard/admin-dashboard';
+import { RecruiterActivity } from './recruiter-activity/recruiter-activity';
+import { ActionHistory } from './action-history/action-history';
 
 export const routes: Routes = [
   //{ path: 'profile', redirectTo: 'profile', pathMatch: 'full' }, 
@@ -34,13 +38,18 @@ export const routes: Routes = [
   { path: 'jobs/:id', component: JobDetails },
   {path:'listUsers',component:ListUsers,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
   {path:'user/:id',component:UserDetails,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
-  { path: 'apply/:jobId', component: Application },
-  {path:'listApplications',component:ListApplications},
-  {path:'application/:id',component:ApplicationDetail},
+  { path: 'apply/:jobId', component: Application,canActivate: [canActivateAuthRole],data: { role: 'CANDIDATE' } },
+  {path:'listApplications',component:ListApplications,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
+  {path:'application/:id',component:ApplicationDetail,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
   {path:'add-job', component:AddJob, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
   {path:'edit-job/:id', component:UpdateJob, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
-  { path: 'my-applications', component: MyApplications },
-  {path:'my-application/:id',component:MyApplicationDetail}
+  { path: 'my-applications', component: MyApplications,canActivate: [canActivateAuthRole],data: { role: 'CANDIDATE' } },
+  {path:'my-application/:id',component:MyApplicationDetail,canActivate: [canActivateAuthRole],data: { role: 'CANDIDATE' }},
+  {path:'notification-menu',component:NotificationsMenu},
+  { path: 'admin-dashboard', component: AdminDashboard },
+  {path:'recruiter-activity',component:RecruiterActivity},
+  {path:'action-history',component:ActionHistory}
+
 
 
 ];

@@ -114,7 +114,6 @@ export class UserDetails implements OnInit {
       cancelButtonText: 'Cancel',
       confirmButtonColor: nextEnabled ? '#4caf50' : '#d32f2f',
       inputValidator: (value) => {
-        // Reason is optional, so no validation needed
         return null;
       },
     });
@@ -150,7 +149,7 @@ export class UserDetails implements OnInit {
       this.acting = false;
     }
   }
-
+  /*
   async deleteUser(): Promise<void> {
     if (!this.user) return;
 
@@ -189,7 +188,7 @@ export class UserDetails implements OnInit {
     } finally {
       this.deleting = false;
     }
-  }
+  }*/
 
   async saveRoles(): Promise<void> {
     if (!this.user) return;

@@ -23,7 +23,6 @@ public class AdminUsersService {
         this.eventPublisher = eventPublisher;
     }
 
-    // ✅ list users + enrich each one with allowed roles
     public Mono<List<KcUser>> listUsers(int first, int max, String search) {
         return kc.listUsers(first, max, search)
                 .flatMap(users ->
@@ -35,7 +34,6 @@ public class AdminUsersService {
                 );
     }
 
-    // ✅ get profile + enrich with roles
     public Mono<KcUser> getProfile(String userId) {
         return Mono.zip(
                         kc.getUser(userId),
@@ -44,7 +42,6 @@ public class AdminUsersService {
                 .map(tuple -> copyWithRoles(tuple.getT1(), tuple.getT2()));
     }
 
-    // Your original method (kept)
     public Mono<List<String>> getAllowedRoles(String userId) {
         return kc.getUserRealmRoles(userId)
                 .map(roles -> roles.stream()
@@ -55,13 +52,11 @@ public class AdminUsersService {
                         .toList());
     }
 
-    // ✅ safer: if Keycloak call fails for one user, don't break whole list
     private Mono<List<String>> getAllowedRolesSafe(String userId) {
         return getAllowedRoles(userId)
                 .onErrorReturn(List.of());
     }
 
-    // ✅ helper to build a new KcUser with roles filled
     private KcUser copyWithRoles(KcUser u, List<String> roles) {
         return new KcUser(
                 u.id(),
@@ -120,7 +115,6 @@ public class AdminUsersService {
                             .filter(Objects::nonNull)
                             .toList();
     
-                    // build audit event (old/new roles)
                     List<String> oldRoles = currentAllowed.stream().sorted().toList();
                     List<String> newRoles = requestedFinal.stream().sorted().toList();
     
@@ -175,9 +169,8 @@ public class AdminUsersService {
     
                     event.setReason(reason != null && !reason.isBlank() ? reason : "Blocked by admin");
                     event.setProducer("gatewayserver");
-                    // send audit event
                     eventPublisher.publish("audit.user", event);
-                    // later: also send notification event with routing key "notify.user"
+                    eventPublisher.publish("notify.user", event);
                 });
     }
 
@@ -199,12 +192,13 @@ public class AdminUsersService {
                     event.setProducer("gatewayserver");
                     event.setReason(reason != null && !reason.isBlank() ? reason : "Unblocked by admin");
                     eventPublisher.publish("audit.user", event);
+                    eventPublisher.publish("notify.user", event);
                 });
     }
 
-    public Mono<Void> deleteUser(String userId) {
-        return kc.deleteUser(userId);
-    }
+//    public Mono<Void> deleteUser(String userId) {
+//        return kc.deleteUser(userId);
+//    }
     public Mono<Long> countUsers(int first, int max, String search) {
         return kc.countUsers(search);
     }

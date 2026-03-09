@@ -1,4 +1,5 @@
 package com.zaina.jobmicroservice.domain.entities;
+
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.zaina.jobmicroservice.domain.enums.EmploymentType;
 import com.zaina.jobmicroservice.domain.enums.JobStatus;
@@ -19,11 +20,16 @@ import java.util.UUID;
 @Builder
 @Entity
 public class JobOffer {
+
     @Id
     @GeneratedValue
     @UuidGenerator
     @Column(updatable = false, nullable = false)
     private UUID id;
+
+    @Column(unique = true, updatable = false, length = 20)
+    private String refNumber;   // ← e.g. "JOB-00001"
+
     private String title;
     private String description;
     private String location;

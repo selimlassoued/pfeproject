@@ -65,11 +65,11 @@ export class UserService {
     await firstValueFrom(this.http.put<void>(url, body));
   }
 
-  async deleteUser(id: string): Promise<void> {
+  /*async deleteUser(id: string): Promise<void> {
     await firstValueFrom(
       this.http.delete<void>(`${this.baseUrl}/users/${id}`)
     );
-  }
+  }*/
 
   private normalizeRow(u: AdminUserRow): AdminUserRow {
     const attrs = u.attributes ?? {};

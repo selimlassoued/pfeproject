@@ -6,4 +6,5 @@ export class AuthService {
   private readonly keycloak = inject(Keycloak);
   isRecruiter() { return this.keycloak.hasRealmRole('RECRUITER'); }
   isAdmin() { return this.keycloak.hasRealmRole('ADMIN'); }
+  isCandidate() { return this.keycloak.hasRealmRole('CANDIDATE');  }
 }

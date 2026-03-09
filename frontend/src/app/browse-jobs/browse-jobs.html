@@ -164,8 +164,11 @@
       Delete
     </button>
   }
-    @if (!isRecruiter && !isAdmin ) {
-  <button class="btn btn-primary" type="button">Apply</button>}
+    @if (isCandidate) {
+  <button class="btn btn-primary" type="button" [disabled]="checkingMyApps" (click)="applyOrView(job.id)">
+    {{ applyBtnLabel(job.id) }}
+  </button>
+}
 </div>
       </article>
     </div>
