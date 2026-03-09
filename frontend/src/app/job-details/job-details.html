@@ -1,42 +1,44 @@
 <section class="container" style="padding: 3rem 0;">
+
   <div class="header-row">
     <div>
       <span class="pill">Job</span>
       <h2 class="title">Job details</h2>
       <p class="text-muted">Review the role and apply when you're ready.</p>
     </div>
-
     <div class="actions">
       <button class="btn btn-ghost" type="button" [routerLink]="['/browse']">← Back</button>
-      <button class="btn btn-primary" type="button" [disabled]="loading() || !job()" >
-        Apply
-      </button>
+      @if (isCandidate) {
+        <button class="btn btn-primary" type="button"
+          [disabled]="loading() || !job() || checkingApplication()"
+          (click)="onApplyOrView()">
+          {{ actionLabel }}
+        </button>
+      }
     </div>
   </div>
 
   @if (loading()) {
-    <div class="card" style="margin-top: 1.25rem;">
+    <div class="card" style="margin-top:1.25rem;">
       <div class="text-muted">Loading job details…</div>
     </div>
   }
 
   @if (error()) {
-    <div class="card" style="margin-top: 1.25rem; border-color: rgba(255,80,80,.35);">
-      <div style="font-weight:700; color: var(--color-cream);">Something went wrong</div>
+    <div class="card" style="margin-top:1.25rem; border-color:rgba(255,80,80,.35);">
+      <div style="font-weight:700; color:var(--color-cream);">Something went wrong</div>
       <p class="text-muted" style="margin-top:.5rem;">{{ error() }}</p>
     </div>
   }
 
   @if (!loading() && job()) {
-    <article class="card details-card" style="margin-top: 1.25rem;">
+    <!-- ── Job detail card ── -->
+    <article class="card details-card" style="margin-top:1.25rem;">
       <div class="top">
         <div>
           <h3 class="job-title">{{ job()!.title }}</h3>
-          <div class="meta text-muted">
-            {{ job()!.location }} • {{ job()!.employmentType }}
-          </div>
+          <div class="meta text-muted">{{ job()!.location }} • {{ job()!.employmentType }}</div>
         </div>
-
         <span class="pill">{{ job()!.jobStatus }}</span>
       </div>
 
@@ -45,20 +47,17 @@
           <div class="label">Salary</div>
           <div class="value">{{ salaryText() }}</div>
         </div>
-
         <div class="info-block">
           <div class="label">Employment</div>
           <div class="value">{{ job()!.employmentType ?? '—' }}</div>
         </div>
-
         <div class="info-block">
           <div class="label">Status</div>
           <div class="value">{{ job()!.jobStatus ?? '—' }}</div>
         </div>
-
         <div class="info-block">
           <div class="label">Reference</div>
-          <div class="value mono">{{ job()!.id }}</div>
+          <div class="value mono">{{ job()!.refNumber ?? '—' }}</div>
         </div>
       </div>
 
@@ -73,23 +72,18 @@
 
       <div>
         <div class="section-title">Requirements</div>
-
         @if ((job()!.requirements?.length ?? 0) === 0) {
           <p class="text-muted">No requirements listed.</p>
         }
-
         @if ((job()!.requirements?.length ?? 0) > 0) {
           <div style="display:grid; gap:.75rem; margin-top:.75rem;">
-            <div class="card" style="padding: .85rem;" *ngFor="let r of job()!.requirements">
+            <div class="card" style="padding:.85rem;" *ngFor="let r of job()!.requirements">
               <div class="section-title" style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
                 <strong>{{ r.category }}</strong>
               </div>
-
-              <div class="text-muted" style="margin-top:.35rem;">
-                {{ r.description }}
-              </div>
-
-              <div class="text-muted" style="margin-top:.35rem;" *ngIf="r.minYears != null || r.maxYears != null">
+              <div class="text-muted" style="margin-top:.35rem;">{{ r.description }}</div>
+              <div class="text-muted" style="margin-top:.35rem;"
+                *ngIf="r.minYears != null || r.maxYears != null">
                 Experience:
                 <span *ngIf="r.minYears != null">{{ r.minYears }}+</span>
                 <span *ngIf="r.minYears == null && r.maxYears != null">Up to {{ r.maxYears }}</span>
@@ -101,19 +95,132 @@
       </div>
 
       <div class="footer">
-        @if (!isRecruiter && !isAdmin) {
-          <button class="btn btn-primary" type="button" [routerLink]="['/apply', job()!.id]">Apply now</button>
+        @if (isCandidate) {
+          <button class="btn btn-primary" type="button" (click)="onApplyOrView()">
+            {{ myApplication() ? 'View application' : 'Apply now' }}
+          </button>
         }
         <button class="btn btn-ghost" type="button" [routerLink]="['/browse']">Back to jobs</button>
         @if (isRecruiter || isAdmin) {
-          <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job()!.id]">
-            Edit
-          </button>
-          <button class="btn btn-ghost" type="button" (click)="deleteJob(job()!.id)" style="color: var(--color-secondary);">
-            Delete
-          </button>
+          <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job()!.id]">Edit</button>
+          <button class="btn btn-ghost" type="button" (click)="deleteJob(job()!.id)"
+            style="color:var(--color-secondary);">Delete</button>
         }
       </div>
     </article>
+
+    @if (showAppsPanel) {
+      <div class="apps-panel">
+
+        <div class="apps-panel-header">
+          <div>
+            <h3 class="apps-panel-title">Applications</h3>
+            <p class="text-muted" style="font-size:.85rem; margin-top:.2rem;">
+              Candidates who applied to this position
+            </p>
+          </div>
+          <span class="apps-total-badge">{{ appTotal() }} total</span>
+        </div>
+
+        <div class="apps-status-tabs">
+          @for (s of STATUS_LIST; track s) {
+            <button
+              class="apps-status-tab"
+              [class.apps-status-tab--active]="activeStatus() === s"
+              [style.--tab-color]="statusColor(s)"
+              (click)="setStatus(s)">
+              {{ s }}
+              <span class="apps-tab-count"
+                *ngIf="statusCounts()[s] !== undefined"
+                [style.background]="activeStatus() === s ? statusBg(s) : 'rgba(255,255,255,0.06)'"
+                [style.color]="activeStatus() === s ? statusColor(s) : 'rgba(248,250,252,0.35)'">
+                {{ statusCounts()[s] }}
+              </span>
+            </button>
+          }
+        </div>
+
+        <div class="apps-table-wrap">
+          @if (appLoading()) {
+            <div class="apps-state text-muted">Loading…</div>
+          }
+
+          @if (!appLoading() && applications().length === 0) {
+            <div class="apps-state text-muted">
+              No applications with status <strong>{{ activeStatus() }}</strong> for this job.
+            </div>
+          }
+
+          @if (!appLoading() && applications().length > 0) {
+            <table class="apps-table">
+              <thead>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Status</th>
+                  <th>Applied</th>
+                  <th>GitHub</th>
+                  <th>CV</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (app of applications(); track app.applicationId) {
+                  <tr class="row-click" (click)="openApplication(app)">
+
+                    <td>
+                      <div class="app-candidate-name">{{ app.candidateName || '—' }}</div>
+                      <div class="text-muted mono" style="font-size:.7rem;">
+                        {{ app.candidateUserId }}
+                      </div>
+                    </td>
+
+                    <td>
+                      <span class="app-status-pill"
+                        [style.color]="statusColor(app.status)"
+                        [style.background]="statusBg(app.status)"
+                        [style.border-color]="statusColor(app.status) + '40'">
+                        <span class="pill-dot" [style.background]="statusColor(app.status)"></span>
+                        {{ app.status }}
+                      </span>
+                    </td>
+
+                    <td class="text-muted">{{ formatDate(app.appliedAt) }}</td>
+
+                    <td (click)="$event.stopPropagation()">
+                      <a *ngIf="app.githubUrl"
+                        [href]="app.githubUrl" target="_blank" rel="noopener"
+                        class="btn btn-ghost" style="font-size:.75rem; padding:.3rem .7rem;">
+                        GitHub ↗
+                      </a>
+                      <span *ngIf="!app.githubUrl" class="text-muted">—</span>
+                    </td>
+
+                    <td (click)="$event.stopPropagation()">
+                      <button class="btn btn-ghost" type="button"
+                        style="font-size:.75rem; padding:.3rem .7rem;"
+                        (click)="downloadCv(app, $event)">
+                        ⬇ CV
+                      </button>
+                    </td>
+
+                  </tr>
+                }
+              </tbody>
+            </table>
+
+            <div class="apps-pager">
+              <button class="btn btn-ghost" type="button"
+                (click)="appPrev()" [disabled]="appPage() === 0">← Prev</button>
+              <span class="text-muted" style="font-size:.78rem;">
+                {{ appPage() + 1 }} / {{ appTotalPages() }}
+              </span>
+              <button class="btn btn-ghost" type="button"
+                (click)="appNext()" [disabled]="appPage() + 1 >= appTotalPages()">Next →</button>
+            </div>
+          }
+        </div>
+
+      </div>
+    }
+
   }
 </section>

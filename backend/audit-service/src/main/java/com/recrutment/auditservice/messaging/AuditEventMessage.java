@@ -18,10 +18,6 @@ public class AuditEventMessage {
     private String eventType;
     private Instant occurredAt;
 
-    /**
-     * Name of the producing service (gatewayserver, job-microservice, etc.).
-     * Not required by the contract, but useful for debugging.
-     */
     private String producer;
 
     private Actor actor;
@@ -29,14 +25,8 @@ public class AuditEventMessage {
 
     private String reason;
 
-    /**
-     * Arbitrary diff structure (old/new or changed fields).
-     */
     private Map<String, Object> changes;
 
-    /**
-     * Additional payload that publishers might attach.
-     */
     private Map<String, Object> payload;
 
     private String correlationId;

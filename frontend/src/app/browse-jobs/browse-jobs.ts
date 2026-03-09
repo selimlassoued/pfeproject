@@ -2,8 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { JobService } from '../services/job.service';
 import { JobOffer } from '../model/jobOffer.model';
-import { RouterLink } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 import { AuthService } from '../services/AuthService.service';
+import { ApplicationService } from '../services/application.service';
+import { ApplicationDto } from '../model/application.dto';
 
 
 type SalaryRange = 'any' | 'specified' | '0-1000' | '1000-2000' | '2000-5000' | '5000+';
@@ -29,10 +31,16 @@ export class BrowseJobsComponent implements OnInit {
   employmentTypes: string[] = [];
   statuses: string[] = [];
 
-  constructor(private jobService: JobService, private authService: AuthService) {}
+  private myAppsByJobId = new Map<string, string>();
+  checkingMyApps = false;
+
+  constructor(private jobService: JobService, private authService: AuthService, private applicationService: ApplicationService,private router: Router) {}
 
   ngOnInit(): void {
     this.fetchJobs();
+     if (this.isCandidate) {
+      this.loadMyApplications();
+    }
   }
 
   get isRecruiter(): boolean {
@@ -43,6 +51,46 @@ export class BrowseJobsComponent implements OnInit {
     return this.authService.isAdmin();
   }
 
+   get isCandidate(): boolean {
+    return !this.isRecruiter && !this.isAdmin && this.authService.isCandidate();
+  }
+
+  private loadMyApplications(): void {
+      this.checkingMyApps = true;
+      this.myAppsByJobId.clear();
+
+      this.applicationService.getMyApplications().subscribe({
+        next: (apps: ApplicationDto[]) => {
+          for (const app of (apps ?? [])) {
+            if (app?.jobId && app?.applicationId) {
+              this.myAppsByJobId.set(app.jobId, app.applicationId);
+            }
+          }
+          this.checkingMyApps = false;
+        },
+        error: (err) => {
+          console.error('getMyApplications error:', err);
+          this.checkingMyApps = false;
+        }
+      });
+    }
+
+  applicationIdFor(jobId: string): string | null {
+    return this.myAppsByJobId.get(jobId) ?? null;
+  }
+
+  applyBtnLabel(jobId: string): string {
+    return this.applicationIdFor(jobId) ? 'View application' : 'Apply';
+  }
+
+  applyOrView(jobId: string): void {
+    const appId = this.applicationIdFor(jobId);
+    if (appId) {
+      this.router.navigate(['/my-application', appId]);
+    } else {
+      this.router.navigate(['/apply', jobId]);
+    }
+  }
   fetchJobs(): void {
     this.loading = true;
     this.error = null;
@@ -158,11 +206,9 @@ export class BrowseJobsComponent implements OnInit {
   }
 
   getVisibleJobs(): JobOffer[] {
-    // Recruiters and admins see all jobs
     if (this.isRecruiter || this.isAdmin) {
       return this.filteredJobs;
     }
-    // Candidates see only published jobs
     return this.filteredJobs.filter(job => job.jobStatus === 'PUBLISHED');
   }
 

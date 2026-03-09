@@ -38,7 +38,6 @@ public class ApplicationController {
         return service.apply(jobId, candidateUserId, githubUrl, cv);
     }
 
-    // ✅ download CV
     @GetMapping("/{id}/cv")
     public ResponseEntity<byte[]> downloadCv(@PathVariable UUID id) {
         Application app = repo.findById(id)
@@ -51,23 +50,16 @@ public class ApplicationController {
                 .body(app.getCvFile());
     }
 
-    /**
-     * ✅ NEW LIST SEARCH:
-     * /api/applications?applicationId=...
-     * /api/applications?jobTitle=java
-     * /api/applications?candidateName=selim
-     * /api/applications?status=APPLIED
-     *
-     * Can combine status + jobTitle/candidateName.
-     */
+    // ✅ Single list endpoint — supports optional jobId filter
     @GetMapping
     public List<ApplicationDto> list(
             @RequestParam(required = false) UUID applicationId,
+            @RequestParam(required = false) UUID jobId,
             @RequestParam(required = false) ApplicationStatus status,
             @RequestParam(required = false) String jobTitle,
             @RequestParam(required = false) String candidateName
     ) {
-        return service.listApplications(applicationId, status, jobTitle, candidateName);
+        return service.listApplicationsPaged(applicationId, jobId, status, jobTitle, candidateName, 0, 50).getContent();
     }
 
     @GetMapping("/{id}")
@@ -141,17 +133,21 @@ public class ApplicationController {
         return service.updateStatus(id, status, actorUserId);
     }
 
+    @GetMapping("/internal/job/{jobId}/candidate-ids")
+    public List<String> getCandidateIdsByJob(@PathVariable UUID jobId) {
+        return service.getCandidateUserIdsByJob(jobId);
+    }
+
     @GetMapping("/paged")
     public PageResponse<ApplicationDto> listPaged(
             @RequestParam(required = false) UUID applicationId,
+            @RequestParam(required = false) UUID jobId,
             @RequestParam(required = false) ApplicationStatus status,
             @RequestParam(required = false) String jobTitle,
             @RequestParam(required = false) String candidateName,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return service.listApplicationsPaged(applicationId, status, jobTitle, candidateName, page, size);
+        return service.listApplicationsPaged(applicationId, jobId, status, jobTitle, candidateName, page, size);
     }
-
-
 }

@@ -1,0 +1,356 @@
+<div class="dashboard">
+
+  <div class="dash-header fade-up">
+    <div class="dash-title-row">
+      <div class="dash-icon">⚡</div>
+      <h1 class="dash-title">Admin <span class="accent">Dashboard</span></h1>
+    </div>
+    <p class="dash-sub">Platform overview · HireAI</p>
+  </div>
+
+  <div class="quick-nav fade-up" style="animation-delay:.05s">
+    <a routerLink="/recruiter-activity" class="qnav-btn">
+      <span class="qnav-icon">📊</span> Recruiter Activity
+    </a>
+    <a routerLink="/action-history" class="qnav-btn">
+      <span class="qnav-icon">🕵️</span> Admin Action History
+    </a>
+  </div>
+
+  <div class="range-tabs fade-up" style="animation-delay:.08s">
+    <button *ngFor="let r of TIME_RANGES"
+      class="range-tab" [class.range-tab--active]="activeRange === r.key"
+      (click)="setRange(r.key)">
+      {{ r.label }}
+    </button>
+  </div>
+
+  <div class="stats-row">
+
+    <a routerLink="/listUsers" class="stat-card stat-card--link" style="--accent:#79a4e9;animation-delay:0ms">
+      <div class="stat-glow" style="--accent:#79a4e9"></div>
+      <div class="stat-icon">👥</div>
+      <div class="stat-value">{{ users.length || '—' }}</div>
+      <div class="stat-label">Total Users</div>
+      <div class="stat-nav-hint">View all →</div>
+    </a>
+
+    <a routerLink="/browse" class="stat-card stat-card--link" style="--accent:#1e40bc;animation-delay:60ms">
+      <div class="stat-glow" style="--accent:#1e40bc"></div>
+      <div class="stat-icon">💼</div>
+      <div class="stat-value">{{ jobs.length }}</div>
+      <div class="stat-label">Active Jobs</div>
+      <div class="stat-nav-hint">View all →</div>
+    </a>
+
+    <a routerLink="/listApplications" class="stat-card stat-card--link" style="--accent:#fbbf24;animation-delay:120ms">
+      <div class="stat-glow" style="--accent:#fbbf24"></div>
+      <div class="stat-icon">📋</div>
+      <div class="stat-value">{{ appTotal ?? '—' }}</div>
+      <div class="stat-label">Applications</div>
+      <div class="stat-nav-hint">View all →</div>
+    </a>
+
+    <div class="stat-card stat-card--link"
+      [class.stat-card--loading]="statsLoading"
+      style="--accent:#f87171;animation-delay:180ms"
+      (click)="scrollToAuditFilter('USER_BLOCK')">
+      <div class="stat-glow" style="--accent:#f87171"></div>
+      <div class="stat-icon">🚫</div>
+      <div class="stat-value">{{ statsLoading ? '…' : (stats?.userBlocks ?? '—') }}</div>
+      <div class="stat-label">User Blocks</div>
+      <div class="stat-nav-hint">View logs →</div>
+    </div>
+
+    <!-- App Updates → scroll to audit log filtered by APPLICATION_STATUS_UPDATE -->
+    <div class="stat-card stat-card--link"
+      [class.stat-card--loading]="statsLoading"
+      style="--accent:#4ade80;animation-delay:240ms"
+      (click)="scrollToAuditFilter('APPLICATION_STATUS_UPDATE')">
+      <div class="stat-glow" style="--accent:#4ade80"></div>
+      <div class="stat-icon">🔄</div>
+      <div class="stat-value">{{ statsLoading ? '…' : (stats?.applicationUpdates ?? '—') }}</div>
+      <div class="stat-label">App Updates</div>
+      <div class="stat-nav-hint">View logs →</div>
+    </div>
+
+    <!-- Job Updates → scroll to audit log filtered by JOB_UPDATED -->
+    <div class="stat-card stat-card--link"
+      [class.stat-card--loading]="statsLoading"
+      style="--accent:#fbbf24;animation-delay:300ms"
+      (click)="scrollToAuditFilter('JOB_UPDATED')">
+      <div class="stat-glow" style="--accent:#fbbf24"></div>
+      <div class="stat-icon">📝</div>
+      <div class="stat-value">{{ statsLoading ? '…' : (stats?.jobUpdates ?? '—') }}</div>
+      <div class="stat-label">Job Updates</div>
+      <div class="stat-nav-hint">View logs →</div>
+    </div>
+
+    <!-- Blocked Users → /listUsers -->
+    <a routerLink="/listUsers" [queryParams]="{filter: 'DISABLED'}" class="stat-card stat-card--link" style="--accent:#f87171;animation-delay:360ms">
+      <div class="stat-glow" style="--accent:#f87171"></div>
+      <div class="stat-icon">⛔</div>
+      <div class="stat-value">{{ blockedUsers.length }}</div>
+      <div class="stat-label">Blocked Users</div>
+      <div class="stat-nav-hint">Manage →</div>
+    </a>
+
+  </div>
+
+  <!-- ══ Main Grid ══ -->
+  <div class="main-grid">
+
+    <!-- ─── LEFT: Audit Log ─── -->
+    <div class="audit-col fade-up" style="animation-delay:.2s" id="audit-log-section">
+
+      <div class="section-label">
+        Audit Log
+        <span class="log-count">({{ totalLogs }})</span>
+        <span class="range-badge">
+          {{ activeRange === 'overall' ? 'All time' : 'Last ' + activeRange }}
+        </span>
+      </div>
+
+      <!-- Filter pills -->
+      <div class="filters">
+        <button *ngFor="let f of FILTERS"
+          class="filter-btn"
+          [class.active]="activeFilter === f.key"
+          [style.--fcolor]="f.color"
+          (click)="setFilter(f.key)">
+          {{ f.label }}
+        </button>
+      </div>
+
+      <!-- Log list -->
+      <div class="glass-card log-card">
+        <ng-container *ngIf="logs.length > 0; else noLogs">
+          <div *ngFor="let log of logs; let i = index; trackBy: trackById"
+            class="log-entry">
+
+            <!-- ── Collapsed row ── -->
+            <div class="log-row"
+              [class.log-row--expanded]="isExpanded(log)"
+              [class.log-row--border]="i < logs.length - 1 && !isExpanded(log)"
+              (click)="toggleLog(log)">
+
+              <span class="event-pill"
+                [style.color]="getEventMeta(log.eventType).color"
+                [style.border-color]="getEventMeta(log.eventType).color + '40'"
+                [style.background]="getEventMeta(log.eventType).bg">
+                <span class="pill-dot" [style.background]="getEventMeta(log.eventType).color"></span>
+                {{ getEventMeta(log.eventType).label }}
+              </span>
+
+              <div class="log-info">
+                <div class="log-main-line">
+                  <span class="log-actor">{{ getActorName(log) }}</span>
+                  <ng-container *ngIf="getTargetName(log)">
+                    <span class="log-arrow">→</span>
+                    <span class="log-target">{{ getTargetName(log) }}</span>
+                  </ng-container>
+                </div>
+                <div class="log-reason" *ngIf="getDisplayReason(log) as reason">
+                  "{{ reason }}"
+                </div>
+              </div>
+
+              <div class="log-right">
+                <span class="log-time">{{ timeAgo(log.createdAt || log.occurredAt) }}</span>
+                <span class="log-chevron" [class.log-chevron--open]="isExpanded(log)">›</span>
+              </div>
+            </div>
+
+            <!-- ── Expanded detail ── -->
+            <div class="log-detail"
+              *ngIf="isExpanded(log)"
+              [class.log-detail--border]="i < logs.length - 1">
+
+              <div class="log-detail-grid">
+
+                <div class="ld-item">
+                  <div class="ld-label">Event</div>
+                  <span class="event-pill event-pill--sm"
+                    [style.color]="getEventMeta(log.eventType).color"
+                    [style.border-color]="getEventMeta(log.eventType).color + '40'"
+                    [style.background]="getEventMeta(log.eventType).bg">
+                    <span class="pill-dot" [style.background]="getEventMeta(log.eventType).color"></span>
+                    {{ getEventMeta(log.eventType).label }}
+                  </span>
+                </div>
+
+                <div class="ld-item">
+                  <div class="ld-label">Event ID</div>
+                  <div class="ld-value ld-mono">{{ log.eventId }}</div>
+                </div>
+
+                <div class="ld-item">
+                  <div class="ld-label">Actor</div>
+                  <div class="ld-value">
+                    <span class="ld-name">{{ getActorName(log) }}</span>
+                    <span class="ld-sub ld-mono" *ngIf="log.actorUserId && log.actorUserId !== 'SYSTEM'">
+                      {{ log.actorUserId }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="ld-item" *ngIf="log.targetId">
+                  <div class="ld-label">Target</div>
+                  <div class="ld-value">
+                    <span class="ld-name">{{ getTargetName(log) }}</span>
+                    <span class="ld-sub ld-mono">{{ log.targetId }}</span>
+                  </div>
+                </div>
+
+                <div class="ld-item" *ngIf="getDisplayReason(log) as reason">
+                  <div class="ld-label">Reason</div>
+                  <div class="ld-value ld-reason">"{{ reason }}"</div>
+                </div>
+
+                <div class="ld-item">
+                  <div class="ld-label">Time</div>
+                  <div class="ld-value ld-mono">
+                    {{ formatDate(log.createdAt || log.occurredAt) }}
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Changes table -->
+              <ng-container *ngIf="getChangesEntries(log).length > 0">
+                <div class="ld-changes-title">Changes</div>
+                <div class="ld-changes">
+                  <div class="ld-change-row ld-change-row--header">
+                    <span class="ld-change-key">Field</span>
+                    <span class="ld-change-before">Before</span>
+                    <span class="ld-change-after">After</span>
+                  </div>
+                  <div *ngFor="let c of getChangesEntries(log)" class="ld-change-row">
+                    <span class="ld-change-key">{{ c.key }}</span>
+                    <ng-container *ngIf="c.oldVal !== null || c.newVal !== null">
+                      <span class="ld-old">{{ c.oldVal ?? '—' }}</span>
+                      <span class="ld-new">{{ c.newVal ?? '—' }}</span>
+                    </ng-container>
+                    <ng-container *ngIf="c.simple !== null">
+                      <span class="ld-simple">—</span>
+                      <span class="ld-simple">{{ c.simple }}</span>
+                    </ng-container>
+                  </div>
+                </div>
+              </ng-container>
+
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #noLogs>
+          <div class="empty-state">No logs found for this period</div>
+        </ng-template>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <button class="pg-btn" (click)="prevPage()" [disabled]="page === 0">← Prev</button>
+        <span class="pg-info">{{ page + 1 }} / {{ totalPages }}</span>
+        <button class="pg-btn" (click)="nextPage()" [disabled]="page + 1 >= totalPages">Next →</button>
+      </div>
+
+    </div>
+
+    <!-- ─── RIGHT: Sidebar ─── -->
+    <div class="sidebar fade-up" style="animation-delay:.3s">
+
+      <!-- Event Breakdown -->
+      <div class="glass-card sidebar-card">
+        <div class="section-label">
+          Event Breakdown
+          <span class="range-badge">
+            {{ activeRange === 'overall' ? 'All time' : 'Last ' + activeRange }}
+          </span>
+        </div>
+        <ng-container *ngIf="!statsLoading; else loadingTpl">
+          <div *ngFor="let item of BREAKDOWN" class="breakdown-item">
+            <div class="breakdown-header">
+              <span class="breakdown-label">{{ item.label }}</span>
+              <span class="breakdown-val" [style.color]="item.color">
+                {{ getBreakdownVal(item.key) }}
+                <span class="breakdown-pct">({{ getBreakdownPct(item.key) }}%)</span>
+              </span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill"
+                [style.width.%]="getBreakdownPct(item.key)"
+                [style.background]="'linear-gradient(90deg,' + item.color + '55,' + item.color + ')'">
+              </div>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #loadingTpl>
+          <div class="empty-state">Loading…</div>
+        </ng-template>
+      </div>
+
+      <!-- Top Jobs by Applications — each job links to /jobs/:id -->
+      <div class="glass-card sidebar-card">
+        <div class="section-label">🏆 Top Jobs by Applications</div>
+        <ng-container *ngIf="topJobs.length > 0; else noTopJobs">
+          <a *ngFor="let job of topJobs; let i = index"
+            [routerLink]="['/jobs', job.jobId]"
+            class="top-job-row top-job-row--link"
+            [class.top-job-row--border]="i < topJobs.length - 1">
+            <div class="top-job-rank"
+              [class.top-job-rank--gold]="i === 0"
+              [class.top-job-rank--silver]="i === 1"
+              [class.top-job-rank--bronze]="i === 2">
+              {{ i + 1 }}
+            </div>
+            <div class="top-job-info">
+              <div class="top-job-title">{{ job.title }}</div>
+              <div class="top-job-bar-wrap">
+                <div class="top-job-bar">
+                  <div class="top-job-bar-fill"
+                    [style.width.%]="(job.count / maxTopJobCount) * 100">
+                  </div>
+                </div>
+                <span class="top-job-count">{{ job.count }}</span>
+              </div>
+            </div>
+          </a>
+        </ng-container>
+        <ng-template #noTopJobs>
+          <div class="empty-state">No data</div>
+        </ng-template>
+      </div>
+
+      <!-- Blocked Users — summary only, full list at /listUsers -->
+      <div class="glass-card sidebar-card">
+        <div class="section-label">
+          ⛔ Blocked Users
+          <span class="blocked-count-badge">{{ blockedUsers.length }}</span>
+        </div>
+        <ng-container *ngIf="blockedUsers.length > 0; else noBlocked">
+          <div *ngFor="let user of blockedUsers.slice(0, 3); let i = index"
+            class="user-row"
+            [class.user-row--border]="i < blockedUsers.slice(0, 3).length - 1">
+            <div class="user-avatar"
+              [style.background]="'hsl(' + getUserHue(user) + ',50%,26%)'"
+              [style.border-color]="'hsl(' + getUserHue(user) + ',50%,36%)'">
+              {{ getUserInitials(user) }}
+            </div>
+            <div class="user-info">
+              <div class="user-name">{{ user.firstName }} {{ user.lastName }}</div>
+              <div class="user-email">{{ user.email || '—' }}</div>
+            </div>
+          </div>
+          <!-- always show manage link -->
+          <a routerLink="/listUsers" [queryParams]="{filter: 'DISABLED'}" class="manage-link">
+            Manage all blocked users →
+          </a>
+        </ng-container>
+        <ng-template #noBlocked>
+          <div class="empty-state">✅ No blocked users</div>
+        </ng-template>
+      </div>
+
+    </div>
+  </div>
+</div>

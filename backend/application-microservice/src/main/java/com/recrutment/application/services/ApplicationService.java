@@ -39,18 +39,15 @@ public class ApplicationService {
     private final JobClient jobClient;
     private final UserClient userClient;
 
-    // ✅ Enrich DTO with jobTitle + candidateName
     private ApplicationDto toDto(Application a) {
         String jobTitle = null;
         String candidateName = null;
 
-        // job title
         try {
             var job = jobClient.getJob(a.getJobId());
             jobTitle = (job != null ? job.getTitle() : null);
         } catch (Exception ignored) {}
 
-        // candidate name
         try {
             var user = userClient.getUser(a.getCandidateUserId());
             if (user != null) {
@@ -112,13 +109,6 @@ public class ApplicationService {
     }
 
 
-    /**
-     * ✅ Search:
-     * - applicationId (exact)
-     * - status (exact)
-     * - jobTitle (contains, ignore-case)  -> done by enrichment + filtering
-     * - candidateName (contains, ignore-case) -> done by enrichment + filtering
-     */
     @Transactional(readOnly = true)
     public List<ApplicationDto> listApplications(
             UUID applicationId,
@@ -126,7 +116,6 @@ public class ApplicationService {
             String jobTitle,
             String candidateName
     ) {
-        // 1) base fetch from DB (ONLY by DB fields)
         List<Application> base;
 
         if (applicationId != null) {
@@ -137,10 +126,8 @@ public class ApplicationService {
             base = repo.findAll();
         }
 
-        // 2) enrich -> DTO
         List<ApplicationDto> dtos = base.stream().map(this::toDto).toList();
 
-        // 3) filter by jobTitle / candidateName (strings from other services)
         String jt = jobTitle == null ? null : jobTitle.trim().toLowerCase();
         String cn = candidateName == null ? null : candidateName.trim().toLowerCase();
 
@@ -174,6 +161,14 @@ public class ApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public List<String> getCandidateUserIdsByJob(UUID jobId) {
+        return repo.findByJobId(jobId).stream()
+                .map(Application::getCandidateUserId)
+                .distinct()
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public ApplicationDto getMyApplication(UUID id, String candidateUserId) {
         Application app = repo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found: " + id));
@@ -196,23 +191,19 @@ public class ApplicationService {
         Application app = repo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found: " + id));
 
-        // ✅ must belong to candidate
         if (!candidateUserId.equals(app.getCandidateUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed.");
         }
 
-        // ✅ only allowed while APPLIED
         if (app.getStatus() != ApplicationStatus.APPLIED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "You can update the application only while status is APPLIED.");
         }
 
-        // ✅ update github (if provided)
         if (githubUrl != null && !githubUrl.trim().isBlank()) {
             app.setGithubUrl(githubUrl.trim());
         }
 
-        // ✅ update CV (if provided)
         if (cv != null && !cv.isEmpty()) {
 
             String ct = cv.getContentType();
@@ -260,7 +251,6 @@ public class ApplicationService {
                 )
         );
 
-        // build payload for downstream consumers (notifications)
         Map<String, Object> payload = new java.util.HashMap<>();
         payload.put("jobId", jobId.toString());
         payload.put("candidateUserId", candidateUserId);
@@ -285,6 +275,7 @@ public class ApplicationService {
 
         // audit event
         eventPublisher.publish("audit.application", evt);
+        eventPublisher.publish("notify.application", evt);
         // later: also publish notify.application.status with same payload
 
         return result;
@@ -293,6 +284,7 @@ public class ApplicationService {
     @Transactional(readOnly = true)
     public PageResponse<ApplicationDto> listApplicationsPaged(
             UUID applicationId,
+            UUID jobId,           // ← ADD THIS
             ApplicationStatus status,
             String jobTitle,
             String candidateName,
@@ -300,62 +292,42 @@ public class ApplicationService {
             int size
     ) {
         int safePage = Math.max(page, 0);
-        int safeSize = Math.min(Math.max(size, 1), 50); // cap to 50
+        int safeSize = Math.min(Math.max(size, 1), 50);
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
         String jt = jobTitle == null ? null : jobTitle.trim().toLowerCase();
         String cn = candidateName == null ? null : candidateName.trim().toLowerCase();
+        boolean needsEnrichedFiltering = (jt != null && !jt.isBlank()) || (cn != null && !cn.isBlank());
 
-        boolean needsEnrichedFiltering =
-                (jt != null && !jt.isBlank()) || (cn != null && !cn.isBlank());
-
-        // If we're filtering by jobTitle/candidateName (enriched fields),
-        // we must fetch a bigger set then filter then paginate.
         if (needsEnrichedFiltering) {
             List<Application> base;
+            if (applicationId != null)      base = repo.findById(applicationId).map(List::of).orElseGet(List::of);
+            else if (jobId != null && status != null) base = repo.findByJobIdAndStatus(jobId, status);
+            else if (jobId != null)         base = repo.findByJobId(jobId);
+            else if (status != null)        base = repo.findByStatus(status);
+            else                            base = repo.findAll();
 
-            if (applicationId != null) {
-                base = repo.findById(applicationId).map(List::of).orElseGet(List::of);
-            } else if (status != null) {
-                base = repo.findByStatus(status);
-            } else {
-                base = repo.findAll();
-            }
-
-            List<ApplicationDto> filtered = base.stream()
-                    .map(this::toDto)
-                    .filter(d -> jt == null || jt.isBlank()
-                            || (d.getJobTitle() != null && d.getJobTitle().toLowerCase().contains(jt)))
-                    .filter(d -> cn == null || cn.isBlank()
-                            || (d.getCandidateName() != null && d.getCandidateName().toLowerCase().contains(cn)))
+            List<ApplicationDto> filtered = base.stream().map(this::toDto)
+                    .filter(d -> jt == null || jt.isBlank() || (d.getJobTitle() != null && d.getJobTitle().toLowerCase().contains(jt)))
+                    .filter(d -> cn == null || cn.isBlank() || (d.getCandidateName() != null && d.getCandidateName().toLowerCase().contains(cn)))
                     .toList();
 
             int from = Math.min(safePage * safeSize, filtered.size());
-            int to = Math.min(from + safeSize, filtered.size());
-
-            List<ApplicationDto> content = filtered.subList(from, to);
-            long total = filtered.size();
-            int totalPages = (int) Math.ceil(total / (double) safeSize);
-
-            return new PageResponse<>(content, safePage, safeSize, total, totalPages);
+            int to   = Math.min(from + safeSize, filtered.size());
+            return new PageResponse<>(filtered.subList(from, to), safePage, safeSize, filtered.size(),
+                    (int) Math.ceil(filtered.size() / (double) safeSize));
         }
 
-        // Otherwise, we can paginate directly in DB
+        // DB-level pagination
         Page<Application> p;
+        if      (applicationId != null)             p = new PageImpl<>(repo.findById(applicationId).map(List::of).orElseGet(List::of), pageable, 1);
+        else if (jobId != null && status != null)   p = repo.findByJobIdAndStatus(jobId, status, pageable);
+        else if (jobId != null)                     p = repo.findByJobId(jobId, pageable);
+        else if (status != null)                    p = repo.findByStatus(status, pageable);
+        else                                        p = repo.findAll(pageable);
 
-        if (applicationId != null) {
-            List<Application> single = repo.findById(applicationId).map(List::of).orElseGet(List::of);
-            p = new PageImpl<>(single, pageable, single.size());
-        } else if (status != null) {
-            // ✅ best: add repo method findByStatus(status, pageable)
-            // if you don't have it yet, add it (shown below)
-            p = repo.findByStatus(status, pageable);
-        } else {
-            p = repo.findAll(pageable);
-        }
-
-        List<ApplicationDto> content = p.getContent().stream().map(this::toDto).toList();
-        return new PageResponse<>(content, safePage, safeSize, p.getTotalElements(), p.getTotalPages());
+        return new PageResponse<>(p.getContent().stream().map(this::toDto).toList(),
+                safePage, safeSize, p.getTotalElements(), p.getTotalPages());
     }
 
 }

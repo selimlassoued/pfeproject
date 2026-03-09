@@ -19,6 +19,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Transactional
 public class JobOfferServiceImpl implements JobOfferService {
+
     private final AppEventPublisher eventPublisher;
     private final JobOfferRepo jobOfferRepo;
 
@@ -36,6 +37,7 @@ public class JobOfferServiceImpl implements JobOfferService {
     private static JobOfferDto toDto(JobOffer j) {
         return new JobOfferDto(
                 j.getId(),
+                j.getRefNumber(),   // ← mapped
                 j.getTitle(),
                 j.getDescription(),
                 j.getLocation(),
@@ -64,147 +66,128 @@ public class JobOfferServiceImpl implements JobOfferService {
     }
 
     @Override
-public JobOfferDto createJobOffer(JobOfferDto dto, String actorUserId) {
-    String actor = (actorUserId != null && !actorUserId.isBlank()) ? actorUserId : "SYSTEM";
-    JobOffer entity = JobOffer.builder()
-            .title(dto.getTitle())
-            .description(dto.getDescription())
-            .location(dto.getLocation())
-            .minSalary(dto.getMinSalary())
-            .maxSalary(dto.getMaxSalary())
-            .employmentType(dto.getEmploymentType())
-            .jobStatus(dto.getJobStatus())
-            .build();
+    public JobOfferDto createJobOffer(JobOfferDto dto, String actorUserId) {
+        String actor = (actorUserId != null && !actorUserId.isBlank()) ? actorUserId : "SYSTEM";
 
-    if (dto.getRequirements() != null) {
-        for (JobRequirementDto r : dto.getRequirements()) {
-            JobRequirement req = JobRequirement.builder()
-                    .category(r.getCategory())
-                    .description(r.getDescription())
-                    .weight(r.getWeight())
-                    .minYears(r.getMinYears())
-                    .maxYears(r.getMaxYears())
-                    .build();
-            entity.addRequirement(req);
+        JobOffer entity = JobOffer.builder()
+                .title(dto.getTitle())
+                .description(dto.getDescription())
+                .location(dto.getLocation())
+                .minSalary(dto.getMinSalary())
+                .maxSalary(dto.getMaxSalary())
+                .employmentType(dto.getEmploymentType())
+                .jobStatus(dto.getJobStatus())
+                .build();
+
+        if (dto.getRequirements() != null) {
+            for (JobRequirementDto r : dto.getRequirements()) {
+                JobRequirement req = JobRequirement.builder()
+                        .category(r.getCategory())
+                        .description(r.getDescription())
+                        .weight(r.getWeight())
+                        .minYears(r.getMinYears())
+                        .maxYears(r.getMaxYears())
+                        .build();
+                entity.addRequirement(req);
+            }
         }
+
+        // first save to get the id
+        JobOffer saved = jobOfferRepo.save(entity);
+
+        // generate unique sequential refNumber after first save
+        int seq = jobOfferRepo.nextRefSequence();
+        saved.setRefNumber(String.format("JOB-%05d", seq));
+        saved = jobOfferRepo.save(saved);
+
+        JobOfferDto result = toDto(saved);
+
+        AppEventMessage evt = new AppEventMessage();
+        evt.setEventType("JOB_CREATED");
+        evt.setProducer("job-microservice");
+        AppEventMessage.Actor actorObj = new AppEventMessage.Actor();
+        actorObj.setUserId(actor);
+        evt.setActor(actorObj);
+        AppEventMessage.Target target = new AppEventMessage.Target();
+        target.setType("JOB");
+        target.setId(saved.getId().toString());
+        evt.setTarget(target);
+        eventPublisher.publish("audit.job", evt);
+
+        return result;
     }
 
-    JobOffer saved = jobOfferRepo.save(entity);
-    JobOfferDto result = toDto(saved);
+    @Override
+    public JobOfferDto updateJobOffer(UUID id, JobOfferDto dto, String reason, String actorUserId) {
+        String actor = (actorUserId != null && !actorUserId.isBlank()) ? actorUserId : "SYSTEM";
+        JobOffer existing = jobOfferRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("JobOffer not found: " + id));
 
-    // audit event: JOB_CREATED
-    AppEventMessage evt = new AppEventMessage();
-    evt.setEventType("JOB_CREATED");
-    evt.setProducer("job-microservice");
+        String oldTitle          = existing.getTitle();
+        String oldDescription    = existing.getDescription();
+        String oldLocation       = existing.getLocation();
+        Integer oldMinSalary     = existing.getMinSalary();
+        Integer oldMaxSalary     = existing.getMaxSalary();
+        var oldEmploymentType    = existing.getEmploymentType();
+        var oldJobStatus         = existing.getJobStatus();
 
-    AppEventMessage.Actor actorObj = new AppEventMessage.Actor();
-    actorObj.setUserId(actor);
-    evt.setActor(actorObj);
+        existing.setTitle(dto.getTitle());
+        existing.setDescription(dto.getDescription());
+        existing.setLocation(dto.getLocation());
+        existing.setMinSalary(dto.getMinSalary());
+        existing.setMaxSalary(dto.getMaxSalary());
+        existing.setEmploymentType(dto.getEmploymentType());
+        existing.setJobStatus(dto.getJobStatus());
+        // refNumber is updatable=false — never touched on update
 
-    AppEventMessage.Target target = new AppEventMessage.Target();
-    target.setType("JOB");
-    target.setId(saved.getId().toString());
-    evt.setTarget(target);
-
-    eventPublisher.publish("audit.job", evt);
-
-    return result;
-}
-
-@Override
-public JobOfferDto updateJobOffer(UUID id, JobOfferDto dto, String reason, String actorUserId) {
-    String actor = (actorUserId != null && !actorUserId.isBlank()) ? actorUserId : "SYSTEM";
-    JobOffer existing = jobOfferRepo.findById(id)
-            .orElseThrow(() -> new RuntimeException("JobOffer not found: " + id));
-
-    // capture old values for diff
-    String oldTitle = existing.getTitle();
-    String oldDescription = existing.getDescription();
-    String oldLocation = existing.getLocation();
-    Integer oldMinSalary = existing.getMinSalary();
-    Integer oldMaxSalary = existing.getMaxSalary();
-    var oldEmploymentType = existing.getEmploymentType();
-    var oldJobStatus = existing.getJobStatus();
-
-    existing.setTitle(dto.getTitle());
-    existing.setDescription(dto.getDescription());
-    existing.setLocation(dto.getLocation());
-    existing.setMinSalary(dto.getMinSalary());
-    existing.setMaxSalary(dto.getMaxSalary());
-    existing.setEmploymentType(dto.getEmploymentType());
-    existing.setJobStatus(dto.getJobStatus());
-
-    existing.getRequirements().clear(); // orphanRemoval=true deletes old ones
-    if (dto.getRequirements() != null) {
-        for (JobRequirementDto r : dto.getRequirements()) {
-            JobRequirement req = JobRequirement.builder()
-                    .category(r.getCategory())
-                    .description(r.getDescription())
-                    .weight(r.getWeight())
-                    .minYears(r.getMinYears())
-                    .maxYears(r.getMaxYears())
-                    .build();
-            existing.addRequirement(req);
+        if (existing.getRequirements() != null) existing.getRequirements().clear();
+        if (dto.getRequirements() != null) {
+            for (JobRequirementDto r : dto.getRequirements()) {
+                JobRequirement req = JobRequirement.builder()
+                        .category(r.getCategory())
+                        .description(r.getDescription())
+                        .weight(r.getWeight())
+                        .minYears(r.getMinYears())
+                        .maxYears(r.getMaxYears())
+                        .build();
+                existing.addRequirement(req);
+            }
         }
-    }
 
-    JobOffer saved = jobOfferRepo.save(existing);
-    JobOfferDto result = toDto(saved);
+        JobOffer saved = jobOfferRepo.save(existing);
+        JobOfferDto result = toDto(saved);
 
-    // build diff map
-    Map<String, Object> changes = new java.util.HashMap<>();
-    if (!java.util.Objects.equals(oldTitle, saved.getTitle())) {
-        changes.put("title", java.util.Map.of("old", oldTitle, "new", saved.getTitle()));
-    }
-    if (!java.util.Objects.equals(oldDescription, saved.getDescription())) {
-        changes.put("description", java.util.Map.of("old", oldDescription, "new", saved.getDescription()));
-    }
-    if (!java.util.Objects.equals(oldLocation, saved.getLocation())) {
-        changes.put("location", java.util.Map.of("old", oldLocation, "new", saved.getLocation()));
-    }
-    if (!java.util.Objects.equals(oldMinSalary, saved.getMinSalary())) {
-        changes.put("minSalary", java.util.Map.of("old", oldMinSalary, "new", saved.getMinSalary()));
-    }
-    if (!java.util.Objects.equals(oldMaxSalary, saved.getMaxSalary())) {
-        changes.put("maxSalary", java.util.Map.of("old", oldMaxSalary, "new", saved.getMaxSalary()));
-    }
-    if (!java.util.Objects.equals(oldEmploymentType, saved.getEmploymentType())) {
-        changes.put("employmentType", java.util.Map.of("old", oldEmploymentType, "new", saved.getEmploymentType()));
-    }
-    if (!java.util.Objects.equals(oldJobStatus, saved.getJobStatus())) {
-        changes.put("jobStatus", java.util.Map.of("old", oldJobStatus, "new", saved.getJobStatus()));
-    }
+        Map<String, Object> changes = new java.util.HashMap<>();
+        if (!java.util.Objects.equals(oldTitle,          saved.getTitle()))          changes.put("title",          Map.of("old", oldTitle,          "new", saved.getTitle()));
+        if (!java.util.Objects.equals(oldDescription,    saved.getDescription()))    changes.put("description",    Map.of("old", oldDescription,    "new", saved.getDescription()));
+        if (!java.util.Objects.equals(oldLocation,       saved.getLocation()))       changes.put("location",       Map.of("old", oldLocation,       "new", saved.getLocation()));
+        if (!java.util.Objects.equals(oldMinSalary,      saved.getMinSalary()))      changes.put("minSalary",      Map.of("old", oldMinSalary,      "new", saved.getMinSalary()));
+        if (!java.util.Objects.equals(oldMaxSalary,      saved.getMaxSalary()))      changes.put("maxSalary",      Map.of("old", oldMaxSalary,      "new", saved.getMaxSalary()));
+        if (!java.util.Objects.equals(oldEmploymentType, saved.getEmploymentType())) changes.put("employmentType", Map.of("old", oldEmploymentType, "new", saved.getEmploymentType()));
+        if (!java.util.Objects.equals(oldJobStatus,      saved.getJobStatus()))      changes.put("jobStatus",      Map.of("old", oldJobStatus,      "new", saved.getJobStatus()));
 
-    // audit event: JOB_UPDATED
-    AppEventMessage evt = new AppEventMessage();
-    evt.setEventType("JOB_UPDATED");
-    evt.setProducer("job-microservice");
+        AppEventMessage evt = new AppEventMessage();
+        evt.setEventType("JOB_UPDATED");
+        evt.setProducer("job-microservice");
+        AppEventMessage.Actor actorObj = new AppEventMessage.Actor();
+        actorObj.setUserId(actor);
+        evt.setActor(actorObj);
+        AppEventMessage.Target target = new AppEventMessage.Target();
+        target.setType("JOB");
+        target.setId(id.toString());
+        evt.setTarget(target);
+        evt.setChanges(changes);
+        if (reason != null && !reason.isBlank()) evt.setReason(reason);
+        evt.setPayload(Map.of("jobTitle", saved.getTitle()));
+        eventPublisher.publish("audit.job", evt);
+        eventPublisher.publish("notify.job", evt);
 
-    AppEventMessage.Actor actorObj = new AppEventMessage.Actor();
-    actorObj.setUserId(actor);
-    evt.setActor(actorObj);
-
-    AppEventMessage.Target target = new AppEventMessage.Target();
-    target.setType("JOB");
-    target.setId(id.toString());
-    evt.setTarget(target);
-
-    evt.setChanges(changes.isEmpty() ? null : changes);
-    if (reason != null && !reason.isBlank()) {
-        evt.setReason(reason);
+        return result;
     }
-
-    eventPublisher.publish("audit.job", evt);
-    // later: also publish notify.job.updated with same changes
-
-    return result;
-}
 
     @Override
     public void deleteJobOffer(UUID id) {
-        if (!jobOfferRepo.existsById(id)) {
-            throw new RuntimeException("JobOffer not found: " + id);
-        }
+        if (!jobOfferRepo.existsById(id)) throw new RuntimeException("JobOffer not found: " + id);
         jobOfferRepo.deleteById(id);
     }
 }

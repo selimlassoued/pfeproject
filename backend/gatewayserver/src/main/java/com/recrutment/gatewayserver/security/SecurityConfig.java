@@ -14,9 +14,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
-import reactor.core.publisher.Mono;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -30,11 +30,12 @@ public class SecurityConfig {
                 .withJwkSetUri("http://keycloak:8080/realms/ai-recruitment/protocol/openid-connect/certs")
                 .build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:4200"));
-        config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -44,59 +45,67 @@ public class SecurityConfig {
         return source;
     }
 
-
     @Bean
-    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity serverHttpSecurity) {
-        serverHttpSecurity
-                .authorizeExchange(exchanges -> //exchanges.pathMatchers(HttpMethod.GET).authenticated()
-                        exchanges.pathMatchers("/actuator/health/**","/actuator/info").permitAll()
-                                .pathMatchers("/actuator/**").hasRole("RECRUITER")
-                                .pathMatchers("/api/admin/**").hasRole("ADMIN")
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+        http
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeExchange(exchanges -> exchanges
 
-                                .pathMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
+                        // Actuator
+                        .pathMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        .pathMatchers("/actuator/**").hasRole("RECRUITER")
 
-                .pathMatchers(HttpMethod.POST, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
-                .pathMatchers(HttpMethod.PUT, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
-                .pathMatchers(HttpMethod.PATCH, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
-                .pathMatchers(HttpMethod.DELETE, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
-                 .pathMatchers(HttpMethod.POST, "/api/applications/**").hasRole("CANDIDATE")
-                 .pathMatchers(HttpMethod.GET, "/api/applications/me").hasRole("CANDIDATE")
-                .pathMatchers(HttpMethod.PATCH, "/api/applications/me/**").hasRole("CANDIDATE")
+                        // Admin
+                        .pathMatchers(HttpMethod.GET, "/api/admin/internal/users/*/email").permitAll()
+                        .pathMatchers("/api/admin/**").hasRole("ADMIN")
 
-                .pathMatchers(HttpMethod.GET, "/api/applications/*/cv").hasAnyRole("RECRUITER","ADMIN")
-                 .pathMatchers(HttpMethod.GET, "/api/applications/**").hasAnyRole("RECRUITER","ADMIN")
+                        // Jobs
+                        .pathMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
+                        .pathMatchers(HttpMethod.PUT, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
+                        .pathMatchers(HttpMethod.PATCH, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
 
-                .pathMatchers(HttpMethod.PUT, "/api/applications/**").hasAnyRole("RECRUITER","ADMIN")
-                .pathMatchers(HttpMethod.PATCH, "/api/applications/**").hasAnyRole("RECRUITER","ADMIN")
+                        // Applications - internal
+                        .pathMatchers(HttpMethod.GET, "/api/applications/internal/job/*/candidate-ids").permitAll()
 
-                .pathMatchers(HttpMethod.DELETE, "/api/applications/**").hasAnyRole("RECRUITER","ADMIN"))
+                        // Applications - candidate "me" endpoints (IMPORTANT: must be before /api/applications/**)
+                        .pathMatchers(HttpMethod.POST, "/api/applications/**").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.GET, "/api/applications/me").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.GET, "/api/applications/me/**").hasRole("CANDIDATE")   // ✅ FIX
+                        .pathMatchers(HttpMethod.PATCH, "/api/applications/me/**").hasRole("CANDIDATE")
 
+                        // Applications - recruiter/admin
+                        .pathMatchers(HttpMethod.GET, "/api/applications/*/cv").hasAnyRole("RECRUITER", "ADMIN")
+                        .pathMatchers(HttpMethod.GET, "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN")
+                        .pathMatchers(HttpMethod.PUT, "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN")
+                        .pathMatchers(HttpMethod.PATCH, "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN")
+
+                        // Notifications
+                        .pathMatchers(HttpMethod.GET, "/api/notifications/**").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.POST, "/api/notifications/**").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.PUT, "/api/notifications/**").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.PATCH, "/api/notifications/**").hasRole("CANDIDATE")
+
+                        // WebSocket
+                        .pathMatchers("/ws/notifications/**").permitAll()
+                        .pathMatchers("/api/audit/**").hasRole("ADMIN")
+
+                        // Everything else
+                        .anyExchange().authenticated()
+                )
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        //.jwt(Customizer.withDefaults())
-                        .jwt(jwtSpec -> jwtSpec.jwtAuthenticationConverter(grantedAuthoritiesExtractor()))
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(grantedAuthoritiesExtractor()))
                 );
 
-        serverHttpSecurity.csrf(csrf -> csrf.disable());
-        return serverHttpSecurity.build();
+        return http.build();
     }
-//    @Bean
-//    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity serverHttpSecurity) {
-//        serverHttpSecurity
-//                .authorizeExchange(exchanges ->
-//                        exchanges.anyExchange().permitAll()
-//                )
-//                .csrf(csrf -> csrf.disable());
-//
-//        return serverHttpSecurity.build();
-//    }
 
-
-    private Converter<Jwt, Mono<AbstractAuthenticationToken>>
-    grantedAuthoritiesExtractor() {
-        JwtAuthenticationConverter jwtAuthenticationConverter =
-                new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter
-                (new KeycloackRoleConverter());
+    private Converter<Jwt, Mono<AbstractAuthenticationToken>> grantedAuthoritiesExtractor() {
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new KeycloackRoleConverter());
         return new ReactiveJwtAuthenticationConverterAdapter(jwtAuthenticationConverter);
     }
 }

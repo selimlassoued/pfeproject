@@ -76,6 +76,7 @@ export class ApplicationService {
   }
   listApplicationsPaged(filters?: {
   applicationId?: string;
+  jobId?: string;          // ← ADD THIS
   status?: string;
   jobTitle?: string;
   candidateName?: string;
@@ -85,10 +86,10 @@ export class ApplicationService {
 
   let params = new HttpParams();
   if (filters?.applicationId) params = params.set('applicationId', filters.applicationId);
-  if (filters?.status) params = params.set('status', filters.status);
-  if (filters?.jobTitle) params = params.set('jobTitle', filters.jobTitle);
+  if (filters?.jobId)         params = params.set('jobId', filters.jobId);   // ← ADD
+  if (filters?.status)        params = params.set('status', filters.status);
+  if (filters?.jobTitle)      params = params.set('jobTitle', filters.jobTitle);
   if (filters?.candidateName) params = params.set('candidateName', filters.candidateName);
-
   params = params.set('page', String(filters?.page ?? 0));
   params = params.set('size', String(filters?.size ?? 10));
 

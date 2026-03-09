@@ -1,0 +1,127 @@
+<div class="page">
+
+  <!-- Header -->
+  <div class="page-header fade-up">
+    <a routerLink="/admin-dashboard" class="back-btn">← Dashboard</a>
+    <div class="page-title-row">
+      <div class="page-icon">📊</div>
+      <h1 class="page-title">Recruiter <span class="accent">Activity</span></h1>
+    </div>
+    <p class="page-sub">Actions performed by recruiters across the platform</p>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="empty-state">Loading…</div>
+
+  <ng-container *ngIf="!loading">
+
+    <!-- Summary cards -->
+    <div class="summary-row fade-up" style="animation-delay:0.1s">
+      <div class="sum-card">
+        <div class="sum-value">{{ stats.length }}</div>
+        <div class="sum-label">Active Recruiters</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-value">{{ stats[0]?.total || 0 }}</div>
+        <div class="sum-label">Most Actions (top)</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-value">{{ totalActions }}</div>
+        <div class="sum-label">Total Actions</div>
+      </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="glass-card fade-up" style="animation-delay:0.2s">
+
+      <ng-container *ngIf="stats.length > 0; else noStats">
+        <div
+          *ngFor="let stat of stats; let i = index; trackBy: trackById"
+          class="recruiter-row"
+          [class.recruiter-row--border]="i < stats.length - 1"
+          [class.recruiter-row--selected]="selected?.userId === stat.userId"
+          (click)="selectUser(stat)">
+
+          <!-- rank -->
+          <div class="rank"
+            [class.rank--gold]="i === 0"
+            [class.rank--silver]="i === 1"
+            [class.rank--bronze]="i === 2">
+            {{ i + 1 }}
+          </div>
+
+          <!-- avatar -->
+          <div class="r-avatar"
+            [style.background]="'hsl(' + stat.hue + ',50%,26%)'"
+            [style.border-color]="'hsl(' + stat.hue + ',50%,38%)'">
+            {{ stat.initials }}
+          </div>
+
+          <!-- info -->
+          <div class="r-info">
+            <div class="r-name">{{ stat.name }}</div>
+            <div class="r-email">{{ stat.email }}</div>
+          </div>
+
+          <!-- bar -->
+          <div class="r-bar-wrap">
+            <div class="r-bar">
+              <div class="r-bar-fill"
+                [style.width.%]="(stat.total / maxTotal) * 100">
+              </div>
+            </div>
+          </div>
+
+          <!-- count -->
+          <div class="r-count">
+            <span class="r-count-num">{{ stat.total }}</span>
+            <span class="r-count-label">actions</span>
+          </div>
+
+          <!-- chevron -->
+          <div class="r-arrow">
+            {{ selected?.userId === stat.userId ? '▲' : '▼' }}
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #noStats>
+        <div class="empty-state">No recruiter activity found</div>
+      </ng-template>
+    </div>
+
+    <!-- Detail panel (shown on row click) -->
+    <div class="detail-panel glass-card fade-up" *ngIf="selected">
+      <div class="detail-header">
+        <div class="detail-avatar"
+          [style.background]="'hsl(' + selected.hue + ',50%,26%)'"
+          [style.border-color]="'hsl(' + selected.hue + ',50%,38%)'">
+          {{ selected.initials }}
+        </div>
+        <div class="detail-meta">
+          <div class="detail-name">{{ selected.name }}</div>
+          <div class="detail-email">{{ selected.email }}</div>
+        </div>
+        <a
+          [routerLink]="['/action-history']"
+          [queryParams]="{ actorId: selected.userId }"
+          class="view-history-btn">
+          View Full History →
+        </a>
+      </div>
+      <div class="detail-stats">
+        <div class="detail-stat">
+          <div class="detail-stat-val">{{ selected.total }}</div>
+          <div class="detail-stat-label">Total Actions</div>
+        </div>
+        <div class="detail-stat">
+          <div class="detail-stat-val">
+            {{ selected.total > 0 ? ((selected.total / totalActions) * 100 | number:'1.0-0') : 0 }}%
+          </div>
+          <div class="detail-stat-label">Share of All Activity</div>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+</div>
