@@ -67,7 +67,9 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.PATCH, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
                         .pathMatchers(HttpMethod.DELETE, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
 
-                        // Applications - internal
+                        .pathMatchers(HttpMethod.GET, "/api/applications/*/analysis").hasAnyRole("RECRUITER", "ADMIN")
+                        .pathMatchers(HttpMethod.GET, "/api/applications/*/analysis/exists").hasAnyRole("RECRUITER", "ADMIN")
+
                         .pathMatchers(HttpMethod.GET, "/api/applications/internal/job/*/candidate-ids").permitAll()
 
                         // Applications - candidate "me" endpoints (IMPORTANT: must be before /api/applications/**)

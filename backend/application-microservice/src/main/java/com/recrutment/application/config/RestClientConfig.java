@@ -31,4 +31,8 @@ public class RestClientConfig {
 
         return rt;
     }
+    @Bean("plainRestTemplate")
+    public RestTemplate plainRestTemplate() {
+        return new RestTemplate(); // sans JWT — pour services internes
+    }
 }

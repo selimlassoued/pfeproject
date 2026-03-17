@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.recrutment.application.entities.CvAnalysis;
+import com.recrutment.application.services.CvAnalysisService;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -22,7 +25,7 @@ import java.util.UUID;
 @RequestMapping("/api/applications")
 @RequiredArgsConstructor
 public class ApplicationController {
-
+    private final CvAnalysisService cvAnalysisService;
     private final ApplicationService service;
     private final ApplicationRepo repo;
 
@@ -149,5 +152,14 @@ public class ApplicationController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return service.listApplicationsPaged(applicationId, jobId, status, jobTitle, candidateName, page, size);
+    }
+    @GetMapping("/{id}/analysis")
+    public CvAnalysis getAnalysis(@PathVariable UUID id) {
+        return cvAnalysisService.getAnalysis(id);
+    }
+
+    @GetMapping("/{id}/analysis/exists")
+    public boolean hasAnalysis(@PathVariable UUID id) {
+        return cvAnalysisService.hasAnalysis(id);
     }
 }

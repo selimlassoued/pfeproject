@@ -22,6 +22,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import com.recrutment.application.services.CvAnalysisService;
+
 
 import java.io.IOException;
 import java.time.Instant;
@@ -33,6 +35,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional
 public class ApplicationService {
+    private final CvAnalysisService cvAnalysisService;
     private final AppEventPublisher eventPublisher;
 
     private final ApplicationRepo repo;
@@ -102,7 +105,10 @@ public class ApplicationService {
                 .build();
 
         try {
-            return toDto(repo.save(app));
+            Application saved = repo.save(app);
+            // Trigger async CV analysis (non-blocking)
+            cvAnalysisService.analyzeAsync(saved);
+            return toDto(saved);
         } catch (DataIntegrityViolationException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "You already applied to this job.");
         }

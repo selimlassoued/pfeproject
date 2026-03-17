@@ -3,6 +3,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApplicationDto } from '../model/application.dto';
 import { PageResponse } from '../model/page-response'; 
+import { CvAnalysis } from '../model/cv-analysis.model';
+
 @Injectable({ providedIn: 'root' })
 export class ApplicationService {
   private readonly API_URL = 'http://localhost:8888/api/applications';
@@ -94,5 +96,12 @@ export class ApplicationService {
   params = params.set('size', String(filters?.size ?? 10));
 
   return this.http.get<PageResponse<ApplicationDto>>(`${this.API_URL}/paged`, { params });
+}
+  getCvAnalysis(applicationId: string): Observable<CvAnalysis> {
+  return this.http.get<CvAnalysis>(`${this.API_URL}/${applicationId}/analysis`);
+}
+ 
+hasCvAnalysis(applicationId: string): Observable<boolean> {
+  return this.http.get<boolean>(`${this.API_URL}/${applicationId}/analysis/exists`);
 }
 }
