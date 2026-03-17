@@ -19,6 +19,7 @@ import { NotificationsMenu } from './notification-menu/notification-menu';
 import { AdminDashboard } from './admin-dashboard/admin-dashboard';
 import { RecruiterActivity } from './recruiter-activity/recruiter-activity';
 import { ActionHistory } from './action-history/action-history';
+import { CvAnalysisDrawer } from './cv-analysis-drawer/cv-analysis-drawer';
 
 export const routes: Routes = [
   //{ path: 'profile', redirectTo: 'profile', pathMatch: 'full' }, 
@@ -48,7 +49,8 @@ export const routes: Routes = [
   {path:'notification-menu',component:NotificationsMenu},
   { path: 'admin-dashboard', component: AdminDashboard },
   {path:'recruiter-activity',component:RecruiterActivity},
-  {path:'action-history',component:ActionHistory}
+  {path:'action-history',component:ActionHistory},
+  {path:'cv-analysis',component:CvAnalysisDrawer}
 
 
 

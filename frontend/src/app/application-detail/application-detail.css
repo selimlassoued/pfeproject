@@ -413,3 +413,27 @@
   }
 }
 
+/* ── Add these to application-detail.css ── */
+
+.btn-ai {
+  background: linear-gradient(135deg, rgba(121,164,233,0.15), rgba(30,64,188,0.2));
+  border: 1px solid rgba(121, 164, 233, 0.35);
+  color: #79a4e9;
+  font-weight: 700;
+  transition: background 200ms ease, border-color 200ms ease, transform 200ms ease;
+}
+.btn-ai:hover {
+  background: linear-gradient(135deg, rgba(121,164,233,0.25), rgba(30,64,188,0.3));
+  border-color: rgba(121, 164, 233, 0.55);
+  transform: translateY(-1px);
+}
+
+.ad-linkbtn-ai {
+  margin-top: 0.5rem;
+  background: rgba(121, 164, 233, 0.08);
+  border-color: rgba(121, 164, 233, 0.2);
+  color: #79a4e9;
+}
+.ad-linkbtn-ai:hover {
+  background: rgba(121, 164, 233, 0.14);
+}

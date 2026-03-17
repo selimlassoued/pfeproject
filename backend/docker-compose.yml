@@ -186,6 +186,17 @@ services:
       config-server:
         condition: service_healthy
 
+  cv-parser-service:
+    build: ./cv-parser-service
+    container_name: cv-parser-service
+    networks:
+      - ai-recruitment-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # ← pour accéder à Ollama sur Windows
+    environment:
+      - APP_PORT=8085
+      - OLLAMA_HOST=http://host.docker.internal:11434
+
   application-db:
     image: postgres:16
     container_name: application-db
@@ -222,6 +233,8 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
+      cv-parser-service: # ← ajoute ça
+        condition: service_started
 
   audit-db:
     image: postgres:16
