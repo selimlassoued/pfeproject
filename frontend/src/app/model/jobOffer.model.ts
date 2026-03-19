@@ -5,8 +5,8 @@ export interface JobOffer {
   title: string;
   description: string;
   location: string;
-  minSalary: number;
-  maxSalary: number;
+  minSalary?: number | null;
+  maxSalary?: number | null;
   employmentType?: string;
   jobStatus?: string;
   requirements?: JobRequirement[];
