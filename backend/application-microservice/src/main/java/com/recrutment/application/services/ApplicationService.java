@@ -326,6 +326,18 @@ public class ApplicationService {
 
         // DB-level pagination
         Page<Application> p;
+
+        if (applicationId != null) {
+            List<Application> single = repo.findById(applicationId).map(List::of).orElseGet(List::of);
+            p = new PageImpl<>(single, pageable, single.size());
+        } else if (status != null) {
+            p = repo.findByStatus(status, pageable);
+        } else {
+            p = repo.findAll(pageable);
+        }
+
+        List<ApplicationDto> content = p.getContent().stream().map(this::toDto).toList();
+        return new PageResponse<>(content, safePage, safeSize, p.getTotalElements(), p.getTotalPages());
         if      (applicationId != null)             p = new PageImpl<>(repo.findById(applicationId).map(List::of).orElseGet(List::of), pageable, 1);
         else if (jobId != null && status != null)   p = repo.findByJobIdAndStatus(jobId, status, pageable);
         else if (jobId != null)                     p = repo.findByJobId(jobId, pageable);

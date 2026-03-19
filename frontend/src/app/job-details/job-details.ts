@@ -64,7 +64,7 @@ export class JobDetails implements OnInit {
     if (this.isCandidate)   this.loadMyApplicationForJob(id);
     if (this.showAppsPanel) this.loadStatusCounts(id);
   }
-
+  
   private loadJob(id: string): void {
     this.loading.set(true);
     this.error.set(null);
