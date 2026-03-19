@@ -39,7 +39,7 @@ export class JobDetails implements OnInit {
       this.loading.set(false);
     }
   }
-
+  
   private loadJob(id: string): void {
     this.loading.set(true);
     this.error.set(null);

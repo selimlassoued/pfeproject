@@ -24,9 +24,7 @@
       </button>
     </div>
   </div>
-}
-
-
+  }
 
   <!-- Search + Filters -->
   <div class="jobs-toolbar card" style="padding: 1rem; margin-bottom: 1.25rem;">
@@ -73,10 +71,15 @@
 
     <div class="toolbar-footer">
       <div class="text-muted">
-        Showing <strong>{{ getVisibleJobs().length }}</strong> of <strong>{{ getVisibleJobs().length }}</strong>
+        Showing <strong>{{ pageResponse?.content?.length ?? 0 }}</strong> of 
+        <strong>{{ pageResponse?.totalElements ?? 0 }}</strong>
       </div>
 
-      <button class="btn btn-ghost" type="button" (click)="resetFilters()" [disabled]="!hasActiveFilters()">
+      <button 
+        class="btn btn-ghost" 
+        type="button" 
+        (click)="resetFilters()" 
+        [disabled]="!hasActiveFilters()">
         Reset
       </button>
     </div>
@@ -90,13 +93,13 @@
     <div class="status status--error">{{ error }}</div>
   }
 
-  @if (!loading && !error && getVisibleJobs().length === 0) {
+  @if (!loading && !error && (pageResponse?.content?.length ?? 0) == 0) {
     <div class="status status--muted">
       No job offers match your search.
     </div>
   }
 
-  @if (!loading && !error && getVisibleJobs().length > 0) {
+  @if (!loading && !error && (pageResponse?.content?.length ?? 0) > 0) {
     <div style="display:grid; gap:1rem;">
       <article
         *ngFor="let job of getVisibleJobs()"
@@ -134,40 +137,76 @@
           <div class="text-muted">
             {{ salaryText(job) }}
           </div>
-
         </div>
+
         @if ((job.requirements?.length ?? 0) > 0) {
-  <div style="margin-top:.75rem;">
-    <div class="text-muted" style="font-size:.9rem; margin-bottom:.35rem;">
-      Requirements
-    </div>
+          <div style="margin-top:.75rem;">
+            <div class="text-muted" style="font-size:.9rem; margin-bottom:.35rem;">
+              Requirements
+            </div>
 
-    <div style="display:flex; flex-wrap:wrap; gap:.4rem;">
-      <span class="pill"
-            *ngFor="let r of (job.requirements ?? []).slice(0, 4)">
-        {{ r.category }}: {{ r.description }}
-      </span>
+            <div style="display:flex; flex-wrap:wrap; gap:.4rem;">
+              <span class="pill"
+                    *ngFor="let r of (job.requirements ?? []).slice(0, 4)">
+                {{ r.category }}: {{ r.description }}
+              </span>
 
-      @if ((job.requirements?.length ?? 0) > 4) {
-        <span class="pill">+{{ (job.requirements?.length ?? 0) - 4 }} more</span>
-      }
-    </div>
-  </div>
-}
-<div style="display:flex; gap:.5rem;">
-  <button class="btn btn-ghost" type="button" [routerLink]="['/jobs', job.id]">View details</button>
-    @if (isRecruiter || isAdmin) {
-    <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job.id]">
-      Edit
-    </button>
-    <button class="btn btn-ghost" type="button" (click)="deleteJob(job.id)" style="color: var(--color-secondary);">
-      Delete
-    </button>
-  }
-    @if (!isRecruiter && !isAdmin ) {
-  <button class="btn btn-primary" type="button">Apply</button>}
-</div>
+              @if ((job.requirements?.length ?? 0) > 4) {
+                <span class="pill">+{{ (job.requirements?.length ?? 0) - 4 }} more</span>
+              }
+            </div>
+          </div>
+        }
+
+        <div style="display:flex; gap:.5rem;">
+          <button class="btn btn-ghost" type="button" [routerLink]="['/jobs', job.id]">View details</button>
+          @if (isRecruiter || isAdmin) {
+            <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job.id]">
+              Edit
+            </button>
+            <button class="btn btn-ghost" type="button" (click)="deleteJob(job.id)" style="color: var(--color-secondary);">
+              Delete
+            </button>
+          }
+          @if (!isRecruiter && !isAdmin) {
+            <button class="btn btn-primary" type="button">Apply</button>
+          }
+        </div>
       </article>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
+      <button 
+        class="btn btn-ghost" 
+        type="button" 
+        (click)="previousPage()" 
+        [disabled]="!(pageResponse?.hasPrevious ?? false)">
+        ← Previous
+      </button>
+
+      <div class="text-muted">
+        Page {{ (pageResponse?.page ?? 0) + 1 }} of {{ pageResponse?.totalPages ?? 1 }}
+      </div>
+
+      <button 
+        class="btn btn-ghost" 
+        type="button" 
+        (click)="nextPage()" 
+        [disabled]="!(pageResponse?.hasNext ?? false)">
+        Next →
+      </button>
+
+      <select 
+        class="input" 
+        [value]="pageSize" 
+        (change)="changePageSize($event)"
+        style="width: auto; padding: 0.5rem;">
+        <option value="5">5 per page</option>
+        <option value="10">10 per page</option>
+        <option value="20">20 per page</option>
+        <option value="50">50 per page</option>
+      </select>
     </div>
   }
 </section>

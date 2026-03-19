@@ -1,7 +1,9 @@
 export interface PageResponse<T> {
   content: T[];
-  page: number;           
+  page: number;
   size: number;
   totalElements: number;
   totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
 }

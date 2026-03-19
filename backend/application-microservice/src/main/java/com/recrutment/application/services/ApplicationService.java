@@ -301,8 +301,6 @@ public class ApplicationService {
             List<Application> single = repo.findById(applicationId).map(List::of).orElseGet(List::of);
             p = new PageImpl<>(single, pageable, single.size());
         } else if (status != null) {
-            // ✅ best: add repo method findByStatus(status, pageable)
-            // if you don't have it yet, add it (shown below)
             p = repo.findByStatus(status, pageable);
         } else {
             p = repo.findAll(pageable);

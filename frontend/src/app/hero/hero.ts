@@ -1,9 +1,12 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { JobService } from '../services/job.service';
+import { PageResponse } from '../model/page-response';
 import { JobOffer } from '../model/jobOffer.model';
 import { RouterLink } from '@angular/router';
-import Keycloak, { KeycloakProfile } from 'keycloak-js';
+import Keycloak from 'keycloak-js';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-hero',
@@ -12,37 +15,81 @@ import Keycloak, { KeycloakProfile } from 'keycloak-js';
   templateUrl: './hero.html',
   styleUrl: './hero.css',
 })
-export class Hero implements OnInit {
-
+export class Hero implements OnInit, OnDestroy {
   private readonly keycloak = inject(Keycloak);
+  private readonly jobService = inject(JobService);
+  private destroy$ = new Subject<void>();
+
   jobs: JobOffer[] = [];
   loading = true;
   error: string | null = null;
 
-  constructor(private jobService: JobService) {}
-
   ngOnInit(): void {
-    this.jobService.getAllJobs().subscribe({
-      next: (data) => {
-        this.jobs = data.slice(0, 4);
-        this.loading = false;
-      },
-      error: () => {
-        this.error = 'Failed to load jobs';
-        this.loading = false;
-      },
-    });
+    this.loadFeaturedJobs();
   }
 
-  scrollToCandidate() {
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  /**
+   * Load featured jobs (first 4 published jobs)
+   * Uses the new paginated search endpoint
+   */
+  private loadFeaturedJobs(): void {
+    this.loading = true;
+    this.error = null;
+
+    this.jobService
+      .searchJobs(
+        undefined,        // query
+        undefined,        // employmentType
+        'PUBLISHED',      // jobStatus
+        undefined,        // minSalary
+        undefined,        // maxSalary
+        0,               // page
+        4                // size - fetch 4 jobs for featured section
+      )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: PageResponse<JobOffer>) => {
+          this.jobs = response.content ?? [];
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Failed to load featured jobs:', err);
+          this.error = 'Failed to load featured jobs.';
+          this.loading = false;
+        },
+      });
+  }
+
+  /**
+   * Smooth scroll to candidate section
+   */
+  scrollToCandidate(): void {
     document.getElementById('candidate')?.scrollIntoView({ behavior: 'smooth' });
   }
 
-    login() {
-        console.log(this.keycloak.token);
-
+  /**
+   * Login with Keycloak
+   */
+  login(): void {
     this.keycloak.login();
-    console.log(this.keycloak.token);
+  }
 
+  /**
+   * Check if user is authenticated
+   */
+  get isAuthenticated(): boolean {
+    return this.keycloak.authenticated ?? false;
+  }
+
+  /**
+   * Get authenticated user profile
+   */
+  get userProfile(): any {
+    return this.keycloak.profile;
   }
 }
