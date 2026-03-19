@@ -4,10 +4,15 @@ import com.zaina.jobmicroservice.domain.entities.JobOffer;
 import com.zaina.jobmicroservice.domain.entities.JobRequirement;
 import com.zaina.jobmicroservice.dto.JobOfferDto;
 import com.zaina.jobmicroservice.dto.JobRequirementDto;
+import com.zaina.jobmicroservice.dto.PageResponse;
+import com.zaina.jobmicroservice.domain.enums.EmploymentType;
+import com.zaina.jobmicroservice.domain.enums.JobStatus;
 import com.zaina.jobmicroservice.messaging.AppEventMessage;
 import com.zaina.jobmicroservice.messaging.AppEventPublisher;
 import com.zaina.jobmicroservice.repos.JobOfferRepo;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,6 +71,37 @@ public class JobOfferServiceImpl implements JobOfferService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<JobOfferDto> searchJobs(
+            String query,
+            EmploymentType employmentType,
+            JobStatus jobStatus,
+            Integer minSalary,
+            Integer maxSalary,
+            Pageable pageable) {
+
+        Page<JobOffer> page = jobOfferRepo.searchAndFilter(
+                query,
+                employmentType,
+                jobStatus,
+                minSalary,
+                maxSalary,
+                pageable
+        );
+
+        return PageResponse.<JobOfferDto>builder()
+                .content(page.getContent().stream().map(JobOfferServiceImpl::toDto).toList())
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .hasNext(page.hasNext())
+                .hasPrevious(page.hasPrevious())
+                .build();
+    }
+
+    @Override
+    public JobOfferDto createJobOffer(JobOfferDto dto) {
     public JobOfferDto createJobOffer(JobOfferDto dto, String actorUserId) {
         String actor = (actorUserId != null && !actorUserId.isBlank()) ? actorUserId : "SYSTEM";
 
