@@ -25,6 +25,15 @@ public class GatewayserverApplication {
                 .route("job-microservice", r -> r
                 .path("/api/jobs/**")
                 .uri("lb://job-microservice"))
+                .route("notification-microservice", r -> r
+                .path("/api/notifications/**")
+                .uri("lb://notification-microservice"))
+                .route("notification-ws", r -> r
+                .path("/ws/notifications/**")
+                .uri("lb://notification-microservice"))
+                .route("audit-service", r -> r
+                .path("/api/audit/**")
+                 .uri("lb://audit-service"))
                 .build();
     }
 }

@@ -47,9 +47,10 @@ services:
       - KC_MAIL_PASSWORD=${KC_MAIL_PASSWORD}
       - KC_MAIL_AUTH=${KC_MAIL_AUTH}
       - KC_MAIL_STARTTLS=${KC_MAIL_STARTTLS}
-    command: start-dev --log-level=DEBUG
+    command: start-dev --import-realm --log-level=DEBUG
     volumes:
       - ./hireAI:/opt/keycloak/themes
+      - ./keycloak-export:/opt/keycloak/data/import
     depends_on:
       keycloak-db:
         condition: service_healthy
@@ -185,6 +186,17 @@ services:
       config-server:
         condition: service_healthy
 
+  cv-parser-service:
+    build: ./cv-parser-service
+    container_name: cv-parser-service
+    networks:
+      - ai-recruitment-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # ← pour accéder à Ollama sur Windows
+    environment:
+      - APP_PORT=8085
+      - OLLAMA_HOST=http://host.docker.internal:11434
+
   application-db:
     image: postgres:16
     container_name: application-db
@@ -221,6 +233,92 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
+      cv-parser-service: # ← ajoute ça
+        condition: service_started
+
+  audit-db:
+    image: postgres:16
+    container_name: audit-db
+    networks:
+      - ai-recruitment-network
+    environment:
+      - POSTGRES_DB=auditdb
+      - POSTGRES_USER=audituser
+      - POSTGRES_PASSWORD=auditpass
+    volumes:
+      - audit_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U audituser -d auditdb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  audit-service:
+    build: ./audit-service
+    container_name: audit-service
+    networks:
+      - ai-recruitment-network
+    environment:
+      - CONFIG_SERVICE_URL=http://config-server:9999
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      audit-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  notification-db:
+    image: postgres:16
+    container_name: notification-db
+    networks:
+      - ai-recruitment-network
+    environment:
+      - POSTGRES_DB=notificationdb
+      - POSTGRES_USER=notificationuser
+      - POSTGRES_PASSWORD=notificationpass
+    ports:
+      - "5436:5432"
+    volumes:
+      - notification_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U notificationuser -d notificationdb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  notification-microservice:
+    build: ./notification-microservice
+    container_name: notification-microservice
+    networks:
+      - ai-recruitment-network
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://notification-db:5432/notificationdb
+      - SPRING_DATASOURCE_USERNAME=notificationuser
+      - SPRING_DATASOURCE_PASSWORD=notificationpass
+      - CONFIG_SERVICE_URL=http://config-server:9999
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - MAIL_HOST=${KC_MAIL_HOST}
+      - MAIL_PORT=${KC_MAIL_PORT}
+      - MAIL_USER=${KC_MAIL_USER}
+      - MAIL_PASSWORD=${KC_MAIL_PASSWORD}
+      - MAIL_AUTH=${KC_MAIL_AUTH}
+      - MAIL_STARTTLS=${KC_MAIL_STARTTLS}
+      - APP_SECURITY_KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/ai-recruitment/protocol/openid-connect/token
+      - APP_SECURITY_KEYCLOAK_CLIENT_ID=${BACKEND_CLIENT_ID}
+      - APP_SECURITY_KEYCLOAK_CLIENT_SECRET=${KC_BACKEND_CLIENT_SECRET}
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
 
 networks:
   ai-recruitment-network:
@@ -230,3 +328,5 @@ volumes:
   keycloak_pgdata:
   job_pgdata:
   app_pgdata:
+  audit_pgdata:
+  notification_pgdata:

@@ -6,15 +6,12 @@
 
       <div class="ad-head-left">
         <div>
-
-          <!-- ✅ Breadcrumb row with Back button -->
+          <!-- Breadcrumb row with Back button -->
           <div class="ad-breadcrumb-row">
             <button class="ad-back" type="button" (click)="backToList()" aria-label="Back">
               ← Back
             </button>
-
             <span class="ad-breadcrumb-sep">•</span>
-
             <span class="ad-breadcrumb">Applications / Detail</span>
           </div>
 
@@ -25,13 +22,13 @@
         </div>
       </div>
 
-      <!-- ✅ Actions -->
+      <!-- Actions -->
       <div class="ad-actions">
         <span class="ad-status" [ngClass]="(app.status || '').toLowerCase()">
           {{ app.status }}
         </span>
 
-        <!-- ✅ NEW: update status -->
+        <!-- Update status -->
         <div class="ad-status-edit">
           <select class="input" [(ngModel)]="newStatus">
             <option value="APPLIED">APPLIED</option>
@@ -51,6 +48,11 @@
             {{ updatingStatus ? 'Updating…' : 'Update Status' }}
           </button>
         </div>
+
+        <!-- AI Analysis button -->
+        <button class="btn btn-ai" type="button" (click)="openAnalysis()">
+          🤖 AI Analysis
+        </button>
 
         <button class="btn btn-ghost" type="button" (click)="downloadCv()">
           ⬇ Download CV
@@ -77,6 +79,11 @@
 
         <button class="ad-linkbtn" type="button" (click)="goToUser()">
           View candidate profile →
+        </button>
+
+        <!-- AI Analysis shortcut in left panel -->
+        <button class="ad-linkbtn ad-linkbtn-ai" type="button" (click)="openAnalysis()">
+          🤖 View AI CV Analysis →
         </button>
 
         <div class="ad-divider"></div>
@@ -110,9 +117,7 @@
           <div class="ad-block-body">
             <div class="ad-kv">
               <div class="ad-k">Title</div>
-              <div class="ad-v">
-                {{ app.jobTitle || 'Unknown job title' }}
-              </div>
+              <div class="ad-v">{{ app.jobTitle || 'Unknown job title' }}</div>
             </div>
 
             <div class="ad-kv">
@@ -179,3 +184,11 @@
     <div *ngIf="error" class="ad-error">{{ error }}</div>
   </ng-template>
 </div>
+
+<!-- CV Analysis Drawer -->
+<app-cv-analysis-drawer
+  *ngIf="drawerOpen"
+  [applicationId]="app?.applicationId ?? null"
+  [candidateName]="app?.candidateName ?? null"
+  (closed)="closeDrawer()">
+</app-cv-analysis-drawer>

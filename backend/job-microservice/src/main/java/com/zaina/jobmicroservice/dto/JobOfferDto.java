@@ -1,4 +1,5 @@
 package com.zaina.jobmicroservice.dto;
+
 import com.zaina.jobmicroservice.domain.enums.EmploymentType;
 import com.zaina.jobmicroservice.domain.enums.JobStatus;
 import lombok.AllArgsConstructor;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class JobOfferDto {
     private UUID id;
+    private String refNumber;   // ← added
     private String title;
     private String description;
     private String location;

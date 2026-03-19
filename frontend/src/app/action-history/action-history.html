@@ -1,0 +1,215 @@
+<div class="page">
+
+  <!-- ── Header ── -->
+  <div class="page-header fade-up">
+    <a routerLink="/admin-dashboard" class="back-btn">← Dashboard</a>
+    <div class="page-title-row">
+      <div class="page-icon">🕵️</div>
+      <h1 class="page-title">Admin <span class="accent">Action History</span></h1>
+    </div>
+    <p class="page-sub">Audit trail for a specific admin or recruiter</p>
+  </div>
+
+  <!-- ── Actor selector ── -->
+  <div class="selector-card glass-card fade-up" style="animation-delay:.1s">
+    <div class="selector-label">Select User</div>
+
+    <div *ngIf="adminsLoading" class="empty-state">Loading users…</div>
+
+    <div class="selector-row" *ngIf="!adminsLoading">
+      <select class="actor-select" [(ngModel)]="selectedActorId" (change)="onActorChange()">
+        <option value="">— Choose an admin / recruiter —</option>
+        <option *ngFor="let user of admins" [value]="user.id">
+          {{ user.firstName }} {{ user.lastName }}
+          ({{ getUserRole(user) }} · {{ user.email }})
+        </option>
+      </select>
+
+      <!-- selected actor chip -->
+      <div class="actor-chip" *ngIf="selectedActor">
+        <div class="chip-avatar"
+          [style.background]="'hsl(' + getUserHue(selectedActor) + ',50%,26%)'"
+          [style.border-color]="'hsl(' + getUserHue(selectedActor) + ',50%,38%)'">
+          {{ getUserInitials(selectedActor) }}
+        </div>
+        <div>
+          <div class="chip-name">{{ selectedActor.firstName }} {{ selectedActor.lastName }}</div>
+          <div class="chip-meta">
+            <span class="chip-role">{{ getUserRole(selectedActor) }}</span>
+            <span class="chip-email">{{ selectedActor.email }}</span>
+          </div>
+        </div>
+        <span class="chip-total">{{ totalLogs }} actions</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main content (only when actor selected) ── -->
+  <ng-container *ngIf="selectedActorId">
+
+    <!-- section label + filter pills -->
+    <div class="section-label fade-up" style="animation-delay:.13s">
+      History
+      <span class="log-count">({{ totalLogs }})</span>
+      <span class="range-badge" *ngIf="activeFilter !== 'ALL'">{{ activeFilter }}</span>
+    </div>
+
+    <div class="filters fade-up" style="animation-delay:.15s">
+      <button *ngFor="let f of FILTERS"
+        class="filter-btn"
+        [class.active]="activeFilter === f.key"
+        [style.--fcolor]="f.color"
+        (click)="setFilter(f.key)">
+        {{ f.label }}
+      </button>
+    </div>
+
+    <div *ngIf="loading" class="empty-state">Loading…</div>
+
+    <ng-container *ngIf="!loading">
+
+      <!-- ── Log card — identical structure to dashboard ── -->
+      <div class="glass-card log-card fade-up" style="animation-delay:.2s">
+        <ng-container *ngIf="logs.length > 0; else noLogs">
+          <div *ngFor="let log of logs; let i = index; trackBy: trackById"
+            class="log-entry">
+
+            <!-- collapsed row -->
+            <div class="log-row"
+              [class.log-row--expanded]="isExpanded(log)"
+              [class.log-row--border]="i < logs.length - 1 && !isExpanded(log)"
+              (click)="toggleLog(log)">
+
+              <span class="event-pill"
+                [style.color]="getEventMeta(log.eventType).color"
+                [style.border-color]="getEventMeta(log.eventType).color + '40'"
+                [style.background]="getEventMeta(log.eventType).bg">
+                <span class="pill-dot" [style.background]="getEventMeta(log.eventType).color"></span>
+                {{ getEventMeta(log.eventType).label }}
+              </span>
+
+              <div class="log-info">
+                <div class="log-main-line">
+                  <span class="log-actor">{{ getActorName(log) }}</span>
+                  <ng-container *ngIf="getTargetName(log)">
+                    <span class="log-arrow">→</span>
+                    <span class="log-target">{{ getTargetName(log) }}</span>
+                  </ng-container>
+                </div>
+                <div class="log-reason" *ngIf="getDisplayReason(log) as reason">
+                  "{{ reason }}"
+                </div>
+              </div>
+
+              <div class="log-right">
+                <span class="log-time">{{ timeAgo(log.createdAt || log.occurredAt) }}</span>
+                <span class="log-chevron" [class.log-chevron--open]="isExpanded(log)">›</span>
+              </div>
+            </div>
+
+            <!-- expanded detail panel -->
+            <div class="log-detail"
+              *ngIf="isExpanded(log)"
+              [class.log-detail--border]="i < logs.length - 1">
+
+              <div class="log-detail-grid">
+
+                <div class="ld-item">
+                  <div class="ld-label">Event</div>
+                  <span class="event-pill event-pill--sm"
+                    [style.color]="getEventMeta(log.eventType).color"
+                    [style.border-color]="getEventMeta(log.eventType).color + '40'"
+                    [style.background]="getEventMeta(log.eventType).bg">
+                    <span class="pill-dot" [style.background]="getEventMeta(log.eventType).color"></span>
+                    {{ getEventMeta(log.eventType).label }}
+                  </span>
+                </div>
+
+                <div class="ld-item">
+                  <div class="ld-label">Event ID</div>
+                  <div class="ld-value ld-mono">{{ log.eventId }}</div>
+                </div>
+
+                <div class="ld-item">
+                  <div class="ld-label">Actor</div>
+                  <div class="ld-value">
+                    <span class="ld-name">{{ getActorName(log) }}</span>
+                    <span class="ld-sub ld-mono" *ngIf="log.actorUserId && log.actorUserId !== 'SYSTEM'">
+                      {{ log.actorUserId }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="ld-item" *ngIf="log.targetId">
+                  <div class="ld-label">Target</div>
+                  <div class="ld-value">
+                    <span class="ld-name">{{ getTargetName(log) }}</span>
+                    <span class="ld-sub ld-mono">{{ log.targetId }}</span>
+                  </div>
+                </div>
+
+                <div class="ld-item" *ngIf="getDisplayReason(log) as reason">
+                  <div class="ld-label">Reason</div>
+                  <div class="ld-value ld-reason">"{{ reason }}"</div>
+                </div>
+
+                <div class="ld-item">
+                  <div class="ld-label">Time</div>
+                  <div class="ld-value ld-mono">
+                    {{ formatDate(log.createdAt || log.occurredAt) }}
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Changes table -->
+              <ng-container *ngIf="getChangesEntries(log).length > 0">
+                <div class="ld-changes-title">Changes</div>
+                <div class="ld-changes">
+                  <div class="ld-change-row ld-change-row--header">
+                    <span class="ld-change-key">Field</span>
+                    <span class="ld-change-before">Before</span>
+                    <span class="ld-change-after">After</span>
+                  </div>
+                  <div *ngFor="let c of getChangesEntries(log)" class="ld-change-row">
+                    <span class="ld-change-key">{{ c.key }}</span>
+                    <ng-container *ngIf="c.oldVal !== null || c.newVal !== null">
+                      <span class="ld-old">{{ c.oldVal ?? '—' }}</span>
+                      <span class="ld-new">{{ c.newVal ?? '—' }}</span>
+                    </ng-container>
+                    <ng-container *ngIf="c.simple !== null">
+                      <span class="ld-simple">—</span>
+                      <span class="ld-simple">{{ c.simple }}</span>
+                    </ng-container>
+                  </div>
+                </div>
+              </ng-container>
+
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #noLogs>
+          <div class="empty-state">
+            No {{ activeFilter !== 'ALL' ? getEventMeta(activeFilter).label.toLowerCase() + ' ' : '' }}actions found for this user
+          </div>
+        </ng-template>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <button class="pg-btn" (click)="prevPage()" [disabled]="page === 0">← Prev</button>
+        <span class="pg-info">{{ page + 1 }} / {{ totalPages }}</span>
+        <button class="pg-btn" (click)="nextPage()" [disabled]="page + 1 >= totalPages">Next →</button>
+      </div>
+
+    </ng-container>
+  </ng-container>
+
+  <!-- placeholder -->
+  <div *ngIf="!selectedActorId && !adminsLoading" class="placeholder fade-up">
+    <div class="placeholder-icon">🕵️</div>
+    <div class="placeholder-text">Select a user above to view their action history</div>
+  </div>
+
+</div>

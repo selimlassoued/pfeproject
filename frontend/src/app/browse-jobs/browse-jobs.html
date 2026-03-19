@@ -172,6 +172,28 @@
             <button class="btn btn-primary" type="button">Apply</button>
           }
         </div>
+      @if ((job.requirements?.length ?? 0) > 4) {
+        <span class="pill">+{{ (job.requirements?.length ?? 0) - 4 }} more</span>
+      }
+    </div>
+  </div>
+}
+<div style="display:flex; gap:.5rem;">
+  <button class="btn btn-ghost" type="button" [routerLink]="['/jobs', job.id]">View details</button>
+    @if (isRecruiter || isAdmin) {
+    <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job.id]">
+      Edit
+    </button>
+    <button class="btn btn-ghost" type="button" (click)="deleteJob(job.id)" style="color: var(--color-secondary);">
+      Delete
+    </button>
+  }
+    @if (isCandidate) {
+  <button class="btn btn-primary" type="button" [disabled]="checkingMyApps" (click)="applyOrView(job.id)">
+    {{ applyBtnLabel(job.id) }}
+  </button>
+}
+</div>
       </article>
     </div>
 

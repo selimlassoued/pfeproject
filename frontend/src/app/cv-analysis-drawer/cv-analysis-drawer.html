@@ -1,0 +1,255 @@
+<!-- Backdrop -->
+<div class="drawer-backdrop" (click)="close()"></div>
+
+<!-- Drawer Panel -->
+<div class="drawer-panel">
+
+  <!-- Header -->
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <div class="drawer-avatar">
+        {{ (analysis?.candidateName || candidateName || '?').charAt(0).toUpperCase() }}
+      </div>
+      <div>
+        <h2 class="drawer-name">{{ analysis?.candidateName || candidateName || 'Candidate' }}</h2>
+        <div class="drawer-meta-row">
+          <span *ngIf="analysis?.seniorityLevel" class="seniority-pill" [ngClass]="seniorityColor">
+            {{ analysis?.seniorityLevel }}
+          </span>
+          <span *ngIf="analysis?.desiredPosition" class="drawer-position">
+            {{ analysis?.desiredPosition }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <button class="drawer-close" (click)="close()">✕</button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="drawer-loading">
+    <div class="drawer-spinner"></div>
+    <span>Analyzing CV...</span>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="!loading && error" class="drawer-error">
+    <span class="drawer-error-icon">⚠</span>
+    <div>
+      <div class="drawer-error-title">Analysis unavailable</div>
+      <div class="drawer-error-msg">{{ error }}</div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div *ngIf="!loading && analysis && !error" class="drawer-content">
+
+    <!-- Contact Row -->
+    <div class="drawer-contact-row">
+      <a *ngIf="analysis.email" [href]="'mailto:' + analysis.email" class="contact-chip">
+        <span class="chip-icon">✉</span> {{ analysis.email }}
+      </a>
+      <span *ngIf="analysis.phone" class="contact-chip">
+        <span class="chip-icon">📞</span> {{ analysis.phone }}
+      </span>
+      <span *ngIf="analysis.location" class="contact-chip">
+        <span class="chip-icon">📍</span> {{ analysis.location }}
+      </span>
+      <a *ngIf="analysis.socialLinks?.linkedin" [href]="analysis.socialLinks!.linkedin!" target="_blank" class="contact-chip chip-link">
+        <span class="chip-icon">in</span> LinkedIn
+      </a>
+      <a *ngIf="analysis.socialLinks?.github" [href]="analysis.socialLinks!.github!" target="_blank" class="contact-chip chip-link">
+        <span class="chip-icon">⌥</span> GitHub
+      </a>
+    </div>
+
+    <!-- Summary -->
+    <div *ngIf="analysis.summary" class="drawer-section">
+      <div class="section-label">Profile Summary</div>
+      <p class="drawer-summary">{{ analysis.summary }}</p>
+    </div>
+
+    <!-- Evidence Signals -->
+    <div *ngIf="analysis.evaluation?.evidenceSignals" class="drawer-section">
+      <div class="section-label">Evidence Signals</div>
+      <div class="evidence-grid">
+        <div class="evidence-item">
+          <span class="ev-label">Technical</span>
+          <span class="ev-badge" [ngClass]="evidenceLevel(analysis.evaluation!.evidenceSignals!.technicalEvidence)">
+            {{ analysis.evaluation!.evidenceSignals!.technicalEvidence }}
+          </span>
+        </div>
+        <div class="evidence-item">
+          <span class="ev-label">Projects</span>
+          <span class="ev-badge" [ngClass]="evidenceLevel(analysis.evaluation!.evidenceSignals!.projectEvidence)">
+            {{ analysis.evaluation!.evidenceSignals!.projectEvidence }}
+          </span>
+        </div>
+        <div class="evidence-item">
+          <span class="ev-label">Leadership</span>
+          <span class="ev-badge" [ngClass]="evidenceLevel(analysis.evaluation!.evidenceSignals!.leadershipEvidence)">
+            {{ analysis.evaluation!.evidenceSignals!.leadershipEvidence }}
+          </span>
+        </div>
+        <div class="evidence-item">
+          <span class="ev-label">Competition</span>
+          <span class="ev-badge" [ngClass]="evidenceLevel(analysis.evaluation!.evidenceSignals!.competitionEvidence)">
+            {{ analysis.evaluation!.evidenceSignals!.competitionEvidence }}
+          </span>
+        </div>
+        <div class="evidence-item">
+          <span class="ev-label">Portfolio</span>
+          <span class="ev-badge" [ngClass]="evidenceLevel(analysis.evaluation!.evidenceSignals!.publicPortfolioEvidence)">
+            {{ analysis.evaluation!.evidenceSignals!.publicPortfolioEvidence }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skills -->
+    <div *ngIf="analysis.skills?.length" class="drawer-section">
+      <div class="section-label">Technical Skills</div>
+      <div class="pills-wrap">
+        <span *ngFor="let skill of analysis.skills; trackBy: trackByIndex" class="pill-skill">
+          {{ skill }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Soft Skills -->
+    <div *ngIf="analysis.softSkills?.length" class="drawer-section">
+      <div class="section-label">Soft Skills</div>
+      <div class="pills-wrap">
+        <span *ngFor="let skill of analysis.softSkills; trackBy: trackByIndex" class="pill-soft">
+          {{ skill }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Languages -->
+    <div *ngIf="analysis.languages?.length" class="drawer-section">
+      <div class="section-label">Languages</div>
+      <div class="lang-row">
+        <div *ngFor="let lang of analysis.languages; trackBy: trackByIndex" class="lang-item">
+          <span class="lang-name">{{ lang.name }}</span>
+          <span *ngIf="lang.level" class="lang-level">{{ lang.level }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Work Experience -->
+    <div *ngIf="analysis.workExperience?.length" class="drawer-section">
+      <div class="section-label">Work Experience</div>
+      <div class="timeline">
+        <div *ngFor="let exp of analysis.workExperience; trackBy: trackByIndex" class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-body">
+            <div class="timeline-title">{{ exp.title }}</div>
+            <div class="timeline-sub">{{ exp.company }} <span *ngIf="exp.duration" class="timeline-duration">· {{ exp.duration }}</span></div>
+            <p *ngIf="exp.description" class="timeline-desc">{{ exp.description }}</p>
+            <div *ngIf="exp.skillsUsed?.length" class="pills-wrap pills-sm">
+              <span *ngFor="let s of exp.skillsUsed; trackBy: trackByIndex" class="pill-skill pill-sm">{{ s }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Education -->
+    <div *ngIf="analysis.education?.length" class="drawer-section">
+      <div class="section-label">Education</div>
+      <div class="timeline">
+        <div *ngFor="let edu of analysis.education; trackBy: trackByIndex" class="timeline-item">
+          <div class="timeline-dot timeline-dot-edu"></div>
+          <div class="timeline-body">
+            <div class="timeline-title">{{ edu.degree }}</div>
+            <div class="timeline-sub">{{ edu.institution }} <span *ngIf="edu.year" class="timeline-duration">· {{ edu.year }}</span></div>
+            <span *ngIf="edu.mention" class="mention-badge">🏆 {{ edu.mention }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hackathons -->
+    <div *ngIf="analysis.hackathons?.length" class="drawer-section">
+      <div class="section-label">Hackathons & Competitions</div>
+      <div class="hack-list">
+        <div *ngFor="let hack of analysis.hackathons; trackBy: trackByIndex" class="hack-item">
+          <div class="hack-header">
+            <span class="hack-title">{{ hack.title }}</span>
+            <span *ngIf="hack.rank" class="hack-rank">{{ hack.rank }}</span>
+          </div>
+          <div *ngIf="hack.date" class="hack-date">{{ hack.date }}</div>
+          <p *ngIf="hack.description" class="hack-desc">{{ hack.description }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Volunteer Work -->
+    <div *ngIf="analysis.volunteerWork?.length" class="drawer-section">
+      <div class="section-label">Volunteer & Associations</div>
+      <div class="timeline">
+        <div *ngFor="let vol of analysis.volunteerWork; trackBy: trackByIndex" class="timeline-item">
+          <div class="timeline-dot timeline-dot-vol"></div>
+          <div class="timeline-body">
+            <div class="timeline-title">{{ vol.role }}</div>
+            <div class="timeline-sub">
+              <span *ngIf="vol.organization">{{ vol.organization }}</span>
+              <span *ngIf="vol.duration" class="timeline-duration">· {{ vol.duration }}</span>
+            </div>
+            <p *ngIf="vol.description" class="timeline-desc">{{ vol.description }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Awards -->
+    <div *ngIf="analysis.awards?.length" class="drawer-section">
+      <div class="section-label">Awards & Recognition</div>
+      <div class="awards-list">
+        <div *ngFor="let award of analysis.awards; trackBy: trackByIndex" class="award-item">
+          🏅 {{ award }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Recruiter Insights -->
+    <div *ngIf="analysis.evaluation?.recruiterInsights?.length" class="drawer-section">
+      <div class="section-label">Recruiter Insights</div>
+      <div class="insights-list">
+        <div *ngFor="let insight of analysis.evaluation!.recruiterInsights; trackBy: trackByIndex" class="insight-item">
+          <span class="insight-dot">→</span> {{ insight }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Strengths & Weaknesses -->
+    <div *ngIf="analysis.evaluation" class="drawer-section">
+      <div class="sw-grid">
+        <div *ngIf="analysis.evaluation.profileStrengths?.length" class="sw-col">
+          <div class="section-label section-label-green">Strengths</div>
+          <div *ngFor="let s of analysis.evaluation.profileStrengths; trackBy: trackByIndex" class="sw-item sw-strength">
+            ✓ {{ s }}
+          </div>
+        </div>
+        <div *ngIf="analysis.evaluation.profileWeaknesses?.length" class="sw-col">
+          <div class="section-label section-label-red">Weaknesses</div>
+          <div *ngFor="let w of analysis.evaluation.profileWeaknesses; trackBy: trackByIndex" class="sw-item sw-weakness">
+            ✗ {{ w }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Warnings -->
+    <div *ngIf="analysis.evaluation?.dateWarnings?.length || analysis.evaluation?.gapWarnings?.length" class="drawer-section">
+      <div class="section-label section-label-yellow">Warnings</div>
+      <div *ngFor="let w of analysis.evaluation!.dateWarnings; trackBy: trackByIndex" class="warning-item">
+        ⚠ {{ w }}
+      </div>
+      <div *ngFor="let w of analysis.evaluation!.gapWarnings; trackBy: trackByIndex" class="warning-item">
+        ⚠ {{ w }}
+      </div>
+    </div>
+
+  </div>
+</div>

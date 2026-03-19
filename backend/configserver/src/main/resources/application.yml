@@ -15,7 +15,7 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/selimlassoued/config-repo.git
+          uri: https://github.com/selimlassoued/hireAI-config-repo.git
           default-label: main
           clone-on-start: true
 

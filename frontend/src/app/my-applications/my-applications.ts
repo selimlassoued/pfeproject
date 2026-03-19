@@ -39,7 +39,6 @@ export class MyApplications implements OnInit {
   }
 
   openDetails(app: ApplicationDto) {
-    // candidate-safe route (you will create it or reuse existing details page)
     this.router.navigate(['/my-application', app.applicationId]);
   }
 

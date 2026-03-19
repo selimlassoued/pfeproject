@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.recrutment.application.entities.CvAnalysis;
+import com.recrutment.application.services.CvAnalysisService;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -22,7 +25,7 @@ import java.util.UUID;
 @RequestMapping("/api/applications")
 @RequiredArgsConstructor
 public class ApplicationController {
-
+    private final CvAnalysisService cvAnalysisService;
     private final ApplicationService service;
     private final ApplicationRepo repo;
 
@@ -38,7 +41,6 @@ public class ApplicationController {
         return service.apply(jobId, candidateUserId, githubUrl, cv);
     }
 
-    // ✅ download CV
     @GetMapping("/{id}/cv")
     public ResponseEntity<byte[]> downloadCv(@PathVariable UUID id) {
         Application app = repo.findById(id)
@@ -51,23 +53,16 @@ public class ApplicationController {
                 .body(app.getCvFile());
     }
 
-    /**
-     * ✅ NEW LIST SEARCH:
-     * /api/applications?applicationId=...
-     * /api/applications?jobTitle=java
-     * /api/applications?candidateName=selim
-     * /api/applications?status=APPLIED
-     *
-     * Can combine status + jobTitle/candidateName.
-     */
+    // ✅ Single list endpoint — supports optional jobId filter
     @GetMapping
     public List<ApplicationDto> list(
             @RequestParam(required = false) UUID applicationId,
+            @RequestParam(required = false) UUID jobId,
             @RequestParam(required = false) ApplicationStatus status,
             @RequestParam(required = false) String jobTitle,
             @RequestParam(required = false) String candidateName
     ) {
-        return service.listApplications(applicationId, status, jobTitle, candidateName);
+        return service.listApplicationsPaged(applicationId, jobId, status, jobTitle, candidateName, 0, 50).getContent();
     }
 
     @GetMapping("/{id}")
@@ -134,22 +129,37 @@ public class ApplicationController {
     @PatchMapping("/{id}/status")
     public ApplicationDto updateStatus(
             @PathVariable UUID id,
-            @RequestParam ApplicationStatus status
+            @RequestParam ApplicationStatus status,
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        return service.updateStatus(id, status);
+        String actorUserId = (jwt != null && jwt.getSubject() != null) ? jwt.getSubject() : "SYSTEM";
+        return service.updateStatus(id, status, actorUserId);
+    }
+
+    @GetMapping("/internal/job/{jobId}/candidate-ids")
+    public List<String> getCandidateIdsByJob(@PathVariable UUID jobId) {
+        return service.getCandidateUserIdsByJob(jobId);
     }
 
     @GetMapping("/paged")
     public PageResponse<ApplicationDto> listPaged(
             @RequestParam(required = false) UUID applicationId,
+            @RequestParam(required = false) UUID jobId,
             @RequestParam(required = false) ApplicationStatus status,
             @RequestParam(required = false) String jobTitle,
             @RequestParam(required = false) String candidateName,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return service.listApplicationsPaged(applicationId, status, jobTitle, candidateName, page, size);
+        return service.listApplicationsPaged(applicationId, jobId, status, jobTitle, candidateName, page, size);
+    }
+    @GetMapping("/{id}/analysis")
+    public CvAnalysis getAnalysis(@PathVariable UUID id) {
+        return cvAnalysisService.getAnalysis(id);
     }
 
-
+    @GetMapping("/{id}/analysis/exists")
+    public boolean hasAnalysis(@PathVariable UUID id) {
+        return cvAnalysisService.hasAnalysis(id);
+    }
 }
