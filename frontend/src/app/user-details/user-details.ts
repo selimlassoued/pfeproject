@@ -99,20 +99,57 @@ export class UserDetails implements OnInit {
   async toggleBlock(): Promise<void> {
     if (!this.user) return;
 
+    const nextEnabled = !(this.user.enabled ?? true);
+    const action = nextEnabled ? 'unblock' : 'block';
+    const actionTitle = nextEnabled ? 'Unblock' : 'Block';
+
+    const result = await Swal.fire({
+      title: `${actionTitle} user?`,
+      text: `Please provide a reason for ${action}ing this user:`,
+      input: 'text',
+      inputPlaceholder: 'Enter reason (optional)',
+      inputValue: '',
+      showCancelButton: true,
+      confirmButtonText: `Yes, ${action}`,
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: nextEnabled ? '#4caf50' : '#d32f2f',
+      inputValidator: (value) => {
+        return null;
+      },
+    });
+
+    if (!result.isConfirmed) return;
+
+    const reason = result.value?.trim() || undefined;
+
     this.acting = true;
     this.error = null;
 
     try {
-      const nextEnabled = !(this.user.enabled ?? true);
-      await this.users.setEnabled(this.user.id, nextEnabled);
+      await this.users.setEnabled(this.user.id, nextEnabled, reason);
+      
+      await Swal.fire({
+        title: 'Success',
+        text: `User ${action}ed successfully.`,
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
       await this.load();
     } catch (e: any) {
-      this.error = e?.error?.message ?? e?.message ?? 'Failed to update status.';
+      const errorMsg = e?.error?.message ?? e?.message ?? `Failed to ${action} user.`;
+      this.error = errorMsg;
+      await Swal.fire({
+        title: 'Error',
+        text: errorMsg,
+        icon: 'error',
+      });
     } finally {
       this.acting = false;
     }
   }
-
+  /*
   async deleteUser(): Promise<void> {
     if (!this.user) return;
 
@@ -151,7 +188,7 @@ export class UserDetails implements OnInit {
     } finally {
       this.deleting = false;
     }
-  }
+  }*/
 
   async saveRoles(): Promise<void> {
     if (!this.user) return;

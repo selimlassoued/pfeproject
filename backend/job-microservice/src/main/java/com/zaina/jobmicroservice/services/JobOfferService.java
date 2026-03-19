@@ -20,5 +20,7 @@ public interface JobOfferService {
 
     JobOfferDto updateJobOffer(UUID id, JobOfferDto dto);
 
+    JobOfferDto createJobOffer(JobOfferDto dto, String actorUserId);
+    JobOfferDto updateJobOffer(UUID id, JobOfferDto dto, String reason, String actorUserId);
     void deleteJobOffer(UUID id);
 }

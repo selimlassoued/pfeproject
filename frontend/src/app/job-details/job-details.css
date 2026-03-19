@@ -114,3 +114,166 @@
   justify-content:flex-end;
   flex-wrap:wrap;
 }
+
+
+
+/* ══ Add these to your job-details.css ══ */
+
+/* Applications panel */
+.apps-panel {
+  margin-top: 2rem;
+}
+
+.apps-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.apps-panel-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--color-cream);
+  letter-spacing: -0.02em;
+}
+
+.apps-total-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  background: rgba(121,164,233,0.1);
+  border: 1px solid rgba(121,164,233,0.25);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+}
+
+/* Status tabs */
+.apps-status-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.apps-status-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.42rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+  letter-spacing: 0.04em;
+  transition: all 0.15s ease;
+}
+.apps-status-tab:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--color-text);
+}
+.apps-status-tab--active {
+  border-color: color-mix(in srgb, var(--tab-color) 50%, transparent);
+  color: var(--tab-color) !important;
+  background: color-mix(in srgb, var(--tab-color) 10%, transparent);
+}
+
+.apps-tab-count {
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.08rem 0.45rem;
+  min-width: 20px;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+/* Table wrapper */
+.apps-table-wrap {
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.035));
+  border: 1px solid var(--color-border);
+  border-radius: 1.75rem;
+  overflow: hidden;
+}
+
+.apps-state {
+  padding: 2.5rem;
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+/* Table */
+.apps-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.apps-table thead tr {
+  border-bottom: 1px solid rgba(121,164,233,0.12);
+}
+.apps-table th {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(121,164,233,0.55);
+  text-align: left;
+}
+.apps-table td {
+  padding: 0.85rem 1.25rem;
+  font-size: 0.82rem;
+  color: var(--color-text);
+  vertical-align: middle;
+}
+.apps-table tbody tr {
+  border-bottom: 1px solid rgba(121,164,233,0.07);
+  transition: background 0.12s ease;
+}
+.apps-table tbody tr:last-child { border-bottom: none; }
+.apps-table tbody tr.row-click {
+  cursor: pointer;
+}
+.apps-table tbody tr.row-click:hover {
+  background: rgba(121,164,233,0.07);
+}
+
+.app-candidate-name {
+  font-weight: 500;
+  color: var(--color-cream);
+  margin-bottom: 0.1rem;
+}
+
+.app-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.pill-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Pagination */
+.apps-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid rgba(121,164,233,0.09);
+}

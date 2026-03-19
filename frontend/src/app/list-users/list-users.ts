@@ -14,6 +14,8 @@ import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { UserService } from '../services/user-service';
 import { AdminUserRow } from '../model/admin_users.type';
 
+import { ActivatedRoute } from '@angular/router';
+
 type EnabledFilter = 'ALL' | 'ENABLED' | 'DISABLED';
 type RoleFilter = 'ALL' | string;
 
@@ -43,34 +45,31 @@ export class ListUsers implements OnInit, OnDestroy {
   roleFilter: RoleFilter = 'ALL';
   rolesOptions: string[] = [];
 
-  // server fetch cap (Keycloak endpoint uses first/max)
   apiMax = 200;
 
-  // pagination
-  pageIndex = 0; // 0-based
+  pageIndex = 0; 
   pageSize = 20;
   totalPages = 0;
   totalElements = 0;
 
-  // compact pager window
   pagerWindow = 3;
 
-  // custom dropdown (Rows)
   rowsOpen = false;
   rowsOptions = [10, 20, 50];
 
   private destroy$ = new Subject<void>();
   private refreshKey$ = new Subject<string>();
 
-  constructor(private adminUsers: UserService, private router: Router) {}
+  constructor(private adminUsers: UserService, private router: Router, private route: ActivatedRoute) {}
 
   ngOnInit(): void {
+  // pre-apply filter if coming from dashboard
+    const filter = this.route.snapshot.queryParamMap.get('filter');
+    if (filter === 'DISABLED') this.enabledFilter = 'DISABLED';
+
     this.refreshKey$
       .pipe(debounceTime(350), distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.pageIndex = 0;
-        this.load();
-      });
+      .subscribe(() => { this.pageIndex = 0; this.load(); });
 
     this.load();
   }
@@ -80,11 +79,9 @@ export class ListUsers implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // close dropdown on outside click / escape
   @HostListener('document:click', ['$event'])
   onDocClick(ev: MouseEvent) {
     const target = ev.target as HTMLElement;
-    // close if clicking outside rows dropdown
     if (!target.closest('.rows-dd')) this.rowsOpen = false;
   }
 
@@ -93,7 +90,6 @@ export class ListUsers implements OnInit, OnDestroy {
     this.rowsOpen = false;
   }
 
-  // ============ UI events ============
   onSearchChange(v: string) {
     this.search = v;
     this.emitRefresh();
@@ -104,7 +100,6 @@ export class ListUsers implements OnInit, OnDestroy {
   }
 
   refresh() {
-    // manual button: refresh from API
     this.pageIndex = 0;
     this.load(true);
   }
@@ -132,7 +127,6 @@ export class ListUsers implements OnInit, OnDestroy {
     return `${this.search.trim()}|${this.enabledFilter}|${this.roleFilter}|${this.apiMax}`;
   }
 
-  // ============ loading ============
   async load(forceReload = false): Promise<void> {
     this.loading = true;
     this.error = null;
@@ -142,13 +136,12 @@ export class ListUsers implements OnInit, OnDestroy {
         const fetched = await this.adminUsers.listUsers({
           first: 0,
           max: this.apiMax,
-          search: this.search, // server-side search
+          search: this.search, 
         });
 
         this.all = fetched ?? [];
       }
 
-      // Build role options from current loaded set
       const rolesSet = new Set<string>();
       for (const u of this.all) {
         const r = (u.role ?? '').trim();
@@ -172,9 +165,7 @@ export class ListUsers implements OnInit, OnDestroy {
     }
   }
 
-  // ============ filtering + pagination ============
   private applyFiltersAndPaginate() {
-    // client-side filters on loaded results
     this.filtered = (this.all ?? []).filter((u) => {
       // enabled
       const enabledOk =

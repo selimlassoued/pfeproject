@@ -1,4 +1,3 @@
-<!-- list-applications.html -->
 <div class="apps-page">
   <div class="apps-head">
     <div>
@@ -7,9 +6,10 @@
     </div>
 
     <div class="apps-filters">
-      <input class="input" placeholder="applicationId" [(ngModel)]="applicationId" />
-      <input class="input" placeholder="job title" [(ngModel)]="jobTitle" />
-      <input class="input" placeholder="candidate name" [(ngModel)]="candidateName" />
+      <input class="input" placeholder="Application ID"  [(ngModel)]="applicationId" />
+      <input class="input" placeholder="Job ID"          [(ngModel)]="jobId" />
+      <input class="input" placeholder="Job title"       [(ngModel)]="jobTitle" />
+      <input class="input" placeholder="Candidate name"  [(ngModel)]="candidateName" />
 
       <select class="input" [(ngModel)]="status">
         <option value="">All statuses</option>
@@ -25,8 +25,16 @@
     </div>
   </div>
 
+  <!-- Active job filter badge (shown when pre-filtered from job page) -->
+  <div *ngIf="jobId" class="active-filter-row">
+    <span class="active-filter-badge">
+      Filtered by Job ID: <span class="mono">{{ jobId }}</span>
+      <button class="clear-filter-btn" type="button" (click)="jobId = ''; search()">✕</button>
+    </span>
+  </div>
+
   <div *ngIf="loading" class="apps-state">Loading...</div>
-  <div *ngIf="error" class="apps-error">{{ error }}</div>
+  <div *ngIf="error"   class="apps-error">{{ error }}</div>
 
   <div *ngIf="!loading && applications.length > 0" class="apps-tableWrap">
     <table class="apps-table">
@@ -42,11 +50,8 @@
       </thead>
 
       <tbody>
-        <tr
-          *ngFor="let app of applications"
-          (click)="openDetails(app)"
-          style="cursor:pointer;"
-        >
+        <tr *ngFor="let app of applications" (click)="openDetails(app)" style="cursor:pointer;">
+
           <td class="mono">{{ app.applicationId }}</td>
 
           <td>
@@ -76,68 +81,48 @@
       </tbody>
     </table>
 
-    <!-- ✅ Pagination Bar -->
+    <!-- Pagination -->
     <div class="apps-pager">
 
-      <!-- rows per page -->
       <div class="apps-pager-left">
         <span class="apps-pager-label">Rows</span>
-        <select
-          class="input apps-pager-select"
-          [(ngModel)]="pageSize"
-          (ngModelChange)="search()"
-        >
+        <select class="input apps-pager-select" [(ngModel)]="pageSize" (ngModelChange)="search()">
           <option [ngValue]="10">10</option>
           <option [ngValue]="20">20</option>
           <option [ngValue]="50">50</option>
         </select>
       </div>
 
-      <!-- page info -->
       <div class="apps-pager-mid">
         Page <span class="mono">{{ pageIndex + 1 }}</span>
         of <span class="mono">{{ totalPages }}</span>
         • <span class="mono">{{ totalElements }}</span> total
       </div>
 
-      <!-- buttons -->
       <div class="apps-pager-right">
-        <button
-          class="btn btn-ghost"
-          type="button"
-          (click)="prev()"
-          [disabled]="loading || pageIndex === 0"
-        >
+        <button class="btn btn-ghost" type="button"
+          (click)="prev()" [disabled]="loading || pageIndex === 0">
           ← Prev
         </button>
 
         <div class="apps-pageBtns" *ngIf="totalPages > 1">
           <ng-container *ngFor="let it of pageItems()">
             <span class="apps-ellipsis" *ngIf="it === '...'">…</span>
-
-            <button
-              *ngIf="isPageNumber(it)"
-              class="apps-pageBtn"
-              type="button"
+            <button *ngIf="isPageNumber(it)"
+              class="apps-pageBtn" type="button"
               (click)="goToPage(it)"
               [class.active]="it === pageIndex"
-              [disabled]="loading"
-            >
+              [disabled]="loading">
               {{ it + 1 }}
             </button>
           </ng-container>
         </div>
 
-        <button
-          class="btn btn-ghost"
-          type="button"
-          (click)="next()"
-          [disabled]="loading || pageIndex + 1 >= totalPages"
-        >
+        <button class="btn btn-ghost" type="button"
+          (click)="next()" [disabled]="loading || pageIndex + 1 >= totalPages">
           Next →
         </button>
       </div>
-
     </div>
   </div>
 

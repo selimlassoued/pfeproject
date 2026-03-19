@@ -48,4 +48,7 @@ public interface JobOfferRepo extends JpaRepository<JobOffer, UUID> {
             Pageable pageable
     );
 
+    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(j.refNumber, 5) AS int)), 0) + 1 " +
+            "FROM JobOffer j WHERE j.refNumber IS NOT NULL")
+    int nextRefSequence();
 }

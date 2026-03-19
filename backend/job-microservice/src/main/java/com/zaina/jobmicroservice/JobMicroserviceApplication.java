@@ -21,7 +21,7 @@ public class JobMicroserviceApplication {
         return args -> {
             jobOfferRepo.save(JobOffer.builder()
                     .title("Software Engineer Intern")
-                    .description("Software Engineer Intern bla bla bla")
+                    .description("Software Engineer BOSS")
                     .location("Remote")
                     .minSalary(1000)
                     .maxSalary(3000)

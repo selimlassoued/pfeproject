@@ -107,10 +107,14 @@ public class JobOfferController {
      * Create a new job offer
      * POST /api/jobs
      */
+    public static final String ACTOR_USER_ID_HEADER = "X-Actor-User-Id";
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public JobOfferDto create(@RequestBody JobOfferDto dto) {
-        return service.createJobOffer(dto);
+    public JobOfferDto create(
+            @RequestBody JobOfferDto dto,
+            @RequestHeader(name = ACTOR_USER_ID_HEADER, required = false) String actorUserId) {
+        return service.createJobOffer(dto, actorUserId);
     }
 
     /**
@@ -118,8 +122,12 @@ public class JobOfferController {
      * PUT /api/jobs/{id}
      */
     @PutMapping("/{id}")
-    public JobOfferDto update(@PathVariable UUID id, @RequestBody JobOfferDto dto) {
-        return service.updateJobOffer(id, dto);
+    public JobOfferDto update(
+            @PathVariable UUID id,
+            @RequestBody JobOfferDto dto,
+            @RequestParam(required = false) String reason,
+            @RequestHeader(name = ACTOR_USER_ID_HEADER, required = false) String actorUserId) {
+        return service.updateJobOffer(id, dto, reason, actorUserId);
     }
 
     /**
