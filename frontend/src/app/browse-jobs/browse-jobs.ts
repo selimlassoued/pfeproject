@@ -4,10 +4,12 @@ import { JobService } from '../services/job.service';
 import { JobOffer } from '../model/jobOffer.model';
 import { PageResponse } from '../model/page-response';
 import { RouterLink } from "@angular/router";
-import { Router, RouterLink } from "@angular/router";
+import { Router } from "@angular/router";
 import { AuthService } from '../services/AuthService.service';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
+import Keycloak from 'keycloak-js';
+
 
 type SalaryRange = 'any' | 'specified' | '0-1000' | '1000-2000' | '2000-5000' | '5000+';
 
@@ -40,7 +42,7 @@ export class BrowseJobsComponent implements OnInit {
   private myAppsByJobId = new Map<string, string>();
   checkingMyApps = false;
 
-  constructor(private jobService: JobService, private authService: AuthService, private applicationService: ApplicationService,private router: Router) {}
+  constructor(private jobService: JobService, private authService: AuthService, private applicationService: ApplicationService,private router: Router, private keycloak: Keycloak) {}
 
   ngOnInit(): void {
     this.fetchJobs();
@@ -56,6 +58,11 @@ export class BrowseJobsComponent implements OnInit {
   get isAdmin(): boolean {
     return this.authService.isAdmin();
   }
+  get isGuest(): boolean {
+    return !this.keycloak.authenticated;
+}
+
+
 
   /**
    * Fetch jobs from backend with current filters and pagination
@@ -93,13 +100,21 @@ export class BrowseJobsComponent implements OnInit {
   }
 
   applyOrView(jobId: string): void {
-    const appId = this.applicationIdFor(jobId);
-    if (appId) {
-      this.router.navigate(['/my-application', appId]);
-    } else {
-      this.router.navigate(['/apply', jobId]);
-    }
+  if (this.isGuest) {
+    this.keycloak.login() 
+    return;
   }
+  const appId = this.applicationIdFor(jobId);
+  if (appId) {
+    this.router.navigate(['/my-application', appId]);
+  } else {
+    this.router.navigate(['/apply', jobId]);
+  }
+}
+  get filteredJobs(): JobOffer[] {
+  return this.pageResponse?.content ?? [];
+}
+
   fetchJobs(): void {
     this.loading = true;
     this.error = null;
@@ -218,13 +233,7 @@ export class BrowseJobsComponent implements OnInit {
     );
   }
 
-  /**
-   * Get visible jobs based on user role
-   */
-  getVisibleJobs(): JobOffer[] {
-    if (!this.pageResponse?.content) return [];
-        return this.pageResponse.content;
-  }
+ 
 
   uniqueNonEmpty(values: string[]): string[] {
     const set = new Set(values.map(v => (v ?? '').trim()).filter(v => !!v));

@@ -269,6 +269,18 @@
   border-color: rgba(121, 164, 233, 0.38);
   color: var(--color-cream);
 }
+select {
+  background-color: #1b2236;   /* dark control background */
+  color: #f5f7ff;              /* text color */
+}
+
+select option {
+  background-color: #1b2236;   /* dropdown background */
+  color: #f5f7ff;              /* dropdown text */
+}
+select:hover {
+  border-color: rgba(121, 164, 233, 0.758);
+}
 
 /* responsive pager */
 @media (max-width: 900px){

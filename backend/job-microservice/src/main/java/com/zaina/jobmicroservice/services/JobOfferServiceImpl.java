@@ -101,7 +101,6 @@ public class JobOfferServiceImpl implements JobOfferService {
     }
 
     @Override
-    public JobOfferDto createJobOffer(JobOfferDto dto) {
     public JobOfferDto createJobOffer(JobOfferDto dto, String actorUserId) {
         String actor = (actorUserId != null && !actorUserId.isBlank()) ? actorUserId : "SYSTEM";
 
