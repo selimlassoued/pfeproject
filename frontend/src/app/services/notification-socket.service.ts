@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Client, IMessage } from '@stomp/stompjs';
+import { Client, IMessage, IFrame } from '@stomp/stompjs';
 import { Subject } from 'rxjs';
 import { Notification } from '../model/notification.model';
 import Keycloak from 'keycloak-js';
@@ -15,7 +15,7 @@ export class NotificationSocketService {
 
   constructor() {
     this.client = new Client({
-      brokerURL: 'ws://localhost:8888/ws/notifications', 
+      brokerURL: 'ws://localhost:8888/ws/notifications',
       reconnectDelay: 5000,
     });
 
@@ -23,10 +23,11 @@ export class NotificationSocketService {
       this.subscribeWhenUserIdAvailable();
     };
 
-    this.client.onStompError = frame => {
+    this.client.onStompError = (frame: IFrame) => {
       console.error('STOMP error', frame.headers['message'], frame.body);
     };
-    this.client.onWebSocketError = evt => {
+
+    this.client.onWebSocketError = (evt: Event) => {
       console.error('WebSocket error', evt);
     };
 
