@@ -6,7 +6,7 @@ import {
   KEYCLOAK_EVENT_SIGNAL,
   KeycloakEventType,
   typeEventArgs,
-  ReadyArgs
+  ReadyArgs,
 } from 'keycloak-angular';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { NotificationsMenu } from './notification-menu/notification-menu';
@@ -47,18 +47,10 @@ export class App {
 
 
   login() {
-        console.log(this.keycloak.token);
-
     this.keycloak.login();
-    console.log(this.keycloak.token);
-
   }
 
   logout() {
-            console.log("bhbh");
-
-            console.log(this.keycloak.token);
-
     this.keycloak.logout();
 
   }

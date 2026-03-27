@@ -16,10 +16,6 @@ public interface JobOfferService {
 
     PageResponse<JobOfferDto> searchJobs(String query, EmploymentType employmentType, JobStatus jobStatus, Integer minSalary, Integer maxSalary, Pageable pageable);
 
-    JobOfferDto createJobOffer(JobOfferDto dto);
-
-    JobOfferDto updateJobOffer(UUID id, JobOfferDto dto);
-
     JobOfferDto createJobOffer(JobOfferDto dto, String actorUserId);
     JobOfferDto updateJobOffer(UUID id, JobOfferDto dto, String reason, String actorUserId);
     void deleteJobOffer(UUID id);
