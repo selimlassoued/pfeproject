@@ -105,6 +105,8 @@ services:
   config-server:
     build: ./configserver
     container_name: config-server
+    ports:
+      - "9999:9999"
     networks:
       - ai-recruitment-network
     environment:
