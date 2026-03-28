@@ -20,10 +20,9 @@ import { AdminDashboard } from './admin-dashboard/admin-dashboard';
 import { RecruiterActivity } from './recruiter-activity/recruiter-activity';
 import { ActionHistory } from './action-history/action-history';
 import { CvAnalysisDrawer } from './cv-analysis-drawer/cv-analysis-drawer';
+import { homeGuard } from './guards/homeGuard';
 
 export const routes: Routes = [
-  //{ path: 'profile', redirectTo: 'profile', pathMatch: 'full' }, 
-
   {
     path: 'test',
     component: Test,
@@ -32,9 +31,8 @@ export const routes: Routes = [
   },
   { path: 'profile', component: Profile },
   { path: 'forbidden', component: Forbidden },
-
-  //{ path: '**', redirectTo: 'profile' }, 
-  { path: '', component: Hero },
+  {path:'',component:Hero, canActivate: [homeGuard]  },
+  {path:'hero',component:Hero },
   { path: 'browse', component: BrowseJobsComponent },
   { path: 'jobs/:id', component: JobDetails },
   {path:'listUsers',component:ListUsers,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
@@ -51,7 +49,4 @@ export const routes: Routes = [
   {path:'recruiter-activity',component:RecruiterActivity},
   {path:'action-history',component:ActionHistory},
   {path:'cv-analysis',component:CvAnalysisDrawer}
-
-
-
 ];
