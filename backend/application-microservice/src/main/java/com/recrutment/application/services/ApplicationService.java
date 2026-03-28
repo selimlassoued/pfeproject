@@ -249,7 +249,6 @@ public class ApplicationService {
         Application saved = repo.save(app);
         ApplicationDto result = toDto(saved);
 
-        // build changes diff
         Map<String, Object> changes = java.util.Map.of(
                 "status", java.util.Map.of(
                         "old", oldStatus.name(),
@@ -279,10 +278,8 @@ public class ApplicationService {
         evt.setChanges(changes);
         evt.setPayload(payload);
 
-        // audit event
         eventPublisher.publish("audit.application", evt);
         eventPublisher.publish("notify.application", evt);
-        // later: also publish notify.application.status with same payload
 
         return result;
     }
@@ -290,7 +287,7 @@ public class ApplicationService {
     @Transactional(readOnly = true)
     public PageResponse<ApplicationDto> listApplicationsPaged(
             UUID applicationId,
-            UUID jobId,           // ← ADD THIS
+            UUID jobId,
             ApplicationStatus status,
             String jobTitle,
             String candidateName,
@@ -324,7 +321,6 @@ public class ApplicationService {
                     (int) Math.ceil(filtered.size() / (double) safeSize));
         }
 
-        // DB-level pagination
         Page<Application> p;
         if      (applicationId != null)             p = new PageImpl<>(repo.findById(applicationId).map(List::of).orElseGet(List::of), pageable, 1);
         else if (jobId != null && status != null)   p = repo.findByJobIdAndStatus(jobId, status, pageable);

@@ -89,9 +89,8 @@ export class Application {
     this.submitting.set(false);
     this.success.set('Application submitted successfully.');
 
-    // redirect to details page you already use in HR list: /application/:id
     setTimeout(() => {
-      this.router.navigate(['/application', res.applicationId]);
+      this.router.navigate(['/my-application', res.applicationId]);
     }, 600);
   },
   error: (err) => {

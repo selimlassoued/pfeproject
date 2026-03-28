@@ -31,9 +31,17 @@ public class CvAnalysis {
     private String candidateName;
     private String email;
     private String phone;
+
+    @Column(columnDefinition = "text")
     private String location;
+
+    @Column(columnDefinition = "text")
     private String desiredPosition;
+
+    @Column(columnDefinition = "text")
     private String availability;
+
+    @Column(columnDefinition = "text")
     private String summary;
     private String seniorityLevel;
 
@@ -90,6 +98,8 @@ public class CvAnalysis {
 
     // Status
     private String parsingStatus;
+
+    @Column(columnDefinition = "text")
     private String errorMessage;
 
     private Instant analyzedAt;
