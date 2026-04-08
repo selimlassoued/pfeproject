@@ -21,6 +21,11 @@ public class CvAnalysisService {
     private final CvParserClient cvParserClient;
     private final CvAnalysisRepo cvAnalysisRepo;
 
+    /**
+     * Single async job — CV parsing and GitHub enrichment run in parallel
+     * inside the cv-parser-service (Python handles the threading).
+     * Spring Boot just sends one request and waits for the complete result.
+     */
     @Async
     public void analyzeAsync(Application application) {
         try {
@@ -29,14 +34,16 @@ public class CvAnalysisService {
             CvAnalysis analysis = cvParserClient.analyze(
                     application.getApplicationId(),
                     application.getCvFile(),
-                    application.getCvFileName()
+                    application.getCvFileName(),
+                    application.getGithubUrl()  // passed to Python for parallel processing
             );
 
             cvAnalysisRepo.save(analysis);
             log.info("CV analysis saved for application: {}", application.getApplicationId());
 
         } catch (Exception e) {
-            log.error("CV analysis failed for application {}: {}", application.getApplicationId(), e.getMessage());
+            log.error("CV analysis failed for application {}: {}",
+                    application.getApplicationId(), e.getMessage());
         }
     }
 

@@ -121,12 +121,13 @@
         </div>
 
         <div class="cad-card-body">
-          <a class="cad-url"
+          <a *ngIf="app.githubUrl" class="cad-url"
              [href]="app.githubUrl"
              target="_blank"
              rel="noopener">
-            {{ app.githubUrl || '—' }}
+            {{ app.githubUrl }}
           </a>
+          <span *ngIf="!app.githubUrl" class="cad-url cad-url-muted">—</span>
 
           <div class="cad-hint">
             Tip: keep your pinned projects updated, recruiters often check them first.
@@ -172,10 +173,35 @@
               <form [formGroup]="form" class="cad-edit-form">
 
                 <div class="cad-field">
-                  <label class="cad-label">GitHub link</label>
-                  <input class="input" type="text" formControlName="githubUrl" placeholder="https://github.com/username" />
+                  <label class="cad-label">
+                    GitHub link
+                    <span class="cad-optional">(optional)</span>
+                  </label>
+                  <div class="cad-github-row">
+                    <input
+                      class="input"
+                      type="text"
+                      formControlName="githubUrl"
+                      placeholder="https://github.com/username"
+                      (input)="onGithubInput()"
+                    />
+                    <button
+                      class="btn btn-ghost"
+                      type="button"
+                      [disabled]="!form.value.githubUrl?.trim() || githubChecking()"
+                      (click)="checkGithub()"
+                    >
+                      {{ githubChecking() ? 'Checking…' : 'Verify' }}
+                    </button>
+                  </div>
+                  <div class="cad-field-ok" *ngIf="githubValid() === true">
+                    ✓ Link is valid
+                  </div>
+                  <div class="cad-field-err" *ngIf="githubValid() === false">
+                    ✗ Link is broken or unreachable
+                  </div>
                   <div class="cad-field-err" *ngIf="form.get('githubUrl')?.touched && form.get('githubUrl')?.invalid">
-                    Please enter a valid URL.
+                    Please enter a valid URL (must start with http:// or https://).
                   </div>
                 </div>
 

@@ -175,7 +175,8 @@ def extract_contact_fields(text: str) -> dict:
         email_chunk,
     )
     # Phone: always search original text to preserve digit spacing (+216 29 176 273)
-    phone_m    = re.search(r"(\+?\d[\d\s\-\(\)]{7,}\d)", text)
+    # Use [^\n] to prevent matching across newlines into address numbers
+    phone_m    = re.search(r"(\+?\d[\d \-\(\)]{6,}\d)(?!\d)", text)
     linkedin_m = re.search(
         r"(?:https?://)?(?:www\.)?linkedin\.com/in/[a-zA-Z0-9_\-]+", linkedin_chunk,
     )
@@ -190,16 +191,41 @@ def extract_contact_fields(text: str) -> dict:
             r"(?:https?://)?(?:www\.)?linkedin\.com/in/[a-zA-Z0-9_\-]+", text,
         )
     if not github_m:
-        github_m = re.search(r"https?://github\.com/[a-zA-Z0-9_\-]+", text)
+        # Full-text fallback — only match URLs that appear in contact/social
+        # context (near "github", "git", or at line start), NOT inside
+        # descriptions or body text where other people's URLs might appear
+        github_m = re.search(
+            r"(?:github\.com/|git\.com/)([a-zA-Z0-9_\-]+)",
+            github_chunk or ""
+        )
+        if not github_m:
+            # Last resort: only match if the URL is on its own line or
+            # preceded by a contact-like label
+            for line in text.split("\n"):
+                line = line.strip()
+                m = re.search(r"https?://github\.com/([a-zA-Z0-9_\-]+)$", line)
+                if m and len(line) < 60:  # short line = likely contact row
+                    github_m = m
+                    break
 
     def _https(url: Optional[str]) -> Optional[str]:
         return ("https://" + url) if url and not url.startswith("http") else url
 
+    def _github_url(m) -> Optional[str]:
+        if not m:
+            return None
+        matched = m.group(0)
+        # If it's a full URL, use as-is
+        if matched.startswith("http"):
+            return matched
+        # If it's a partial match (github.com/username), prepend https://
+        return "https://" + matched if matched.startswith("github") else None
+
     return {
-        "email":    email_m.group(0)          if email_m    else None,
-        "phone":    phone_m.group(0).strip()  if phone_m    else None,
+        "email":    email_m.group(0)            if email_m    else None,
+        "phone":    phone_m.group(0).strip()    if phone_m    else None,
         "linkedin": _https(linkedin_m.group(0)) if linkedin_m else None,
-        "github":   _https(github_m.group(0))   if github_m   else None,
+        "github":   _github_url(github_m),
     }
 
 
@@ -224,9 +250,15 @@ def extract_languages_from_text(text: str) -> list:
     Never guesses or infers a level — if none is present, returns null.
     """
     lang_start = re.search(
-        r"(?:LANGUAGES?|LANGUE[S]?|COMPÉTENCES\s+LINGUISTIQUES?)\s*[:\n]",
+        r"(?:LANGUAGES?\s*SPOKEN|LANGUES?\s*PARLÉES?|LANGUAGES?|LANGUE[S]?|COMPÉTENCES\s+LINGUISTIQUES?)\s*[:\n]",
         text, re.IGNORECASE,
     )
+    if not lang_start:
+        # Fallback: look for "Français :" or "French :" pattern directly
+        lang_start = re.search(
+            r"(?:Français|French|Anglais|English|Arabe|Arabic|Espagnol|Spanish)\s*:",
+            text, re.IGNORECASE,
+        )
     if not lang_start:
         return []
 

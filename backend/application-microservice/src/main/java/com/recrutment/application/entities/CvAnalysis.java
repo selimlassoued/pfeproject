@@ -23,7 +23,6 @@ public class CvAnalysis {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
-    // Link to Application
     @Column(nullable = false, unique = true)
     private UUID applicationId;
 
@@ -43,14 +42,15 @@ public class CvAnalysis {
 
     @Column(columnDefinition = "text")
     private String summary;
+
     private String seniorityLevel;
 
-    // Social links (stored as JSON)
+    // Social links
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private SocialLinksEmbedded socialLinks;
 
-    // Skills (stored as JSON arrays)
+    // Skills
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<String> skills;
@@ -67,7 +67,7 @@ public class CvAnalysis {
     @Column(columnDefinition = "jsonb")
     private List<String> awards;
 
-    // Complex objects (stored as JSON)
+    // Complex objects
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private List<LanguageEmbedded> languages;
@@ -92,8 +92,18 @@ public class CvAnalysis {
     @Column(columnDefinition = "jsonb")
     private List<VolunteerWorkEmbedded> volunteerWork;
 
+    // Evaluation
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private CvEvaluationEmbedded evaluation;
+
+    // GitHub profile — jsonb so new fields are stored automatically
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private GitHubProfileEmbedded githubProfile;
+
     // Stats
-    private Double totalYearsExperience;
+    private Float totalYearsExperience;
     private Integer rawTextLength;
 
     // Status
@@ -160,5 +170,123 @@ public class CvAnalysis {
         private String organization;
         private String duration;
         private String description;
+    }
+
+    // ── GitHub embedded objects ───────────────────────────────────────────────
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class CommitActivityEmbedded {
+        private List<Integer> weeklyCounts;
+        private Integer activeWeeks;
+        private Integer recentWeeksActive;
+        private Integer longestStreak;
+        private Boolean isConsistent;
+        private Boolean recentlyActive;
+        private Integer daysSincePush;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class GitHubRepoEmbedded {
+        private String name;
+        private String description;
+        private String language;
+        private List<String> allLanguages;
+        private List<String> frameworks;
+        private List<String> technologies;       // frameworks + non-implied languages
+        private Integer stars;
+        private String url;
+        private Boolean isFork;
+        private Integer sizeKb;
+        private Integer commitCount;
+        private Integer branchCount;
+        private Integer daysOfActivity;
+        private String lastPushed;
+        private List<String> topics;
+        private Integer score;
+        private Boolean isReal;
+        private List<String> scoreReasons;
+        // ── New fields ──
+        private Float ownershipRatio;            // candidate's commits / total commits
+        private CommitActivityEmbedded commitActivity;
+        private Integer complexityScore;         // 0–10
+        private String complexityLabel;          // HIGH / MEDIUM / LOW
+        private List<String> complexityReasons;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class CollaborationEmbedded {
+        private Integer activeForkCount;
+        private List<String> collaboratedRepos;
+        private Boolean hasCollaboration;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class GitHubProfileEmbedded {
+        private String username;
+        private String accountUrl;
+        private String name;
+        private String bio;
+        private String location;
+        private Integer publicReposCount;
+        private Integer ownReposCount;
+        private Integer forkedReposCount;
+        private Integer accountAgeDays;
+        private Integer followers;
+        private String lastActive;
+        // topLanguages removed — no longer in Python response
+        private List<String> allTechnologies;    // frameworks + non-implied languages (clean)
+        private List<String> allRepoFrameworks;  // all frameworks found across ALL repos (sorted)
+        private Integer totalStars;
+        private Integer realReposCount;
+        private List<GitHubRepoEmbedded> scoredRepos;
+        private String githubScore;              // STRONG / MODERATE / WEAK / INACTIVE / RATE_LIMITED
+        // CV skills verification
+        private List<String> cvSkillsConfirmed;
+        private List<String> cvSkillsLikely;
+        private List<String> cvSkillsNoEvidence;
+        // ── New profile-level fields ──
+        private List<String> consistentRepos;    // repo names where is_consistent=true
+        private Integer recentlyActiveRepos;     // count of top repos pushed within last 6 months
+        private Float avgOwnershipRatio;         // weighted by complexity_score across top 3 repos
+        private CollaborationEmbedded collaboration;
+    }
+
+    // ── Evaluation embedded objects ───────────────────────────────────────────
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class EvidenceSignalsEmbedded {
+        private String technicalEvidence;
+        private String projectEvidence;
+        private String leadershipEvidence;
+        private String competitionEvidence;
+        private String publicPortfolioEvidence;
+        private String githubActivityEvidence;   // HIGH / MEDIUM / LOW / N/A
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class CvEvaluationEmbedded {
+        private List<String> missingSections;
+        private List<String> structureWarnings;
+        private List<String> spellingWarnings;
+        private List<String> dateWarnings;
+        private List<String> gapWarnings;
+        private List<String> profileStrengths;
+        private List<String> profileWeaknesses;
+        private List<String> recruiterInsights;
+        private Integer likelyTyposCount;
+        private Integer experienceGapCount;
+        private Integer incompleteExperienceEntriesCount;
+        private Integer incompleteEducationEntriesCount;
+        private Boolean hasEmail;
+        private Boolean hasPhone;
+        private Boolean hasLinkedin;
+        private Boolean hasGithub;
+        private Boolean hasPortfolio;
+        private Boolean hasProjects;
+        private Boolean hasExperience;
+        private Boolean hasEducation;
+        private Boolean hasSkills;
+        private Boolean hasLanguages;
+        private EvidenceSignalsEmbedded evidenceSignals;
     }
 }

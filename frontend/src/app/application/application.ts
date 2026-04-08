@@ -13,12 +13,13 @@ import { ApplicationService } from '../services/application.service';
 export class Application {
   jobId!: string;
 
-  submitting = signal(false);
-  error = signal<string | null>(null);
-  success = signal<string | null>(null);
-
-  cvFile = signal<File | null>(null);
-  cvName = signal<string | null>(null);
+  submitting    = signal(false);
+  error         = signal<string | null>(null);
+  success       = signal<string | null>(null);
+  cvFile        = signal<File | null>(null);
+  cvName        = signal<string | null>(null);
+  githubChecking = signal(false);
+  githubValid    = signal<boolean | null>(null); // null = not checked, true = ok, false = broken
 
   form!: FormGroup;
 
@@ -29,7 +30,7 @@ export class Application {
     private appService: ApplicationService
   ) {
     this.form = this.fb.group({
-      githubUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/i)]],
+      githubUrl: ['', [Validators.pattern(/^https?:\/\/.+/i)]],
     });
   }
 
@@ -40,6 +41,31 @@ export class Application {
       return;
     }
     this.jobId = id;
+  }
+
+  onGithubInput() {
+    // Reset validation state whenever the user edits the URL
+    this.githubValid.set(null);
+  }
+
+  checkGithub() {
+    const url = this.form.value.githubUrl?.trim();
+    if (!url) return;
+
+    this.githubChecking.set(true);
+    this.githubValid.set(null);
+    this.error.set(null);
+
+    this.appService.checkGithubLink(url).subscribe({
+      next: (valid) => {
+        this.githubChecking.set(false);
+        this.githubValid.set(valid);
+      },
+      error: () => {
+        this.githubChecking.set(false);
+        this.githubValid.set(false);
+      },
+    });
   }
 
   onFileChange(e: Event) {
@@ -74,37 +100,47 @@ export class Application {
     this.error.set(null);
     this.success.set(null);
 
+    const githubUrl = this.form.value.githubUrl?.trim();
+
+    // If a URL was entered, enforce verification
+    if (githubUrl) {
+      if (this.githubValid() === false) {
+        this.error.set('GitHub link is broken or unreachable. Please fix it or leave it empty.');
+        return;
+      }
+      if (this.githubValid() === null) {
+        this.error.set('Please click "Verify" to validate your GitHub link before submitting.');
+        return;
+      }
+    }
+
     if (this.form.invalid || !this.cvFile()) {
-      this.error.set('Please provide a valid GitHub link and upload a PDF CV.');
+      this.error.set('Please upload a PDF CV.');
       return;
     }
 
     this.submitting.set(true);
 
     this.appService.applyToJob(this.jobId, {
-  githubUrl: this.form.value.githubUrl,
-  cv: this.cvFile()!,
-}).subscribe({
-  next: (res) => {
-    this.submitting.set(false);
-    this.success.set('Application submitted successfully.');
-
-    setTimeout(() => {
-      this.router.navigate(['/my-application', res.applicationId]);
-    }, 600);
-  },
-  error: (err) => {
-    this.submitting.set(false);
-
-    if (err?.status === 409) {
-      this.error.set('You already applied to this job.');
-      return;
-    }
-
-    this.error.set(err?.error?.message ?? 'Failed to submit application.');
-  },
-});
-
+      githubUrl: githubUrl ?? '',
+      cv: this.cvFile()!,
+    }).subscribe({
+      next: (res) => {
+        this.submitting.set(false);
+        this.success.set('Application submitted successfully.');
+        setTimeout(() => {
+          this.router.navigate(['/my-application', res.applicationId]);
+        }, 600);
+      },
+      error: (err) => {
+        this.submitting.set(false);
+        if (err?.status === 409) {
+          this.error.set('You already applied to this job.');
+          return;
+        }
+        this.error.set(err?.error?.message ?? 'Failed to submit application.');
+      },
+    });
   }
 
   goBack() {
