@@ -26,15 +26,22 @@ import com.recrutment.application.services.CvAnalysisService;
 
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class ApplicationService {
+    private static final Pattern GITHUB_PROFILE_URL =
+            Pattern.compile("^https?://(www\\.)?github\\.com/([A-Za-z0-9-]+)/*$");
+
     private final CvAnalysisService cvAnalysisService;
     private final AppEventPublisher eventPublisher;
 
@@ -111,6 +118,36 @@ public class ApplicationService {
             return toDto(saved);
         } catch (DataIntegrityViolationException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "You already applied to this job.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public boolean checkGithubLink(String url) {
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+
+        String trimmed = url.trim();
+        var matcher = GITHUB_PROFILE_URL.matcher(trimmed);
+        if (!matcher.matches()) {
+            return false;
+        }
+
+        String username = matcher.group(2);
+        String normalized = "https://github.com/" + username;
+
+        try {
+            URL target = URI.create(normalized).toURL();
+            HttpURLConnection conn = (HttpURLConnection) target.openConnection();
+            conn.setInstanceFollowRedirects(true);
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestMethod("GET");
+
+            int code = conn.getResponseCode();
+            return code >= 200 && code < 400;
+        } catch (Exception ignored) {
+            return false;
         }
     }
 
@@ -206,8 +243,9 @@ public class ApplicationService {
                     "You can update the application only while status is APPLIED.");
         }
 
-        if (githubUrl != null && !githubUrl.trim().isBlank()) {
-            app.setGithubUrl(githubUrl.trim());
+        if (githubUrl != null) {
+            String g = githubUrl.trim();
+            app.setGithubUrl(g.isEmpty() ? null : g);
         }
 
         if (cv != null && !cv.isEmpty()) {

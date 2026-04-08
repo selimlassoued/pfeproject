@@ -24,6 +24,8 @@ export class MyApplicationDetail implements OnInit {
   editing = signal(false);
   saving = signal(false);
   success = signal<string | null>(null);
+  githubChecking = signal(false);
+  githubValid = signal<boolean | null>(null);
 
   form!: FormGroup;
 
@@ -37,7 +39,7 @@ export class MyApplicationDetail implements OnInit {
     private fb: FormBuilder
   ) {
     this.form = this.fb.group({
-      githubUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/i)]],
+      githubUrl: ['', [Validators.pattern(/^https?:\/\/.+/i)]],
     });
   }
 
@@ -62,6 +64,7 @@ export class MyApplicationDetail implements OnInit {
 
         // preload form from backend
         this.form.patchValue({ githubUrl: data.githubUrl || '' });
+        this.syncGithubVerifyStateFromUrl(data.githubUrl);
         this.newCvFile.set(null);
         this.newCvName.set(null);
       },
@@ -89,9 +92,38 @@ export class MyApplicationDetail implements OnInit {
     // reset file when opening edit
     if (next && this.app) {
       this.form.patchValue({ githubUrl: this.app.githubUrl || '' });
+      this.syncGithubVerifyStateFromUrl(this.app.githubUrl);
       this.newCvFile.set(null);
       this.newCvName.set(null);
     }
+  }
+
+  private syncGithubVerifyStateFromUrl(url: string | null | undefined): void {
+    this.githubValid.set((url || '').trim() ? true : null);
+  }
+
+  onGithubInput(): void {
+    this.githubValid.set(null);
+  }
+
+  checkGithub(): void {
+    const url = this.form.value.githubUrl?.trim();
+    if (!url) return;
+
+    this.githubChecking.set(true);
+    this.githubValid.set(null);
+    this.error = null;
+
+    this.appService.checkGithubLink(url).subscribe({
+      next: (valid) => {
+        this.githubChecking.set(false);
+        this.githubValid.set(valid);
+      },
+      error: () => {
+        this.githubChecking.set(false);
+        this.githubValid.set(false);
+      },
+    });
   }
 
   onCvChange(e: Event) {
@@ -132,27 +164,39 @@ export class MyApplicationDetail implements OnInit {
       return;
     }
 
-    const githubUrl = this.form.value.githubUrl?.trim();
-
-    // allow save if github valid OR cv selected
+    const githubUrl = (this.form.value.githubUrl || '').trim();
+    const previousGithub = (this.app.githubUrl || '').trim();
+    const githubChanged = githubUrl !== previousGithub;
     const hasCv = !!this.newCvFile();
-    const hasGithub = !!githubUrl;
 
-    if (!hasCv && !hasGithub) {
+    if (!hasCv && !githubChanged) {
       this.error = 'Nothing to update.';
       return;
     }
 
-    if (hasGithub && this.form.invalid) {
-      this.error = 'Please enter a valid GitHub URL.';
-      return;
+    if (githubChanged && githubUrl) {
+      if (this.form.get('githubUrl')?.invalid) {
+        this.error =
+          'Please enter a valid URL (must start with http:// or https://).';
+        return;
+      }
+      if (this.githubValid() === false) {
+        this.error =
+          'GitHub link is broken or unreachable. Please fix it or leave it empty.';
+        return;
+      }
+      if (this.githubValid() === null) {
+        this.error =
+          'Please click "Verify" to validate your GitHub link before saving.';
+        return;
+      }
     }
 
     this.saving.set(true);
 
     this.appService
       .updateMyApplication(this.app.applicationId, {
-        githubUrl: hasGithub ? githubUrl : undefined,
+        githubUrl: githubChanged ? githubUrl : undefined,
         cv: hasCv ? this.newCvFile()! : undefined,
       })
       .subscribe({
@@ -164,6 +208,7 @@ export class MyApplicationDetail implements OnInit {
           this.newCvFile.set(null);
           this.newCvName.set(null);
           this.form.patchValue({ githubUrl: updated.githubUrl || '' });
+          this.syncGithubVerifyStateFromUrl(updated.githubUrl);
         },
         error: (err) => {
           this.saving.set(false);

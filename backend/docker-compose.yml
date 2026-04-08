@@ -198,7 +198,7 @@ services:
     environment:
       - APP_PORT=8085
       - OLLAMA_HOST=http://host.docker.internal:11434
-
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
   application-db:
     image: postgres:16
     container_name: application-db

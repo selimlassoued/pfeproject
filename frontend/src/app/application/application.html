@@ -17,15 +17,48 @@
   <article class="card" style="margin-top: 1.25rem;">
     <form [formGroup]="form" (ngSubmit)="submit()" style="display:grid; gap: 1rem;">
 
+      <!-- GitHub URL (optional) -->
       <div>
-        <label class="text-muted">GitHub link</label>
-        <input class="input" type="text" formControlName="githubUrl" placeholder="https://github.com/username" />
+        <label class="text-muted">
+          GitHub link
+          <span style="opacity:.5; margin-left:.25rem;">(optional)</span>
+        </label>
+
+        <div style="display:flex; gap:.5rem; margin-top:.35rem;">
+          <input
+            class="input"
+            type="text"
+            formControlName="githubUrl"
+            placeholder="https://github.com/username"
+            (input)="onGithubInput()"
+            style="flex: 1;"
+          />
+          <button
+            class="btn btn-ghost"
+            type="button"
+            [disabled]="!form.value.githubUrl?.trim() || githubChecking()"
+            (click)="checkGithub()"
+          >
+            {{ githubChecking() ? 'Checking...' : 'Verify' }}
+          </button>
+        </div>
+
+        <!-- Validation feedback -->
+        <div style="margin-top:.35rem; font-size:13px; color: #16a34a;"
+             *ngIf="githubValid() === true">
+          ✓ Link is valid
+        </div>
+        <div style="margin-top:.35rem; font-size:13px; color: #dc2626;"
+             *ngIf="githubValid() === false">
+          ✗ Link is broken or unreachable
+        </div>
         <div class="text-muted" style="margin-top:.35rem;"
              *ngIf="form.get('githubUrl')?.touched && form.get('githubUrl')?.invalid">
-          Please enter a valid URL.
+          Please enter a valid URL (must start with http:// or https://).
         </div>
       </div>
 
+      <!-- CV Upload -->
       <div>
         <label class="text-muted">CV file (PDF only)</label>
         <input
@@ -33,6 +66,7 @@
           type="file"
           accept="application/pdf,.pdf"
           (change)="onFileChange($event)"
+          style="margin-top:.35rem;"
         />
         <div class="text-muted" style="margin-top:.35rem;" *ngIf="cvName()">
           Selected: <span class="mono">{{ cvName() }}</span>
@@ -41,15 +75,22 @@
 
       <div class="divider"></div>
 
+      <!-- Footer actions -->
       <div style="display:flex; gap:.75rem; justify-content:flex-end; flex-wrap:wrap;">
         <button class="btn btn-ghost" type="button" (click)="goBack()">Cancel</button>
-        <button class="btn btn-primary" type="submit" [disabled]="submitting() || form.invalid || !cvFile()">
-          Submit application
+        <button
+          class="btn btn-primary"
+          type="submit"
+          [disabled]="submitting() || form.invalid || !cvFile()"
+        >
+          {{ submitting() ? 'Submitting...' : 'Submit application' }}
         </button>
       </div>
 
-      <div class="text-muted" *ngIf="error()">{{ error() }}</div>
-      <div class="text-muted" *ngIf="success()">{{ success() }}</div>
+      <!-- Status messages -->
+      <div style="font-size:13px; color:#dc2626;" *ngIf="error()">{{ error() }}</div>
+      <div style="font-size:13px; color:#16a34a;" *ngIf="success()">{{ success() }}</div>
+
     </form>
   </article>
 </section>

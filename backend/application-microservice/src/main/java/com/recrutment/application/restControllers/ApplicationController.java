@@ -29,11 +29,13 @@ public class ApplicationController {
     private final ApplicationService service;
     private final ApplicationRepo repo;
 
+    // ── Application endpoints ─────────────────────────────────────────────────
+
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApplicationDto apply(
             @RequestParam UUID jobId,
-            @RequestParam String githubUrl,
+            @RequestParam(required = false) String githubUrl,
             @RequestPart("cv") MultipartFile cv,
             @AuthenticationPrincipal Jwt jwt
     ) throws IOException {
@@ -53,7 +55,6 @@ public class ApplicationController {
                 .body(app.getCvFile());
     }
 
-    // ✅ Single list endpoint — supports optional jobId filter
     @GetMapping
     public List<ApplicationDto> list(
             @RequestParam(required = false) UUID applicationId,
@@ -68,6 +69,11 @@ public class ApplicationController {
     @GetMapping("/{id}")
     public ApplicationDto getOne(@PathVariable UUID id) {
         return service.getOne(id);
+    }
+
+    @GetMapping("/check-github")
+    public boolean checkGithub(@RequestParam String url) {
+        return service.checkGithubLink(url);
     }
 
     @GetMapping("/me/by-job/{jobId}")
@@ -153,6 +159,7 @@ public class ApplicationController {
     ) {
         return service.listApplicationsPaged(applicationId, jobId, status, jobTitle, candidateName, page, size);
     }
+
     @GetMapping("/{id}/analysis")
     public CvAnalysis getAnalysis(@PathVariable UUID id) {
         return cvAnalysisService.getAnalysis(id);

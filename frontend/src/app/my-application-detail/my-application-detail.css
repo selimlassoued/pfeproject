@@ -1,5 +1,39 @@
 /* my-application-detail.css */
 
+.cad-optional {
+  font-weight: 400;
+  opacity: 0.55;
+  margin-left: 0.25rem;
+}
+
+.cad-github-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  margin-top: 0.35rem;
+}
+
+.cad-github-row .input {
+  flex: 1;
+}
+
+.cad-github-row .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.cad-field-ok {
+  margin-top: 0.35rem;
+  font-size: 0.81rem;
+  color: #16a34a;
+}
+
+.cad-url-muted {
+  color: rgba(248, 250, 252, 0.45);
+  text-decoration: none;
+  pointer-events: none;
+}
+
 .cad-page{
   width: min(100% - 2rem, 1200px);
   margin-inline:auto;

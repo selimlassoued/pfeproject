@@ -274,6 +274,17 @@
   color: var(--color-cream, #fffce5);
   font-size: 0.8rem;
 }
+.pill-tech {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(200,160,255,0.25);
+  background: rgba(200,160,255,0.08);
+  color: #c8a0ff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
 .pills-sm { gap: 0.3rem; }
 .pill-sm  { font-size: 0.72rem; padding: 0.2rem 0.5rem; }
 
@@ -409,4 +420,246 @@
   background: rgba(255,220,100,0.06);
   border: 1px solid rgba(255,220,100,0.12);
   margin-bottom: 0.3rem;
+}
+
+/* ── GitHub Profile ── */
+.github-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(121,164,233,0.14);
+}
+
+.github-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.github-username {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #79a4e9;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+.github-username:hover { color: #aac6f0; }
+
+.github-score-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid;
+  letter-spacing: 0.04em;
+}
+.github-score-strong   { background: rgba(121,233,170,0.12); color: #79e9aa; border-color: rgba(121,233,170,0.3); }
+.github-score-moderate { background: rgba(255,220,100,0.12); color: #ffd060; border-color: rgba(255,220,100,0.3); }
+.github-score-weak     { background: rgba(233,121,121,0.12); color: #e97979; border-color: rgba(233,121,121,0.3); }
+.github-score-inactive { background: rgba(255,255,255,0.04); color: rgba(248,250,252,0.4); border-color: rgba(255,255,255,0.1); }
+
+/* Collaboration badge */
+.collab-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(121,164,233,0.1);
+  border: 1px solid rgba(121,164,233,0.25);
+  color: #aac6f0;
+  letter-spacing: 0.03em;
+}
+
+.github-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.github-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+.github-stat-val  { font-size: 0.88rem; font-weight: 700; color: rgba(248,250,252,0.9); }
+.github-stat-lbl  { font-size: 0.68rem; color: rgba(248,250,252,0.45); }
+
+/* Consistent repos row */
+.consistent-repos-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.consistent-label {
+  font-size: 0.72rem;
+  color: rgba(248,250,252,0.45);
+  white-space: nowrap;
+}
+.consistent-repo-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(121,233,170,0.08);
+  border: 1px solid rgba(121,233,170,0.2);
+  color: #79e9aa;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* ── GitHub Languages / tech pills ── */
+.pill-github-lang {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121,233,170,0.2);
+  background: rgba(121,233,170,0.07);
+  color: #79e9aa;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* ── GitHub Repos ── */
+.github-repos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.github-repo-item {
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(121,164,233,0.12);
+  transition: border-color 180ms ease;
+}
+.github-repo-item:hover { border-color: rgba(121,164,233,0.25); }
+
+.github-repo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.github-repo-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #79a4e9;
+  text-decoration: none;
+}
+.github-repo-name:hover { color: #aac6f0; }
+
+.github-repo-badges {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.repo-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
+.repo-badge-real    { background: rgba(121,233,170,0.1);  color: #79e9aa; border-color: rgba(121,233,170,0.25); }
+.repo-badge-score   { background: rgba(121,164,233,0.1);  color: #79a4e9; border-color: rgba(121,164,233,0.2);  }
+/* Complexity badges */
+.complexity-high    { background: rgba(121,233,170,0.12); color: #79e9aa; border-color: rgba(121,233,170,0.3);  }
+.complexity-medium  { background: rgba(255,220,100,0.12); color: #ffd060; border-color: rgba(255,220,100,0.3);  }
+.complexity-low     { background: rgba(255,255,255,0.04); color: rgba(248,250,252,0.4); border-color: rgba(255,255,255,0.1); }
+
+.github-repo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.1rem;
+}
+
+.repo-meta-item {
+  font-size: 0.75rem;
+  color: rgba(248,250,252,0.5);
+}
+
+/* Consistent activity highlight */
+.repo-meta-consistent {
+  color: #79e9aa;
+  font-weight: 600;
+}
+
+/* ── CV Skills Verification ── */
+.cv-verification {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(121,164,233,0.12);
+}
+
+.verification-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.verification-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.verification-label-confirmed { color: rgba(121,233,170,0.8); }
+.verification-label-likely    { color: rgba(255,220,100,0.8); }
+.verification-label-none      { color: rgba(248,250,252,0.35); }
+
+/* Confirmed = green */
+.pill-verified-confirmed {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121,233,170,0.3);
+  background: rgba(121,233,170,0.1);
+  color: #79e9aa;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* Likely = yellow */
+.pill-verified-likely {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,220,100,0.3);
+  background: rgba(255,220,100,0.08);
+  color: #ffd060;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* No evidence = grey */
+.pill-verified-none {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(248,250,252,0.35);
+  font-size: 0.72rem;
+  font-weight: 600;
 }

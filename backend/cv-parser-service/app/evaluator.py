@@ -8,7 +8,8 @@ import ollama
 
 from app.models import CvAnalysisResult, CvEvaluation, EvidenceSignals
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_HOST   = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+MODEL         = os.getenv("CV_PARSER_MODEL", "qwen2.5:3b")
 ollama_client = ollama.Client(host=OLLAMA_HOST)
 
 MONTHS = {
@@ -31,6 +32,9 @@ TECH_STACK = {
     "Flutter", "Docker", "Kubernetes", "MySQL", "PostgreSQL", "MongoDB",
     "TypeScript", "JavaScript", "C#", ".NET", "FastAPI", "Django",
 }
+
+# GitHub scores that mean "we simply cannot assess" — treat identically to no GitHub provided
+_UNASSESSABLE_SCORES = {"NO_PUBLIC_WORK", "RATE_LIMITED"}
 
 
 def _append_unique(target: List[str], value: str) -> None:
@@ -189,15 +193,8 @@ def _strip_contact_data(text: str) -> str:
 
 
 def _regex_spell_check(text: str) -> list:
-    """
-    Fast deterministic spell check for common CV typo patterns.
-    Catches misspellings that Mistral frequently misses or hallucinates.
-    Returns list of {"word": str, "suggestion": str}.
-    """
     KNOWN_TYPOS = {
-        # CV title typos
         "developper": "developer", "developpeur": "développeur",
-        # Common profile/description typos
         "architctures": "architectures", "architecure": "architecture",
         "systms": "systems", "sytem": "system",
         "numrous": "numerous", "professionnal": "professional",
@@ -205,19 +202,14 @@ def _regex_spell_check(text: str) -> list:
         "managment": "management", "devlopment": "development",
         "knowlegde": "knowledge", "recrutment": "recruitment",
         "recrutement": "recrutement",
-        # Language level typos
         "biginner": "beginner", "begginer": "beginner",
         "intermediaire": "intermédiaire",
-        # Role typos
         "treausrer": "treasurer", "tresurer": "treasurer",
-        # Other
         "colaborer": "collaborer", "colaborate": "collaborate",
         "compétencs": "compétences",
     }
-
     found = []
     seen = set()
-    # Search word by word in the text
     words = re.findall(r"\b[A-Za-zÀ-ÿ]{4,}\b", text)
     for word in words:
         word_lower = word.lower()
@@ -232,32 +224,20 @@ def detect_spelling_warnings(raw_text: str, cv: CvAnalysisResult, ev: CvEvaluati
         return
 
     spell_text = _strip_contact_data(raw_text)
-
-    # Step 1: deterministic regex check for known patterns
     regex_typos = _regex_spell_check(spell_text)
 
-    # Step 2: Mistral check for anything the regex missed
-    prompt = f"""You are a professional spell checker reviewing a CV written in English or French (or both).
+    prompt = f"""You are a professional spell checker reviewing a CV in English or French.
 
-Your task: find words that are CLEARLY misspelled — missing or transposed letters, wrong spelling of common words.
-
-Focus especially on:
-- Words in the profile/summary paragraph
-- Job descriptions
-- Words that look like they have missing letters (e.g. "systms" missing an 'e', "numrous" missing an 'e')
+Find words that are CLEARLY misspelled — missing or transposed letters only.
 
 DO NOT flag:
-- Technical terms, programming languages, frameworks (Angular, Docker, OAuth2, etc.)
-- Acronyms (REST, UML, SOA, IEEE, ISET, SDGs, etc.)
-- Proper nouns: person names, company names, city names, university names
-- Words spelled correctly in EITHER English OR French
-- ALL CAPS section headers (formatting, not typos)
-- Capitalisation differences only
+- Technical terms, frameworks, programming languages (Angular, Docker, OAuth2, etc.)
+- Acronyms (REST, UML, IEEE, ISET, SDGs, etc.)
+- Proper nouns: names, companies, cities, universities
+- Words correct in English OR French
+- ALL CAPS section headers
 
-Return ONLY a JSON array. Each item has exactly two keys:
-  "word"       — the misspelled word exactly as it appears
-  "suggestion" — the correct spelling
-
+Return ONLY a JSON array with items having "word" and "suggestion" keys.
 Return [] if no mistakes found.
 
 CV TEXT:
@@ -266,10 +246,10 @@ CV TEXT:
 Return ONLY the JSON array, nothing else."""
 
     raw_response = ""
-    mistral_typos = []
+    llm_typos = []
     try:
         response = ollama_client.chat(
-            model="qwen2.5:3b",
+            model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             options={"temperature": 0},
         )
@@ -278,18 +258,16 @@ Return ONLY the JSON array, nothing else."""
         raw_response = re.sub(r"```json\s*|```\s*", "", raw_response).strip()
         result = json.loads(raw_response)
         if isinstance(result, list):
-            mistral_typos = result
-    except (json.JSONDecodeError, Exception):
+            llm_typos = result
+    except Exception:
         m = re.search(r"\[.*\]", raw_response, re.DOTALL)
         try:
-            mistral_typos = json.loads(m.group(0)) if m else []
+            llm_typos = json.loads(m.group(0)) if m else []
         except Exception:
-            mistral_typos = []
+            llm_typos = []
 
-    # Merge: regex findings take priority, Mistral fills in the rest
-    # Deduplicate by word (case-insensitive)
     seen_words = set()
-    all_typos = []
+    all_typos  = []
 
     for t in regex_typos:
         word_lower = t.get("word", "").lower()
@@ -297,14 +275,13 @@ Return ONLY the JSON array, nothing else."""
             seen_words.add(word_lower)
             all_typos.append(t)
 
-    for t in mistral_typos:
-        word = t.get("word", "")
+    for t in llm_typos:
+        word       = t.get("word", "")
         suggestion = t.get("suggestion", "")
         word_lower = word.lower()
-        # Skip if already found by regex, identical to suggestion, or is a known false positive
-        if (not word or not suggestion or
-                word_lower == suggestion.lower() or
-                word_lower in seen_words):
+        if (not word or not suggestion
+                or word_lower == suggestion.lower()
+                or word_lower in seen_words):
             continue
         seen_words.add(word_lower)
         all_typos.append(t)
@@ -353,6 +330,18 @@ def detect_leadership(cv: CvAnalysisResult, ev: CvEvaluation) -> None:
             break
 
 
+def _is_github_assessable(cv: CvAnalysisResult) -> bool:
+    """
+    Returns True only when we have a GitHub profile with real scoring data.
+    NO_PUBLIC_WORK, RATE_LIMITED, and missing profiles all return False —
+    these candidates must not be penalized for lack of public GitHub data.
+    """
+    if not cv.github_profile:
+        return False
+    score = cv.github_profile.github_score
+    return score not in _UNASSESSABLE_SCORES
+
+
 def build_recruiter_insights(cv: CvAnalysisResult, ev: CvEvaluation) -> None:
     if cv.skills:
         ev.recruiter_insights.append(f"Key technical skills include: {', '.join(cv.skills[:5])}")
@@ -388,6 +377,117 @@ def build_recruiter_insights(cv: CvAnalysisResult, ev: CvEvaluation) -> None:
             "Profile appears aligned with an internship or junior candidate"
         )
 
+    # ── GitHub-based insights — only when profile is actually assessable ──────
+    if not _is_github_assessable(cv):
+        # Account found but cannot be assessed — inform recruiter neutrally,
+        # never penalize the candidate.
+        if cv.github_profile:
+            score = cv.github_profile.github_score
+            if score == "NO_PUBLIC_WORK":
+                ev.recruiter_insights.append(
+                    "GitHub account found but has no public repositories — "
+                    "candidate may work primarily on private projects"
+                )
+            elif score == "RATE_LIMITED":
+                ev.recruiter_insights.append(
+                    "GitHub profile could not be fully assessed due to API rate limits"
+                )
+        return  # ← stop here, no scoring-based signals below
+
+    # From here on: profile is assessable (STRONG / MODERATE / WEAK / INACTIVE)
+    gh = cv.github_profile
+    score = gh.github_score
+
+    if score == "STRONG":
+        _append_unique(ev.profile_strengths, "GitHub profile shows strong development activity")
+    elif score == "MODERATE":
+        _append_unique(ev.profile_strengths, "GitHub profile shows moderate development activity")
+    elif score == "WEAK":
+        _append_unique(ev.profile_weaknesses, "GitHub account exists but repos appear empty or low quality")
+    elif score == "INACTIVE":
+        _append_unique(ev.profile_weaknesses, "GitHub account has no public repositories")
+
+    if gh.all_technologies:
+        ev.recruiter_insights.append(
+            f"GitHub confirms use of: {', '.join(gh.all_technologies[:4])}"
+        )
+    if gh.real_repos_count > 0:
+        ev.recruiter_insights.append(
+            f"{gh.real_repos_count} genuine project(s) found on GitHub "
+            f"(own code, 10+ commits, real content)"
+        )
+    if gh.total_stars > 0:
+        ev.recruiter_insights.append(
+            f"GitHub repos received {gh.total_stars} star(s) from other developers"
+        )
+    if gh.account_age_days > 365:
+        ev.recruiter_insights.append(
+            f"GitHub account is {gh.account_age_days // 365} year(s) old "
+            f"— established developer presence"
+        )
+    if gh.scored_repos:
+        top = gh.scored_repos[0]
+        if top.commit_count >= 10:
+            ev.recruiter_insights.append(
+                f"Best project: '{top.name}' — "
+                f"{top.commit_count} commits, {top.size_kb}KB"
+                + (f", {top.stars} ★" if top.stars > 0 else "")
+                + (f" — {top.description}" if top.description else "")
+            )
+
+    # Commit consistency
+    if gh.consistent_repos:
+        _append_unique(
+            ev.profile_strengths,
+            f"Consistent commit activity across {len(gh.consistent_repos)} project(s): "
+            f"{', '.join(gh.consistent_repos)}"
+        )
+    if gh.recently_active_repos > 0:
+        ev.recruiter_insights.append(
+            f"Recently active: {gh.recently_active_repos} of top repo(s) "
+            f"pushed within the last 6 months"
+        )
+
+    # Code ownership depth
+    if gh.avg_ownership_ratio >= 0.9:
+        _append_unique(
+            ev.profile_strengths,
+            f"Sole author of top projects ({int(gh.avg_ownership_ratio * 100)}% of commits)"
+        )
+    elif gh.avg_ownership_ratio >= 0.6:
+        _append_unique(
+            ev.profile_strengths,
+            f"Primary contributor to top projects ({int(gh.avg_ownership_ratio * 100)}% of commits)"
+        )
+    elif 0 < gh.avg_ownership_ratio < 0.3:
+        _append_unique(
+            ev.profile_weaknesses,
+            f"Low authorship ratio on top repos ({int(gh.avg_ownership_ratio * 100)}% of commits) "
+            f"— may include inherited code"
+        )
+
+    # Project complexity
+    high_complexity = [r for r in gh.scored_repos if r.complexity_label == "HIGH"]
+    if high_complexity:
+        names = ", ".join(f"'{r.name}'" for r in high_complexity[:2])
+        _append_unique(ev.profile_strengths, f"High-complexity project(s) detected: {names}")
+    else:
+        medium_complexity = [r for r in gh.scored_repos if r.complexity_label == "MEDIUM"]
+        if medium_complexity:
+            _append_unique(
+                ev.profile_strengths,
+                f"{len(medium_complexity)} medium-complexity project(s) on GitHub"
+            )
+
+    # Collaboration signals
+    collab = gh.collaboration
+    if collab.has_collaboration:
+        _append_unique(
+            ev.profile_strengths,
+            f"Open-source collaboration detected: contributed to "
+            f"{collab.active_forks_count} external project(s)"
+        )
+
 
 def build_evidence_signals(cv: CvAnalysisResult) -> EvidenceSignals:
     signals = EvidenceSignals()
@@ -399,6 +499,23 @@ def build_evidence_signals(cv: CvAnalysisResult) -> EvidenceSignals:
     if cv.volunteer_work:     signals.leadership_evidence = "HIGH"
     if cv.social_links and (cv.social_links.github or cv.social_links.portfolio):
         signals.public_portfolio_evidence = "HIGH"
+
+    # GitHub activity evidence:
+    # Only produce HIGH/MEDIUM/LOW when the profile is actually assessable.
+    # NO_PUBLIC_WORK, RATE_LIMITED, and missing all map to N/A — no penalty.
+    if cv.github_profile:
+        score = cv.github_profile.github_score
+        if score == "STRONG":
+            signals.github_activity_evidence = "HIGH"
+        elif score == "MODERATE":
+            signals.github_activity_evidence = "MEDIUM"
+        elif score in ("WEAK", "INACTIVE"):
+            signals.github_activity_evidence = "LOW"
+        else:
+            # NO_PUBLIC_WORK, RATE_LIMITED → N/A (neutral, same as no GitHub)
+            signals.github_activity_evidence = "N/A"
+    # If no github_profile at all → stays "N/A" (default in EvidenceSignals)
+
     return signals
 
 

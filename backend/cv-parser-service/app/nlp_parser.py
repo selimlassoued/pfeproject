@@ -3,11 +3,13 @@ import json
 import os
 import time
 import logging
+import concurrent.futures
 import ollama
 from typing import Optional, List, Tuple
 
 from app.evaluator import evaluate_cv
 from app.extractor import extract_contact_fields, extract_languages_from_text
+from app.github_enricher import enrich_from_github
 from app.models import (
     WorkExperience,
     Education,
@@ -16,6 +18,9 @@ from app.models import (
     Hackathon,
     Project,
     VolunteerWork,
+    GitHubProfile,
+    GitHubRepo,
+    CollaborationSignals,
     CvAnalysisResult,
 )
 
@@ -42,26 +47,48 @@ _JUNIOR_KEYWORDS = ["junior"]
 _MID_KEYWORDS    = ["mid", "intermediate"]
 
 
-def extract_seniority(text: str, job_titles: Optional[List[str]] = None) -> Optional[str]:
-    # Ensure all titles are strings
+def extract_seniority(
+    text: str,
+    job_titles: Optional[List[str]] = None,
+    total_years: Optional[float] = None,
+) -> Optional[str]:
+    """
+    Determine seniority using BOTH job titles and total years of experience.
+    Years thresholds: < 2 = JUNIOR/INTERN, 2-5 = MID, 5+ = SENIOR
+    """
     safe_titles = [t for t in (job_titles or []) if isinstance(t, str)]
     titles_text = " ".join(safe_titles).lower()
     full_lower  = text.lower()
 
+    # Intern/stage keywords are definitive regardless of years
+    if any(kw in full_lower for kw in _INTERN_KEYWORDS):
+        return "INTERN"
+
+    # Senior title keywords — only confirm if years support it
     if titles_text and any(kw in titles_text for kw in _SENIOR_TITLE_KEYWORDS):
         non_intern = [t for t in safe_titles
                       if not any(kw in t.lower() for kw in _INTERN_KEYWORDS)]
         if non_intern:
-            return "SENIOR"
+            if total_years is None or total_years >= 5:
+                return "SENIOR"
+            elif total_years >= 2:
+                return "MID"
+            else:
+                return "JUNIOR"
 
-    if any(kw in full_lower for kw in _INTERN_KEYWORDS):
-        return "INTERN"
     if any(kw in full_lower for kw in _JUNIOR_KEYWORDS):
         return "JUNIOR"
     if any(kw in full_lower for kw in _MID_KEYWORDS):
         return "MID"
 
-    return "INTERN"
+    # Fallback: derive purely from years of experience
+    if total_years is not None:
+        if total_years >= 5:    return "SENIOR"
+        if total_years >= 2:    return "MID"
+        if total_years >= 0.5:  return "JUNIOR"
+        return "INTERN"
+
+    return "INTERN"  # default: no experience info found
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -126,7 +153,6 @@ def _safe(val, is_list: bool = False):
         return result
     # Scalar: always return a string or None
     if isinstance(val, dict):
-        # LLM returned a dict where a string was expected — extract best string value
         str_val = (val.get("name") or val.get("title") or val.get("value")
                    or val.get("text") or val.get("description") or "")
         return str(str_val) if str_val else None
@@ -141,7 +167,7 @@ def _safe(val, is_list: bool = False):
 # Shared model caller with full logging + retry
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _call_model(prompt_name: str, prompt: str, retries: int = 2) -> dict:
+def _call_model(prompt_name: str, prompt: str, retries: int = 2, num_predict: int = 2048) -> dict:
     """
     Call the LLM with full logging so you can see exactly what's happening.
     Logs: start time, response time, raw response length, parse errors.
@@ -154,7 +180,7 @@ def _call_model(prompt_name: str, prompt: str, retries: int = 2) -> dict:
             response = ollama_client.chat(
                 model=MODEL,
                 messages=[{"role": "user", "content": prompt}],
-                options={"temperature": 0, "num_predict": 2048},
+                options={"temperature": 0, "num_predict": num_predict},
             )
             elapsed = time.time() - t0
             raw = response["message"]["content"].strip()
@@ -173,6 +199,8 @@ def _call_model(prompt_name: str, prompt: str, retries: int = 2) -> dict:
             elapsed = time.time() - t0
             logger.error(f"[{prompt_name}] ✗ JSON error after {elapsed:.1f}s: {e}")
             logger.error(f"[{prompt_name}] Raw (first 300 chars): {raw[:300]!r}")
+
+            # Try 1: extract complete {...} object
             m = re.search(r"\{.*\}", raw, re.DOTALL)
             if m:
                 try:
@@ -181,22 +209,37 @@ def _call_model(prompt_name: str, prompt: str, retries: int = 2) -> dict:
                     return result
                 except Exception:
                     pass
+
+            # Try 2: partial recovery — extract all complete array entries
+            array_match = re.search(r'"(\w+)"\s*:\s*\[', raw)
+            if array_match:
+                key = array_match.group(1)
+                entries = re.findall(r'\{[^{}]*\}', raw)
+                if entries:
+                    complete = []
+                    for entry in entries:
+                        try:
+                            complete.append(json.loads(entry))
+                        except Exception:
+                            pass
+                    if complete:
+                        logger.info(f"[{prompt_name}] ✓ Partial recovery: {len(complete)} entries for '{key}'")
+                        return {key: complete}
+
             if attempt == retries - 1:
                 logger.error(f"[{prompt_name}] All retries exhausted → returning {{}}")
                 return {}
 
         except AttributeError as e:
             # Model returned a JSON array instead of object — wrap it
-            elapsed = time.time() - t0
             logger.warning(f"[{prompt_name}] Model returned array instead of object, wrapping")
             try:
                 arr = json.loads(raw)
                 if isinstance(arr, list):
-                    # Guess the key from the prompt name
                     key_map = {
                         "EXPERIENCE": "work_experience",
-                        "EDUCATION": "education",
-                        "SKILLS": "skills",
+                        "EDUCATION":  "education",
+                        "SKILLS":     "skills",
                         "ACTIVITIES": "projects",
                     }
                     key = key_map.get(prompt_name, "data")
@@ -257,7 +300,7 @@ def _extract_experience(text: str) -> dict:
       "title": "job title only",
       "company": "employer name or null",
       "duration": "date range or null",
-      "description": "responsibilities/achievements or null",
+      "description": "responsibilities and achievements as a single string, or null",
       "skills_used": ["technology or skill used in this role"]
     }}
   ],
@@ -265,14 +308,15 @@ def _extract_experience(text: str) -> dict:
 }}
 
 Important:
-- Extract EVERY professional role — internships, full-time jobs, freelance, research positions.
+- Extract EVERY professional role — internships, full-time, freelance, research.
 - title must contain ONLY the role name, never the company name.
 - When role and company appear on the same line separated by dash or comma, split them:
   "Software Engineer - Google" → title="Software Engineer", company="Google"
-  "Intern, Acme Corp" → title="Intern", company="Acme Corp"
-  "DATE | Role | Company | City" → title="Role", company="Company"
+  "Company Name (2020 - 2022)\\nJOB TITLE" → title="JOB TITLE", company="Company Name"
+  "JOB TITLE\\nCompany Name (dates)" → title="JOB TITLE", company="Company Name"
+- description: extract the bullet points or paragraph that appear BELOW each job entry. Join multiple bullet points into a single string. Never leave null if bullets exist below the title.
 - NEVER include academic degrees or diplomas as work experience.
-- total_years_experience: sum of all durations. Return 0 for students/recent graduates.
+- total_years_experience: sum of all durations. Return 0 for students.
 - Return [] if no work experience exists.
 
 CV TEXT:
@@ -300,18 +344,18 @@ def _extract_education(text: str) -> dict:
 }}
 
 Important:
-- Extract EVERY education entry — high school, bachelor, master, PhD, etc.
-- institution must contain ONLY the school name. Strip any honors suffix:
-  "MIT - Summa Cum Laude" → institution="MIT", mention="Summa Cum Laude"
-- Some entries appear on a SINGLE LINE. Parse all fields from it:
-  "BSc Computer Science (with Honours) 2020 University of London" → degree="BSc Computer Science", mention="with Honours", year="2020", institution="University of London"
-- Strip qualifiers like "(ongoing)", "(in progress)" from degree title and put in mention if relevant.
-- NEVER include jobs, internships, or certifications here.
-- Return [] if no education found.
+- Extract EVERY education entry found in the CV — degrees, diplomas, certifications, professional training.
+- Look for these section labels: EDUCATION, FORMATION, FORMATIONS, ÉDUCATION, DIPLÔMES, ÉTUDES.
+- institution must contain ONLY the school/org name. Strip any honors suffix that follows a dash.
+- Some entries appear on a SINGLE LINE combining degree + year + institution — parse all fields from it.
+- Strip qualifiers like "(ongoing)", "(en cours)" from degree title and put in mention if relevant.
+- NEVER include jobs or internships here — only academic degrees, certifications, and formal training.
+- NEVER invent or copy from examples — extract ONLY what is present in the CV text below.
+- Return [] if no education section is found.
 
 CV TEXT:
 {text[:5000]}"""
-    return _call_model("EDUCATION", prompt)
+    return _call_model("EDUCATION", prompt, num_predict=4096)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -319,7 +363,7 @@ CV TEXT:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _extract_skills(text: str) -> dict:
-    prompt = f"""You are a CV parser. Extract skills, soft skills, and certifications. Return ONLY valid JSON, no explanation.
+    prompt = f"""You are a CV parser. Extract skills, soft skills, and certifications. Return ONLY valid JSON object, no explanation.
 
 {{
   "skills": ["skill1", "skill2"],
@@ -328,11 +372,11 @@ def _extract_skills(text: str) -> dict:
 }}
 
 Important:
-- skills: extract ALL technical skills, tools, languages, frameworks, and methodologies from the dedicated skills section. Also extract from sub-categories like "Databases: MySQL, PostgreSQL" → extract "MySQL", "PostgreSQL".
-- soft_skills: behavioral and interpersonal traits ONLY. Extract from the profile/summary paragraph. Never invent defaults — only include what is explicitly written.
-- certifications: professional certificates explicitly labeled as such (AWS Certified, CCNA, etc.). NEVER include academic degrees.
-- The CV may use French section names: COMPÉTENCES = skills, CERTIFICATIONS = certifications.
-- Return [] for any absent section.
+- skills: extract ONLY from the dedicated SKILLS, COMPÉTENCES, or TECHNICAL SKILLS section. These are concrete tools, technologies, methods, or platforms. Each skill is a short term (1-5 words). Do NOT extract words from the profile/about paragraph.
+- soft_skills: personality or behavioral traits from the profile/about section only. Never invent.
+- certifications: professional certificates only (e.g. AWS Certified, PMP). Never academic degrees.
+- If a section is absent, return [].
+- Return a JSON object, NOT an array.
 
 CV TEXT:
 {text[:5000]}"""
@@ -454,7 +498,7 @@ def _clean_volunteer_role(role: str, org: Optional[str]) -> Tuple[str, Optional[
     if not role or "," not in role:
         return role, org
     parts = role.split(",", 1)
-    clean_role = parts[0].strip()
+    clean_role   = parts[0].strip()
     embedded_org = parts[1].strip()
     return clean_role, org if org else embedded_org
 
@@ -475,7 +519,6 @@ def _derive_awards_from_hackathons(hackathons: List[Hackathon], awards: List[str
         if isinstance(a, str):
             normalized.append(a)
         elif isinstance(a, dict):
-            # Extract string from common dict shapes: {"title": "..."}, {"award": "..."}, {"name": "..."}
             val = a.get("title") or a.get("award") or a.get("name") or a.get("description") or ""
             if val:
                 normalized.append(str(val))
@@ -500,9 +543,7 @@ def _extract_skills_from_text(text: str) -> List[str]:
     """
     from app.extractor import _LANGUAGE_NAMES
 
-    # Build a comprehensive set of words to skip
     lang_names_lower = {k.lower() for k in _LANGUAGE_NAMES}
-    # Add canonical English language names that might not be in the mapping keys
     lang_names_lower.update({
         "arabic", "french", "english", "spanish", "german", "italian",
         "chinese", "japanese", "russian", "portuguese", "dutch", "turkish",
@@ -521,14 +562,13 @@ def _extract_skills_from_text(text: str) -> List[str]:
         r"EXTRACURRICULAR|VOLUNTEER|LANGUES?|LANGUAGES?|CERTIF|AWARDS?|PROJECTS?)\b",
         text[skill_start.end():], re.IGNORECASE
     )
-    max_end = skill_start.end() + 300
-    section_end = skill_start.end() + next_sec.start() if next_sec else max_end
-    section_end = min(section_end, max_end)
-
-    skill_text = text[skill_start.end(): section_end]
+    max_end      = skill_start.end() + 300
+    section_end  = skill_start.end() + next_sec.start() if next_sec else max_end
+    section_end  = min(section_end, max_end)
+    skill_text   = text[skill_start.end(): section_end]
 
     skills = []
-    seen = set()
+    seen   = set()
     level_words = {
         "native", "advanced", "beginner", "professional", "fluent",
         "intermediate", "biginner", "niveau", "maternelle", "courant",
@@ -539,7 +579,7 @@ def _extract_skills_from_text(text: str) -> List[str]:
         line = line.strip()
         if not line:
             continue
-        if len(line.split()) > 6:
+        if len(line.split()) > 4:
             continue
         if line.isupper() and len(line) > 15:
             continue
@@ -562,14 +602,79 @@ def _extract_skills_from_text(text: str) -> List[str]:
     return skills
 
 
+def _extract_education_from_text(text: str) -> List[dict]:
+    """
+    Deterministically extract education entries from FORMATIONS/EDUCATION section.
+    Used as fallback when LLM returns empty or truncated results.
+    """
+    section_start = re.search(
+        r"(?:FORMATIONS?|ÉDUCATION|EDUCATION|DIPLÔMES?|ÉTUDES?)\s*\n",
+        text, re.IGNORECASE
+    )
+    if not section_start:
+        return []
+
+    next_sec = re.search(
+        r"\n(?:EXPÉRIENCES?|EXPERIENCE|COMPÉTENCES?|SKILLS?|LANGUES?|LANGUAGES?|"
+        r"CONTACT|PROFIL|PROFILE|CERTIF|AWARDS?|PROJECTS?)\b",
+        text[section_start.end():], re.IGNORECASE
+    )
+    section_text = text[
+        section_start.end():
+        section_start.end() + (next_sec.start() if next_sec else 600)
+    ]
+
+    entries = []
+    blocks  = re.split(r"\n(?=\S)", section_text)
+
+    for block in blocks:
+        block = block.strip()
+        if not block or len(block) < 5:
+            continue
+
+        year_m = re.search(r"(\d{4}\s*[-–—]\s*(?:\d{4}|[A-Za-z]+|\d{2})|\d{4})", block)
+        year   = year_m.group(1).strip() if year_m else None
+
+        lines       = [l.strip() for l in block.split("\n") if l.strip()]
+        degree      = lines[0] if lines else None
+        institution = None
+        for line in lines[1:]:
+            if re.search(
+                r"(?:université|university|école|school|institute|iset|lycée|formation|concordia|tempo)",
+                line, re.IGNORECASE
+            ):
+                institution = line
+                break
+
+        if degree:
+            entries.append({
+                "degree":      degree,
+                "institution": institution,
+                "year":        year,
+                "field":       None,
+                "mention":     None,
+            })
+
+    return entries
+
+
 def _calculate_years_experience(experience_list: List[WorkExperience]) -> Optional[float]:
     """Calculate total years of experience deterministically from duration fields."""
     from datetime import date as dt_date
+
     MONTHS_MAP = {
-        "jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,
-        "jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12,
-        "janvier":1,"février":2,"mars":3,"avril":4,"mai":5,"juin":6,
-        "juillet":7,"août":8,"septembre":9,"octobre":10,"novembre":11,"décembre":12,
+        "jan":1, "january":1, "janvier":1,
+        "feb":2, "february":2, "février":2, "fevrier":2,
+        "mar":3, "march":3, "mars":3,
+        "apr":4, "april":4, "avr":4, "avril":4,
+        "may":5, "mai":5,
+        "jun":6, "june":6, "juin":6,
+        "jul":7, "july":7, "juil":7, "juillet":7,
+        "aug":8, "august":8, "août":8, "aout":8,
+        "sep":9, "sept":9, "september":9, "septembre":9,
+        "oct":10, "october":10, "octobre":10,
+        "nov":11, "november":11, "novembre":11,
+        "dec":12, "december":12, "déc":12, "decembre":12, "décembre":12,
     }
 
     def _parse(s):
@@ -591,7 +696,7 @@ def _calculate_years_experience(experience_list: List[WorkExperience]) -> Option
     for exp in experience_list:
         if not exp.duration:
             continue
-        dur = exp.duration.replace("—", "-").replace("–", "-")
+        dur   = exp.duration.replace("—", "-").replace("–", "-")
         parts = [p.strip() for p in dur.split("-") if p.strip()]
         if len(parts) < 2:
             continue
@@ -609,7 +714,7 @@ def _calculate_years_experience(experience_list: List[WorkExperience]) -> Option
 # Main parse entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
-def parse_cv(text: str, application_id: str) -> CvAnalysisResult:
+def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -> CvAnalysisResult:
     try:
         t_start = time.time()
         logger.info(f"=== CV parse start: {application_id}, text={len(text)} chars, model={MODEL} ===")
@@ -622,9 +727,24 @@ def parse_cv(text: str, application_id: str) -> CvAnalysisResult:
         languages = extract_languages_from_text(text)
         logger.info(f"Deterministic: email={contact['email']}, phone={contact['phone']}, langs={len(languages)}")
 
+        # ── Resolve GitHub URL ────────────────────────────────────────────────
+        # Priority: form input > extracted from CV > LLM extracted
+        _github_url_resolved = github_url or contact["github"]
+
+        # ── Launch GitHub enrichment in background thread ─────────────────────
+        # Runs in parallel with the 5 LLM calls below.
+        # GitHub uses external HTTP — independent of Ollama, no conflict.
+        github_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        github_future   = None
+
+        if _github_url_resolved:
+            logger.info(f"Launching GitHub enrichment thread: {_github_url_resolved}")
+            github_future = github_executor.submit(enrich_from_github, _github_url_resolved)
+        else:
+            logger.info("No GitHub URL — skipping GitHub enrichment")
+
         # ── 5 sequential LLM calls ────────────────────────────────────────────
-        # Note: local Ollama processes one request at a time regardless,
-        # so parallel calls just create a queue — sequential is cleaner and more stable
+        # While these run (~22s), GitHub thread fetches in the background
         logger.info("Starting 5 sequential LLM calls...")
         t_llm = time.time()
 
@@ -637,8 +757,13 @@ def parse_cv(text: str, application_id: str) -> CvAnalysisResult:
         logger.info(f"All LLM calls finished in {time.time() - t_llm:.1f}s total")
 
         # ── Education ─────────────────────────────────────────────────────────
+        education_raw = education_data.get("education", [])
+        if not education_raw:
+            logger.info("Education LLM returned empty — trying deterministic extractor")
+            education_raw = _extract_education_from_text(text)
+
         education_list = []
-        for edu in education_data.get("education", []):
+        for edu in education_raw:
             education_list.append(Education(
                 degree=_safe(edu.get("degree")),
                 institution=_safe(edu.get("institution")),
@@ -648,39 +773,49 @@ def parse_cv(text: str, application_id: str) -> CvAnalysisResult:
             ))
 
         # ── Work experience ───────────────────────────────────────────────────
-        experience_list = []
-        job_titles = []
-        experience_descriptions = set()  # track to filter fake projects later
+        experience_list          = []
+        job_titles               = []
+        experience_descriptions  = set()
+
         for exp in experience_data.get("work_experience", []):
             raw_title   = _safe(exp.get("title"))
             raw_company = _safe(exp.get("company"))
-            # Always attempt to split title/company — even if company already set,
-            # the title might still contain the company name
+
             if raw_title:
                 split_title, split_company = _split_title_company(raw_title)
-                # Only use split result if it actually changed the title
                 if split_title != raw_title:
                     raw_title = split_title
                     if not raw_company:
                         raw_company = split_company
+
             if raw_title:
                 job_titles.append(raw_title)
+
             desc = _safe(exp.get("description"))
             if desc:
                 experience_descriptions.add(desc[:80].lower())
+
+            raw_skills = _safe(exp.get("skills_used", []), is_list=True) or []
+            filtered_skills = [
+                s for s in raw_skills
+                if isinstance(s, str)
+                and s.lower() != (raw_title or "").lower()
+                and s.lower() != (raw_company or "").lower()
+                and len(s) < 50
+            ]
             experience_list.append(WorkExperience(
                 title=raw_title,
                 company=raw_company,
                 duration=_safe(exp.get("duration")),
                 description=desc,
-                skills_used=_safe(exp.get("skills_used", []), is_list=True) or [],
+                skills_used=filtered_skills,
             ))
 
         # ── Total years experience — calculated deterministically ─────────────
         total_years = _calculate_years_experience(experience_list)
 
-        # ── Seniority ─────────────────────────────────────────────────────────
-        seniority = extract_seniority(text, job_titles)
+        # ── Seniority — uses both job titles AND years ────────────────────────
+        seniority = extract_seniority(text, job_titles, total_years)
 
         # ── Languages — always deterministic, LLM never used ─────────────────
         languages_list = [
@@ -699,32 +834,30 @@ def parse_cv(text: str, application_id: str) -> CvAnalysisResult:
         }
         projects_list = []
         for proj in activities_data.get("projects", []):
-            title = proj.get("title", "")
-            desc  = _safe(proj.get("description"))
+            title       = proj.get("title", "")
+            desc        = _safe(proj.get("description"))
             title_lower = title.lower()[:80]
 
-            # Skip if title matches a work experience title exactly
             is_exp_title = any(
                 exp_t in title_lower or title_lower in exp_t
                 for exp_t in experience_titles_lower
             )
-            # Skip if title matches work experience description
             is_work_dup = any(
                 exp_desc in title_lower or title_lower in exp_desc
                 for exp_desc in experience_descriptions
             )
-            # Skip if title matches education degree
             is_edu_dup = any(
                 edu_deg in title_lower or title_lower in edu_deg
                 for edu_deg in education_degrees
             )
-            # Skip obvious job task phrases
             is_job_task = any(kw in title_lower for kw in [
                 "internship", "stage", "stagiaire", "intern",
             ])
+
             if is_exp_title or is_work_dup or is_edu_dup or is_job_task:
                 logger.info(f"Filtered fake project: {title[:60]}")
                 continue
+
             projects_list.append(Project(
                 title=title,
                 description=desc,
@@ -736,10 +869,10 @@ def parse_cv(text: str, application_id: str) -> CvAnalysisResult:
         hackathons_list = []
         if _text_contains_hackathons(text):
             for hack in activities_data.get("hackathons", []):
-                raw_title = hack.get("title", "")
-                raw_rank  = _safe(hack.get("rank"))
-                clean_title, extracted_rank = _extract_rank_from_title(raw_title)
-                final_rank = raw_rank or extracted_rank
+                raw_title             = hack.get("title", "")
+                raw_rank              = _safe(hack.get("rank"))
+                clean_title, ext_rank = _extract_rank_from_title(raw_title)
+                final_rank            = raw_rank or ext_rank
                 hackathons_list.append(Hackathon(
                     title=clean_title,
                     rank=final_rank,
@@ -773,7 +906,7 @@ def parse_cv(text: str, application_id: str) -> CvAnalysisResult:
         awards = _safe(activities_data.get("awards", []), is_list=True) or []
         awards = _derive_awards_from_hackathons(hackathons_list, awards)
 
-        # ── Social links — regex always overrides LLM ─────────────────────────
+        # ── Social links ──────────────────────────────────────────────────────
         social_raw = activities_data.get("social_links", {}) or {}
 
         def _prefer(contact_val, llm_val):
@@ -795,16 +928,123 @@ def parse_cv(text: str, application_id: str) -> CvAnalysisResult:
 
         # ── Skills — merge LLM skills with deterministic extraction ──────────
         llm_skills = _safe(skills_data.get("skills", []), is_list=True) or []
-        # Also extract skills deterministically from raw text
-        det_skills = _extract_skills_from_text(text)
-        # Merge: prefer LLM order, add deterministic skills not already present
+        _PROFILE_WORDS = {
+            "passionnée", "passionne", "engagée", "engage", "adaptée", "adapte",
+            "motivated", "rigorous", "reliable", "creative", "curious", "ambitious",
+            "digital", "contenu", "audience", "marques", "abonnés", "visibilité",
+            "communauté", "impactants", "stratégie", "engagement", "engagée.",
+        }
+        llm_skills = [
+            s for s in llm_skills
+            if isinstance(s, str)
+            and s.lower().rstrip(".") not in _PROFILE_WORDS
+            and len(s.split()) <= 5
+            and not s.endswith(".")
+        ]
+        det_skills    = _extract_skills_from_text(text)
         merged_skills = list(llm_skills)
-        llm_lower = {s.lower() for s in merged_skills if isinstance(s, str)}
+        llm_lower     = {s.lower() for s in merged_skills if isinstance(s, str)}
         for s in det_skills:
             if isinstance(s, str) and s.lower() not in llm_lower:
                 merged_skills.append(s)
                 llm_lower.add(s.lower())
 
+        # ── Collect GitHub result (thread started earlier) ────────────────────
+        github_profile_data = None
+        if github_future is not None:
+            try:
+                # Wait for GitHub — max 30s to avoid blocking too long
+                raw_gh = github_future.result(timeout=25)
+                github_executor.shutdown(wait=False)
+
+                if raw_gh:
+                    github_profile_data = GitHubProfile(
+                        username=raw_gh.get("username"),
+                        account_url=raw_gh.get("account_url"),
+                        name=raw_gh.get("name"),
+                        bio=raw_gh.get("bio"),
+                        location=raw_gh.get("location"),
+                        public_repos_count=raw_gh.get("public_repos_count", 0),
+                        own_repos_count=raw_gh.get("own_repos_count", 0),
+                        forked_repos_count=raw_gh.get("forked_repos_count", 0),
+                        account_age_days=raw_gh.get("account_age_days", 0),
+                        followers=raw_gh.get("followers", 0),
+                        last_active=raw_gh.get("last_active"),
+                        all_technologies=raw_gh.get("all_technologies", []),
+                        all_repo_frameworks=raw_gh.get("all_repo_frameworks", []),
+                        total_stars=raw_gh.get("total_stars", 0),
+                        real_repos_count=raw_gh.get("real_repos_count", 0),
+                        scored_repos=[
+                            GitHubRepo(**r) for r in raw_gh.get("scored_repos", [])
+                        ],
+                        github_score=raw_gh.get("github_score", "INACTIVE"),
+                        # ── Commit consistency ────────────────────────────────
+                        consistent_repos=raw_gh.get("consistent_repos", []),
+                        recently_active_repos=raw_gh.get("recently_active_repos", 0),
+                        avg_ownership_ratio=raw_gh.get("avg_ownership_ratio", 0.0),
+                        # ── Collaboration signals ─────────────────────────────
+                        collaboration=CollaborationSignals(
+                            **raw_gh.get("collaboration", {})
+                        ),
+                    )
+
+                    # ── Three-tier CV skills verification ─────────────────────
+                    confirmed_lower = set(raw_gh.get("confirmed_lower", []))
+                    top_langs_lower = set(raw_gh.get("top_langs_lower", []))
+                    lang_implies_fw = {
+                        k: set(v)
+                        for k, v in raw_gh.get("lang_implies_fw", {}).items()
+                    }
+
+                    # ── Three-tier CV skills verification ─────────────────────────────────
+                    github_profile_data.verification_skipped = raw_gh.get("verification_skipped", False)
+
+                    if not github_profile_data.verification_skipped:
+                        cv_skills_confirmed   = []
+                        cv_skills_likely      = []
+                        cv_skills_no_evidence = []
+
+                        for skill in merged_skills:
+                            if not skill or not isinstance(skill, str):
+                                continue
+                            skill_lower = skill.lower()
+                            if skill_lower in confirmed_lower:
+                                cv_skills_confirmed.append(skill)
+                            elif any(
+                                skill_lower in lang_implies_fw.get(lang, set())
+                                for lang in top_langs_lower
+                            ):
+                                cv_skills_likely.append(skill)
+                            else:
+                                cv_skills_no_evidence.append(skill)
+
+                        github_profile_data.cv_skills_confirmed   = cv_skills_confirmed
+                        github_profile_data.cv_skills_likely      = cv_skills_likely
+                        github_profile_data.cv_skills_no_evidence = cv_skills_no_evidence
+
+                        logger.info(
+                            f"GitHub enrichment done: score={raw_gh.get('github_score')}, "
+                            f"verified: confirmed={len(cv_skills_confirmed)}, "
+                            f"likely={len(cv_skills_likely)}, "
+                            f"no_evidence={len(cv_skills_no_evidence)}, "
+                            f"consistent_repos={raw_gh.get('consistent_repos', [])}, "
+                            f"avg_ownership={raw_gh.get('avg_ownership_ratio', 0.0):.0%}, "
+                            f"collaboration={raw_gh.get('collaboration', {}).get('has_collaboration', False)}"
+                        )
+                    else:
+                        logger.info(
+                            f"GitHub enrichment done: score={raw_gh.get('github_score')}, "
+                            f"verification_skipped=True — no skill penalties applied"
+                        )
+
+            except concurrent.futures.TimeoutError:
+                logger.warning("GitHub enrichment timed out after 25s — skipping")
+                github_executor.shutdown(wait=False)
+            except Exception as e:
+                logger.warning(f"GitHub enrichment error: {e}")
+                github_executor.shutdown(wait=False)
+
+        # ── Build final result ────────────────────────────────────────────────
         result = CvAnalysisResult(
             application_id=application_id,
             candidate_name=_safe(identity_data.get("candidate_name")),
@@ -827,6 +1067,7 @@ def parse_cv(text: str, application_id: str) -> CvAnalysisResult:
             hackathons=hackathons_list,
             volunteer_work=volunteer_list,
             awards=awards,
+            github_profile=github_profile_data,
             raw_text_length=len(text),
             parsing_status="SUCCESS",
         )
