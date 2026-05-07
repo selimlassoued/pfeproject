@@ -1,0 +1,94 @@
+<div class="ir-page">
+
+  <div class="ir-header">
+    <button class="btn btn-ghost" (click)="back()">← Back</button>
+    <h2 class="ir-title">Interview Analysis</h2>
+  </div>
+
+  <div *ngIf="loading" class="ir-state">Loading…</div>
+  <div *ngIf="error" class="ir-state ir-error">{{ error }}</div>
+
+  <ng-container *ngIf="result && !loading">
+
+    <!-- Processing states -->
+    <div *ngIf="result.processingStatus !== 'COMPLETED' && result.processingStatus !== 'FAILED'"
+         class="ir-processing">
+      <div class="ir-spinner"></div>
+      <div class="ir-processing-label">
+        <span *ngIf="result.processingStatus === 'PENDING'">⏳ Waiting for recordings…</span>
+        <span *ngIf="result.processingStatus === 'TRANSCRIBING'">🎙 Transcribing audio…</span>
+        <span *ngIf="result.processingStatus === 'ANALYSING'">🧠 Analysing with AI…</span>
+      </div>
+      <p class="ir-processing-sub">This page refreshes automatically every 5 seconds.</p>
+    </div>
+
+    <div *ngIf="result.processingStatus === 'FAILED'" class="ir-failed">
+      ❌ Analysis failed: {{ result.errorMessage || 'Unknown error' }}
+    </div>
+
+    <!-- Results -->
+    <ng-container *ngIf="result.processingStatus === 'COMPLETED'">
+
+      <!-- Score + Recommendation row -->
+      <div class="ir-top-row">
+
+        <div class="ir-score-card">
+          <div class="ir-score-label">Candidate Score</div>
+          <div class="ir-score-value" [style.color]="scoreColor">
+            {{ result.candidateScore }}<span class="ir-score-denom">/10</span>
+          </div>
+        </div>
+
+        <div class="ir-rec-card" [ngClass]="recommendationClass">
+          <div class="ir-rec-label">Hiring Recommendation</div>
+          <div class="ir-rec-value">{{ recommendationLabel }}</div>
+        </div>
+
+      </div>
+
+      <!-- Summary -->
+      <div class="ir-card">
+        <div class="ir-card-title">📋 Summary</div>
+        <p class="ir-summary-text">{{ result.summary }}</p>
+      </div>
+
+      <!-- Strengths & Weaknesses -->
+      <div class="ir-two-col">
+
+        <div class="ir-card">
+          <div class="ir-card-title">💪 Strengths</div>
+          <ul class="ir-list ir-list-strengths">
+            <li *ngFor="let s of result.candidateStrengths">{{ s }}</li>
+          </ul>
+        </div>
+
+        <div class="ir-card">
+          <div class="ir-card-title">⚠️ Weaknesses</div>
+          <ul class="ir-list ir-list-weaknesses">
+            <li *ngFor="let w of result.candidateWeaknesses">{{ w }}</li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- Suggested Questions -->
+      <div class="ir-card">
+        <div class="ir-card-title">❓ Suggested Follow-up Questions</div>
+        <ol class="ir-list ir-list-questions">
+          <li *ngFor="let q of result.suggestedQuestions">{{ q }}</li>
+        </ol>
+      </div>
+
+      <!-- Transcript (collapsible) -->
+      <div class="ir-card">
+        <div class="ir-card-title ir-transcript-toggle" (click)="showTranscript = !showTranscript">
+          🗒 Transcript
+          <span class="ir-toggle-icon">{{ showTranscript ? '▲' : '▼' }}</span>
+        </div>
+        <pre *ngIf="showTranscript" class="ir-transcript">{{ result.transcript }}</pre>
+      </div>
+
+    </ng-container>
+  </ng-container>
+
+</div>

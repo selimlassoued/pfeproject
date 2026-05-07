@@ -19,15 +19,6 @@ public class JobMicroserviceApplication {
     @Bean
     CommandLineRunner commandLineRunner(JobOfferRepo jobOfferRepo) {
         return args -> {
-            jobOfferRepo.save(JobOffer.builder()
-                    .title("Software Engineer Intern")
-                    .description("Software Engineer BOSS")
-                    .location("Remote")
-                    .minSalary(1000)
-                    .maxSalary(3000)
-                    .employmentType(EmploymentType.FULL_TIME)
-                    .jobStatus(JobStatus.PUBLISHED)
-                    .build());
         };
     }
 }

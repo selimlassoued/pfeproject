@@ -29,11 +29,14 @@ public class GatewayserverApplication {
                 .path("/api/notifications/**")
                 .uri("lb://notification-microservice"))
                 .route("notification-ws", r -> r
-                .path("/ws/notifications/**")
-                .uri("lb://notification-microservice"))
+                .path("/ws/notifications", "/ws/notifications/**")
+                .uri("lb:ws://notification-microservice"))
                 .route("audit-service", r -> r
                 .path("/api/audit/**")
                  .uri("lb://audit-service"))
+                .route("interview-service", r -> r
+                        .path("/api/interviews/**")
+                        .uri("lb://interview-service"))
                 .build();
     }
 }

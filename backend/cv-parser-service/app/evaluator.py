@@ -5,7 +5,6 @@ from datetime import date
 from typing import Optional, Tuple, List
 
 import ollama
-
 from app.models import CvAnalysisResult, CvEvaluation, EvidenceSignals
 
 OLLAMA_HOST   = os.getenv("OLLAMA_HOST", "http://localhost:11434")

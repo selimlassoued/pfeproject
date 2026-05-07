@@ -8,20 +8,12 @@ import ollama
 from typing import Optional, List, Tuple
 
 from app.evaluator import evaluate_cv
-from app.extractor import extract_contact_fields, extract_languages_from_text
+from app.extractor import extract_contact_fields, extract_languages_from_text, _LANGUAGE_NAMES
 from app.github_enricher import enrich_from_github
 from app.models import (
-    WorkExperience,
-    Education,
-    Language,
-    SocialLinks,
-    Hackathon,
-    Project,
-    VolunteerWork,
-    GitHubProfile,
-    GitHubRepo,
-    CollaborationSignals,
-    CvAnalysisResult,
+    WorkExperience, Education, Language, SocialLinks, Hackathon,
+    Project, VolunteerWork, GitHubProfile, GitHubRepo,
+    CollaborationSignals, CvAnalysisResult,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -541,7 +533,7 @@ def _extract_skills_from_text(text: str) -> List[str]:
     Deterministically extract skills from the SKILLS/COMPÉTENCES section.
     Skips language names, level keywords, and prose sentences.
     """
-    from app.extractor import _LANGUAGE_NAMES
+    #from app.extractor import _LANGUAGE_NAMES
 
     lang_names_lower = {k.lower() for k in _LANGUAGE_NAMES}
     lang_names_lower.update({

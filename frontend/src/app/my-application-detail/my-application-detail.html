@@ -42,6 +42,7 @@
             ⬇ Download CV
           </button>
         </div>
+        
 
         <!-- Progress Timeline -->
         <div class="cad-progress">
@@ -79,12 +80,81 @@
             </div>
           </div>
 
+
           <div class="cad-progress-note" *ngIf="(app.status || '') === 'REJECTED'">
             This application was marked as rejected.
           </div>
         </div>
       </div>
     </section>
+
+    <!-- INTERVIEW SECTION -->
+<section class="cad-interview">
+
+  <div class="cad-interview-header">
+    <h3 class="cad-interview-title">Interview</h3>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="interviewsLoading" class="cad-interview-state">
+    Loading interviews…
+  </div>
+
+  <!-- Empty -->
+  <div *ngIf="!interviewsLoading && interviews.length === 0" class="cad-interview-empty">
+    No interview scheduled yet. You'll be notified when one is set up.
+  </div>
+
+  <!-- Interview cards -->
+  <div class="cad-interview-list" *ngIf="!interviewsLoading && interviews.length > 0">
+    <div
+      *ngFor="let iv of interviews"
+      class="cad-interview-card"
+      [ngClass]="iv.status.toLowerCase()"
+    >
+      <!-- Status + date row -->
+      <div class="cad-iv-row">
+        <span class="cad-iv-pill">{{ iv.status }}</span>
+        <span class="cad-iv-date">
+          📅 {{ iv.scheduledAt | date:'dd/MM/yyyy' }} &nbsp; ⏰ {{ iv.scheduledAt | date:'HH:mm' }}
+        </span>
+      </div>
+
+      <!-- Job title row -->
+      <div class="cad-iv-row">
+        <span class="cad-iv-meta">Position: <strong>{{ iv.jobTitle }}</strong></span>
+      </div>
+
+
+      <!-- Join button -->
+      <!-- Join button — requires consent -->
+<div class="cad-iv-row" *ngIf="iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS'">
+  <button
+    class="btn btn-primary cad-iv-join"
+    type="button"
+    (click)="openConsentModal(iv)">
+    🎥 Join Interview
+  </button>
+  <span class="cad-iv-consent-badge" *ngIf="iv.recordingConsent">
+    ✅ Consent given
+  </span>
+  <span class="cad-iv-consent-badge cad-iv-consent-pending" *ngIf="!iv.recordingConsent">
+    ⚠️ Consent required
+  </span>
+</div>
+
+      <!-- Terminal states -->
+      <div class="cad-iv-row" *ngIf="iv.status === 'COMPLETED'">
+        <span class="cad-iv-done">✅ Interview completed</span>
+      </div>
+      <div class="cad-iv-row" *ngIf="iv.status === 'CANCELLED'">
+        <span class="cad-iv-cancelled">❌ This interview was cancelled</span>
+      </div>
+
+    </div>
+  </div>
+
+</section>
 
     <!-- CONTENT GRID -->
     <section class="cad-grid">
@@ -238,6 +308,45 @@
     </section>
 
   </ng-container>
+  <!-- Consent Modal Overlay -->
+<!-- Replace the consent modal section only -->
+<div class="cad-consent-overlay" *ngIf="consentInterviewId()" (click)="closeConsentModal()">
+  <div class="cad-consent-modal" (click)="$event.stopPropagation()">
+
+    <div class="cad-consent-icon">🎙️</div>
+
+    <h3 class="cad-consent-title">Recording Consent</h3>
+
+    <p class="cad-consent-body">
+      Before joining, please confirm that you consent to this interview session
+      being <strong>recorded</strong>. This recording may be used for evaluation
+      and compliance purposes.
+    </p>
+
+    <p class="cad-consent-note">
+      You <strong>must</strong> give consent to proceed. If you do not consent,
+      you will not be able to join the interview.
+    </p>
+
+    <div class="cad-consent-error" *ngIf="consentError()">
+      {{ consentError() }}
+    </div>
+
+    <div class="cad-consent-actions">
+      <button class="btn btn-ghost" type="button"
+              (click)="closeConsentModal()"
+              [disabled]="consentLoading()">
+        Cancel
+      </button>
+      <button class="btn btn-primary" type="button"
+              (click)="confirmConsent()"
+              [disabled]="consentLoading()">
+        {{ consentLoading() ? 'Saving…' : '✅ I consent — Join Now' }}
+      </button>
+    </div>
+
+  </div>
+</div>
 
   <ng-template #stateTpl>
     <div *ngIf="loading" class="cad-state">Loading…</div>

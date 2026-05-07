@@ -1,0 +1,71 @@
+<div class="interviews-page">
+
+    <!-- Header -->
+    <div class="interviews-head">
+        <div>
+            <h2 class="interviews-title">Interviews</h2>
+            <p class="interviews-subtitle">
+                Manage and join scheduled interviews.
+            </p>
+        </div>
+    </div>
+
+    <!-- States -->
+    <div *ngIf="loading" class="interviews-state">Loading interviews...</div>
+    <div *ngIf="error" class="interviews-error">{{ error }}</div>
+
+    <!-- Empty -->
+    <div *ngIf="!loading && interviews.length === 0 && !error" class="interviews-empty">
+        No interviews scheduled yet.
+    </div>
+
+    <!-- Table -->
+    <div *ngIf="!loading && interviews.length > 0" class="interviews-tableWrap">
+        <table class="interviews-table">
+            <thead>
+                <tr>
+                    <th>Candidate</th>
+                    <th>Position</th>
+                    <th>Scheduled At</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let interview of interviews">
+                    <td>{{ interview.candidateEmail }}</td>
+                    <td>{{ interview.jobTitle }}</td>
+                    <td>{{ interview.scheduledAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>
+                        <span class="interview-status" [ngClass]="getStatusClass(interview.status)">
+                            {{ interview.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <button *ngIf="canJoin(interview)" class="btn btn-primary" (click)="join(interview)">
+                            Join Room
+                        </button>
+                    </td>
+                    <td>
+                        <button *ngIf="canCancel(interview)" class="btn btn-danger" (click)="cancel(interview)"
+                            [disabled]="cancellingId === interview.id">
+                            {{ cancellingId === interview.id ? 'Cancelling…' : 'Cancel' }}
+                        </button>
+                        <span *ngIf="interview.status === 'COMPLETED'" class="interview-status completed">
+                            Completed
+                        </span>
+                        <span *ngIf="interview.status === 'CANCELLED'" class="interview-status cancelled">
+                            Cancelled
+                        </span>
+                    </td>
+                    <td>
+                        <button *ngIf="interview.status === 'COMPLETED'" class="btn btn-ai"
+                            (click)="viewResult(interview.id)">
+                            🧠 View AI Result
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
