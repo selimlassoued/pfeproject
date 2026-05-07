@@ -2,7 +2,6 @@ import { Component, effect, inject } from '@angular/core';
 import Keycloak, { KeycloakProfile } from 'keycloak-js';
 
 import {
-  HasRolesDirective,
   KEYCLOAK_EVENT_SIGNAL,
   KeycloakEventType,
   typeEventArgs,
@@ -14,7 +13,7 @@ import { NotificationsMenu } from './notification-menu/notification-menu';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, HasRolesDirective, NotificationsMenu],
+  imports: [RouterOutlet, RouterLink, NotificationsMenu],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
