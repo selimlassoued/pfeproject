@@ -39,6 +39,14 @@ export class JobDetails implements OnInit {
     HIRED:            { color: '#4ade80', bg: 'rgba(74,222,128,0.12)'  },
     REJECTED:         { color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
   };
+  formatEmploymentType(type: string | null | undefined): string {
+  if (!type) return '';
+
+  return type
+    .toLowerCase()              // FULL_TIME → full_time
+    .replace(/_/g, ' ')         // full_time → full time
+    .replace(/\b\w/g, c => c.toUpperCase()); // full time → Full Time
+}
 
   activeStatus  = signal<AppStatus>('APPLIED');
   appLoading    = signal(false);
@@ -174,7 +182,6 @@ export class JobDetails implements OnInit {
     if (app?.applicationId) this.router.navigate(['/my-application', app.applicationId]);
     else this.router.navigate(['/apply', job.id]);
   }
-
   salaryText(): string {
     const job = this.job();
     if (!job) return '—';

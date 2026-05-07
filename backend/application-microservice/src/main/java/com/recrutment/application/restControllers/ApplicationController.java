@@ -1,11 +1,13 @@
 package com.recrutment.application.restControllers;
 
 import com.recrutment.application.dto.ApplicationDto;
+import com.recrutment.application.dto.CvSummaryDto;
 import com.recrutment.application.dto.PageResponse;
 import com.recrutment.application.dto.SemanticMatchDto;
 import com.recrutment.application.entities.Application;
 import com.recrutment.application.enums.ApplicationStatus;
 import com.recrutment.application.repos.ApplicationRepo;
+import com.recrutment.application.repos.CvAnalysisRepo;
 import com.recrutment.application.services.ApplicationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -29,6 +31,7 @@ public class ApplicationController {
     private final CvAnalysisService cvAnalysisService;
     private final ApplicationService service;
     private final ApplicationRepo repo;
+    private final CvAnalysisRepo cvAnalysisRepository;
 
     // ── Application endpoints ─────────────────────────────────────────────────
 
@@ -47,6 +50,7 @@ public class ApplicationController {
     public ResponseEntity<byte[]> downloadCv(@PathVariable UUID id) {
         Application app = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Application not found: " + id));
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + app.getCvFileName() + "\"")
@@ -263,4 +267,24 @@ public class ApplicationController {
 
     public record SignalRequest(String reason) {}
     public record UnsignalRequest(String reason) {}
+    @GetMapping("/{applicationId}/cv-summary")
+    public ResponseEntity<CvSummaryDto> getCvSummary(@PathVariable UUID applicationId) {;
+        CvAnalysis cv = cvAnalysisRepository.findByApplicationId(applicationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No CV analysis found for application " + applicationId));
+
+        CvSummaryDto dto = CvSummaryDto.builder()
+                .candidateName(cv.getCandidateName())
+                .skills(cv.getSkills())
+                .summary(cv.getSummary())
+                .githubScore(cv.getGithubProfile() != null
+                        ? cv.getGithubProfile().getGithubScore() : null)
+                .githubFrameworks(cv.getGithubProfile() != null
+                        ? cv.getGithubProfile().getAllRepoFrameworks() : List.of())
+                .cvSkillsNoEvidence(cv.getGithubProfile() != null
+                        ? cv.getGithubProfile().getCvSkillsNoEvidence() : List.of())
+                .build();
+
+        return ResponseEntity.ok(dto);
+    }
 }

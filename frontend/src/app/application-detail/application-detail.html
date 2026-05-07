@@ -60,7 +60,76 @@
         <button class="btn btn-ghost" type="button" (click)="downloadCv()">⬇ Download CV</button>
       </div>
     </div>
+    <section class="interview-section">
+  <div class="interview-section-header">
+    <h3 class="interview-section-title">Interviews</h3>
+  </div>
 
+  <div *ngIf="interviewsLoading" class="interview-state-msg">Loading interviews…</div>
+
+  <div *ngIf="!interviewsLoading && interviews.length === 0 && !showScheduleForm" class="interview-empty">
+    No interviews scheduled yet.
+  </div>
+
+  <div class="interview-list" *ngIf="!interviewsLoading && interviews.length > 0">
+    <div *ngFor="let iv of interviews" class="interview-card" [ngClass]="iv.status.toLowerCase()">
+
+      <div class="interview-card-top">
+        <span class="interview-status-pill">{{ iv.status }}</span>
+        <span class="interview-date">
+          📅 {{ iv.scheduledAt | date:'dd/MM/yyyy' }} &nbsp;⏰ {{ iv.scheduledAt | date:'HH:mm' }}
+        </span>
+      </div>
+
+      <div class="interview-card-bottom">
+        <span class="interview-room-label">🔗 {{ iv.roomUrl }}</span>
+        <button
+          *ngIf="iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS'"
+          class="btn btn-danger interview-cancel-btn"
+          (click)="cancelInterview(iv)"
+          [disabled]="cancellingId === iv.id">
+          {{ cancellingId === iv.id ? 'Cancelling…' : 'Cancel' }}
+        </button>
+      </div>
+      <button
+  *ngIf="iv.status === 'COMPLETED'"
+  class="btn btn-ai"
+  (click)="viewResult(iv.id)">
+  🧠 View AI Result
+</button>
+    </div>
+  </div>
+
+  <div class="interview-room-wrapper">
+    <button *ngIf="activeInterview" class="btn btn-primary interview-join-btn" (click)="joinInterview()">
+      🎥 Join Interview
+    </button>
+  </div>
+
+  <button *ngIf="!showScheduleForm && canSchedule" class="btn btn-primary interview-trigger-btn"
+    type="button" (click)="showScheduleForm = true">
+    📅 Schedule Interview
+  </button>
+
+  <span class="interview-blocked-badge" *ngIf="!canSchedule && !showScheduleForm">
+    🔒 Interview already scheduled
+  </span>
+
+  <div class="interview-form-panel" *ngIf="showScheduleForm">
+    <app-schedule-interview
+      [applicationId]="app.applicationId"
+      [jobId]="app.jobId"
+      [jobTitle]="app.jobTitle || ''"
+      [candidateId]="app.candidateUserId"
+      [candidateEmail]="app.candidateName || app.candidateUserId"
+      [recruiterId]="recruiterId"
+      [recruiterEmail]="recruiterEmail"
+      (scheduled)="onInterviewScheduled($event)" />
+    <button class="btn btn-ghost interview-cancel-btn" type="button" (click)="showScheduleForm = false">
+      Cancel
+    </button>
+  </div>
+</section>
     <!-- Main Card -->
     <section class="ad-card">
 
@@ -88,6 +157,7 @@
           <div class="ad-mini-label">Applied</div>
           <div class="ad-mini-value">{{ app.appliedAt | date:'medium' }}</div>
         </div>
+
         <div class="ad-mini">
           <div class="ad-mini-label">Application ID</div>
           <div class="ad-mini-value mono">{{ app.applicationId }}</div>
@@ -123,6 +193,7 @@
 
       <!-- Right panel -->
       <div class="ad-right">
+
         <div class="ad-block">
           <div class="ad-block-head">
             <div>
@@ -131,11 +202,13 @@
             </div>
             <button class="ad-chip" type="button" (click)="goToJob()">Open job →</button>
           </div>
+
           <div class="ad-block-body">
             <div class="ad-kv">
               <div class="ad-k">Title</div>
               <div class="ad-v">{{ app.jobTitle || 'Unknown job title' }}</div>
             </div>
+
             <div class="ad-kv">
               <div class="ad-k">Job ID</div>
               <div class="ad-v mono">{{ app.jobId }}</div>
@@ -330,6 +403,7 @@
                 <div class="ad-block-sub">Candidate repository/profile link</div>
               </div>
             </div>
+
             <div class="ad-block-body">
               <a class="ad-url" [href]="app.githubUrl" target="_blank" rel="noopener">
                 {{ app.githubUrl || '—' }}
@@ -337,6 +411,7 @@
             </div>
           </div>
 
+          <!-- CV -->
           <div class="ad-block">
             <div class="ad-block-head">
               <div>

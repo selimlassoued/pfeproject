@@ -22,9 +22,14 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   WITHDRAWN:        [],
 };
 
+import { InterviewResponse } from '../services/interview-service';
+import { ScheduleInterview } from '../schedule-interview/schedule-interview';
+import { inject } from '@angular/core';
+import{ InterviewService } from '../services/interview-service';
+import Keycloak from 'keycloak-js';
 @Component({
   selector: 'app-application-detail',
-  imports: [CommonModule, FormsModule, CvAnalysisDrawer],
+  imports: [CommonModule, FormsModule, CvAnalysisDrawer,ScheduleInterview],
   templateUrl: './application-detail.html',
   styleUrl: './application-detail.css',
 })
@@ -48,7 +53,14 @@ export class ApplicationDetail implements OnInit, OnDestroy {
   rank: number | null = null;
   rankTotal: number | null = null;
 
-  // CV Analysis Drawer
+  interviews: InterviewResponse[] = [];
+  interviewsLoading = false;
+  showScheduleForm = false;
+  scheduledInterview: InterviewResponse | null = null;
+  cancellingId: string | null = null;
+
+  private keycloak = inject(Keycloak);
+
   drawerOpen = false;
 
   // Signal modal
@@ -62,12 +74,21 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private appService: ApplicationService,
+    private interviewService: InterviewService,
+    private appService: ApplicationService,
     private jobService: JobService
   ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) { this.error = 'Missing application id'; return; }
+    if (id) {
+      this.loadApplication(id);
+    }
+    if (!id) {
+      this.error = 'Missing application id';
+      return;
+    }
 
     this.loading = true;
     this.appService.getOne(id).subscribe({
@@ -355,4 +376,79 @@ export class ApplicationDetail implements OnInit, OnDestroy {
       },
     });
   }
+
+  loadApplication(id: string) {
+    this.loading = true;
+    this.appService.getOne(id).subscribe({
+      next: (app) => {
+        this.app = app;
+        this.loading = false;
+        this.loadInterviews(app.applicationId);
+      },
+      error: (err) => {
+        this.error = err?.error?.message || 'Failed to load application';
+        this.loading = false;
+      }
+    });
+  }
+
+
+  loadInterviews(applicationId: string) {
+    this.interviewsLoading = true;
+    this.interviewService.getByApplication(applicationId).subscribe({
+      next: (list: InterviewResponse[]) => {
+        this.interviews = list;
+        this.interviewsLoading = false;
+      },
+      error: () => { this.interviewsLoading = false; }
+    });
+  }
+
+  // The most recent non-cancelled/completed interview
+  get activeInterview(): InterviewResponse | null {
+    return this.interviews.find(
+      i => i.status === 'SCHEDULED' || i.status === 'IN_PROGRESS'
+    ) ?? null;
+  }
+
+  cancelInterview(interview: InterviewResponse) {
+  if (!confirm('Are you sure you want to cancel this interview?')) return;
+  this.cancellingId = interview.id;
+  this.interviewService.cancelInterview(interview.id).subscribe({
+    next: (updated) => {
+      const idx = this.interviews.findIndex(i => i.id === updated.id);
+      if (idx !== -1) this.interviews[idx] = updated;
+      this.cancellingId = null;
+    },
+    error: () => { this.cancellingId = null; }
+  });
+}
+  get canSchedule(): boolean {
+    return this.activeInterview === null;
+  }
+  get recruiterEmail(): string {
+  return this.keycloak.tokenParsed?.['email'] ?? '';
+}
+
+get recruiterId(): string {
+  return this.keycloak.subject ?? '';
+}
+get isKeycloakReady(): boolean {
+  return !!this.keycloak.tokenParsed && !!this.keycloak.subject;
+}
+  onInterviewScheduled(interview: InterviewResponse) {
+  this.scheduledInterview = interview;
+  this.showScheduleForm = false;
+  if (this.app!.applicationId) {
+    this.loadInterviews(this.app!.applicationId);
+  }
+    this.scheduledInterview = null;
+}
+joinInterview() {
+  if (!this.activeInterview) return;
+  this.router.navigate(['/interview', this.activeInterview.id, 'room']);
+}
+viewResult(interviewId: string) {
+  this.router.navigate(['/interview', interviewId, 'result']);
+}
 }

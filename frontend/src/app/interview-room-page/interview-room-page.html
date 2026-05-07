@@ -1,0 +1,18 @@
+<div class="room-page-shell">
+      <div class="room-page-header">
+        <button class="btn btn-ghost" (click)="back()">← Back</button>
+        <span class="room-page-title">{{ interview?.jobTitle || 'Interview Room' }}</span>
+      </div>
+
+      <div *ngIf="loading" class="room-page-state">Loading room…</div>
+      <div *ngIf="error" class="room-page-state error">{{ error }}</div>
+
+      <app-interview-room
+        *ngIf="interview && !loading"
+        [interviewId]="interview.id"
+        [participantName]="displayName"
+        [isRecruiter]="isRecruiter"
+        [roomUrl]="interview.roomUrl"
+        [scheduledAt]="interview.scheduledAt">
+      </app-interview-room>
+    </div>

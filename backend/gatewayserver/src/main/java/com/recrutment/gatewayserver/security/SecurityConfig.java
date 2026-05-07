@@ -114,6 +114,18 @@ public class SecurityConfig {
                         .pathMatchers("/api/audit/**").hasAnyRole("ADMIN", "SUPERADMIN","RECRUITER")
 
                         // ── Everything else ───────────────────────────────────
+
+                                // Interview - specific candidate-accessible endpoints FIRST
+                                .pathMatchers(HttpMethod.GET, "/api/interviews/*/token").authenticated()
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/*/recording").hasAnyRole("RECRUITER", "CANDIDATE")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/*/left").hasAnyRole("RECRUITER", "CANDIDATE")
+                                .pathMatchers(HttpMethod.PATCH, "/api/interviews/*/consent").hasAnyRole("RECRUITER", "CANDIDATE")
+
+                                .pathMatchers(HttpMethod.GET, "/api/interviews/**").hasAnyRole("RECRUITER", "ADMIN", "CANDIDATE")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/**").hasAnyRole("RECRUITER")
+                                .pathMatchers(HttpMethod.PATCH, "/api/interviews/**").hasAnyRole("RECRUITER", "CANDIDATE")
+
+                        // Everything else
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

@@ -1,0 +1,30 @@
+.room-page-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.room-page-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid var(--color-border-tertiary);
+    background: var(--color-background-primary);
+}
+
+.room-page-title {
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--color-text-primary);
+}
+
+.room-page-state {
+    padding: 2rem;
+    text-align: center;
+    color: var(--color-text-secondary);
+}
+
+.room-page-state.error {
+    color: var(--color-text-danger);
+}

@@ -34,11 +34,12 @@
         <input class="input" type="text" [value]="query" (input)="onQueryChange($event)"
           placeholder="Search by title, location, description…" />
       </div>
+
       <div class="field">
         <label class="toolbar-label">Employment type</label>
         <select class="input" [value]="employmentType" (change)="onEmploymentTypeChange($event)">
           <option value="">All</option>
-          <option *ngFor="let t of employmentTypes" [value]="t">{{ t }}</option>
+          <option *ngFor="let t of employmentTypes" [value]="t">{{ formatEmploymentType(t) }}</option>
         </select>
       </div>
       @if (showAllJobs) {
@@ -64,6 +65,7 @@
         </select>
       </div>
     </div>
+
     <div class="toolbar-footer">
       <div class="text-muted">
         Showing <strong>{{ pageResponse?.content?.length ?? 0 }}</strong> of

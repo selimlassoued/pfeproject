@@ -295,6 +295,82 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+  interview-db:
+    image: postgres:16
+    container_name: interview-db
+    networks:
+      - ai-recruitment-network
+    environment:
+      - POSTGRES_DB=interviewdb
+      - POSTGRES_USER=interviewuser
+      - POSTGRES_PASSWORD=interviewpass
+    ports:
+      - "5437:5432"
+    volumes:
+      - interview_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U interviewuser -d interviewdb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  interview-service:
+    build: ./interview-service
+    container_name: interview-service
+    networks:
+      - ai-recruitment-network
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://interview-db:5432/interviewdb
+      - SPRING_DATASOURCE_USERNAME=interviewuser
+      - SPRING_DATASOURCE_PASSWORD=interviewpass
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - CONFIG_SERVICE_URL=http://config-server:9999
+      - RABBITMQ_HOST=rabbitmq
+      - RECORDINGS_DIR=/recordings
+      - SPRING_RECORDINGS_DIR=/recordings
+      - ANALYSIS_SIDECAR_URL=http://analysis-service:8000
+    depends_on:
+      interview-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - recordings:/recordings
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+
+    networks:
+      - ai-recruitment-network
+
+  analysis-service:
+    build:
+      context: ./analysis-service
+      args:
+        WHISPER_MODEL: small
+    container_name: analysis-service
+    restart: unless-stopped
+    environment:
+      - WHISPER_MODEL=small
+      - OLLAMA_BASE=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:3b
+      - RECORDINGS_DIR=/recordings
+    volumes:
+      - recordings:/recordings       # shared with interview-service
+    depends_on:
+      - ollama
+    networks:
+      - ai-recruitment-network
 
   notification-microservice:
     build: ./notification-microservice
@@ -316,6 +392,7 @@ services:
       - APP_SECURITY_KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/ai-recruitment/protocol/openid-connect/token
       - APP_SECURITY_KEYCLOAK_CLIENT_ID=${BACKEND_CLIENT_ID}
       - APP_SECURITY_KEYCLOAK_CLIENT_SECRET=${KC_BACKEND_CLIENT_SECRET}
+
     depends_on:
       notification-db:
         condition: service_healthy
@@ -336,3 +413,6 @@ volumes:
   app_pgdata:
   audit_pgdata:
   notification_pgdata:
+  interview_pgdata:
+  recordings:
+  ollama_data:

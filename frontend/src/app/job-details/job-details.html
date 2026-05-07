@@ -36,9 +36,9 @@
       <div class="top">
         <div>
           <h3 class="job-title">{{ job()!.title }}</h3>
-          <div class="meta text-muted">{{ job()!.location }} • {{ job()!.employmentType }}</div>
+          <div class="meta text-muted">{{ job()!.location }} • {{ formatEmploymentType(job()!.employmentType) }}</div>
         </div>
-        <span class="pill">{{ job()!.jobStatus }}</span>
+        <span class="pill">{{ formatEmploymentType(job()!.jobStatus) }}</span>
       </div>
 
       <div class="grid">
@@ -52,11 +52,11 @@
         </div>
         <div class="info-block">
           <div class="label">Employment</div>
-          <div class="value">{{ job()!.employmentType ?? '—' }}</div>
+          <div class="value">{{ formatEmploymentType(job()!.employmentType ?? '—')}}</div>
         </div>
         <div class="info-block">
           <div class="label">Status</div>
-          <div class="value">{{ job()!.jobStatus ?? '—' }}</div>
+          <div class="value">{{ formatEmploymentType(job()!.jobStatus ?? '—') }}</div>
         </div>
         <div class="info-block">
           <div class="label">Reference</div>

@@ -1,0 +1,130 @@
+/* ===== CARD WRAPPER ===== */
+.schedule-interview-card {
+  margin-top: var(--space-7);
+  padding: var(--space-8);
+  border-radius: var(--radius-2xl);
+
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  box-shadow: var(--shadow-sm);
+
+  backdrop-filter: blur(12px);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* ===== HEADER ===== */
+.schedule-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.schedule-title {
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: 1.4rem;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.schedule-subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.schedule-subtitle strong {
+  color: var(--color-cream);
+}
+
+/* ===== FORM ===== */
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* ===== INPUT BLOCK ===== */
+.form-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* INPUT */
+.form-input {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+
+  color: var(--color-text);
+  outline: none;
+
+  transition: all 160ms ease;
+}
+
+.form-input:focus {
+  border-color: rgba(121, 164, 233, 0.5);
+  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.12);
+}
+
+.form-input.invalid {
+  border-color: rgba(233, 121, 121, 0.6);
+  box-shadow: 0 0 0 3px rgba(233, 121, 121, 0.12);
+}
+
+/* ===== ERRORS ===== */
+.form-error {
+  font-size: 0.82rem;
+  color: rgba(233, 121, 121, 0.95);
+  margin-top: 0.2rem;
+}
+
+.form-error-box {
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-xl);
+
+  background: rgba(233, 121, 121, 0.08);
+  border: 1px solid rgba(233, 121, 121, 0.25);
+
+  color: rgba(255, 220, 220, 0.95);
+  font-size: 0.9rem;
+}
+
+/* ===== ACTIONS ===== */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.schedule-btn {
+  padding: 0.85rem 1.3rem;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.schedule-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(121, 164, 233, 0.15);
+}
+
+.schedule-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

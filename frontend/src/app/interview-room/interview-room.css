@@ -1,0 +1,99 @@
+.room-shell {
+  position: relative;
+  width: 100%;
+  height: 120%;
+  min-height: 220px;
+  background: #0a0a0f;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay-state {
+    height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #e2e8f0;
+  padding: 32px;
+  text-align: center;
+}
+.overlay-state.error { color: #fc8181; }
+.overlay-state.ready { color: #90cdf4; }
+
+.state-label { font-size: 1rem; font-weight: 600; margin: 0; }
+.state-sub   { font-size: 0.85rem; color: #718096; margin: 0; }
+
+.room-link-hint {
+  font-size: 0.75rem;
+  color: #4a5568;
+  margin: 0;
+  word-break: break-all;
+}
+
+.join-btn {
+  margin-top: 8px;
+  padding: 12px 28px;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.jitsi-frame {
+  padding-top: 120px;
+  width: 100%;
+  height: 300%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.recording-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  flex-wrap: wrap;
+}
+
+.btn-record {
+  background: #e53e3e;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-stop {
+  background: #718096;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.rec-dot {
+  color: #e53e3e;
+  font-weight: 700;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.upload-msg        { font-size: 0.9rem; color: #718096; }
+.upload-msg.success { color: #38a169; }
+.upload-msg.error   { color: #e53e3e; }
+.join-btn:hover { background: #5a6fd6; }
