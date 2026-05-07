@@ -319,7 +319,7 @@
             </div>
 
             <!-- Consistent repos -->
-            @if (analysis.githubProfile.consistentRepos?.length) {
+            @if (analysis.githubProfile.consistentRepos.length) {
               <div class="consistent-repos-row">
                 <span class="consistent-label">Consistent activity:</span>
                 @for (repo of analysis.githubProfile.consistentRepos; track $index) {
@@ -330,7 +330,7 @@
           </div>
 
           <!-- All-repo frameworks/tech pills -->
-          @if (analysis.githubProfile.allTechnologies?.length) {
+          @if (analysis.githubProfile.allTechnologies.length) {
             <div class="pills-wrap">
               @for (tech of analysis.githubProfile.allTechnologies; track $index) {
                 <span class="pill-github-lang">{{ tech }}</span>
@@ -397,14 +397,14 @@
 
           <!-- CV Skills Verification -->
           @if (
-            analysis.githubProfile.cvSkillsConfirmed?.length ||
-            analysis.githubProfile.cvSkillsLikely?.length ||
-            analysis.githubProfile.cvSkillsNoEvidence?.length
+            analysis.githubProfile.cvSkillsConfirmed.length ||
+            analysis.githubProfile.cvSkillsLikely.length ||
+            analysis.githubProfile.cvSkillsNoEvidence.length
           ) {
             <div class="cv-verification">
               <div class="section-label" style="margin-bottom:0.5rem">CV Skills Verification</div>
 
-              @if (analysis.githubProfile.cvSkillsConfirmed?.length) {
+              @if (analysis.githubProfile.cvSkillsConfirmed.length) {
                 <div class="verification-group">
                   <span class="verification-label verification-label-confirmed">✓ Confirmed</span>
                   <div class="pills-wrap pills-sm">
@@ -415,7 +415,7 @@
                 </div>
               }
 
-              @if (analysis.githubProfile.cvSkillsLikely?.length) {
+              @if (analysis.githubProfile.cvSkillsLikely.length) {
                 <div class="verification-group">
                   <span class="verification-label verification-label-likely">~ Likely</span>
                   <div class="pills-wrap pills-sm">
@@ -426,7 +426,7 @@
                 </div>
               }
 
-              @if (analysis.githubProfile.cvSkillsNoEvidence?.length) {
+              @if (analysis.githubProfile.cvSkillsNoEvidence.length) {
                 <div class="verification-group">
                   <span class="verification-label verification-label-none">? No evidence</span>
                   <div class="pills-wrap pills-sm">
@@ -481,7 +481,7 @@
           }
 
           <!-- Top topics -->
-          @if (analysis.linkedinEnrichment.topTopics?.length) {
+          @if (analysis.linkedinEnrichment.topTopics.length) {
             <div class="linkedin-topics">
               <div class="section-label" style="margin-bottom:0.5rem">Focus Areas</div>
               <div class="pills-wrap">
