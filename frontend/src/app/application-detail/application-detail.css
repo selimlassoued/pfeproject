@@ -437,3 +437,154 @@
 .ad-linkbtn-ai:hover {
   background: rgba(121, 164, 233, 0.14);
 }
+/* ── Interview section — clean rewrite ── */
+.interview-section {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+}
+
+.interview-section-header {
+  margin-bottom: 1rem;
+}
+
+.interview-section-title {
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: 1.1rem;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.interview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  /* NO fixed height */
+}
+
+.interview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  transition: background 160ms ease;
+}
+
+.interview-card:hover {
+  background: rgba(121, 164, 233, 0.05);
+}
+
+.interview-card.scheduled  { border-left: 3px solid #3b82f6; }
+.interview-card.in_progress { border-left: 3px solid #f59e0b; background: rgba(255,220,100,0.04); }
+.interview-card.completed  { border-left: 3px solid #10b981; background: rgba(121,233,170,0.04); opacity: 0.85; }
+.interview-card.cancelled  { border-left: 3px solid #ef4444; background: rgba(233,121,121,0.04); opacity: 0.65; }
+
+.interview-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.interview-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.interview-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.25);
+  background: rgba(121, 164, 233, 0.1);
+  color: var(--color-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.interview-card.in_progress .interview-status-pill {
+  background: rgba(255,220,100,0.12);
+  border-color: rgba(255,220,100,0.3);
+  color: rgba(255,240,180,0.95);
+}
+.interview-card.completed .interview-status-pill {
+  background: rgba(121,233,170,0.1);
+  border-color: rgba(121,233,170,0.25);
+  color: rgba(200,255,230,0.95);
+}
+.interview-card.cancelled .interview-status-pill {
+  background: rgba(233,121,121,0.1);
+  border-color: rgba(233,121,121,0.2);
+  color: rgba(255,220,220,0.9);
+}
+
+.interview-date {
+  font-size: 0.85rem;
+  color: rgba(248,250,252,0.8);
+  white-space: nowrap;
+}
+
+.interview-room-label {
+  font-size: 0.75rem;
+  color: rgba(121,164,233,0.8);
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.interview-room-wrapper {
+  margin: 0.75rem 0;
+}
+
+.interview-join-btn {
+  width: 100%;
+}
+
+.interview-blocked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,220,100,0.25);
+  background: rgba(255,220,100,0.08);
+  color: rgba(255,240,180,0.85);
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.interview-state-msg,
+.interview-empty {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  padding: 0.75rem 0;
+}
+
+.interview-form-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(121,164,233,0.14);
+}
+
+.interview-trigger-btn {
+  margin-top: 0.5rem;
+  width: fit-content;
+}

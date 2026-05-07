@@ -1,0 +1,137 @@
+.interviews-page {
+  width: min(100% - 2rem, var(--container-max));
+  margin-inline: auto;
+  padding: var(--space-12) 0;
+}
+
+.interviews-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  margin-bottom: var(--space-8);
+}
+
+.interviews-title {
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+.interviews-subtitle {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+/* STATES */
+.interviews-state {
+  color: var(--color-text-muted);
+  padding: var(--space-6);
+}
+
+.interviews-error {
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(233, 121, 121, 0.25);
+  background: rgba(233, 121, 121, 0.1);
+  color: rgba(255, 220, 220, 0.95);
+}
+
+/* TABLE */
+.interviews-tableWrap {
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(121, 164, 233, 0.24);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.interviews-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.interviews-table thead th {
+  padding: 1rem;
+  text-align: left;
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  background: rgba(11, 16, 38, 0.55);
+  border-bottom: 1px solid rgba(121, 164, 233, 0.2);
+}
+
+.interviews-table tbody td {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid rgba(121, 164, 233, 0.14);
+  color: var(--color-text);
+}
+
+.interviews-table tbody tr:hover {
+  background: rgba(121, 164, 233, 0.06);
+}
+
+/* BADGES */
+.recording-badge {
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.recording-badge.yes {
+  background: rgba(121, 233, 170, 0.12);
+  color: rgba(200, 255, 230, 0.95);
+}
+
+.recording-badge.no {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-muted);
+}
+
+/* STATUS */
+.interview-status {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1px solid rgba(121, 164, 233, 0.25);
+}
+
+/* Example statuses */
+.interview-status.scheduled {
+  background: rgba(121, 164, 233, 0.1);
+}
+
+.interview-status.completed {
+  background: rgba(121, 233, 170, 0.12);
+  color: rgba(200, 255, 230, 0.95);
+}
+
+.interview-status.cancelled {
+  background: rgba(233, 121, 121, 0.12);
+  color: rgba(255, 220, 220, 0.95);
+}
+
+/* EMPTY */
+.interviews-empty {
+  margin-top: var(--space-8);
+  text-align: center;
+  padding: var(--space-12);
+  border: 1px dashed rgba(121, 164, 233, 0.3);
+  border-radius: var(--radius-2xl);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-muted);
+}
+
+/* SMALL DETAILS */
+.mono {
+  font-family: monospace;
+  font-size: 0.82rem;
+  opacity: 0.7;
+}
+
+.sub-id {
+  margin-top: 0.2rem;
+}

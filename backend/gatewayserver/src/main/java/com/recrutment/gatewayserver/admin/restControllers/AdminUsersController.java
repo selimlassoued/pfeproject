@@ -24,7 +24,7 @@ public class AdminUsersController {
     }
 
     @GetMapping("/users")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public Mono<List<KcUser>> listUsers(
             @RequestParam(defaultValue = "0") int first,
             @RequestParam(defaultValue = "20") int max,
@@ -34,7 +34,7 @@ public class AdminUsersController {
     }
 
     @GetMapping("/users/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECRUITER')")
     public Mono<KcUser> getUserProfile(@PathVariable String id) {
         return service.getProfile(id);
     }

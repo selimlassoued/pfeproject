@@ -95,11 +95,11 @@
           {{ job.title }}
         </div>
         <div class="text-muted" style="margin-top:.25rem;font-size:.9rem;">
-          {{ job.location }} • {{ job.employmentType}}
+          {{ job.location }} • {{ formatEmploymentType(job.employmentType) }}
         </div>
       </div>
 
-      <span class="pill">{{ job.jobStatus }}</span>
+      <span class="pill">{{ formatEmploymentType(job.jobStatus) }}</span>
     </div>
 
   </div>

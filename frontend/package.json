@@ -34,6 +34,7 @@
     "@angular/platform-server": "^21.1.0",
     "@angular/router": "^21.1.0",
     "@angular/ssr": "^21.1.0",
+    "@daily-co/daily-js": "^0.89.1",
     "@stomp/stompjs": "^7.3.0",
     "bootstrap": "^5.3.3",
     "express": "^5.1.0",

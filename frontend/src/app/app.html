@@ -1,9 +1,11 @@
 <nav class="navbar navbar-expand-lg hireai-nav">
   <div class="container-fluid">
-    <a class="navbar-brand hireai-brand" routerLink="/hero">
+    <!-- Brand -->
+    <a class="navbar-brand hireai-brand" routerLink="/">
       <img src="logo.png" alt="HireAI Logo" class="hireai-logo" />
     </a>
 
+    <!-- Mobile toggle -->
     <button
       class="navbar-toggler hireai-toggler"
       type="button"
@@ -17,71 +19,97 @@
 
     <div class="collapse navbar-collapse" id="navbarContent">
 
+      <!-- Left: navigation -->
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-        <ng-container *kaHasRoles="['ADMIN']; checkRealm:true">
-          <li class="nav-item">
-            <a class="nav-link hireai-link" routerLink="/admin-dashboard">Dashboard</a>
-          </li>
-        </ng-container>
-
         <li class="nav-item">
-          <a class="nav-link hireai-link" routerLink="/browse">Open Positions</a>
+          <a class="nav-link hireai-link" routerLink="/browse">
+            Open Positions
+          </a>
         </li>
 
+        <li class="nav-item" *kaHasRoles="['CANDIDATE']; checkRealm:true">
+          <a class="nav-link hireai-link" routerLink="/applications">
+            My Applications
+          </a>
+        </li>
+        <!-- ✅ ADMIN NAV -->
         <ng-container *kaHasRoles="['ADMIN']; checkRealm:true">
           <li class="nav-item">
-            <a class="nav-link hireai-link" routerLink="/listUsers">Users</a>
+            <a class="nav-link hireai-link" routerLink="/admin/dashboard">
+              Dashboard
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/listUsers">
+              Users
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/admin/roles">
+              Roles
+            </a>
           </li>
         </ng-container>
 
-        @if (authenticated && (isAdmin() || isRecruiter())) {
-          <li class="nav-item">
-            <a class="nav-link hireai-link" routerLink="/listApplications">List Applications</a>
-          </li>
-        }
+        <ng-container *kaHasRoles="['ADMIN']; checkRealm:true; negate:true">
 
-        @if (authenticated && !isAdmin() && !isRecruiter()) {
           <li class="nav-item">
-            <a class="nav-link hireai-link" routerLink="/my-applications">My Applications</a>
+            <a class="nav-link hireai-link" routerLink="/jobs">
+              Open Positions
+            </a>
           </li>
-        }
+
+          <li class="nav-item" *kaHasRoles="['CANDIDATE']; checkRealm:true">
+            <a class="nav-link hireai-link" routerLink="/applications">
+              My Applications
+            </a>
+          </li>
+
+        </ng-container>
 
       </ul>
 
+      <!-- Right: auth / profile -->
       <ul class="navbar-nav ms-auto m-2">
 
-        @if (authenticated && !isAdmin() && !isRecruiter()) {
+        @if (authenticated) {
           <li class="nav-item">
-            <app-notification-menu></app-notification-menu>
+            <a class="nav-link hireai-link" routerLink="/profile">
+              My Profile
+            </a>
           </li>
         }
 
-        @if (!authenticated) {
-          <li class="nav-item">
-            <a class="nav-link hireai-link" (click)="login()">Sign in</a>
-          </li>
-        } @else {
-          <li class="nav-item dropdown">
-            <a
-              class="nav-link dropdown-toggle hireai-link"
-              id="authDropdown"
-              role="button"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-            >Account</a>
-            <ul class="dropdown-menu dropdown-menu-end hireai-dropdown" aria-labelledby="authDropdown">
-              <li class="nav-item">
-                <a class="nav-link hireai-link" routerLink="/profile">My Profile</a>
+        <li class="nav-item dropdown">
+          <a
+            class="nav-link dropdown-toggle hireai-link"
+            href="#"
+            id="authDropdown"
+            role="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false">
+            @if (authenticated) { Account } @else { Sign in }
+          </a>
+
+          <ul class="dropdown-menu dropdown-menu-end hireai-dropdown" aria-labelledby="authDropdown">
+            @if (!authenticated) {
+              <li>
+                <button class="dropdown-item hireai-dd-btn" type="button" (click)="login()">
+                  Sign in
+                </button>
               </li>
+            } @else {
               <li>
                 <button class="dropdown-item hireai-dd-btn" type="button" (click)="logout()">
                   Sign out
                 </button>
               </li>
-            </ul>
-          </li>
-        }
+            }
+          </ul>
+        </li>
 
       </ul>
 

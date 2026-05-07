@@ -1,0 +1,51 @@
+<div class="room-shell">
+
+  <div *ngIf="state === 'waiting'" class="overlay-state waiting">
+    <p class="state-label">⏳ {{ countdown }}</p>
+  </div>
+
+  <div *ngIf="state === 'error'" class="overlay-state error">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+    <p class="state-label">Room unavailable or microphone access denied.</p>
+  </div>
+
+  <!-- Jitsi frame — always in DOM -->
+  <div #jitsiContainer class="jitsi-frame"></div>
+
+  <div class="question-group" *ngFor="let group of groupedQuestions">
+    <h4>{{ group.category }}</h4>
+    <div class="question-card"
+         *ngFor="let q of group.questions"
+         [class.asked]="askedQuestions.has(q.id)"
+         [class.skipped]="q.status === 'SKIPPED'">
+      <p>{{ q.text }}</p>
+      <div class="actions" *ngIf="!askedQuestions.has(q.id)">
+        <button (click)="markQuestion(q.id, 'ASKED')">✓ Asked</button>
+        <button (click)="markQuestion(q.id, 'SKIPPED')">✗ Skip</button>
+      </div>
+      <span *ngIf="askedQuestions.has(q.id)" class="asked-badge">✓ Asked</span>
+    </div>
+  </div>
+</div>
+
+  <div *ngIf="state === 'joined'" class="recording-bar">
+  <span *ngIf="isRecording" class="rec-dot">● Recording</span>
+  <span class="rec-role">{{ isRecruiter ? 'Recruiter' : 'Candidate' }}</span>
+
+  <!-- Manual end button — always visible while recording -->
+  <button *ngIf="isRecording" class="btn btn-stop" (click)="stopRecording()">
+    ⏹ End & Save
+  </button>
+
+  <span *ngIf="uploadStatus === 'uploading'" class="upload-msg">⏳ Saving…</span>
+  <span *ngIf="uploadStatus === 'done'" class="upload-msg success">✅ Saved</span>
+  <span *ngIf="uploadStatus === 'error'" class="upload-msg error">
+    ❌ Save failed
+    <button class="btn btn-ghost btn-sm" (click)="stopRecording()">↺ Retry</button>
+  </span>
+</div>
+

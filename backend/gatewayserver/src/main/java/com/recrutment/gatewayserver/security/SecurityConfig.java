@@ -58,6 +58,7 @@ public class SecurityConfig {
 
                         // Admin
                         .pathMatchers(HttpMethod.GET, "/api/admin/internal/users/*/email").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/admin/users/**").permitAll()
                         .pathMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // Jobs
@@ -72,6 +73,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/applications/*/analysis/exists").hasAnyRole("RECRUITER", "ADMIN")
 
                         .pathMatchers(HttpMethod.GET, "/api/applications/internal/job/*/candidate-ids").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/admin/users/**").permitAll()
 
                         // Applications - candidate "me" endpoints (IMPORTANT: must be before /api/applications/**)
                         .pathMatchers(HttpMethod.POST, "/api/applications/**").hasRole("CANDIDATE")
@@ -95,6 +97,17 @@ public class SecurityConfig {
                         // WebSocket
                         .pathMatchers("/ws/notifications/**").permitAll()
                         .pathMatchers("/api/audit/**").hasRole("ADMIN")
+
+
+                                // Interview - specific candidate-accessible endpoints FIRST
+                                .pathMatchers(HttpMethod.GET, "/api/interviews/*/token").authenticated()
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/*/recording").hasAnyRole("RECRUITER", "CANDIDATE")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/*/left").hasAnyRole("RECRUITER", "CANDIDATE")
+                                .pathMatchers(HttpMethod.PATCH, "/api/interviews/*/consent").hasAnyRole("RECRUITER", "CANDIDATE")
+
+                                .pathMatchers(HttpMethod.GET, "/api/interviews/**").hasAnyRole("RECRUITER", "ADMIN", "CANDIDATE")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/**").hasAnyRole("RECRUITER")
+                                .pathMatchers(HttpMethod.PATCH, "/api/interviews/**").hasAnyRole("RECRUITER", "CANDIDATE")
 
                         // Everything else
                         .anyExchange().authenticated()

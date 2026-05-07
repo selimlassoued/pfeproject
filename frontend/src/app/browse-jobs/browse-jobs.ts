@@ -258,8 +258,7 @@ export class BrowseJobsComponent implements OnInit {
     if (this.isRecruiter || this.isAdmin) {
       return this.filteredJobs;
     }
-    return this.filteredJobs.filter(job => job.jobStatus === 'PUBLISHED');
-  }
+return this.filteredJobs.filter(job => job.jobStatus?.toUpperCase() === 'PUBLISHED');  }
 
   deleteJob(id: string): void {
     if (confirm('Are you sure you want to delete this job offer?')) {
@@ -304,4 +303,12 @@ export class BrowseJobsComponent implements OnInit {
     this.currentPage = 0;
     this.fetchJobs();
   }
+  formatEmploymentType(type: string | null | undefined): string {
+  if (!type) return '';
+
+  return type
+    .toLowerCase()              
+    .replace(/_/g, ' ')         
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
 }

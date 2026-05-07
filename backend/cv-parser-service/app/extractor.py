@@ -1,7 +1,7 @@
 import io
 import re
 from typing import Optional
-import fitz  # pymupdf
+import fitz
 from docx import Document
 
 

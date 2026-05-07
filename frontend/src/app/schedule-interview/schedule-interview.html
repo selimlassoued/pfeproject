@@ -1,0 +1,43 @@
+<div class="schedule-interview-card">
+
+  <div class="schedule-header">
+    <h3 class="schedule-title">Schedule Interview</h3>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="schedule-form">
+
+    <!-- Date input -->
+    <div class="form-block">
+      <label class="form-label">Interview Date & Time</label>
+
+      <input
+        type="datetime-local"
+        formControlName="scheduledAt"
+        class="form-input"
+        [class.invalid]="form.get('scheduledAt')?.invalid && form.get('scheduledAt')?.touched"
+      />
+
+      <div class="form-error" *ngIf="form.get('scheduledAt')?.touched && form.get('scheduledAt')?.invalid">
+        Please select a date and time.
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="form-error-box" *ngIf="error">
+      {{ error }}
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+      <button
+        type="submit"
+        class="btn btn-primary schedule-btn"
+        [disabled]="form.invalid || loading"
+      >
+        <span *ngIf="loading">Scheduling...</span>
+        <span *ngIf="!loading">Schedule Interview</span>
+      </button>
+    </div>
+
+  </form>
+</div>
