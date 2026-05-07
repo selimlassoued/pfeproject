@@ -122,6 +122,35 @@ export interface GitHubProfile {
   collaboration?: CollaborationSignals | null;
 }
 
+// ── LinkedIn Enrichment interfaces ────────────────────────────────────────────
+
+export interface SkillValidation {
+  skill: string;
+  evidenceSource: string;
+  description: string;
+  confidenceLevel: 'High' | 'Medium' | 'Low';
+}
+
+export interface LinkedInEnrichment {
+  profileUrl?: string | null;
+  headline?: string | null;
+  ethicalStatus: string;                // SAFE / FLAGGED
+  ethicalSummary?: string | null;
+  activityLevel: string;                // Low / High / UNKNOWN
+  topTopics: string[];
+  socialScore: number;
+  // Career insights
+  jobHoppingFlag?: boolean;
+  longestTenureMonths?: number | null;
+  senioritySummary?: string | null;
+  // Extracurricular
+  hackathonEnthusiast?: boolean;
+  leadershipRoles?: string[];
+  communityImpact?: string | null;
+  // Skill validation
+  skillValidation?: SkillValidation[];
+}
+
 // ── Evaluation interfaces ─────────────────────────────────────────────────────
 
 export interface EvidenceSignals {
@@ -174,6 +203,7 @@ export interface CvAnalysis {
   seniorityLevel?: string | null;
   socialLinks?: SocialLinks | null;
   skills: string[];
+  knowledge?: string[] | null;
   softSkills: string[];
   certifications: string[];
   awards: string[];
@@ -184,6 +214,7 @@ export interface CvAnalysis {
   projects: Project[];
   volunteerWork: VolunteerWork[];
   githubProfile?: GitHubProfile | null;
+  linkedinEnrichment?: LinkedInEnrichment | null;
   totalYearsExperience?: number | null;
   rawTextLength?: number | null;
   parsingStatus: string;

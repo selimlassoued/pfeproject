@@ -24,4 +24,17 @@ public class ApplicationDto {
 
     private String jobTitle;
     private String candidateName;
+    private Integer jobFitScore;
+    private java.util.List<String> requiredSkillsMatched;
+    private java.util.List<String> requiredSkillsMissing;
+    private Float experienceGap;
+    private Boolean seniorityMatch;
+    private Integer embeddingScore;
+    private java.util.List<SemanticMatchDto.SkillScoreDto> skillScores;
+    private java.util.List<SemanticMatchDto.RequirementScoreDto> requirementScores;
+    private java.util.List<String> strengths;
+    private java.util.List<String> weaknesses;
+    private String recommendation;
+    private java.util.List<String> interviewQuestions;
+    private String scoreExplanation;
 }

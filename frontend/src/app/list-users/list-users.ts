@@ -3,21 +3,21 @@ import {
   OnDestroy,
   OnInit,
   HostListener,
+  inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-
+import { Router, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import Swal from 'sweetalert2';
+import Keycloak from 'keycloak-js';
 
 import { UserService } from '../services/user-service';
 import { AdminUserRow } from '../model/admin_users.type';
 
-import { ActivatedRoute } from '@angular/router';
-
 type EnabledFilter = 'ALL' | 'ENABLED' | 'DISABLED';
-type RoleFilter = 'ALL' | string;
+type RoleFilter    = 'ALL' | string;
 
 @Component({
   selector: 'app-list-users',
@@ -27,45 +27,55 @@ type RoleFilter = 'ALL' | string;
   styleUrl: './list-users.css',
 })
 export class ListUsers implements OnInit, OnDestroy {
-  loading = false;
+  private readonly keycloak = inject(Keycloak);
+
+  loading  = false;
   error: string | null = null;
+  acting   = false;
 
-  // raw data from API (up to apiMax)
-  private all: AdminUserRow[] = [];
-
-  // after filters
+  private all:      AdminUserRow[] = [];
   private filtered: AdminUserRow[] = [];
-
-  // displayed page
   users: AdminUserRow[] = [];
 
-  // UI state
-  search = '';
+  search        = '';
   enabledFilter: EnabledFilter = 'ALL';
-  roleFilter: RoleFilter = 'ALL';
-  rolesOptions: string[] = [];
+  roleFilter:    RoleFilter    = 'ALL';
+  rolesOptions:  string[]      = [];
 
   apiMax = 200;
-
-  pageIndex = 0; 
-  pageSize = 20;
-  totalPages = 0;
+  pageIndex    = 0;
+  pageSize     = 20;
+  totalPages   = 0;
   totalElements = 0;
+  pagerWindow  = 3;
+  rowsOpen     = false;
+  rowsOptions  = [10, 20, 50];
 
-  pagerWindow = 3;
-
-  rowsOpen = false;
-  rowsOptions = [10, 20, 50];
-
-  private destroy$ = new Subject<void>();
+  private currentUserId = '';
+  private destroy$    = new Subject<void>();
   private refreshKey$ = new Subject<string>();
 
-  constructor(private adminUsers: UserService, private router: Router, private route: ActivatedRoute) {}
+  constructor(
+    private adminUsers: UserService,
+    private router: Router,
+    private route: ActivatedRoute
+  ) {}
+
+  // ── Role helpers ──────────────────────────────────────────────────────────
+
+  isSuperAdmin(): boolean { return this.keycloak.hasRealmRole('SUPERADMIN'); }
+  isAdmin():      boolean { return this.keycloak.hasRealmRole('ADMIN') && !this.isSuperAdmin(); }
+  isRecruiter():  boolean { return this.keycloak.hasRealmRole('RECRUITER') && !this.isAdmin() && !this.isSuperAdmin(); }
 
   ngOnInit(): void {
-  // pre-apply filter if coming from dashboard
+    this.currentUserId = this.keycloak.subject ?? '';
     const filter = this.route.snapshot.queryParamMap.get('filter');
     if (filter === 'DISABLED') this.enabledFilter = 'DISABLED';
+
+    // RECRUITER sees only CANDIDATE accounts
+    if (this.isRecruiter() && !this.isAdmin() && !this.isSuperAdmin()) {
+      this.roleFilter = 'CANDIDATE';
+    }
 
     this.refreshKey$
       .pipe(debounceTime(350), distinctUntilChanged(), takeUntil(this.destroy$))
@@ -81,64 +91,40 @@ export class ListUsers implements OnInit, OnDestroy {
 
   @HostListener('document:click', ['$event'])
   onDocClick(ev: MouseEvent) {
-    const target = ev.target as HTMLElement;
-    if (!target.closest('.rows-dd')) this.rowsOpen = false;
+    if (!(ev.target as HTMLElement).closest('.rows-dd')) this.rowsOpen = false;
   }
 
   @HostListener('document:keydown.escape')
-  onEsc() {
-    this.rowsOpen = false;
-  }
+  onEsc() { this.rowsOpen = false; }
 
-  onSearchChange(v: string) {
-    this.search = v;
-    this.emitRefresh();
-  }
-
+  onSearchChange(v: string) { this.search = v; this.emitRefresh(); }
   onFiltersChange() {
+    // RECRUITER cannot change role filter — always CANDIDATE
+    if (this.isRecruiter() && !this.isAdmin() && !this.isSuperAdmin()) {
+      this.roleFilter = 'CANDIDATE';
+    }
     this.emitRefresh();
   }
-
-  refresh() {
-    this.pageIndex = 0;
-    this.load(true);
-  }
-
-  toggleRows() {
-    this.rowsOpen = !this.rowsOpen;
-  }
+  refresh()                  { this.pageIndex = 0; this.load(true); }
+  toggleRows()               { this.rowsOpen = !this.rowsOpen; }
 
   setPageSize(size: number) {
-    if (this.pageSize === size) {
-      this.rowsOpen = false;
-      return;
-    }
+    if (this.pageSize === size) { this.rowsOpen = false; return; }
     this.pageSize = size;
     this.rowsOpen = false;
     this.pageIndex = 0;
     this.applyFiltersAndPaginate();
   }
 
-  private emitRefresh() {
-    this.refreshKey$.next(this.currentKey());
-  }
-
-  private currentKey(): string {
-    return `${this.search.trim()}|${this.enabledFilter}|${this.roleFilter}|${this.apiMax}`;
-  }
+  private emitRefresh() { this.refreshKey$.next(this.currentKey()); }
+  private currentKey()  { return `${this.search.trim()}|${this.enabledFilter}|${this.roleFilter}|${this.apiMax}`; }
 
   async load(forceReload = false): Promise<void> {
     this.loading = true;
     this.error = null;
-
     try {
       if (forceReload || this.all.length === 0) {
-        const fetched = await this.adminUsers.listUsers({
-          first: 0,
-          max: this.apiMax,
-          search: this.search, 
-        });
-
+        const fetched = await this.adminUsers.listUsers({ first: 0, max: this.apiMax, search: this.search });
         this.all = fetched ?? [];
       }
 
@@ -146,57 +132,59 @@ export class ListUsers implements OnInit, OnDestroy {
       for (const u of this.all) {
         const r = (u.role ?? '').trim();
         if (r && r !== '—') rolesSet.add(r);
-
         for (const rr of (u.roles ?? [])) {
           const x = String(rr).toUpperCase().trim();
           if (x) rolesSet.add(x);
         }
       }
       this.rolesOptions = Array.from(rolesSet).sort((a, b) => a.localeCompare(b));
-
       this.applyFiltersAndPaginate();
     } catch (e: any) {
-      this.error =
-        e?.error?.message ??
-        e?.message ??
-        'Failed to load users. Check gateway logs.';
+      this.error = e?.error?.message ?? e?.message ?? 'Failed to load users.';
     } finally {
       this.loading = false;
     }
   }
 
+  /** Returns the single main role of a user (highest in hierarchy) */
+  private mainRole(u: AdminUserRow): string {
+    const roles = (u.roles ?? []).map(r => String(r).toUpperCase());
+    if (roles.includes('SUPERADMIN')) return 'SUPERADMIN';
+    if (roles.includes('ADMIN'))      return 'ADMIN';
+    if (roles.includes('RECRUITER'))  return 'RECRUITER';
+    return 'CANDIDATE';
+  }
+
   private applyFiltersAndPaginate() {
-    this.filtered = (this.all ?? []).filter((u) => {
-      // enabled
+    this.filtered = (this.all ?? []).filter(u => {
       const enabledOk =
-        this.enabledFilter === 'ALL'
-          ? true
-          : this.enabledFilter === 'ENABLED'
-          ? u.enabled !== false
-          : u.enabled === false;
+        this.enabledFilter === 'ALL'      ? true :
+        this.enabledFilter === 'ENABLED'  ? u.enabled !== false :
+                                            u.enabled === false;
 
-      // role
+      // Use mainRole() to avoid CANDIDATE matching everyone
       const roleOk =
-        this.roleFilter === 'ALL'
-          ? true
-          : String(u.role ?? '').toUpperCase() === String(this.roleFilter).toUpperCase() ||
-            (u.roles ?? []).some(
-              (r) => String(r).toUpperCase() === String(this.roleFilter).toUpperCase()
-            );
+        this.roleFilter === 'ALL' ? true :
+        this.mainRole(u) === String(this.roleFilter).toUpperCase();
 
-      return enabledOk && roleOk;
+      // ADMIN can only see RECRUITER and CANDIDATE — not other ADMINs or SUPERADMIN
+      const visibilityOk = this.isSuperAdmin() ? true
+        : this.isAdmin() ? ['RECRUITER', 'CANDIDATE'].includes(this.mainRole(u))
+        : this.mainRole(u) === 'CANDIDATE'; // RECRUITER sees only CANDIDATE
+
+      // Never show the logged-in user themselves
+      const notSelf = u.id !== this.currentUserId;
+
+      return enabledOk && roleOk && visibilityOk && notSelf;
     });
 
     this.totalElements = this.filtered.length;
     this.totalPages = Math.max(1, Math.ceil(this.totalElements / this.pageSize));
-
-    // clamp pageIndex
     if (this.pageIndex >= this.totalPages) this.pageIndex = this.totalPages - 1;
     if (this.pageIndex < 0) this.pageIndex = 0;
 
     const from = this.pageIndex * this.pageSize;
-    const to = Math.min(from + this.pageSize, this.filtered.length);
-    this.users = this.filtered.slice(from, to);
+    this.users = this.filtered.slice(from, Math.min(from + this.pageSize, this.filtered.length));
   }
 
   goToPage(p: number) {
@@ -206,51 +194,129 @@ export class ListUsers implements OnInit, OnDestroy {
   }
 
   first() { this.goToPage(0); }
-  last() { this.goToPage(this.totalPages - 1); }
-  prev() { this.goToPage(this.pageIndex - 1); }
-  next() { this.goToPage(this.pageIndex + 1); }
+  last()  { this.goToPage(this.totalPages - 1); }
+  prev()  { this.goToPage(this.pageIndex - 1); }
+  next()  { this.goToPage(this.pageIndex + 1); }
 
-  // show a small window but keep access to first/last via buttons + ellipsis
   pages(): number[] {
-    const total = this.totalPages;
-    const cur = this.pageIndex;
-    const w = this.pagerWindow;
-
+    const total = this.totalPages, cur = this.pageIndex, w = this.pagerWindow;
     if (total <= w) return Array.from({ length: total }, (_, i) => i);
-
-    let start = cur - Math.floor(w / 2);
-    let end = start + w - 1;
-
-    if (start < 0) {
-      start = 0;
-      end = w - 1;
-    }
-    if (end >= total) {
-      end = total - 1;
-      start = total - w;
-    }
-
+    let start = cur - Math.floor(w / 2), end = start + w - 1;
+    if (start < 0)       { start = 0;         end = w - 1; }
+    if (end >= total)    { end = total - 1;    start = total - w; }
     const arr: number[] = [];
     for (let i = start; i <= end; i++) arr.push(i);
     return arr;
   }
 
-  // ============ row actions ============
-  goToUser(u: AdminUserRow) {
-    this.router.navigate(['/user', u.id]);
-  }
+  goToUser(u: AdminUserRow) { this.router.navigate(['/user', u.id]); }
 
   formatDate(ts?: number): string {
     if (!ts) return '—';
-    try {
-      return new Date(ts).toLocaleString();
-    } catch {
-      return '—';
-    }
+    try { return new Date(ts).toLocaleString(); } catch { return '—'; }
   }
 
   statusPill(enabled?: boolean): { text: string; cls: string } {
     if (enabled === false) return { text: 'Disabled', cls: 'pill-danger' };
     return { text: 'Enabled', cls: 'pill-success' };
   }
+
+  // ── Create user ───────────────────────────────────────────────────────────
+
+  async openCreateUser(): Promise<void> {
+    // Determine which role(s) this actor can create
+    const canCreateAdmin = this.isSuperAdmin();
+    const roleOptions = canCreateAdmin
+      ? '<option value="RECRUITER">RECRUITER</option><option value="ADMIN">ADMIN</option>'
+      : '<option value="RECRUITER">RECRUITER</option>';
+
+    const inputStyle = 'width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(121,164,233,0.28);border-radius:12px;color:#f8fafc;padding:.7rem .9rem;font-size:.93rem;font-family:Montserrat,sans-serif;outline:none;box-sizing:border-box;margin:0';
+    const labelStyle = 'font-size:.75rem;font-weight:700;color:rgba(121,164,233,0.7);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.35rem';
+
+    const { value: formValues, isConfirmed } = await Swal.fire({
+      title: `Create ${canCreateAdmin ? 'Admin / Recruiter' : 'Recruiter'} Account`,
+      background: 'linear-gradient(160deg,rgba(18,24,52,0.98),rgba(11,16,38,0.99))',
+      color: '#f8fafc',
+      html: `
+        <div style="display:grid;gap:.85rem;text-align:left;margin-top:.25rem">
+          <div>
+            <label style="${labelStyle}">First Name *</label>
+            <input id="swal-fn" placeholder="First name" style="${inputStyle}">
+          </div>
+          <div>
+            <label style="${labelStyle}">Last Name *</label>
+            <input id="swal-ln" placeholder="Last name" style="${inputStyle}">
+          </div>
+          <div>
+            <label style="${labelStyle}">Email *</label>
+            <input id="swal-em" type="email" placeholder="email@vermeg.com" style="${inputStyle}">
+          </div>
+          <div>
+            <label style="${labelStyle}">Role *</label>
+            <select id="swal-role" style="${inputStyle};background:#1b2236;cursor:pointer">
+              ${roleOptions}
+            </select>
+          </div>
+          <p style="font-size:.8rem;color:rgba(121,164,233,0.55);margin:0">
+            ✉ An invitation email will be sent so they can set their password.
+          </p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Create & Send Invite',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#1e40bc',
+      cancelButtonColor: 'transparent',
+      customClass: {
+        popup: 'swal-hireai-popup',
+        title: 'swal-hireai-title',
+        confirmButton: 'swal-hireai-confirm',
+        cancelButton: 'swal-hireai-cancel',
+        actions: 'swal-hireai-actions',
+      },
+      preConfirm: () => {
+        const fn    = (document.getElementById('swal-fn')   as HTMLInputElement).value.trim();
+        const ln    = (document.getElementById('swal-ln')   as HTMLInputElement).value.trim();
+        const em    = (document.getElementById('swal-em')   as HTMLInputElement).value.trim();
+        const role  = (document.getElementById('swal-role') as HTMLSelectElement).value;
+
+        if (!fn || !ln || !em) {
+          Swal.showValidationMessage('First name, last name and email are required.');
+          return false;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+          Swal.showValidationMessage('Please enter a valid email address.');
+          return false;
+        }
+        return { firstName: fn, lastName: ln, email: em, role };
+      },
+    });
+
+    if (!isConfirmed || !formValues) return;
+
+    this.acting = true;
+    try {
+      await this.adminUsers.createUser(
+        formValues.firstName, formValues.lastName,
+        formValues.email, formValues.role
+      );
+      await Swal.fire({
+        title: 'Account created!',
+        html: `<p style="color:rgba(255,255,255,0.7)">
+          An invitation email has been sent to <strong>${formValues.email}</strong>.
+          They can set their password and access the platform.
+        </p>`,
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false,
+      });
+      await this.load(true);
+    } catch (e: any) {
+      const msg = e?.error?.message ?? e?.message ?? 'Failed to create user.';
+      await Swal.fire({ title: 'Error', text: msg, icon: 'error' });
+    } finally {
+      this.acting = false;
+    }
+  }
+
 }

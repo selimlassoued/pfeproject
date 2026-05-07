@@ -11,4 +11,27 @@ export interface ApplicationDto {
 
   jobTitle?: string;
   candidateName?: string;
+  jobFitScore?: number | null;
+  requiredSkillsMatched?: string[];
+  requiredSkillsMissing?: string[];
+  experienceGap?: number | null;
+  seniorityMatch?: boolean | null;
+  embeddingScore?: number | null;
+  skillScores?: {
+    skill: string;
+    score: number;
+    status: 'matched' | 'partial' | 'missing';
+  }[];
+  requirementScores?: {
+    category?: string | null;
+    description?: string | null;
+    score?: number | null;
+    weight?: number | null;
+    evidence?: string | null;
+  }[];
+  strengths?: string[];
+  weaknesses?: string[];
+  recommendation?: string | null;
+  interviewQuestions?: string[];
+  scoreExplanation?: string | null;
 }

@@ -1,3 +1,24 @@
+/* ── LinkedIn career insights ── */
+.linkedin-insights { margin-top: 1rem; }
+.insights-grid { display: flex; flex-direction: column; gap: .4rem; margin-top: .4rem; }
+.insight-item { display: flex; align-items: flex-start; gap: .5rem; font-size: .82rem; color: rgba(248,250,252,0.7); }
+.insight-item.insight-warn { color: #ed8936; }
+.insight-item.insight-full { flex-direction: column; gap: .2rem; }
+.insight-icon { font-size: .9rem; flex-shrink: 0; }
+
+/* ── LinkedIn skill validation ── */
+.linkedin-skills { margin-top: 1rem; }
+.skill-val-list { display: flex; flex-direction: column; gap: .6rem; margin-top: .4rem; }
+.skill-val-item { background: rgba(255,255,255,0.04); border-radius: 8px; padding: .6rem .8rem; }
+.skill-val-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .25rem; }
+.skill-val-name { font-size: .85rem; font-weight: 600; color: rgba(248,250,252,0.9); }
+.skill-val-confidence { font-size: .7rem; font-weight: 700; padding: .15rem .45rem; border-radius: 99px; }
+.conf-high { background: rgba(72,187,120,.15); color: #48bb78; border: 1px solid rgba(72,187,120,.3); }
+.conf-med  { background: rgba(251,191,36,.15);  color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
+.conf-low  { background: rgba(252,129,129,.15); color: #fc8181; border: 1px solid rgba(252,129,129,.3); }
+.skill-val-source { font-size: .72rem; color: rgba(248,250,252,0.4); margin-bottom: .2rem; }
+.skill-val-desc { font-size: .78rem; color: rgba(248,250,252,0.55); line-height: 1.4; }
+
 /* ── Backdrop ── */
 .drawer-backdrop {
   position: fixed;
@@ -160,6 +181,21 @@
 .drawer-error-icon { font-size: 1.2rem; }
 .drawer-error-title { color: rgba(255,220,220,0.95); font-weight: 700; font-size: 0.9rem; margin-bottom: 0.25rem; }
 .drawer-error-msg   { color: rgba(255,220,220,0.7);  font-size: 0.82rem; }
+.retry-btn {
+  margin-left: auto;
+  padding: 0.35rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(233,121,121,0.4);
+  background: rgba(233,121,121,0.15);
+  color: rgba(255,200,200,0.9);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  align-self: center;
+}
+.retry-btn:hover:not(:disabled) { background: rgba(233,121,121,0.25); }
+.retry-btn:disabled { opacity: 0.5; cursor: default; }
 
 /* ── Content ── */
 .drawer-content {
@@ -282,6 +318,17 @@
   border: 1px solid rgba(200,160,255,0.25);
   background: rgba(200,160,255,0.08);
   color: #c8a0ff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.pill-knowledge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(80,200,180,0.25);
+  background: rgba(80,200,180,0.08);
+  color: #50c8b4;
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -596,6 +643,103 @@
 .repo-meta-consistent {
   color: #79e9aa;
   font-weight: 600;
+}
+
+/* ── LinkedIn Profile ── */
+.linkedin-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(59,130,246,0.14);
+}
+
+.linkedin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.linkedin-link {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #3b82f6;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+.linkedin-link:hover { color: #60a5fa; }
+
+.linkedin-status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid;
+  letter-spacing: 0.04em;
+}
+.linkedin-status-safe    { background: rgba(121,233,170,0.12); color: #79e9aa; border-color: rgba(121,233,170,0.3); }
+.linkedin-status-flagged { background: rgba(233,121,121,0.12); color: #e97979; border-color: rgba(233,121,121,0.3); }
+.linkedin-status-unknown { background: rgba(255,255,255,0.04); color: rgba(248,250,252,0.4); border-color: rgba(255,255,255,0.1); }
+
+.linkedin-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.linkedin-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+.linkedin-stat-val  { font-size: 0.88rem; font-weight: 700; color: rgba(248,250,252,0.9); }
+.linkedin-stat-lbl  { font-size: 0.68rem; color: rgba(248,250,252,0.45); }
+
+.linkedin-activity-high   { color: #79e9aa; }
+.linkedin-activity-low    { color: #ffd060; }
+.linkedin-activity-unknown { color: rgba(248,250,252,0.5); }
+
+.linkedin-ethical-note {
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin-top: 0.3rem;
+}
+.linkedin-status-safe .linkedin-ethical-note,
+.linkedin-ethical-note.linkedin-status-safe {
+  background: rgba(121,233,170,0.08);
+  border: 1px solid rgba(121,233,170,0.2);
+  color: #79e9aa;
+}
+.linkedin-status-flagged .linkedin-ethical-note,
+.linkedin-ethical-note.linkedin-status-flagged {
+  background: rgba(233,121,121,0.08);
+  border: 1px solid rgba(233,121,121,0.2);
+  color: #e97979;
+}
+
+.linkedin-topics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pill-linkedin-topic {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(59,130,246,0.2);
+  background: rgba(59,130,246,0.07);
+  color: #3b82f6;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* ── CV Skills Verification ── */

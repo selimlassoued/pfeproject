@@ -4,7 +4,20 @@ import Keycloak from 'keycloak-js';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly keycloak = inject(Keycloak);
-  isRecruiter() { return this.keycloak.hasRealmRole('RECRUITER'); }
-  isAdmin() { return this.keycloak.hasRealmRole('ADMIN'); }
-  isCandidate() { return this.keycloak.hasRealmRole('CANDIDATE');  }
+
+  isSuperAdmin(): boolean {
+    return this.keycloak.hasRealmRole('SUPERADMIN');
+  }
+
+  isAdmin(): boolean {
+    return this.keycloak.hasRealmRole('ADMIN') ;
+  }
+
+  isRecruiter(): boolean {
+    return this.keycloak.hasRealmRole('RECRUITER') ;
+  }
+
+  isCandidate(): boolean {
+    return this.keycloak.hasRealmRole('CANDIDATE') && !this.isSuperAdmin() && !this.isAdmin() && !this.isRecruiter();
+  }
 }

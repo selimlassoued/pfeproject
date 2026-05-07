@@ -18,11 +18,15 @@
           <th>Job</th>
           <th>Status</th>
           <th>Applied At</th>
+          <th></th>
         </tr>
       </thead>
 
       <tbody>
-        <tr *ngFor="let app of applications" (click)="openDetails(app)" style="cursor:pointer;">
+        <tr *ngFor="let app of applications"
+            (click)="openDetails(app)"
+            style="cursor:pointer;">
+
           <td>
             <div>{{ app.jobTitle || '—' }}</div>
             <div class="sub-id mono">{{ app.jobId }}</div>
@@ -35,6 +39,19 @@
           </td>
 
           <td>{{ app.appliedAt | date:'medium' }}</td>
+
+          <!-- Withdraw action — only shown for APPLIED -->
+          <td class="apps-action-col">
+            @if (canWithdraw(app)) {
+              <button
+                class="btn-withdraw-row"
+                type="button"
+                [disabled]="withdrawingId === app.applicationId"
+                (click)="withdraw(app, $event)">
+                {{ withdrawingId === app.applicationId ? '…' : '✕ Withdraw' }}
+              </button>
+            }
+          </td>
         </tr>
       </tbody>
     </table>

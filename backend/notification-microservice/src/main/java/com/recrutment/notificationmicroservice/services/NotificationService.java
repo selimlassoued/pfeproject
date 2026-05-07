@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.mail.javamail.MimeMessageHelper;
+import jakarta.mail.internet.MimeMessage;
+
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -31,6 +34,7 @@ public class NotificationService {
     private final NotificationRepo repo;
     private final JavaMailSender mailSender;
     private final ApplicationClient applicationClient;
+    private static final String BASE_URL = "http://localhost:4200";
 
     public void handleUserBlock(AppEventMessage evt) {
         String userId = evt.getTarget().getId();
@@ -48,7 +52,7 @@ public class NotificationService {
         // Keep user-destination send for later when WS auth is enabled
         messagingTemplate.convertAndSendToUser(n.getUserId(), "/queue/notifications", n);
 
-        sendEmailToUser(userId, n.getTitle(), n.getBody());
+        sendEmailToUser(userId, n.getTitle(), n.getBody(),BASE_URL+"/browse");
     }
 
     public void handleUserUnblock(AppEventMessage evt) {
@@ -65,7 +69,7 @@ public class NotificationService {
         messagingTemplate.convertAndSend("/topic/notifications." + n.getUserId(), n);
         messagingTemplate.convertAndSendToUser(n.getUserId(), "/queue/notifications", n);
 
-        sendEmailToUser(userId, n.getTitle(), n.getBody());
+        sendEmailToUser(userId, n.getTitle(), n.getBody(),BASE_URL + "/browse");
     }
 
     public void handleRoleUpdate(AppEventMessage evt) {
@@ -86,7 +90,7 @@ public class NotificationService {
         messagingTemplate.convertAndSend("/topic/notifications." + n.getUserId(), n);
         messagingTemplate.convertAndSendToUser(n.getUserId(), "/queue/notifications", n);
 
-        sendEmailToUser(userId, n.getTitle(), n.getBody());
+        sendEmailToUser(userId, n.getTitle(), n.getBody(),BASE_URL + "/profile");
     }
 
     public void handleApplicationStatusUpdate(AppEventMessage evt) {
@@ -94,8 +98,9 @@ public class NotificationService {
         String candidateUserId = (String) payload.get("candidateUserId");
         String oldStatus = (String) payload.get("oldStatus");
         String newStatus = (String) payload.get("newStatus");
-
-        String body = "Your application status changed from " + oldStatus + " to " + newStatus + ".";
+        String jobTitle = (String) payload.getOrDefault("jobTitle", "your applied job");
+        String body = "Your application for the position \"" + jobTitle + "\" " +
+                "has been updated from " + oldStatus + " to " + newStatus + ".";
 
         Notification n = new Notification();
         n.setUserId(candidateUserId);
@@ -106,14 +111,50 @@ public class NotificationService {
 
         messagingTemplate.convertAndSend("/topic/notifications." + n.getUserId(), n);
         messagingTemplate.convertAndSendToUser(n.getUserId(), "/queue/notifications", n);
+        String applicationId = (String) payload.get("applicationId"); // 👈 add this to payload
+        String ctaUrl = (applicationId != null)
+                ? BASE_URL + "/my-application/" + applicationId
+                : BASE_URL + "/my-applications";
+        // 👇 wrap this
+        try {
+            sendEmailToUser(candidateUserId, n.getTitle(), n.getBody(), ctaUrl);
+        } catch (Exception e) {
+            log.warn("Email failed for APPLICATION_STATUS_UPDATE to {}: {}", candidateUserId, e.getMessage());
+        }
+    }
 
-        sendEmailToUser(candidateUserId, n.getTitle(), n.getBody());
+    public void handleJobQuotaReached(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String recruiterUserId = (String) payload.get("recruiterUserId");
+        if (recruiterUserId == null || recruiterUserId.isBlank() || recruiterUserId.equals("SYSTEM")) return;
+
+        String jobTitle = (String) payload.getOrDefault("jobTitle", "the position");
+        Object openings = payload.get("openings");
+        Object rejected = payload.getOrDefault("rejected", 0);
+        String jobId    = (String) payload.get("jobId");
+
+        String body = "The position \"" + jobTitle + "\" has reached its hiring quota (" + openings + "/" + openings + "). " +
+                "The job has been closed automatically and " + rejected + " pending application(s) were rejected. " +
+                "If you need more hires, increase the quota and republish the job.";
+
+        Notification n = new Notification();
+        n.setUserId(recruiterUserId);
+        n.setType(NotificationType.JOB_QUOTA_REACHED);
+        n.setTitle("Position filled — " + jobTitle);
+        n.setBody(body);
+        repo.save(n);
+
+        messagingTemplate.convertAndSend("/topic/notifications." + recruiterUserId, n);
+        messagingTemplate.convertAndSendToUser(recruiterUserId, "/queue/notifications", n);
     }
 
     public void handleJobUpdated(AppEventMessage evt) {
         UUID jobId = UUID.fromString(evt.getTarget().getId());
         String jobTitle = resolveJobTitle(evt);
         String body = buildJobUpdatedBody(jobTitle, evt.getChanges());
+        String ctaUrl = BASE_URL + "/jobs/" + jobId;  // 👈 add this
 
         List<String> candidateIds = applicationClient.findCandidateUserIdsByJob(jobId);
 
@@ -128,7 +169,7 @@ public class NotificationService {
             messagingTemplate.convertAndSend("/topic/notifications." + n.getUserId(), n);
             messagingTemplate.convertAndSendToUser(n.getUserId(), "/queue/notifications", n);
 
-            sendEmailToUser(candidateUserId, n.getTitle(), n.getBody());
+            sendEmailToUser(candidateUserId, n.getTitle(), n.getBody(), ctaUrl);  // 👈 pass ctaUrl
         }
     }
 
@@ -173,35 +214,131 @@ public class NotificationService {
         };
     }
 
-    private void sendEmailToUser(String userId, String subject, String body) {
+    private void sendEmailToUser(String userId, String subject, String body, String ctaUrl) {
         Map<String, String> profile = userEmailClient.getUserProfile(userId);
         if (profile == null) return;
         String email = profile.get("email");
         if (email == null || email.isBlank()) return;
 
-        String fullBody = buildEmailBody(profile, body);
+        String htmlBody = buildEmailBody(profile, body, ctaUrl);
 
-        SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setTo(email);
-        msg.setSubject(subject);
-        msg.setText(fullBody);
         try {
+            MimeMessage msg = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
+            helper.setTo(email);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true); // true = HTML
             mailSender.send(msg);
         } catch (Exception e) {
-            // In dev, avoid re-queuing RabbitMQ messages when email fails
             log.warn("Failed to send notification email to {}: {}", email, e.getMessage());
         }
     }
 
-    private String buildEmailBody(Map<String, String> profile, String body) {
+    private String buildEmailBody(Map<String, String> profile, String body, String ctaUrl) {
         String firstName = profile.getOrDefault("firstName", "").trim();
-        String lastName = profile.getOrDefault("lastName", "").trim();
+        String lastName  = profile.getOrDefault("lastName",  "").trim();
         String name = (firstName + " " + lastName).trim();
         if (name.isBlank()) name = "there";
 
-        return "Hello " + name + ",\n\n"
-                + body + "\n\n"
-                + "Best regards,\n"
-                + "The HireAI team";
+        return """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8"/>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+          <title>HireAI Notification</title>
+        </head>
+        <body style="margin:0;padding:0;background-color:#0b1026;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+          <table width="100%%" cellpadding="0" cellspacing="0" role="presentation"
+                 style="background:#0b1026;padding:48px 16px;">
+            <tr><td align="center">
+              <table width="560" cellpadding="0" cellspacing="0" role="presentation"
+                     style="max-width:560px;width:100%%;">
+
+                <tr>
+                  <td align="center" style="padding-bottom:28px;">
+                    <table cellpadding="0" cellspacing="0" role="presentation">
+                      <tr>
+                        <td style="background:rgba(255,255,255,0.06);border:1px solid rgba(121,164,233,0.22);border-radius:14px;padding:11px 26px;">
+                          <span style="font-size:20px;font-weight:700;color:#fffce5;letter-spacing:-0.4px;">
+                            Hire<span style="color:#79a4e9;">AI</span>
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="background:linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05));border:1px solid rgba(121,164,233,0.24);border-radius:28px;overflow:hidden;">
+                    <table width="100%%" cellpadding="0" cellspacing="0" role="presentation">
+                      <tr>
+                        <td style="height:3px;background:linear-gradient(90deg,#1e40bc 0%%,#79a4e9 100%%);"></td>
+                      </tr>
+                    </table>
+                    <table width="100%%" cellpadding="0" cellspacing="0" role="presentation"
+                           style="padding:36px 40px 32px;">
+                      <tr>
+                        <td style="padding-bottom:6px;">
+                          <p style="margin:0;font-size:22px;font-weight:700;color:#fffce5;line-height:1.3;letter-spacing:-0.02em;">
+                            Hello, %s
+                          </p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding-bottom:24px;">
+                          <table width="36" cellpadding="0" cellspacing="0" role="presentation">
+                            <tr>
+                              <td style="height:3px;background:linear-gradient(90deg,#1e40bc,#79a4e9);border-radius:2px;"></td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding-bottom:32px;">
+                          <p style="margin:0;font-size:15px;color:rgba(248,250,252,0.85);line-height:1.75;">%s</p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding-bottom:36px;">
+                          <table cellpadding="0" cellspacing="0" role="presentation">
+                            <tr>
+                              <td style="border-radius:999px;background:linear-gradient(135deg,#1e40bc,#79a4e9);box-shadow:0 10px 30px rgba(0,0,0,0.35);">
+                                <a href="%s"
+                                   style="display:inline-block;padding:13px 30px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.1px;">
+                                  Open HireAI &rarr;
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="border-top:1px solid rgba(121,164,233,0.22);padding-top:24px;">
+                          <p style="margin:0;font-size:12px;color:rgba(248,250,252,0.35);line-height:1.7;">
+                            You're receiving this because you have an account on HireAI.<br/>
+                            If you have questions, reply to this email.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td align="center" style="padding-top:24px;">
+                    <p style="margin:0;font-size:12px;color:rgba(248,250,252,0.25);">
+                      &copy; 2026 HireAI &nbsp;&bull;&nbsp; All rights reserved
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td></tr>
+          </table>
+        </body>
+        </html>
+        """.formatted(name, body, ctaUrl);  // 👈 3 placeholders now
     }
 }

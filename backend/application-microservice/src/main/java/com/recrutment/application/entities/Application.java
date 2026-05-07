@@ -47,4 +47,11 @@ public class Application {
 
     @Column(nullable = false)
     private String cvContentType;
+
+    // ── Moderation ────────────────────────────────────────────────────────────
+    // Only previousStatus is stored here — it's functional state needed to
+    // restore the application after unblock/dismiss.
+    // flaggedBy, flagReason, flaggedAt are in the audit service (AuditLog).
+    @Enumerated(EnumType.STRING)
+    private ApplicationStatus previousStatus;
 }

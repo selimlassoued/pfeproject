@@ -9,7 +9,7 @@ import ollama
 from app.models import CvAnalysisResult, CvEvaluation, EvidenceSignals
 
 OLLAMA_HOST   = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-MODEL         = os.getenv("CV_PARSER_MODEL", "qwen2.5:3b")
+MODEL         = os.getenv("CV_PARSER_MODEL", "qwen2.5:7b")
 ollama_client = ollama.Client(host=OLLAMA_HOST)
 
 MONTHS = {

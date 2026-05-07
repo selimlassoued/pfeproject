@@ -10,7 +10,7 @@ import { ApplicationService } from '../services/application.service';
 import { AdminUserRow } from '../model/admin_users.type';
 import { PageResponse } from '../model/page-response';
 
-/* ── models (same as dashboard) ── */
+/* ── models ── */
 export interface AuditLog {
   eventId: string;
   eventType: string;
@@ -69,17 +69,28 @@ export class ActionHistory implements OnInit {
   targetNameCache: Record<string, string> = {};
 
   readonly FILTERS = [
-    { key: 'ALL',                       label: 'All',         color: '#79a4e9' },
-    { key: 'APPLICATION_STATUS_UPDATE', label: 'App Updates', color: '#79a4e9' },
-    { key: 'USER_BLOCK',                label: 'Blocks',      color: '#f87171' },
-    { key: 'USER_UNBLOCK',              label: 'Unblocks',    color: '#4ade80' },
-    { key: 'JOB_UPDATED',               label: 'Jobs',        color: '#fbbf24' },
+    { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
+    { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
+    { key: 'APPLICATION_WITHDRAWN',      label: 'Withdrawn',      color: '#94a3b8' },
+    { key: 'USER_BLOCK',                 label: 'Blocks',         color: '#f87171' },
+    { key: 'USER_UNBLOCK',               label: 'Unblocks',       color: '#4ade80' },
+    { key: 'CANDIDATE_FLAGGED',          label: 'Flagged',        color: '#fbbf24' },
+    { key: 'CANDIDATE_UNFLAGGED',        label: 'Unflagged',      color: '#a78bfa' },
+    { key: 'CANDIDATE_SIGNAL_DISMISSED', label: 'Dismissed',      color: '#67e8f9' },
+    { key: 'JOB_UPDATED',                label: 'Jobs',           color: '#fb923c' },
+    { key: 'ROLE_UPDATE',                label: 'Role Updates',   color: '#c084fc' },
   ];
+
   readonly EVENT_META: Record<string, EventMeta> = {
-    APPLICATION_STATUS_UPDATE: { label: 'App Update',     color: '#79a4e9', bg: 'rgba(121,164,233,0.12)' },
-    USER_BLOCK:                { label: 'User Blocked',   color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
-    USER_UNBLOCK:              { label: 'User Unblocked', color: '#4ade80', bg: 'rgba(74,222,128,0.12)'  },
-    JOB_UPDATED:               { label: 'Job Updated',    color: '#fbbf24', bg: 'rgba(251,191,36,0.12)'  },
+    APPLICATION_STATUS_UPDATE:  { label: 'App Update',        color: '#79a4e9', bg: 'rgba(121,164,233,0.12)' },
+    APPLICATION_WITHDRAWN:      { label: 'Withdrawn',         color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
+    USER_BLOCK:                 { label: 'User Blocked',      color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+    USER_UNBLOCK:               { label: 'User Unblocked',    color: '#4ade80', bg: 'rgba(74,222,128,0.12)'  },
+    CANDIDATE_FLAGGED:          { label: 'Candidate Flagged', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)'  },
+    CANDIDATE_UNFLAGGED:        { label: 'Signal Removed',    color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+    CANDIDATE_SIGNAL_DISMISSED: { label: 'Signal Dismissed',  color: '#67e8f9', bg: 'rgba(103,232,249,0.12)' },
+    JOB_UPDATED:                { label: 'Job Updated',       color: '#fb923c', bg: 'rgba(251,146,60,0.12)'  },
+    ROLE_UPDATE:                { label: 'Role Updated',      color: '#c084fc', bg: 'rgba(192,132,252,0.12)' },
   };
 
   constructor(
@@ -159,7 +170,7 @@ export class ActionHistory implements OnInit {
      });
   }
 
-  /* ── name resolution (same as dashboard) ── */
+  /* ── name resolution ── */
   private resolveNames(logs: AuditLog[]): void {
     for (const log of logs) {
       if (log.actorUserId && log.actorUserId !== 'SYSTEM' && !this.actorNameCache[log.actorUserId]) {
@@ -178,14 +189,39 @@ export class ActionHistory implements OnInit {
 
   private resolveTargetName(log: AuditLog): void {
     if (!log.targetId) return;
-    const producer = (log.producer || '').toLowerCase();
-    if (producer.includes('job')) {
-      this.jobService.getJobById(log.targetId).pipe(catchError(() => of(null)))
-        .subscribe(j => { if (j) this.targetNameCache[log.targetId!] = j.title; });
-    } else if (producer.includes('application')) {
-      this.appService.getOne(log.targetId).pipe(catchError(() => of(null)))
-        .subscribe(a => { if (a) this.targetNameCache[log.targetId!] = a.jobTitle || `App #${log.targetId!.slice(0, 6)}`; });
+    const eventType = (log.eventType || '').toUpperCase();
+    const producer  = (log.producer  || '').toLowerCase();
+
+    // Candidate-level moderation events — resolve as user
+    if (
+      eventType === 'CANDIDATE_FLAGGED' ||
+      eventType === 'CANDIDATE_UNFLAGGED' ||
+      eventType === 'CANDIDATE_SIGNAL_DISMISSED'
+    ) {
+      this.http.get<{ email: string; firstName: string; lastName: string }>(
+        `${this.API}/api/admin/internal/users/${log.targetId}/email`, { headers: this.headers }
+      ).pipe(catchError(() => of(null))).subscribe(u => {
+        if (u) this.targetNameCache[log.targetId!] =
+          `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || log.targetId!.slice(0, 8);
+      });
+    } else if (
+      eventType === 'APPLICATION_STATUS_UPDATE' ||
+      eventType === 'APPLICATION_WITHDRAWN' ||
+      producer.includes('application')
+    ) {
+      this.appService.getOne(log.targetId)
+        .pipe(catchError(() => of(null)))
+        .subscribe(a => {
+          if (a) this.targetNameCache[log.targetId!] = a.jobTitle || `App #${log.targetId!.slice(0, 6)}`;
+        });
+    } else if (producer.includes('job')) {
+      this.jobService.getJobById(log.targetId)
+        .pipe(catchError(() => of(null)))
+        .subscribe(j => {
+          if (j) this.targetNameCache[log.targetId!] = j.title;
+        });
     } else {
+      // Default — resolve as user (USER_BLOCK, USER_UNBLOCK, ROLE_UPDATE)
       this.http.get<{ email: string; firstName: string; lastName: string }>(
         `${this.API}/api/admin/internal/users/${log.targetId}/email`, { headers: this.headers }
       ).pipe(catchError(() => of(null))).subscribe(u => {
@@ -201,7 +237,7 @@ export class ActionHistory implements OnInit {
   }
   isExpanded(log: AuditLog): boolean { return this.expandedLogId === log.eventId; }
 
-  /* ── getters (same as dashboard) ── */
+  /* ── getters ── */
   getActorName(log: AuditLog): string {
     if (!log.actorUserId || log.actorUserId === 'SYSTEM') return 'System';
     return this.actorNameCache[log.actorUserId] || log.actorUserId.slice(0, 8) + '…';
@@ -223,9 +259,17 @@ export class ActionHistory implements OnInit {
     if (!raw || typeof raw !== 'object') return [];
     return Object.entries(raw as Record<string, any>).map(([key, value]) => {
       if (value && typeof value === 'object' && ('old' in value || 'new' in value)) {
-        return { key, oldVal: value['old'] != null ? String(value['old']) : null, newVal: value['new'] != null ? String(value['new']) : null, simple: null };
+        return {
+          key,
+          oldVal: value['old'] != null ? String(value['old']) : null,
+          newVal: value['new'] != null ? String(value['new']) : null,
+          simple: null,
+        };
       }
-      return { key, oldVal: null, newVal: null, simple: typeof value === 'object' ? JSON.stringify(value) : String(value ?? '') };
+      return {
+        key, oldVal: null, newVal: null,
+        simple: typeof value === 'object' ? JSON.stringify(value) : String(value ?? ''),
+      };
     });
   }
   getEventMeta(type: string): EventMeta {
@@ -251,7 +295,10 @@ export class ActionHistory implements OnInit {
     return `${Math.floor(h / 24)}d ago`;
   }
   formatDate(d: string): string {
-    return new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return new Date(d).toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
   }
   prevPage(): void { if (this.page > 0) { this.page--; this.loadLogs(); } }
   nextPage(): void { if (this.page + 1 < this.totalPages) { this.page++; this.loadLogs(); } }

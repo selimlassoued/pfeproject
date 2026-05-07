@@ -11,7 +11,6 @@ import {
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { NotificationsMenu } from './notification-menu/notification-menu';
 
-
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -20,8 +19,9 @@ import { NotificationsMenu } from './notification-menu/notification-menu';
   styleUrl: './app.css'
 })
 export class App {
-  public profile? : KeycloakProfile;
+  public profile?: KeycloakProfile;
   authenticated = false;
+  displayName = '';
   keycloakStatus: string | undefined;
   private readonly keycloak = inject(Keycloak);
   private readonly keycloakSignal = inject(KEYCLOAK_EVENT_SIGNAL);
@@ -29,36 +29,35 @@ export class App {
   constructor() {
     effect(() => {
       const keycloakEvent = this.keycloakSignal();
-
       this.keycloakStatus = keycloakEvent.type;
 
       if (keycloakEvent.type === KeycloakEventType.Ready) {
         this.authenticated = typeEventArgs<ReadyArgs>(keycloakEvent.args);
-        console.log(this.keycloak.token);
 
+        if (this.authenticated) {
+          this.keycloak.loadUserProfile().then(profile => {
+            this.profile = profile;
+            const first = profile.firstName ?? '';
+            const last  = profile.lastName  ?? '';
+            this.displayName = `${first} ${last}`.trim() || profile.username || 'Account';
+          });
+        }
       }
 
       if (keycloakEvent.type === KeycloakEventType.AuthLogout) {
-        console.log(this.authenticated);              
-        this.authenticated = false;               
-      }                 
+        this.authenticated = false;
+        this.displayName = '';
+        this.profile = undefined;
+      }
     });
   }
 
+  login()  { this.keycloak.login();  }
+  logout() { this.keycloak.logout(); }
 
-  login() {
-    this.keycloak.login();
-  }
-
-  logout() {
-    this.keycloak.logout();
-
-  }
-  isAdmin(): boolean {
-  return this.keycloak.hasRealmRole('ADMIN');
-}
-isRecruiter(): boolean {
-  return this.keycloak.hasRealmRole('RECRUITER');
-}
-
+  // ── Role helpers — strict hierarchy ──────────────────────────────────────
+  isSuperAdmin(): boolean { return this.keycloak.hasRealmRole('SUPERADMIN'); }
+  isAdmin():      boolean { return this.keycloak.hasRealmRole('ADMIN') && !this.isSuperAdmin(); }
+  isRecruiter():  boolean { return this.keycloak.hasRealmRole('RECRUITER') && !this.isAdmin() && !this.isSuperAdmin(); }
+  isCandidate():  boolean { return !this.isSuperAdmin() && !this.isAdmin() && !this.isRecruiter(); }
 }

@@ -1,6 +1,8 @@
 package com.recrutment.application.clients;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.recrutment.application.clients.JobClient.JobDto;
+import com.recrutment.application.clients.JobClient.JobRequirementDto;
+import com.recrutment.application.dto.SemanticMatchDto;
 import com.recrutment.application.entities.CvAnalysis;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +14,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,14 +23,12 @@ import java.util.UUID;
 public class CvParserClient {
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
 
     @Value("${cv.parser.url:http://cv-parser-service:8085}")
     private String cvParserUrl;
 
-    public CvParserClient(RestTemplate restTemplate, ObjectMapper objectMapper) {
+    public CvParserClient(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
     }
 
     /**
@@ -70,6 +71,41 @@ public class CvParserClient {
             failed.setParsingStatus("FAILED");
             failed.setErrorMessage("CV parsing failed: " + e.getMessage());
             return failed;
+        }
+    }
+
+    public SemanticMatchDto match(UUID applicationId, CvAnalysis analysis, JobDto job) {
+        String url = cvParserUrl + "/api/cv-parser/match";
+        log.info("[CvParserClient] Matching CV to job for application: {}", applicationId);
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("application_id", applicationId.toString());
+            request.put("job_title", job != null ? job.getTitle() : null);
+            request.put("job_description", job != null ? job.getDescription() : null);
+            request.put("requirements", mapRequirements(job != null ? job.getRequirements() : List.of()));
+            request.put("cv_analysis", mapCvAnalysis(analysis));
+            if (job != null) {
+                Map<String, Object> weights = new HashMap<>();
+                weights.put("skills",     job.getSkillsWeight());
+                weights.put("semantic",   job.getSemanticWeight());
+                weights.put("experience", job.getExperienceWeight());
+                weights.put("seniority",  job.getSeniorityWeight());
+                request.put("scoring_weights", weights);
+            }
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+            return mapToSemanticMatch(response.getBody());
+        } catch (Exception e) {
+            log.error("[CvParserClient] Semantic match failed for {}: {}", applicationId, e.getMessage());
+            return new SemanticMatchDto(null, List.of(), List.of(),
+                    List.<SemanticMatchDto.SkillScoreDto>of(), null, null,
+                    null, List.<SemanticMatchDto.RequirementScoreDto>of(),
+                    List.of(), List.of(), "REVIEW", List.of(), null);
         }
     }
 
@@ -117,6 +153,7 @@ public class CvParserClient {
 
             // Simple list fields
             analysis.setSkills(castList(data.get("skills")));
+            analysis.setKnowledge(castList(data.get("knowledge")));
             analysis.setSoftSkills(castList(data.get("soft_skills")));
             analysis.setCertifications(castList(data.get("certifications")));
             analysis.setAwards(castList(data.get("awards")));
@@ -240,6 +277,219 @@ public class CvParserClient {
             failed.setErrorMessage("Mapping failed: " + e.getMessage());
             return failed;
         }
+    }
+
+    private SemanticMatchDto mapToSemanticMatch(Map<?, ?> data) {
+        if (data == null) {
+            return new SemanticMatchDto(null, List.of(), List.of(),
+                    List.<SemanticMatchDto.SkillScoreDto>of(), null, null,
+                    null, List.<SemanticMatchDto.RequirementScoreDto>of(),
+                    List.of(), List.of(), "REVIEW", List.of(), null);
+        }
+
+        Integer score = toInt(data.get("job_fit_score"));
+        Float gap = null;
+        Object gapRaw = data.get("experience_gap");
+        if (gapRaw instanceof Number number) {
+            gap = number.floatValue();
+        }
+
+        return new SemanticMatchDto(
+                score,                                                                      // jobFitScore
+                castList(data.get("required_skills_matched")),                              // requiredSkillsMatched
+                castList(data.get("required_skills_missing")),                              // requiredSkillsMissing
+                mapSkillScores(data.get("skill_scores")),                                   // skillScores
+                gap,                                                                        // experienceGap
+                data.get("seniority_match") instanceof Boolean b ? b : null,               // seniorityMatch
+                toInt(data.get("embedding_score")),                                         // embeddingScore
+                mapRequirementScores(data.get("requirement_scores")),                       // requirementScores
+                castList(data.get("strengths")),                                            // strengths
+                castList(data.get("weaknesses")),                                           // weaknesses
+                data.get("recommendation") instanceof String s ? s : "REVIEW",             // recommendation
+                castList(data.get("interview_questions")),                                  // interviewQuestions
+                data.get("score_explanation") instanceof String s ? s : null               // scoreExplanation
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<SemanticMatchDto.SkillScoreDto> mapSkillScores(Object raw) {
+        if (!(raw instanceof List<?> list)) return List.of();
+        return list.stream()
+                .filter(item -> item instanceof Map<?, ?>)
+                .map(item -> {
+                    Map<?, ?> m = (Map<?, ?>) item;
+                    return new SemanticMatchDto.SkillScoreDto(
+                            m.get("skill") instanceof String s ? s : null,
+                            toInt(m.get("score")),
+                            m.get("status") instanceof String s ? s : "missing"
+                    );
+                })
+                .toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<SemanticMatchDto.RequirementScoreDto> mapRequirementScores(Object raw) {
+        if (!(raw instanceof List<?> list)) return List.of();
+        return list.stream()
+                .filter(item -> item instanceof Map<?, ?>)
+                .map(item -> {
+                    Map<?, ?> m = (Map<?, ?>) item;
+                    Float weight = null;
+                    Object w = m.get("weight");
+                    if (w instanceof Number n) weight = n.floatValue();
+                    return new SemanticMatchDto.RequirementScoreDto(
+                            m.get("category") instanceof String s ? s : null,
+                            m.get("description") instanceof String s ? s : null,
+                            toInt(m.get("score")),
+                            weight,
+                            m.get("evidence") instanceof String s ? s : null
+                    );
+                })
+                .toList();
+    }
+
+    private List<Map<String, Object>> mapRequirements(List<JobRequirementDto> requirements) {
+        if (requirements == null) return List.of();
+        return requirements.stream().map(req -> {
+            Map<String, Object> mapped = new HashMap<>();
+            mapped.put("category",        req.getCategory());
+            mapped.put("description",     req.getDescription());
+            mapped.put("weight",          req.getWeight());
+            mapped.put("min_years",       req.getMinYears());
+            mapped.put("max_years",       req.getMaxYears());
+            mapped.put("skill_level",     req.getSkillLevel());
+            mapped.put("degree_level",    req.getDegreeLevel());
+            mapped.put("enrollment_type", req.getEnrollmentType());
+            mapped.put("language_level",  req.getLanguageLevel());
+            return mapped;
+        }).toList();
+    }
+
+    private Map<String, Object> mapCvAnalysis(CvAnalysis analysis) {
+        Map<String, Object> mapped = new HashMap<>();
+        mapped.put("application_id", analysis.getApplicationId() != null ? analysis.getApplicationId().toString() : null);
+        mapped.put("candidate_name", analysis.getCandidateName());
+        mapped.put("email", analysis.getEmail());
+        mapped.put("phone", analysis.getPhone());
+        mapped.put("location", analysis.getLocation());
+        mapped.put("summary", analysis.getSummary());
+        mapped.put("desired_position", analysis.getDesiredPosition());
+        mapped.put("availability", analysis.getAvailability());
+        mapped.put("skills", analysis.getSkills() != null ? analysis.getSkills() : List.of());
+        mapped.put("soft_skills", analysis.getSoftSkills() != null ? analysis.getSoftSkills() : List.of());
+        mapped.put("certifications", analysis.getCertifications() != null ? analysis.getCertifications() : List.of());
+        mapped.put("awards", analysis.getAwards() != null ? analysis.getAwards() : List.of());
+        mapped.put("total_years_experience", analysis.getTotalYearsExperience());
+        mapped.put("seniority_level", analysis.getSeniorityLevel());
+        mapped.put("parsing_status", analysis.getParsingStatus());
+        mapped.put("error_message", analysis.getErrorMessage());
+        mapped.put("work_experience", mapWorkExperience(analysis));
+        mapped.put("education", mapEducation(analysis));
+        mapped.put("languages", mapLanguages(analysis));
+        mapped.put("projects", mapProjects(analysis));
+        mapped.put("hackathons", mapHackathons(analysis));
+        mapped.put("volunteer_work", mapVolunteerWork(analysis));
+        mapped.put("social_links", mapSocialLinks(analysis));
+        mapped.put("github_profile", mapGithubProfile(analysis));
+        return mapped;
+    }
+
+    private List<Map<String, Object>> mapWorkExperience(CvAnalysis analysis) {
+        if (analysis.getWorkExperience() == null) return List.of();
+        return analysis.getWorkExperience().stream().map(exp -> {
+            Map<String, Object> mapped = new HashMap<>();
+            mapped.put("title", exp.getTitle());
+            mapped.put("company", exp.getCompany());
+            mapped.put("duration", exp.getDuration());
+            mapped.put("description", exp.getDescription());
+            mapped.put("skills_used", exp.getSkillsUsed() != null ? exp.getSkillsUsed() : List.of());
+            return mapped;
+        }).toList();
+    }
+
+    private List<Map<String, Object>> mapEducation(CvAnalysis analysis) {
+        if (analysis.getEducation() == null) return List.of();
+        return analysis.getEducation().stream().map(edu -> {
+            Map<String, Object> mapped = new HashMap<>();
+            mapped.put("degree", edu.getDegree());
+            mapped.put("institution", edu.getInstitution());
+            mapped.put("year", edu.getYear());
+            mapped.put("field", edu.getField());
+            mapped.put("mention", edu.getMention());
+            return mapped;
+        }).toList();
+    }
+
+    private List<Map<String, Object>> mapLanguages(CvAnalysis analysis) {
+        if (analysis.getLanguages() == null) return List.of();
+        return analysis.getLanguages().stream().map(lang -> {
+            Map<String, Object> mapped = new HashMap<>();
+            mapped.put("name", lang.getName());
+            mapped.put("level", lang.getLevel());
+            return mapped;
+        }).toList();
+    }
+
+    private List<Map<String, Object>> mapProjects(CvAnalysis analysis) {
+        if (analysis.getProjects() == null) return List.of();
+        return analysis.getProjects().stream().map(project -> {
+            Map<String, Object> mapped = new HashMap<>();
+            mapped.put("title", project.getTitle());
+            mapped.put("description", project.getDescription());
+            mapped.put("skills_used", project.getSkillsUsed() != null ? project.getSkillsUsed() : List.of());
+            mapped.put("url", project.getUrl());
+            return mapped;
+        }).toList();
+    }
+
+    private List<Map<String, Object>> mapHackathons(CvAnalysis analysis) {
+        if (analysis.getHackathons() == null) return List.of();
+        return analysis.getHackathons().stream().map(hackathon -> {
+            Map<String, Object> mapped = new HashMap<>();
+            mapped.put("title", hackathon.getTitle());
+            mapped.put("rank", hackathon.getRank());
+            mapped.put("date", hackathon.getDate());
+            mapped.put("description", hackathon.getDescription());
+            mapped.put("skills_used", hackathon.getSkillsUsed() != null ? hackathon.getSkillsUsed() : List.of());
+            return mapped;
+        }).toList();
+    }
+
+    private List<Map<String, Object>> mapVolunteerWork(CvAnalysis analysis) {
+        if (analysis.getVolunteerWork() == null) return List.of();
+        return analysis.getVolunteerWork().stream().map(volunteer -> {
+            Map<String, Object> mapped = new HashMap<>();
+            mapped.put("role", volunteer.getRole());
+            mapped.put("organization", volunteer.getOrganization());
+            mapped.put("duration", volunteer.getDuration());
+            mapped.put("description", volunteer.getDescription());
+            return mapped;
+        }).toList();
+    }
+
+    private Map<String, Object> mapSocialLinks(CvAnalysis analysis) {
+        if (analysis.getSocialLinks() == null) return null;
+        Map<String, Object> mapped = new HashMap<>();
+        mapped.put("linkedin", analysis.getSocialLinks().getLinkedin());
+        mapped.put("github", analysis.getSocialLinks().getGithub());
+        mapped.put("portfolio", analysis.getSocialLinks().getPortfolio());
+        return mapped;
+    }
+
+    private Map<String, Object> mapGithubProfile(CvAnalysis analysis) {
+        if (analysis.getGithubProfile() == null) return null;
+        Map<String, Object> mapped = new HashMap<>();
+        mapped.put("all_technologies", analysis.getGithubProfile().getAllTechnologies() != null
+                ? analysis.getGithubProfile().getAllTechnologies() : List.of());
+        mapped.put("all_repo_frameworks", analysis.getGithubProfile().getAllRepoFrameworks() != null
+                ? analysis.getGithubProfile().getAllRepoFrameworks() : List.of());
+        mapped.put("cv_skills_confirmed", analysis.getGithubProfile().getCvSkillsConfirmed() != null
+                ? analysis.getGithubProfile().getCvSkillsConfirmed() : List.of());
+        mapped.put("cv_skills_likely", analysis.getGithubProfile().getCvSkillsLikely() != null
+                ? analysis.getGithubProfile().getCvSkillsLikely() : List.of());
+        mapped.put("cv_skills_no_evidence", analysis.getGithubProfile().getCvSkillsNoEvidence() != null
+                ? analysis.getGithubProfile().getCvSkillsNoEvidence() : List.of());
+        return mapped;
     }
 
     @SuppressWarnings("unchecked")
@@ -387,6 +637,62 @@ public class CvParserClient {
             eval.setEvidenceSignals(signals);
         }
         return eval;
+    }
+
+    @SuppressWarnings("unchecked")
+    private CvAnalysis.LinkedInEnrichmentEmbedded mapLinkedInEnrichment(Map<?, ?> li) {
+        if (li == null) return null;
+        CvAnalysis.LinkedInEnrichmentEmbedded e = new CvAnalysis.LinkedInEnrichmentEmbedded();
+        e.setProfileUrl((String) li.get("profile_url"));
+        e.setHeadline((String) li.get("headline"));
+        e.setEthicalStatus(li.get("ethical_status") instanceof String s ? s : "SAFE");
+
+        // Ethical analysis details
+        Map<?, ?> ethRaw = (Map<?, ?>) li.get("ethical_analysis");
+        if (ethRaw != null) {
+            e.setEthicalSummary((String) ethRaw.get("reason"));
+            e.setActivityLevel(ethRaw.get("activity_level") instanceof String s ? s : "UNKNOWN");
+            e.setTopTopics(castList(ethRaw.get("top_topics")));
+            String level = e.getActivityLevel();
+            e.setSocialScore("High".equalsIgnoreCase(level) ? 75 : "Low".equalsIgnoreCase(level) ? 30 : 50);
+        } else {
+            e.setActivityLevel("UNKNOWN");
+            e.setSocialScore(50);
+            e.setTopTopics(List.of());
+        }
+
+        // Career insights
+        Map<?, ?> careerRaw = (Map<?, ?>) li.get("career_insights");
+        if (careerRaw != null) {
+            e.setJobHoppingFlag(careerRaw.get("job_hopping_flag") instanceof Boolean b ? b : false);
+            e.setLongestTenureMonths(toInt(careerRaw.get("longest_tenure_months")));
+            e.setSenioritySummary((String) careerRaw.get("seniority_growth_summary"));
+        }
+
+        // Extracurricular
+        Map<?, ?> extraRaw = (Map<?, ?>) li.get("extracurricular_insights");
+        if (extraRaw != null) {
+            e.setHackathonEnthusiast(extraRaw.get("hackathon_enthusiast") instanceof Boolean b ? b : false);
+            e.setLeadershipRoles(castList(extraRaw.get("leadership_roles")));
+            e.setCommunityImpact((String) extraRaw.get("community_impact"));
+        }
+
+        // Skill validation
+        List<?> svRaw = (List<?>) li.get("skill_validation");
+        if (svRaw != null) {
+            e.setSkillValidation(svRaw.stream()
+                .filter(item -> item instanceof Map<?, ?>)
+                .map(item -> {
+                    Map<?, ?> m = (Map<?, ?>) item;
+                    return new CvAnalysis.SkillValidationEmbedded(
+                        (String) m.get("skill"),
+                        (String) m.get("evidence_source"),
+                        (String) m.get("description"),
+                        (String) m.get("confidence_level")
+                    );
+                }).toList());
+        }
+        return e;
     }
 
     @SuppressWarnings("unchecked")

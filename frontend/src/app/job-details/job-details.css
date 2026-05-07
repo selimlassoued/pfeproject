@@ -1,3 +1,19 @@
+/* Rank & score in job applications table */
+.rank-cell { width: 3rem; text-align: center; }
+.rank-badge {
+  display: inline-block; font-size: .75rem; font-weight: 700;
+  color: rgba(255,255,255,0.4);
+}
+.rank-badge.rank-top { color: #fbbf24; }
+
+.score-badge {
+  display: inline-block; font-size: .78rem; font-weight: 700;
+  padding: .18rem .5rem; border-radius: 99px;
+}
+.score-high { background: rgba(72,187,120,.15); color: #48bb78; border: 1px solid rgba(72,187,120,.3); }
+.score-mid  { background: rgba(237,137,54,.15);  color: #ed8936; border: 1px solid rgba(237,137,54,.3); }
+.score-low  { background: rgba(252,129,129,.15); color: #fc8181; border: 1px solid rgba(252,129,129,.3); }
+
 .header-row{
   display:flex;
   justify-content:space-between;
@@ -277,3 +293,67 @@
   padding: 0.85rem 1.25rem;
   border-top: 1px solid rgba(121,164,233,0.09);
 }
+
+/* Smart shortlist button */
+.btn-shortlist {
+  background: rgba(251,191,36,0.12);
+  border: 1px solid rgba(251,191,36,0.28);
+  color: #fbbf24;
+  font-weight: 700;
+  font-size: .8rem;
+  padding: .38rem .85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.btn-shortlist:hover { background: rgba(251,191,36,0.2); }
+
+/* Smart shortlist modal */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 999;
+}
+.sl-modal {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  width: min(480px, 92vw);
+  background: var(--color-surface, #1a1f2e);
+  border: 1px solid rgba(121,164,233,0.18);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.55);
+}
+.sl-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.15rem 1.4rem 0;
+}
+.sl-modal-title { font-size: 1rem; font-weight: 800; color: var(--color-cream); margin: 0; }
+.sl-modal-close {
+  background: none; border: none; color: rgba(248,250,252,.45);
+  font-size: 1rem; cursor: pointer; padding: 0;
+}
+.sl-modal-close:hover { color: var(--color-cream); }
+.sl-modal-body { padding: 1.1rem 1.4rem; display: grid; gap: .9rem; }
+.sl-modal-desc { color: rgba(248,250,252,.65); font-size: .85rem; margin: 0; line-height: 1.55; }
+.sl-modal-footer {
+  display: flex; justify-content: flex-end; gap: .65rem;
+  padding: 0 1.4rem 1.2rem;
+}
+.sl-label { font-size: .75rem; font-weight: 700; color: rgba(248,250,252,.5); text-transform: uppercase; letter-spacing: .06em; }
+.sl-threshold-row { display: flex; justify-content: space-between; align-items: center; }
+.sl-threshold-value { font-size: 1.4rem; font-weight: 900; color: #fbbf24; }
+.sl-slider {
+  width: 100%; accent-color: #fbbf24; cursor: pointer;
+}
+.sl-slider-labels {
+  display: flex; justify-content: space-between;
+  font-size: .72rem; color: rgba(248,250,252,.35);
+}
+.sl-result {
+  border-radius: 8px; padding: .7rem 1rem;
+  font-size: .84rem; font-weight: 600;
+}
+.sl-result-ok    { background: rgba(72,187,120,.12); color: #68d391; border: 1px solid rgba(72,187,120,.25); }
+.sl-result-empty { background: rgba(251,191,36,.10); color: #fbbf24; border: 1px solid rgba(251,191,36,.22); }

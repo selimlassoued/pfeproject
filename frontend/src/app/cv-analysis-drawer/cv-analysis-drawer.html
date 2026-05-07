@@ -46,8 +46,30 @@
     </div>
   }
 
+  <!-- Pending (processing) -->
+  @if (!loading && !error && pending) {
+    <div class="drawer-loading">
+      <div class="drawer-spinner"></div>
+      <span>Analysis is processing…</span>
+    </div>
+  }
+
+  <!-- Failed — show retry -->
+  @if (!loading && analysis && isFailed) {
+    <div class="drawer-error">
+      <span class="drawer-error-icon">⚠</span>
+      <div>
+        <div class="drawer-error-title">Analysis failed</div>
+        <div class="drawer-error-msg">{{ analysis.errorMessage || 'CV parsing failed.' }}</div>
+      </div>
+      <button class="retry-btn" (click)="retry()" [disabled]="retrying">
+        {{ retrying ? 'Retrying…' : 'Retry' }}
+      </button>
+    </div>
+  }
+
   <!-- Content -->
-  @if (!loading && analysis && !error) {
+  @if (!loading && analysis && !error && !isFailed) {
     <div class="drawer-content">
 
       <!-- Contact Row -->
@@ -141,6 +163,18 @@
           <div class="pills-wrap">
             @for (skill of analysis.skills; track $index) {
               <span class="pill-skill">{{ skill }}</span>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Knowledge (technologies from projects) -->
+      @if (analysis.knowledge?.length) {
+        <div class="drawer-section">
+          <div class="section-label">Knowledge & Technologies</div>
+          <div class="pills-wrap">
+            @for (item of analysis.knowledge!; track $index) {
+              <span class="pill-knowledge">{{ item }}</span>
             }
           </div>
         </div>
@@ -408,6 +442,111 @@
         </div>
       }
       <!-- ── End GitHub Profile ───────────────────────────────────────────── -->
+
+      <!-- ── LinkedIn Profile ───────────────────────────────────────────────── -->
+      @if (analysis.linkedinEnrichment) {
+        <div class="drawer-section">
+          <div class="section-label">LinkedIn Profile</div>
+
+          <!-- Header card: profile link + ethical status -->
+          <div class="linkedin-header">
+            <div class="linkedin-header-left">
+              @if (analysis.linkedinEnrichment.profileUrl) {
+                <a [href]="analysis.linkedinEnrichment.profileUrl" target="_blank" class="linkedin-link">
+                  in LinkedIn Profile
+                </a>
+              }
+              <span class="linkedin-status-badge" [ngClass]="linkedinStatusClass(analysis.linkedinEnrichment.ethicalStatus)">
+                {{ analysis.linkedinEnrichment.ethicalStatus === 'SAFE' ? '✓ Safe' : '⚠ Flagged' }}
+              </span>
+            </div>
+
+            <div class="linkedin-stats">
+              <span class="linkedin-stat">
+                <span class="linkedin-stat-val">{{ analysis.linkedinEnrichment.socialScore }}</span>
+                <span class="linkedin-stat-lbl">social score</span>
+              </span>
+              <span class="linkedin-stat" [ngClass]="linkedinActivityClass(analysis.linkedinEnrichment.activityLevel)">
+                <span class="linkedin-stat-lbl">{{ analysis.linkedinEnrichment.activityLevel }}</span>
+                <span class="linkedin-stat-lbl">activity</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Ethical summary -->
+          @if (analysis.linkedinEnrichment.ethicalSummary) {
+            <div class="linkedin-ethical-note" [ngClass]="linkedinStatusClass(analysis.linkedinEnrichment.ethicalStatus)">
+              {{ analysis.linkedinEnrichment.ethicalSummary }}
+            </div>
+          }
+
+          <!-- Top topics -->
+          @if (analysis.linkedinEnrichment.topTopics?.length) {
+            <div class="linkedin-topics">
+              <div class="section-label" style="margin-bottom:0.5rem">Focus Areas</div>
+              <div class="pills-wrap">
+                @for (topic of analysis.linkedinEnrichment.topTopics; track $index) {
+                  <span class="pill-linkedin-topic">{{ topic }}</span>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Career insights -->
+          @if (analysis.linkedinEnrichment.senioritySummary || analysis.linkedinEnrichment.longestTenureMonths) {
+            <div class="linkedin-insights">
+              <div class="section-label" style="margin-bottom:0.5rem">Career Insights</div>
+              <div class="insights-grid">
+                @if (analysis.linkedinEnrichment.jobHoppingFlag != null) {
+                  <div class="insight-item" [class.insight-warn]="analysis.linkedinEnrichment.jobHoppingFlag">
+                    <span class="insight-icon">{{ analysis.linkedinEnrichment.jobHoppingFlag ? '⚠' : '✓' }}</span>
+                    <span>{{ analysis.linkedinEnrichment.jobHoppingFlag ? 'Job hopping detected' : 'Stable career path' }}</span>
+                  </div>
+                }
+                @if (analysis.linkedinEnrichment.longestTenureMonths) {
+                  <div class="insight-item">
+                    <span class="insight-icon">📅</span>
+                    <span>Longest tenure: {{ analysis.linkedinEnrichment.longestTenureMonths }} months</span>
+                  </div>
+                }
+                @if (analysis.linkedinEnrichment.senioritySummary) {
+                  <div class="insight-item insight-full">
+                    <span class="insight-icon">📈</span>
+                    <span>{{ analysis.linkedinEnrichment.senioritySummary }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Skill validation from LinkedIn -->
+          @if (analysis.linkedinEnrichment.skillValidation?.length) {
+            <div class="linkedin-skills">
+              <div class="section-label" style="margin-bottom:0.5rem">Skills Validated via LinkedIn</div>
+              <div class="skill-val-list">
+                @for (sv of analysis.linkedinEnrichment.skillValidation; track sv.skill) {
+                  <div class="skill-val-item">
+                    <div class="skill-val-top">
+                      <span class="skill-val-name">{{ sv.skill }}</span>
+                      <span class="skill-val-confidence"
+                        [class.conf-high]="sv.confidenceLevel === 'High'"
+                        [class.conf-med]="sv.confidenceLevel === 'Medium'"
+                        [class.conf-low]="sv.confidenceLevel === 'Low'">
+                        {{ sv.confidenceLevel }}
+                      </span>
+                    </div>
+                    <div class="skill-val-source">{{ sv.evidenceSource }}</div>
+                    @if (sv.description) {
+                      <div class="skill-val-desc">{{ sv.description }}</div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+      <!-- ── End LinkedIn Profile ───────────────────────────────────────────– -->
 
       <!-- Hackathons -->
       @if (analysis.hackathons.length) {

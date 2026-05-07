@@ -7,9 +7,9 @@
 
     <div class="addjob-titleRow">
       <div>
-        <h2 class="section-title">Create job offer</h2>
+        <h2 class="section-title">{{ isDuplicate ? 'New hiring round' : 'Create job offer' }}</h2>
         <p class="text-muted" style="margin-top: var(--space-2);">
-          Define details, salary, and requirements. You can edit later.
+          {{ isDuplicate ? 'Pre-filled from the closed position. Set the new quota and publish when ready.' : 'Define details, salary, and requirements. You can edit later.' }}
         </p>
       </div>
 
@@ -76,17 +76,26 @@
 
       <div class="addjob-row2">
         <div class="field">
-            <label class="toolbar-label">Location <span style="color:var(--color-secondary)">*</span></label>
-            <input
-              class="input"
-              type="text"
-              placeholder="In Person / Remote / Hybrid"
-              formControlName="location"
-            />
-            @if (form.get('location')?.touched && form.get('location')?.invalid) {
-              <div class="text-muted" style="margin-top:.35rem;">Location is required.</div>
-            }
-          </div>
+          <label class="toolbar-label">City / Location <span style="color:var(--color-secondary)">*</span></label>
+          <input class="input" type="text" placeholder="e.g. Tunis, Sfax, Nabeul…"
+            formControlName="location" />
+          @if (form.get('location')?.touched && form.get('location')?.invalid) {
+            <div class="text-muted" style="margin-top:.35rem;">Location is required.</div>
+          }
+        </div>
+
+        <div class="field">
+          <label class="toolbar-label">Work arrangement <span style="color:var(--color-secondary)">*</span></label>
+          <select class="input" formControlName="workArrangement">
+            <option value="" disabled>Select arrangement</option>
+            <option value="ON_SITE">On-site</option>
+            <option value="HYBRID">Hybrid</option>
+            <option value="REMOTE">Remote</option>
+          </select>
+          @if (form.get('workArrangement')?.touched && form.get('workArrangement')?.invalid) {
+            <div class="text-muted" style="margin-top:.35rem;">Work arrangement is required.</div>
+          }
+        </div>
 
        <div class="field">
             <label class="toolbar-label">Employment type <span style="color:var(--color-secondary)">*</span></label>
@@ -122,6 +131,15 @@
         <span class="pill">Step 2</span>
       </div>
 
+
+      <div class="field">
+        <label class="toolbar-label">Number of positions to fill</label>
+        <input class="input" type="number" min="1" formControlName="openings"
+          placeholder="e.g. 3 — leave empty for unlimited" />
+        <div class="text-muted" style="margin-top:.35rem; font-size:.8rem;">
+          When this quota is reached, the position closes automatically and remaining candidates are rejected.
+        </div>
+      </div>
 
       <div class="salary-box">
         <div class="salary-head">
@@ -182,19 +200,65 @@
 
     </section>
 
+    <!-- AI Scoring Weights -->
+    <section class="card addjob-panel addjob-wide">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">AI Scoring Weights</div>
+          <div class="text-muted" style="margin-top:.25rem;">
+            Define what matters most for this role. Weights are normalized automatically.
+          </div>
+        </div>
+        <span class="pill">Step 3</span>
+      </div>
+
+      <div class="weights-grid" [formGroup]="form">
+        @for (w of [
+          {key:'skillsWeight',     label:'Technical Skills',      hint:'How much skill match counts'},
+          {key:'semanticWeight',   label:'Semantic Fit',          hint:'How much profile narrative matches the job'},
+          {key:'experienceWeight', label:'Years of Experience',   hint:'How much experience gap matters'},
+          {key:'seniorityWeight',  label:'Seniority Level',       hint:'How much the seniority match matters'}
+        ]; track w.key) {
+          <div class="weight-row">
+            <div class="weight-label">
+              <span>{{ w.label }}</span>
+              <span class="text-muted" style="font-size:.75rem;">{{ w.hint }}</span>
+            </div>
+            <div class="weight-slider-wrap">
+              <input type="range" min="0" max="100" step="1"
+                     class="weight-slider"
+                     [formControlName]="w.key"
+                     (input)="onWeightChange(w.key)" />
+              <span class="weight-val">{{ form.get(w.key)?.value }}%</span>
+            </div>
+          </div>
+        }
+        <div class="weight-total weight-total-ok">Total: {{ weightsTotal }}%</div>
+      </div>
+    </section>
+
     <section class="card addjob-panel addjob-wide">
       <div class="panel-head">
         <div>
           <div class="panel-title">Requirements</div>
           <div class="text-muted" style="margin-top:.25rem;">
-            Add up to anything you want: skills, experience, education, languages…
+            Add skills, education, experience, certifications…
           </div>
         </div>
-
-        <button class="btn btn-ghost" type="button" (click)="addRequirement()">
-          + Add requirement
-        </button>
+        <div style="display:flex; align-items:center; gap:.75rem;">
+          <button class="btn btn-customize" type="button" (click)="toggleCustomizeWeights()">
+            {{ customizeWeights ? '✓ Weights on' : '⚖ Customize weights' }}
+          </button>
+          <button class="btn btn-ghost" type="button" (click)="addRequirement()">+ Add requirement</button>
+        </div>
       </div>
+
+      @if (customizeWeights) {
+        <div class="req-weights-hint">
+          Weights sum: <strong [style.color]="reqWeightsTotal === 100 ? '#68d391' : '#fc8181'">{{ reqWeightsTotal }}%</strong>
+          — adjust sliders so they total 100%.
+        </div>
+      }
 
       <div formArrayName="requirements" class="req-list">
         <div class="req-item" *ngFor="let r of requirements().controls; let i = index" [formGroupName]="i">
@@ -203,49 +267,104 @@
               <span class="pill">#{{ i + 1 }}</span>
               <span class="text-muted">Requirement</span>
             </div>
-
-            <button class="btn btn-ghost" type="button" (click)="removeRequirement(i)">
-              Remove
-            </button>
+            <button class="btn btn-ghost" type="button" (click)="removeRequirement(i)">Remove</button>
           </div>
 
           <div class="req-grid">
+            <!-- Category -->
             <div class="field">
-                <label class="toolbar-label">Category<span style="color:var(--color-secondary)">*</span></label>
-                <select class="input" formControlName="category">
-                  <option value="" disabled>Select category</option>
-                  <option value="SKILL">SKILL</option>
-                  <option value="EXPERIENCE">EXPERIENCE</option>
-                  <option value="EDUCATION">EDUCATION</option>
-                  <option value="CERTIFICATION">CERTIFICATION</option>
-                  <option value="LANGUAGE">LANGUAGE</option>
-                </select>
-              </div>
+              <label class="toolbar-label">Category <span style="color:var(--color-secondary)">*</span></label>
+              <select class="input" formControlName="category">
+                <option value="" disabled>Select category</option>
+                <option value="SKILL">SKILL</option>
+                <option value="EXPERIENCE">EXPERIENCE</option>
+                <option value="EDUCATION">EDUCATION</option>
+                <option value="CERTIFICATION">CERTIFICATION</option>
+                <option value="LANGUAGE">LANGUAGE</option>
+              </select>
+            </div>
 
-
+            <!-- Description -->
             <div class="field req-desc">
               <label class="toolbar-label">Description <span style="color:var(--color-secondary)">*</span></label>
               <input class="input" type="text" formControlName="description"
-                placeholder="e.g. Angular 16+, English B2, 2+ years Spring Boot…" />
+                placeholder="e.g. Java, Bachelor in CS, English B2…" />
             </div>
 
-            <div class="field req-desc">
-              <label class="toolbar-label">Weight<span style="color:var(--color-secondary)">*</span></label>
-              <input class="input" type="number" formControlName="weight" placeholder="e.g. 5" />
-            @if (r.get('weight')?.touched && r.get('weight')?.invalid) {
-              <div class="text-muted" style="margin-top:.35rem;">Weight is required and must be a number.</div>
+            <!-- SKILL level dropdown -->
+            @if (r.get('category')?.value === 'SKILL') {
+              <div class="field">
+                <label class="toolbar-label">Required level</label>
+                <select class="input" formControlName="skillLevel">
+                  <option [ngValue]="null">Any level</option>
+                  <option value="BASIC">Basic</option>
+                  <option value="INTERMEDIATE">Intermediate</option>
+                  <option value="ADVANCED">Advanced</option>
+                </select>
+              </div>
             }
-            </div>
 
-            <div class="field">
-              <label class="toolbar-label">Minimum years required</label>
-              <input class="input" type="number" formControlName="minYears" placeholder="e.g. 1" />
-            </div>
+            <!-- EDUCATION structured fields -->
+            @if (r.get('category')?.value === 'EDUCATION') {
+              <div class="field">
+                <label class="toolbar-label">Degree required</label>
+                <select class="input" formControlName="degreeLevel">
+                  <option [ngValue]="null">Any degree</option>
+                  <option value="NONE">No degree required</option>
+                  <option value="BAC">Baccalaureate</option>
+                  <option value="LICENCE_BACHELOR">Licence / Bachelor</option>
+                  <option value="MASTER">Master</option>
+                  <option value="PHD">PhD / Doctorate</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="toolbar-label">Enrollment</label>
+                <select class="input" formControlName="enrollmentType">
+                  <option [ngValue]="null">Student or Graduate</option>
+                  <option value="STUDENT">Student (ongoing)</option>
+                  <option value="GRADUATE">Graduate (completed)</option>
+                  <option value="BOTH">Either</option>
+                </select>
+              </div>
+            }
 
-            <div class="field">
-              <label class="toolbar-label">Maximum years required</label>
-              <input class="input" type="number" formControlName="maxYears" placeholder="e.g. 3" />
-            </div>
+            <!-- EXPERIENCE: years -->
+            @if (r.get('category')?.value === 'EXPERIENCE') {
+              <div class="field">
+                <label class="toolbar-label">Min years</label>
+                <input class="input" type="number" formControlName="minYears" placeholder="e.g. 2" />
+              </div>
+              <div class="field">
+                <label class="toolbar-label">Max years</label>
+                <input class="input" type="number" formControlName="maxYears" placeholder="e.g. 5" />
+              </div>
+            }
+
+            <!-- LANGUAGE: CEFR level -->
+            @if (r.get('category')?.value === 'LANGUAGE') {
+              <div class="field">
+                <label class="toolbar-label">Minimum level required</label>
+                <select class="input" formControlName="languageLevel">
+                  <option [ngValue]="null">Any level</option>
+                  <option value="A1">A1 — Beginner</option>
+                  <option value="A2">A2 — Elementary</option>
+                  <option value="B1">B1 — Conversational</option>
+                  <option value="B2">B2 — Professional</option>
+                  <option value="C1">C1 — Advanced</option>
+                  <option value="C2">C2 — Native / Mastery</option>
+                </select>
+              </div>
+            }
+
+            <!-- Weight slider — only shown when customizeWeights is on -->
+            @if (customizeWeights) {
+              <div class="field req-weight-field">
+                <label class="toolbar-label">Weight: {{ r.get('weight')?.value ?? 0 }}%</label>
+                <input type="range" min="0" max="100" step="1" class="weight-slider"
+                  [value]="r.get('weight')?.value ?? 0"
+                  (input)="r.get('weight')?.setValue(+$any($event.target).value); onReqWeightChange(i)" />
+              </div>
+            }
           </div>
 
           @if (r.touched && r.invalid) {

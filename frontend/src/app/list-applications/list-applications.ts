@@ -131,4 +131,11 @@ export class ListApplications implements OnInit {
   }
 
   statusClass(status: string): string { return (status || '').toLowerCase(); }
+
+  scoreBadgeClass(score: number | null | undefined): string {
+    if (score == null) return 'score-pending';
+    if (score >= 70)   return 'score-high';
+    if (score >= 45)   return 'score-mid';
+    return 'score-low';
+  }
 }

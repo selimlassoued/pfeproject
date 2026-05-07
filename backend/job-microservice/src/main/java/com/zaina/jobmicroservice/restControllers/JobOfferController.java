@@ -131,6 +131,26 @@ public class JobOfferController {
     }
 
     /**
+     * Internal: increment hired count when a candidate is HIRED
+     * POST /api/jobs/{id}/hired
+     */
+    @PostMapping("/{id}/hired")
+    public JobOfferDto incrementHired(@PathVariable UUID id) {
+        return service.incrementHiredCount(id);
+    }
+
+    /**
+     * Close job manually (recruiter)
+     * POST /api/jobs/{id}/close
+     */
+    @PostMapping("/{id}/close")
+    public JobOfferDto closeJob(
+            @PathVariable UUID id,
+            @RequestHeader(name = ACTOR_USER_ID_HEADER, required = false) String actorUserId) {
+        return service.closeJob(id, actorUserId);
+    }
+
+    /**
      * Delete a job offer
      * DELETE /api/jobs/{id}
      */

@@ -18,9 +18,16 @@ public class JobOfferDto {
     private String title;
     private String description;
     private String location;
+    private String workArrangement;
     private Integer minSalary;
     private Integer maxSalary;
+    private Integer openings;
+    private Integer hiredCount;
     private EmploymentType employmentType;
     private JobStatus jobStatus;
+    private Double skillsWeight;
+    private Double semanticWeight;
+    private Double experienceWeight;
+    private Double seniorityWeight;
     private List<JobRequirementDto> requirements;
 }

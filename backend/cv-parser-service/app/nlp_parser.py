@@ -9,6 +9,8 @@ from typing import Optional, List, Tuple
 
 from app.evaluator import evaluate_cv
 from app.extractor import extract_contact_fields, extract_languages_from_text
+# LinkedIn scraping disabled — requires Proxycurl API in production
+# from app.linkedin_enricher import enrich_from_linkedin
 from app.github_enricher import enrich_from_github
 from app.models import (
     WorkExperience,
@@ -22,13 +24,15 @@ from app.models import (
     GitHubRepo,
     CollaborationSignals,
     CvAnalysisResult,
+    # LinkedInEnrichment,  # disabled — Proxycurl API needed in production
 )
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-MODEL       = os.getenv("CV_PARSER_MODEL", "qwen2.5:3b")
+MODEL       = os.getenv("CV_PARSER_MODEL", "qwen2.5:7b")
 
 ollama_client = ollama.Client(host=OLLAMA_HOST)
 
@@ -363,24 +367,157 @@ CV TEXT:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _extract_skills(text: str) -> dict:
-    prompt = f"""You are a CV parser. Extract skills, soft skills, and certifications. Return ONLY valid JSON object, no explanation.
+    prompt = f"""You are a CV parser. Extract technical skills and certifications. Return ONLY a valid JSON object, no explanation.
 
 {{
   "skills": ["skill1", "skill2"],
-  "soft_skills": ["trait1"],
   "certifications": ["cert1"]
 }}
 
-Important:
-- skills: extract ONLY from the dedicated SKILLS, COMPÉTENCES, or TECHNICAL SKILLS section. These are concrete tools, technologies, methods, or platforms. Each skill is a short term (1-5 words). Do NOT extract words from the profile/about paragraph.
-- soft_skills: personality or behavioral traits from the profile/about section only. Never invent.
-- certifications: professional certificates only (e.g. AWS Certified, PMP). Never academic degrees.
-- If a section is absent, return [].
+Rules:
+- skills: extract ONLY from a dedicated SKILLS / COMPÉTENCES / TECHNICAL SKILLS section.
+  Concrete tools, technologies, languages, platforms, methodologies. Short terms (1-5 words).
+  Never extract from profile paragraphs, experience descriptions, or education sections.
+- certifications: professional certificates only (e.g. AWS Certified, PMP, Cisco CCNA, CFA).
+  Never include academic degrees or diplomas.
 - Return a JSON object, NOT an array.
 
 CV TEXT:
-{text[:5000]}"""
+{text[:7000]}"""
     return _call_model("SKILLS", prompt)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Soft skills — 3 focused calls (explicit + activities + experience)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SECTION_BOUNDARY = re.compile(
+    r"\n(?:PROFILE|PROFIL|SUMMARY|ABOUT|OBJECTIVE|SKILLS?|COMPÉTENCES?|TECHNICAL|"
+    r"PROFESSIONAL|EXPÉRIENCE|EXPERIENCE|EDUCATION|ÉDUCATION|FORMATION|"
+    r"EXTRACURRICULAR|ACTIVITÉS?|VOLUNTEER|BÉNÉVOLAT|LANGUAGES?|LANGUE|"
+    r"CERTIF|AWARDS?|PROJECTS?|HACKATHONS?)\b",
+    re.IGNORECASE,
+)
+
+_SOFT_SKILL_OUTPUT_RULES = """Output rules:
+- NOUNS ONLY — convert any adjective to noun form: "curious"→"Curiosity", "rigorous"→"Rigor", "passionate"→"Passion".
+- ENGLISH ONLY, TITLE CASE, 1-3 words per item. Always use the complete standard HR term: "Organizational skills" not "Organizational".
+- BEHAVIORAL TRAITS ONLY — never output tools, technologies, or domain knowledge.
+- NEVER output: "Participation", "Involvement", "Attendance", "Motivation", "Proficiency",
+  "Expertise", "Knowledge", "Experience", "Intellectual abilities", "Technical Proficiency".
+Return ONLY: {"soft_skills": ["Noun1", "Noun2"]}"""
+
+
+def _get_section(text: str, headers: List[str], max_chars: int = 2500) -> str:
+    """Extract the text of a CV section identified by its header."""
+    pattern = r"(?:" + "|".join(re.escape(h) for h in headers) + r")\s*[:\n]"
+    m = re.search(pattern, text, re.IGNORECASE)
+    if not m:
+        return ""
+    start = m.end()
+    nxt = _SECTION_BOUNDARY.search(text, start)
+    end = nxt.start() if nxt else start + max_chars
+    return text[start:min(end, start + max_chars)].strip()
+
+
+def _soft_skills_from_profile(text: str) -> List[str]:
+    """Call 4a — explicit traits from the profile/summary section and skills section.
+    Also scans COMPÉTENCES for French CVs that list behavioral traits there."""
+    profile_section = _get_section(
+        text,
+        ["PROFILE", "PROFIL", "SUMMARY", "ABOUT", "OBJECTIVE",
+         "À PROPOS DE MOI", "A PROPOS DE MOI", "À PROPOS", "PRÉSENTATION",
+         "PRESENTATION", "PERSONAL STATEMENT", "PERSONAL PROFILE"],
+    ) or text[:1200]
+    # Also grab COMPÉTENCES — French CVs often list behavioral traits (Autonomie, Rigeur) there
+    competences_section = _get_section(
+        text,
+        ["COMPÉTENCES", "COMPETENCES", "SKILLS", "SOFT SKILLS"],
+        max_chars=600,
+    )
+    combined = "\n".join(filter(None, [profile_section, competences_section]))
+    if not combined.strip():
+        return []
+    prompt = f"""You are reading the profile and skills sections of a CV. Extract every personality trait or behavioral quality the candidate claims about themselves.
+
+Scan every word and phrase in any language. Include traits even when embedded in longer sentences:
+- "genuine passion for X" / "passionné par X" → Passion
+- "rigorous" / "rigeur" → Rigor
+- "autonomie" / "autonomous" → Autonomy
+- "recognized for reliability" → Reliability
+- "adaptation" / "adaptable" → Adaptability
+- "curiosité" / "curious" → Curiosity
+- "ability to take initiative" → Initiative
+- "teamwork drives success" → Teamwork
+Apply the same logic to any other phrasing — these are examples of the pattern, not the full list.
+Translate all traits to English nouns.
+
+{_SOFT_SKILL_OUTPUT_RULES}
+
+TEXT:
+{combined[:2000]}"""
+    result = _call_model("SOFT_SKILLS_PROFILE", prompt, num_predict=512)
+    return _safe(result.get("soft_skills", []), is_list=True) or []
+
+
+def _soft_skills_from_activities(text: str) -> List[str]:
+    """Call 4b — implicit traits from extracurricular, volunteer, hackathons, education achievements.
+    Uses full CV text to avoid missing entries caused by two-column PDF layout reordering."""
+    if not text.strip():
+        return []
+    prompt = f"""You are reading a CV. Scan the ENTIRE text below for extracurricular roles,
+competition results, volunteer work, and education achievements.
+For each fact, extract the behavioral trait it demonstrates using these patterns:
+
+- Title contains Chair, President, Director, Head, Lead, Founder, VP → "Leadership"
+- Role is Treasurer or involves managing a budget or finances → "Financial responsibility"
+- Organized workshops, training sessions, bootcamps, or conferences → "Organizational skills"
+- Taught, trained, coached, or mentored others → "Pedagogy"
+- Served as ambassador, spokesperson, or external representative → "Representation skills"
+- Placed 1st, 2nd, 3rd, won, or was finalist in any competition or hackathon → "Competitive mindset"
+- Worked on social impact, SDGs, community service, or volunteering → "Civic engagement"
+- Ranked 1st, valedictorian, top of class in education → "Academic excellence"
+- Participated in conferences, congresses, or professional events → "Professional networking"
+Apply the same pattern logic to any other facts not listed above.
+
+{_SOFT_SKILL_OUTPUT_RULES}
+
+CV TEXT:
+{text[:4000]}"""
+    result = _call_model("SOFT_SKILLS_ACTIVITIES", prompt, num_predict=512)
+    return _safe(result.get("soft_skills", []), is_list=True) or []
+
+
+def _soft_skills_from_experience(text: str) -> List[str]:
+    """Call 4c — implicit traits from professional work experience."""
+    section = _get_section(
+        text,
+        ["PROFESSIONAL EXPERIENCE", "EXPÉRIENCES PROFESSIONNELLES",
+         "EXPÉRIENCE PROFESSIONNELLE", "EXPERIENCE", "EXPÉRIENCE",
+         "WORK EXPERIENCE", "PARCOURS PROFESSIONNEL", "EMPLOIS"],
+        max_chars=2500,
+    )
+    # Fallback: if no standard header found, use full text — handles CVs with non-standard section labels
+    if not section.strip():
+        section = text[:3000]
+    prompt = f"""You are reading the work experience section of a CV.
+For each role and its description, extract the behavioral trait the described actions demonstrate.
+Only extract a trait when a concrete action is described — not just from having held a job title.
+
+- Built or delivered a full project independently → "Autonomy"
+- Worked in a team or collaborated with others → "Teamwork"
+- Solved a technical or business problem → "Problem solving"
+- Adapted to a new tool, technology, or domain → "Adaptability"
+- Communicated with clients, users, or stakeholders → "Communication"
+- Applied a structured or methodical approach → "Rigor"
+Apply the same logic to any other concrete actions you find.
+
+{_SOFT_SKILL_OUTPUT_RULES}
+
+EXPERIENCE TEXT:
+{section}"""
+    result = _call_model("SOFT_SKILLS_EXPERIENCE", prompt, num_predict=512)
+    return _safe(result.get("soft_skills", []), is_list=True) or []
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -711,6 +848,24 @@ def _calculate_years_experience(experience_list: List[WorkExperience]) -> Option
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Soft-skills post-processing: synonym collapse + forbidden-term filter
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _normalize_soft_skills(raw: List[str]) -> List[str]:
+    """Deduplicate merged soft skills from the 3 LLM calls. Case-insensitive."""
+    seen: set = set()
+    result: List[str] = []
+    for item in raw:
+        if not item or not isinstance(item, str):
+            continue
+        item = item.strip()
+        if item.lower() not in seen:
+            seen.add(item.lower())
+            result.append(item)
+    return result[:15]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Main parse entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -736,16 +891,16 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
         # GitHub uses external HTTP — independent of Ollama, no conflict.
         github_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         github_future   = None
-
         if _github_url_resolved:
             logger.info(f"Launching GitHub enrichment thread: {_github_url_resolved}")
             github_future = github_executor.submit(enrich_from_github, _github_url_resolved)
         else:
             logger.info("No GitHub URL — skipping GitHub enrichment")
 
-        # ── 5 sequential LLM calls ────────────────────────────────────────────
-        # While these run (~22s), GitHub thread fetches in the background
-        logger.info("Starting 5 sequential LLM calls...")
+        # ── 7 sequential LLM calls ────────────────────────────────────────────
+        # While these run, GitHub thread fetches in the background.
+        # Soft skills split into 3 focused calls for reliability on small models.
+        logger.info("Starting 7 sequential LLM calls...")
         t_llm = time.time()
 
         identity_data   = _extract_identity(text)
@@ -753,6 +908,13 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
         education_data  = _extract_education(text)
         skills_data     = _extract_skills(text)
         activities_data = _extract_activities(text)
+
+        # Soft skills — 3 focused calls merged by Python
+        raw_soft_skills: List[str] = (
+            _soft_skills_from_profile(text)
+            + _soft_skills_from_activities(text)
+            + _soft_skills_from_experience(text)
+        )
 
         logger.info(f"All LLM calls finished in {time.time() - t_llm:.1f}s total")
 
@@ -949,6 +1111,27 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
                 merged_skills.append(s)
                 llm_lower.add(s.lower())
 
+        # ── Knowledge — technologies from work experience, CV projects (GitHub added later) ──
+        skills_lower_set = {s.lower() for s in merged_skills if isinstance(s, str)}
+        knowledge: List[str] = []
+        knowledge_lower: set = set()
+
+        def _add_to_knowledge(tech_list):
+            for tech in (tech_list or []):
+                if not tech or not isinstance(tech, str):
+                    continue
+                t = tech.strip()
+                t_lower = t.lower()
+                if t_lower and t_lower not in skills_lower_set and t_lower not in knowledge_lower:
+                    knowledge.append(t)
+                    knowledge_lower.add(t_lower)
+
+        for exp in experience_list:
+            _add_to_knowledge(exp.skills_used)
+
+        for proj in projects_list:
+            _add_to_knowledge(proj.skills_used)
+        # LinkedIn enrichment disabled — requires Proxycurl API in production
         # ── Collect GitHub result (thread started earlier) ────────────────────
         github_profile_data = None
         if github_future is not None:
@@ -1036,7 +1219,9 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
                             f"GitHub enrichment done: score={raw_gh.get('github_score')}, "
                             f"verification_skipped=True — no skill penalties applied"
                         )
-
+            
+            
+            
             except concurrent.futures.TimeoutError:
                 logger.warning("GitHub enrichment timed out after 25s — skipping")
                 github_executor.shutdown(wait=False)
@@ -1044,7 +1229,15 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
                 logger.warning(f"GitHub enrichment error: {e}")
                 github_executor.shutdown(wait=False)
 
+        # ── Add GitHub repo technologies to knowledge ─────────────────────────
+        if github_profile_data:
+            _add_to_knowledge(github_profile_data.all_technologies)
+
         # ── Build final result ────────────────────────────────────────────────
+        # LinkedIn data always None — enrichment disabled
+        linkedin_data = None
+
+        github_executor.shutdown(wait=False)
         result = CvAnalysisResult(
             application_id=application_id,
             candidate_name=_safe(identity_data.get("candidate_name")),
@@ -1056,7 +1249,8 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
             desired_position=_safe(identity_data.get("desired_position")),
             availability=availability,
             skills=merged_skills,
-            soft_skills=_safe(skills_data.get("soft_skills", []), is_list=True) or [],
+            knowledge=knowledge,
+            soft_skills=_normalize_soft_skills(raw_soft_skills),
             languages=languages_list,
             certifications=_safe(skills_data.get("certifications", []), is_list=True) or [],
             work_experience=experience_list,
@@ -1068,6 +1262,7 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
             volunteer_work=volunteer_list,
             awards=awards,
             github_profile=github_profile_data,
+            linkedin_enrichment=linkedin_data,  
             raw_text_length=len(text),
             parsing_status="SUCCESS",
         )

@@ -1,33 +1,33 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { JobService } from '../services/job.service';
 import { JobOffer } from '../model/jobOffer.model';
 import { AuthService } from '../services/AuthService.service';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
-import { PageResponse } from '../model/page-response';
 
 const STATUS_LIST = ['APPLIED', 'UNDER_REVIEW', 'INTERVIEW_PHASE', 'OFFER', 'HIRED', 'REJECTED'] as const;
 type AppStatus = typeof STATUS_LIST[number];
 
 @Component({
   selector: 'app-job-details',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './job-details.html',
   styleUrl: './job-details.css',
 })
 export class JobDetails implements OnInit {
-  private readonly jobService        = inject(JobService);
+  private readonly jobService         = inject(JobService);
   private readonly applicationService = inject(ApplicationService);
-  private readonly route             = inject(ActivatedRoute);
-  private readonly router            = inject(Router);
-  private readonly authService       = inject(AuthService);
+  private readonly route              = inject(ActivatedRoute);
+  private readonly router             = inject(Router);
+  private readonly authService        = inject(AuthService);
 
-  job              = signal<JobOffer | null>(null);
-  loading          = signal(true);
-  error            = signal<string | null>(null);
-  myApplication    = signal<ApplicationDto | null>(null);
+  job                 = signal<JobOffer | null>(null);
+  loading             = signal(true);
+  error               = signal<string | null>(null);
+  myApplication       = signal<ApplicationDto | null>(null);
   checkingApplication = signal(false);
 
   readonly STATUS_LIST = STATUS_LIST;
@@ -40,20 +40,35 @@ export class JobDetails implements OnInit {
     REJECTED:         { color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
   };
 
-  activeStatus   = signal<AppStatus>('APPLIED');
-  appLoading     = signal(false);
-  applications   = signal<ApplicationDto[]>([]);
-  appPage        = signal(0);
-  appTotalPages  = signal(1);
-  appTotal       = signal(0);
+  activeStatus  = signal<AppStatus>('APPLIED');
+  appLoading    = signal(false);
+  applications  = signal<ApplicationDto[]>([]);
+  appPage       = signal(0);
+  appTotalPages = signal(1);
+  appTotal      = signal(0);
   readonly APP_PAGE_SIZE = 8;
 
-  statusCounts   = signal<Partial<Record<AppStatus, number>>>({});
+  statusCounts = signal<Partial<Record<AppStatus, number>>>({});
 
-  get isRecruiter(): boolean { return this.authService.isRecruiter(); }
-  get isAdmin():     boolean { return this.authService.isAdmin(); }
-  get isCandidate(): boolean { return !this.isRecruiter && !this.isAdmin && this.authService.isCandidate(); }
-  get showAppsPanel(): boolean { return this.isRecruiter || this.isAdmin; }
+  // Smart shortlist
+  shortlistOpen      = signal(false);
+  shortlistThreshold = signal(70);
+  shortlisting       = signal(false);
+  shortlistResult    = signal<{ shortlisted: number; skipped: number } | null>(null);
+
+  // ── Role helpers — strict hierarchy ──────────────────────────────────────
+
+  get isSuperAdmin(): boolean { return this.authService.isSuperAdmin(); }
+  get isAdmin():      boolean { return this.authService.isAdmin(); }
+  get isRecruiter():  boolean { return this.authService.isRecruiter(); }
+  get isCandidate():  boolean { return this.authService.isCandidate(); }
+
+  /** Only RECRUITER can create/edit/delete jobs */
+  get canManageJobs(): boolean { return this.isRecruiter; }
+
+  /** RECRUITER + ADMIN + SUPERADMIN can see applications panel */
+  get showAppsPanel(): boolean { return this.isRecruiter || this.isAdmin || this.isSuperAdmin; }
+
   get actionLabel(): string { return this.myApplication() ? 'View application' : 'Apply'; }
 
   ngOnInit(): void {
@@ -64,7 +79,7 @@ export class JobDetails implements OnInit {
     if (this.isCandidate)   this.loadMyApplicationForJob(id);
     if (this.showAppsPanel) this.loadStatusCounts(id);
   }
-  
+
   private loadJob(id: string): void {
     this.loading.set(true);
     this.error.set(null);
@@ -91,12 +106,8 @@ export class JobDetails implements OnInit {
     for (const s of STATUS_LIST) {
       this.applicationService.listApplicationsPaged({ jobId, status: s, page: 0, size: 1 })
         .subscribe({
-          next: res => {
-            counts[s] = res.totalElements;
-            done++;
-            if (done === STATUS_LIST.length) this.statusCounts.set({ ...counts });
-          },
-          error: () => { done++; }
+          next:  res => { counts[s] = res.totalElements; done++; if (done === STATUS_LIST.length) this.statusCounts.set({ ...counts }); },
+          error: ()  => { done++; }
         });
     }
   }
@@ -111,27 +122,37 @@ export class JobDetails implements OnInit {
       page:   this.appPage(),
       size:   this.APP_PAGE_SIZE,
     }).subscribe({
-      next: res => {
-        this.applications.set(res.content ?? []);
-        this.appTotalPages.set(res.totalPages ?? 1);
-        this.appTotal.set(res.totalElements ?? 0);
-        this.appLoading.set(false);
-      },
-      error: () => this.appLoading.set(false),
+      next:  res => { this.applications.set(res.content ?? []); this.appTotalPages.set(res.totalPages ?? 1); this.appTotal.set(res.totalElements ?? 0); this.appLoading.set(false); },
+      error: ()  => this.appLoading.set(false),
     });
   }
 
-  setStatus(s: AppStatus): void {
-    this.activeStatus.set(s);
-    this.appPage.set(0);
-    this.loadApps();
-  }
-
+  setStatus(s: AppStatus): void { this.activeStatus.set(s); this.appPage.set(0); this.loadApps(); }
   appPrev(): void { if (this.appPage() > 0) { this.appPage.update(p => p - 1); this.loadApps(); } }
   appNext(): void { if (this.appPage() + 1 < this.appTotalPages()) { this.appPage.update(p => p + 1); this.loadApps(); } }
 
-  openApplication(app: ApplicationDto): void {
-    this.router.navigate(['/application', app.applicationId]);
+  openApplication(app: ApplicationDto): void { this.router.navigate(['/application', app.applicationId]); }
+
+  duplicateJob(): void {
+    const job = this.job();
+    if (!job) return;
+    this.router.navigate(['/add-job'], {
+      state: {
+        duplicate: {
+          title:            job.title,
+          description:      job.description,
+          location:         job.location,
+          employmentType:   job.employmentType,
+          minSalary:        job.minSalary,
+          maxSalary:        job.maxSalary,
+          skillsWeight:     Math.round((job.skillsWeight     ?? 0.40) * 100),
+          semanticWeight:   Math.round((job.semanticWeight   ?? 0.35) * 100),
+          experienceWeight: Math.round((job.experienceWeight ?? 0.15) * 100),
+          seniorityWeight:  Math.round((job.seniorityWeight  ?? 0.10) * 100),
+          requirements:     job.requirements ?? [],
+        }
+      }
+    });
   }
 
   downloadCv(app: ApplicationDto, event: Event): void {
@@ -174,12 +195,67 @@ export class JobDetails implements OnInit {
     }
   }
 
-  statusColor(s: string): string {
-    return (this.STATUS_COLORS as any)[s]?.color ?? '#79a4e9';
+  statusColor(s: string): string { return (this.STATUS_COLORS as any)[s]?.color ?? '#79a4e9'; }
+  statusBg(s: string):    string { return (this.STATUS_COLORS as any)[s]?.bg    ?? 'rgba(121,164,233,0.12)'; }
+
+  openShortlist(): void {
+    this.shortlistResult.set(null);
+    this.shortlistOpen.set(true);
   }
-  statusBg(s: string): string {
-    return (this.STATUS_COLORS as any)[s]?.bg ?? 'rgba(121,164,233,0.12)';
+
+  closeShortlist(): void { this.shortlistOpen.set(false); }
+
+  confirmShortlist(): void {
+    const job = this.job();
+    if (!job) return;
+    this.shortlisting.set(true);
+    this.shortlistResult.set(null);
+    this.applicationService.shortlistApplications(job.id, this.shortlistThreshold()).subscribe({
+      next: (res) => {
+        this.shortlistResult.set({ shortlisted: res.shortlisted, skipped: res.skipped });
+        this.shortlisting.set(false);
+        if (res.shortlisted > 0) {
+          this.loadStatusCounts(job.id);
+          if (this.activeStatus() === 'APPLIED') { this.appPage.set(0); this.loadApps(); }
+        }
+      },
+      error: () => this.shortlisting.set(false),
+    });
   }
+
+  workArrangementLabel(): string {
+    const map: Record<string, string> = {
+      ON_SITE: 'On-site', HYBRID: 'Hybrid', REMOTE: 'Remote',
+    };
+    const v = (this.job() as any)?.workArrangement;
+    return v ? (map[v] ?? v) : '—';
+  }
+
+  spotsText(): string {
+    const job = this.job();
+    if (!job || job.openings == null) return '—';
+    const left = Math.max(0, job.openings - (job.hiredCount ?? 0));
+    if (left === 0) return 'Filled';
+    if (left === 1) return '1 spot left';
+    return `${left} of ${job.openings} spots left`;
+  }
+
+  spotsColor(): string {
+    const job = this.job();
+    if (!job || job.openings == null) return '';
+    const left = Math.max(0, job.openings - (job.hiredCount ?? 0));
+    if (left === 0) return '#f87171';
+    if (left === 1) return '#fbbf24';
+    return '#68d391';
+  }
+
+  scoreBadgeClass(score: number | null | undefined): string {
+    if (score == null) return '';
+    if (score >= 70)   return 'score-high';
+    if (score >= 45)   return 'score-mid';
+    return 'score-low';
+  }
+
   formatDate(d: string): string {
     return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }

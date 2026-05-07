@@ -30,7 +30,8 @@ public class NotificationEventsListener {
             case "USER_UNBLOCK" -> notificationService.handleUserUnblock(evt);
             case "ROLE_UPDATE" -> notificationService.handleRoleUpdate(evt);
             case "APPLICATION_STATUS_UPDATE" -> notificationService.handleApplicationStatusUpdate(evt);
-            case "JOB_UPDATED" -> notificationService.handleJobUpdated(evt);
+            case "JOB_UPDATED"       -> notificationService.handleJobUpdated(evt);
+            case "JOB_QUOTA_REACHED" -> notificationService.handleJobQuotaReached(evt);
             default -> { /* ignore */ }
         }
     }
