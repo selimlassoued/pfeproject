@@ -345,3 +345,256 @@
   .cad-grid { grid-template-columns: 1fr; }
   .cad-card-wide { grid-column: auto; }
 }
+/* ── Interview section ── */
+.cad-interview {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+}
+
+.cad-interview-header {
+  margin-bottom: 1.25rem;
+}
+
+.cad-interview-title {
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: 1.1rem;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.cad-interview-state,
+.cad-interview-empty {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.cad-interview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cad-interview-card {
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: background 160ms ease;
+}
+
+.cad-interview-card.scheduled {
+  border-color: rgba(121, 164, 233, 0.3);
+}
+
+.cad-interview-card.in_progress {
+  border-color: rgba(255, 220, 100, 0.3);
+  background: rgba(255, 220, 100, 0.04);
+}
+
+.cad-interview-card.completed {
+  border-color: rgba(121, 233, 170, 0.22);
+  background: rgba(121, 233, 170, 0.04);
+  opacity: 0.85;
+}
+
+.cad-interview-card.cancelled {
+  border-color: rgba(233, 121, 121, 0.18);
+  background: rgba(233, 121, 121, 0.04);
+  opacity: 0.65;
+}
+
+.cad-iv-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.cad-iv-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.25);
+  background: rgba(121, 164, 233, 0.1);
+  color: var(--color-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.cad-interview-card.in_progress .cad-iv-pill {
+  background: rgba(255, 220, 100, 0.12);
+  border-color: rgba(255, 220, 100, 0.3);
+  color: rgba(255, 240, 180, 0.95);
+}
+
+.cad-interview-card.completed .cad-iv-pill {
+  background: rgba(121, 233, 170, 0.1);
+  border-color: rgba(121, 233, 170, 0.25);
+  color: rgba(200, 255, 230, 0.95);
+}
+
+.cad-interview-card.cancelled .cad-iv-pill {
+  background: rgba(233, 121, 121, 0.1);
+  border-color: rgba(233, 121, 121, 0.2);
+  color: rgba(255, 220, 220, 0.9);
+}
+
+.cad-iv-date {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-cream);
+}
+
+.cad-iv-meta {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.cad-iv-meta strong {
+  color: rgba(248, 250, 252, 0.9);
+}
+
+.cad-iv-consent {
+  font-size: 0.82rem;
+  color: rgba(200, 220, 255, 0.65);
+}
+
+.cad-iv-join {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.cad-iv-join:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(121, 164, 233, 0.2);
+}
+
+.cad-iv-done {
+  font-size: 0.88rem;
+  color: rgba(121, 233, 170, 0.85);
+  font-weight: 600;
+}
+
+.cad-iv-cancelled {
+  font-size: 0.88rem;
+  color: rgba(233, 121, 121, 0.85);
+  font-weight: 600;
+}
+/* ── Consent Modal ── */
+.cad-consent-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(5, 8, 20, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 180ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cad-consent-modal {
+  width: min(100%, 480px);
+  padding: 2rem;
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(121, 164, 233, 0.25);
+  background: rgba(11, 16, 38, 0.96);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: slideUp 200ms ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.cad-consent-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.cad-consent-title {
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: 1.3rem;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.cad-consent-body {
+  color: rgba(248, 250, 252, 0.82);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.cad-consent-body strong,
+.cad-consent-note strong {
+  color: var(--color-cream);
+}
+
+.cad-consent-note {
+  color: rgba(255, 220, 100, 0.8);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 220, 100, 0.2);
+  background: rgba(255, 220, 100, 0.06);
+  margin: 0;
+}
+
+.cad-consent-error {
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(233, 121, 121, 0.25);
+  background: rgba(233, 121, 121, 0.08);
+  color: rgba(255, 220, 220, 0.95);
+  font-size: 0.88rem;
+}
+
+.cad-consent-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+/* ── Consent badge on card ── */
+.cad-iv-consent-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(121, 233, 170, 0.85);
+}
+
+.cad-iv-consent-pending {
+  color: rgba(255, 220, 100, 0.85);
+}

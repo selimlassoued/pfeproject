@@ -21,8 +21,6 @@ public class AdminUsersController {
         this.service = service;
     }
 
-    // ── List / Get users ──────────────────────────────────────────────────────
-
     @GetMapping("/users")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public Mono<List<KcUser>> listUsers(
@@ -114,6 +112,13 @@ public class AdminUsersController {
     // ── Roles ─────────────────────────────────────────────────────────────────
 
     public record UpdateRolesRequest(List<String> roles, String reason) {}
+
+    // ✅ delete
+//    @DeleteMapping("/users/{id}")
+//    @PreAuthorize("hasRole('ADMIN')")
+//    public Mono<Void> deleteUser(@PathVariable String id) {
+//        return service.deleteUser(id);
+//    }
 
     @GetMapping("/users/{id}/roles")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")

@@ -92,4 +92,12 @@ export class Hero implements OnInit, OnDestroy {
   get userProfile(): any {
     return this.keycloak.profile;
   }
+  formatEmploymentType(type: string | null | undefined): string {
+  if (!type) return '';
+
+  return type
+    .toLowerCase()              // FULL_TIME → full_time
+    .replace(/_/g, ' ')         // full_time → full time
+    .replace(/\b\w/g, c => c.toUpperCase()); // full time → Full Time
+}
 }

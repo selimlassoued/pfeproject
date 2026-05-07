@@ -101,7 +101,7 @@ export class BrowseJobsComponent implements OnInit {
 
   applyOrView(jobId: string): void {
   if (this.isGuest) {
-    this.keycloak.login() 
+    this.keycloak.login()
     return;
   }
   const appId = this.applicationIdFor(jobId);
@@ -135,17 +135,17 @@ export class BrowseJobsComponent implements OnInit {
     ).subscribe({
       next: (response) => {
         this.pageResponse = response;
-        
+
         // Extract unique values for filter dropdowns (only on first page load)
         if (this.currentPage === 0) {
           this.extractFilterOptions();
         }
-        
+
         this.loading = false;
       },
       error: (err) => {
         this.loading = false;
-        
+
         if (err?.status === 0) {
           this.error = 'Backend not reachable.';
         } else if (err?.status) {
@@ -153,7 +153,7 @@ export class BrowseJobsComponent implements OnInit {
         } else {
           this.error = 'Failed to load jobs.';
         }
-        
+
         console.error('searchJobs error:', err);
       },
     });
@@ -206,14 +206,14 @@ export class BrowseJobsComponent implements OnInit {
   private getSalaryRange(): [number | undefined, number | undefined] {
     if (this.salaryRange === 'any') return [undefined, undefined];
     if (this.salaryRange === 'specified') return [0, undefined];
-    
+
     const ranges: Record<string, [number, number | undefined]> = {
       '0-1000': [0, 1000],
       '1000-2000': [1000, 2000],
       '2000-5000': [2000, 5000],
       '5000+': [5000, undefined],
     };
-    
+
     const [min, max] = ranges[this.salaryRange] || [undefined, undefined];
     return [min, max];
   }
@@ -333,4 +333,12 @@ export class BrowseJobsComponent implements OnInit {
     this.currentPage = 0;
     this.fetchJobs();
   }
+  formatEmploymentType(type: string | null | undefined): string {
+  if (!type) return '';
+
+  return type
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
 }

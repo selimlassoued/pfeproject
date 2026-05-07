@@ -11,6 +11,7 @@ from app.evaluator import evaluate_cv
 from app.extractor import extract_contact_fields, extract_languages_from_text
 # LinkedIn scraping disabled — requires Proxycurl API in production
 # from app.linkedin_enricher import enrich_from_linkedin
+from app.extractor import extract_contact_fields, extract_languages_from_text, _LANGUAGE_NAMES
 from app.github_enricher import enrich_from_github
 from app.models import (
     WorkExperience,
@@ -25,6 +26,9 @@ from app.models import (
     CollaborationSignals,
     CvAnalysisResult,
     # LinkedInEnrichment,  # disabled — Proxycurl API needed in production
+    WorkExperience, Education, Language, SocialLinks, Hackathon,
+    Project, VolunteerWork, GitHubProfile, GitHubRepo,
+    CollaborationSignals, CvAnalysisResult,
 )
 
 
@@ -891,6 +895,7 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
         # GitHub uses external HTTP — independent of Ollama, no conflict.
         github_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         github_future   = None
+
         if _github_url_resolved:
             logger.info(f"Launching GitHub enrichment thread: {_github_url_resolved}")
             github_future = github_executor.submit(enrich_from_github, _github_url_resolved)
@@ -1219,9 +1224,9 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
                             f"GitHub enrichment done: score={raw_gh.get('github_score')}, "
                             f"verification_skipped=True — no skill penalties applied"
                         )
-            
-            
-            
+
+
+
             except concurrent.futures.TimeoutError:
                 logger.warning("GitHub enrichment timed out after 25s — skipping")
                 github_executor.shutdown(wait=False)
@@ -1262,7 +1267,7 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
             volunteer_work=volunteer_list,
             awards=awards,
             github_profile=github_profile_data,
-            linkedin_enrichment=linkedin_data,  
+            linkedin_enrichment=linkedin_data,
             raw_text_length=len(text),
             parsing_status="SUCCESS",
         )
