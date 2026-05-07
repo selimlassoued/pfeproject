@@ -206,5 +206,15 @@ select:hover {
 
 .salary-grid .input {
   width: 100%;
-  min-width: 150px; 
+  min-width: 150px;
 }
+
+.weights-grid { display:flex; flex-direction:column; gap:1.2rem; padding:1rem 0; }
+.weight-row { display:flex; flex-direction:column; gap:.4rem; }
+.weight-label { display:flex; justify-content:space-between; align-items:baseline; font-size:.9rem; font-weight:600; }
+.weight-slider-wrap { display:flex; align-items:center; gap:.75rem; }
+.weight-slider { flex:1; accent-color:#63b3ed; cursor:pointer; }
+.weight-val { min-width:2.8rem; text-align:right; font-size:.85rem; font-weight:700; color:#63b3ed; }
+.weight-total { font-size:.85rem; font-weight:700; padding:.5rem 0; border-top:1px solid rgba(255,255,255,.08); margin-top:.5rem; }
+.weight-total-ok   { color:#48bb78; }
+.weight-total-warn { color:#ed8936; }

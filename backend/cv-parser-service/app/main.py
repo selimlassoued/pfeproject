@@ -7,7 +7,8 @@ load_dotenv()  # loads GITHUB_TOKEN and other vars from .env
 
 from app.extractor import extract_text
 from app.nlp_parser import parse_cv
-from app.models import CvAnalysisResult
+from app.models import CvAnalysisResult, SemanticMatchRequest, SemanticMatchResult
+from app.semantic_matcher import match_job_to_cv, calibrate_thresholds
 
 MAX_FILE_SIZE_MB    = 10
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
@@ -79,6 +80,26 @@ async def analyze_cv(
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 
+@app.get("/api/cv-parser/calibrate-thresholds")
+async def calibrate():
+    """
+    Run known tech pairs through the embedding model and return recommended thresholds.
+    Use this to calibrate SKILL_SEM_THRESHOLD and SKILL_SEM_PARTIAL_THRESHOLD.
+    """
+    return calibrate_thresholds()
+
+
+@app.get("/api/cv-parser/skill-similarity")
+async def skill_similarity(a: str, b: str):
+    """Debug endpoint — returns the embedding cosine similarity between two skill terms.
+    Use this to calibrate the matching thresholds."""
+    from app.semantic_matcher import _embed, _cosine, _normalize
+    vec_a = _embed(_normalize(a))
+    vec_b = _embed(_normalize(b))
+    sim = _cosine(vec_a, vec_b)
+    return {"skill_a": a, "skill_b": b, "cosine_similarity": round(sim, 4), "score": round(sim * 100)}
+
+
 @app.post("/api/cv-parser/extract-text")
 async def extract_text_only(
     filename: str = Form(...),
@@ -88,3 +109,12 @@ async def extract_text_only(
     file_bytes = await file.read()
     text = extract_text(file_bytes, filename)
     return {"text": text, "length": len(text)}
+
+
+@app.post("/api/cv-parser/match", response_model=SemanticMatchResult)
+async def semantic_match(request: SemanticMatchRequest):
+    """Compute a job-to-CV fit score from job data and an already parsed CV."""
+    try:
+        return match_job_to_cv(request)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Semantic matching failed: {str(e)}")

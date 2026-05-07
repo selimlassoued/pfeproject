@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Literal,Any
 
 
 class WorkExperience(BaseModel):
@@ -193,6 +193,41 @@ class CvEvaluation(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 # Main CV analysis result
 # ─────────────────────────────────────────────────────────────────────────────
+class CareerInsights(BaseModel):
+    job_hopping_flag: bool = Field(..., description="Alerte si le candidat a eu plus de 3 postes en 2 ans.")
+    longest_tenure_months: Optional[int] = Field(None, description="Durée du poste le plus long en mois.")
+    seniority_growth_summary: Optional[str] = Field(None, description="Résumé de la progression de carrière.")
+    industry_loyalty_percentage: Optional[float] = Field(None, description="Pourcentage de fidélité à un secteur.")
+
+class ExtracurricularInsights(BaseModel):
+    hackathon_enthusiast: bool = Field(..., description="Indique si le candidat participe aux hackathons.")
+    leadership_roles: List[str] = Field(default_factory=list, description="Liste des rôles de leadership (ex: IEEE).")
+    community_impact: Optional[str] = Field(None, description="Impact communautaire détecté.")
+
+class SkillEvidence(BaseModel):
+    skill: str = Field(..., description="Compétence validée.")
+    evidence_source: str = Field(..., description="Source (ex: LinkedIn Posts).")
+    description: str = Field(..., description="Détails de la preuve.")
+    confidence_level: Literal['High', 'Medium', 'Low'] = Field(..., description="Niveau de confiance.")
+
+class EthicalAnalysis(BaseModel):
+    status: Literal['SAFE', 'FLAGGED'] = Field(..., description="Statut éthique.")
+    reason: Optional[str] = Field(None, description="Raison du statut.")
+    activity_level: Literal['Low', 'High', 'UNKNOWN'] = Field(..., description="Niveau d'activité.")
+    top_topics: List[str] = Field(default_factory=list, description="Sujets principaux.")
+
+class LinkedInEnrichment(BaseModel):
+    profile_url: Optional[str] = Field(None, description="URL LinkedIn.")
+    headline: Optional[str] = Field(None, description="Titre LinkedIn.")
+    about_section: Optional[str] = Field(None, description="Bio LinkedIn.")
+    latest_posts: List[str] = Field(default_factory=list, description="Posts analysés.")
+    certifications: List[str] = Field(default_factory=list, description="Certifications.")
+    career_insights: Optional[CareerInsights] = Field(None, description="Insights de carrière.")
+    extracurricular_insights: Optional[ExtracurricularInsights] = Field(None, description="Engagement extrascolaire.")
+    skill_validation: List[SkillEvidence] = Field(default_factory=list, description="Preuves de compétences.")
+    ethical_status: str = Field("SAFE", description="Compatibilité avec nlp_parser.py")
+    ethical_analysis: Optional[EthicalAnalysis] = Field(None, description="Analyse éthique détaillée.")
+
 
 class CvAnalysisResult(BaseModel):
     application_id: str
@@ -207,6 +242,7 @@ class CvAnalysisResult(BaseModel):
     availability: Optional[str] = None
 
     skills: List[str] = Field(default_factory=list)
+    knowledge: List[str] = Field(default_factory=list)
     soft_skills: List[str] = Field(default_factory=list)
     languages: List[Language] = Field(default_factory=list)
     certifications: List[str] = Field(default_factory=list)
@@ -228,3 +264,49 @@ class CvAnalysisResult(BaseModel):
     parsing_status: str = "SUCCESS"
     error_message: Optional[str] = None
     evaluation: Optional[CvEvaluation] = None
+    linkedin_enrichment: Optional[LinkedInEnrichment] = None
+
+
+class JobRequirementInput(BaseModel):
+    category: Optional[str] = None
+    description: Optional[str] = None
+    weight: Optional[float] = None
+    min_years: Optional[int] = None
+    max_years: Optional[int] = None
+    skill_level: Optional[str] = None      # BASIC / INTERMEDIATE / ADVANCED
+    degree_level: Optional[str] = None     # ANY / BAC / BTS_DUT / LICENCE_BACHELOR / MASTER / PHD
+    enrollment_type: Optional[str] = None  # STUDENT / GRADUATE / BOTH
+    language_level: Optional[str] = None   # A1 / A2 / B1 / B2 / C1 / C2
+
+
+class ScoringWeights(BaseModel):
+    skills: float = 0.40
+    semantic: float = 0.35
+    experience: float = 0.15
+    seniority: float = 0.10
+
+
+class SemanticMatchRequest(BaseModel):
+    application_id: str
+    job_title: Optional[str] = None
+    job_description: Optional[str] = None
+    requirements: List[JobRequirementInput] = Field(default_factory=list)
+    cv_analysis: CvAnalysisResult
+    scoring_weights: Optional[ScoringWeights] = None
+
+
+class SemanticMatchResult(BaseModel):
+    application_id: str
+    job_fit_score: int = 0
+    required_skills_matched: List[str] = Field(default_factory=list)
+    required_skills_missing: List[str] = Field(default_factory=list)
+    skill_scores: List[Dict[str, Any]] = Field(default_factory=list)  # per-skill scores
+    experience_gap: float = 0.0
+    seniority_match: bool = False
+    embedding_score: int = 0
+    requirement_scores: List[Dict[str, Any]] = Field(default_factory=list)
+    strengths: List[str] = Field(default_factory=list)
+    weaknesses: List[str] = Field(default_factory=list)
+    recommendation: str = "REVIEW"
+    interview_questions: List[str] = Field(default_factory=list)
+    score_explanation: Optional[str] = None

@@ -19,6 +19,7 @@
         <option value="OFFER">OFFER</option>
         <option value="REJECTED">REJECTED</option>
         <option value="HIRED">HIRED</option>
+        <option value="WITHDRAWN">WITHDRAWN</option>
       </select>
 
       <button class="btn btn-primary" type="button" (click)="search()">Search</button>
@@ -43,6 +44,7 @@
           <th>Application</th>
           <th>Job</th>
           <th>Candidate</th>
+          <th>AI Score</th>
           <th>Status</th>
           <th>Applied At</th>
           <th>CV</th>
@@ -62,6 +64,21 @@
           <td>
             <div>{{ app.candidateName || '—' }}</div>
             <div class="sub-id mono">{{ app.candidateUserId }}</div>
+          </td>
+
+          <td class="td-score" (click)="$event.stopPropagation()">
+            @if (app.jobFitScore != null) {
+              <div class="score-badge" [ngClass]="scoreBadgeClass(app.jobFitScore)">
+                {{ app.jobFitScore }}%
+              </div>
+              @if (app.scoreExplanation) {
+                <div class="score-hint" [title]="app.scoreExplanation">
+                  {{ app.scoreExplanation | slice:0:60 }}{{ app.scoreExplanation.length > 60 ? '…' : '' }}
+                </div>
+              }
+            } @else {
+              <span class="score-pending">—</span>
+            }
           </td>
 
           <td>

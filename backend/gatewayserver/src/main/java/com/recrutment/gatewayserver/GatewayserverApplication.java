@@ -30,7 +30,7 @@ public class GatewayserverApplication {
                 .uri("lb://notification-microservice"))
                 .route("notification-ws", r -> r
                 .path("/ws/notifications/**")
-                .uri("lb://notification-microservice"))
+                .uri("lb:ws://notification-microservice"))
                 .route("audit-service", r -> r
                 .path("/api/audit/**")
                  .uri("lb://audit-service"))

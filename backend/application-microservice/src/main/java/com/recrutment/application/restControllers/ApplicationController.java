@@ -2,6 +2,7 @@ package com.recrutment.application.restControllers;
 
 import com.recrutment.application.dto.ApplicationDto;
 import com.recrutment.application.dto.PageResponse;
+import com.recrutment.application.dto.SemanticMatchDto;
 import com.recrutment.application.entities.Application;
 import com.recrutment.application.enums.ApplicationStatus;
 import com.recrutment.application.repos.ApplicationRepo;
@@ -39,15 +40,13 @@ public class ApplicationController {
             @RequestPart("cv") MultipartFile cv,
             @AuthenticationPrincipal Jwt jwt
     ) throws IOException {
-        String candidateUserId = jwt.getSubject();
-        return service.apply(jobId, candidateUserId, githubUrl, cv);
+        return service.apply(jobId, jwt.getSubject(), githubUrl, cv);
     }
 
     @GetMapping("/{id}/cv")
     public ResponseEntity<byte[]> downloadCv(@PathVariable UUID id) {
         Application app = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Application not found: " + id));
-
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + app.getCvFileName() + "\"")
@@ -71,6 +70,15 @@ public class ApplicationController {
         return service.getOne(id);
     }
 
+    @GetMapping("/{id}/match")
+    public ResponseEntity<SemanticMatchDto> getSemanticMatch(@PathVariable UUID id) {
+        SemanticMatchDto match = service.getSemanticMatch(id);
+        if (match == null) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+        }
+        return ResponseEntity.ok(match);
+    }
+
     @GetMapping("/check-github")
     public boolean checkGithub(@RequestParam String url) {
         return service.checkGithubLink(url);
@@ -79,41 +87,29 @@ public class ApplicationController {
     @GetMapping("/me/by-job/{jobId}")
     public ApplicationDto myApplicationByJob(
             @PathVariable UUID jobId,
-            @AuthenticationPrincipal Jwt jwt
-    ) {
-        String candidateUserId = jwt.getSubject();
-        return service.getMyApplicationByJob(jobId, candidateUserId);
+            @AuthenticationPrincipal Jwt jwt) {
+        return service.getMyApplicationByJob(jobId, jwt.getSubject());
     }
 
     @GetMapping("/me")
     public List<ApplicationDto> myApplications(@AuthenticationPrincipal Jwt jwt) {
-        String candidateUserId = jwt.getSubject();
-        return service.listMyApplications(candidateUserId);
+        return service.listMyApplications(jwt.getSubject());
     }
 
     @GetMapping("/me/{id}")
-    public ApplicationDto getMyOne(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal Jwt jwt
-    ) {
-        String candidateUserId = jwt.getSubject();
-        return service.getMyApplication(id, candidateUserId);
+    public ApplicationDto getMyOne(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        return service.getMyApplication(id, jwt.getSubject());
     }
 
     @GetMapping("/me/{id}/cv")
     public ResponseEntity<byte[]> downloadMyCv(
             @PathVariable UUID id,
-            @AuthenticationPrincipal Jwt jwt
-    ) {
-        String candidateUserId = jwt.getSubject();
-
+            @AuthenticationPrincipal Jwt jwt) {
         Application app = repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found: " + id));
-
-        if (!candidateUserId.equals(app.getCandidateUserId())) {
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Application not found: " + id));
+        if (!jwt.getSubject().equals(app.getCandidateUserId()))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed.");
-        }
-
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + app.getCvFileName() + "\"")
@@ -128,16 +124,29 @@ public class ApplicationController {
             @RequestPart(value = "cv", required = false) MultipartFile cv,
             @AuthenticationPrincipal Jwt jwt
     ) throws IOException {
-        String candidateUserId = jwt.getSubject();
-        return service.updateMyApplication(id, candidateUserId, githubUrl, cv);
+        return service.updateMyApplication(id, jwt.getSubject(), githubUrl, cv);
+    }
+
+    /**
+     * Candidate withdraws their own application (soft delete).
+     * Only allowed when status is APPLIED.
+     * Application stays in DB with WITHDRAWN status — hidden from candidate dashboard.
+     * Candidate can re-apply to the same job after withdrawing.
+     * DELETE /api/applications/me/{id}
+     */
+    @DeleteMapping("/me/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void withdrawMyApplication(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        service.withdrawMyApplication(id, jwt.getSubject());
     }
 
     @PatchMapping("/{id}/status")
     public ApplicationDto updateStatus(
             @PathVariable UUID id,
             @RequestParam ApplicationStatus status,
-            @AuthenticationPrincipal Jwt jwt
-    ) {
+            @AuthenticationPrincipal Jwt jwt) {
         String actorUserId = (jwt != null && jwt.getSubject() != null) ? jwt.getSubject() : "SYSTEM";
         return service.updateStatus(id, status, actorUserId);
     }
@@ -145,6 +154,31 @@ public class ApplicationController {
     @GetMapping("/internal/job/{jobId}/candidate-ids")
     public List<String> getCandidateIdsByJob(@PathVariable UUID jobId) {
         return service.getCandidateUserIdsByJob(jobId);
+    }
+
+    @DeleteMapping("/internal/job/{jobId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteApplicationsForJob(@PathVariable UUID jobId) {
+        service.deleteApplicationsForJob(jobId);
+    }
+
+    @PostMapping("/internal/job/{jobId}/rematch")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void rematchForJob(@PathVariable UUID jobId) {
+        cvAnalysisService.rematchAllForJob(jobId);
+    }
+
+    @PostMapping("/internal/job/{jobId}/shortlist")
+    public java.util.Map<String, Object> shortlist(
+            @PathVariable UUID jobId,
+            @RequestParam(defaultValue = "70") int threshold) {
+        return service.shortlistByScore(jobId, threshold);
+    }
+
+    @PostMapping("/internal/job/{jobId}/reject-non-hired")
+    public ResponseEntity<Void> rejectNonHiredForJob(@PathVariable UUID jobId) {
+        service.rejectNonHiredForJob(jobId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/paged")
@@ -169,4 +203,64 @@ public class ApplicationController {
     public boolean hasAnalysis(@PathVariable UUID id) {
         return cvAnalysisService.hasAnalysis(id);
     }
+
+    @GetMapping("/{id}/rank")
+    public java.util.Map<String, Object> getApplicationRank(@PathVariable UUID id) {
+        return service.getRankForApplication(id);
+    }
+
+    @PostMapping("/{id}/analysis/retry")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void retryAnalysis(@PathVariable UUID id) {
+        Application app = repo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found: " + id));
+        cvAnalysisService.retriggerAnalysis(app);
+    }
+
+    // ── Moderation endpoints ──────────────────────────────────────────────────
+
+    @PostMapping("/signal/{candidateUserId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void signalCandidate(
+            @PathVariable String candidateUserId,
+            @RequestBody SignalRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String reason = request != null && request.reason() != null
+                ? request.reason() : "Flagged by recruiter";
+        service.flagCandidateApplications(candidateUserId, reason, jwt.getSubject());
+    }
+
+    @DeleteMapping("/signal/{candidateUserId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unsignalCandidate(
+            @PathVariable String candidateUserId,
+            @RequestBody(required = false) UnsignalRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        String reason = request != null && request.reason() != null
+                ? request.reason() : "Signal withdrawn by recruiter";
+        service.unflagCandidateApplications(candidateUserId, reason, jwt.getSubject());
+    }
+
+    @PostMapping("/internal/block/{candidateUserId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void blockCandidate(@PathVariable String candidateUserId) {
+        service.blockCandidateApplications(candidateUserId);
+    }
+
+    @PostMapping("/internal/unblock/{candidateUserId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unblockCandidate(@PathVariable String candidateUserId) {
+        service.unblockCandidateApplications(candidateUserId);
+    }
+
+    @PostMapping("/internal/dismiss/{candidateUserId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void dismissFlag(@PathVariable String candidateUserId) {
+        service.dismissCandidateFlag(candidateUserId);
+    }
+
+    // ── Request records ───────────────────────────────────────────────────────
+
+    public record SignalRequest(String reason) {}
+    public record UnsignalRequest(String reason) {}
 }

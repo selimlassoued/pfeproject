@@ -19,29 +19,52 @@
 
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-        <ng-container *kaHasRoles="['ADMIN']; checkRealm:true">
-          <li class="nav-item">
-            <a class="nav-link hireai-link" routerLink="/admin-dashboard">Dashboard</a>
-          </li>
-        </ng-container>
-
+        <!-- Browse jobs — visible to all -->
         <li class="nav-item">
           <a class="nav-link hireai-link" routerLink="/browse">Open Positions</a>
         </li>
 
-        <ng-container *kaHasRoles="['ADMIN']; checkRealm:true">
+        <!-- SUPERADMIN — dashboard + users + applications -->
+        @if (authenticated && isSuperAdmin()) {
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/admin-dashboard">Dashboard</a>
+          </li>
           <li class="nav-item">
             <a class="nav-link hireai-link" routerLink="/listUsers">Users</a>
           </li>
-        </ng-container>
-
-        @if (authenticated && (isAdmin() || isRecruiter())) {
           <li class="nav-item">
-            <a class="nav-link hireai-link" routerLink="/listApplications">List Applications</a>
+            <a class="nav-link hireai-link" routerLink="/listApplications">Applications</a>
           </li>
         }
 
-        @if (authenticated && !isAdmin() && !isRecruiter()) {
+        <!-- ADMIN — dashboard + users + applications -->
+        @if (authenticated && isAdmin() && !isSuperAdmin()) {
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/admin-dashboard">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/listUsers">Users</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/listApplications">Applications</a>
+          </li>
+        }
+
+        <!-- RECRUITER — dashboard + candidates + applications -->
+        @if (authenticated && isRecruiter() && !isAdmin() && !isSuperAdmin()) {
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/admin-dashboard">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/listUsers">Candidates</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link hireai-link" routerLink="/listApplications">Applications</a>
+          </li>
+        }
+
+        <!-- CANDIDATE — my applications -->
+        @if (authenticated && isCandidate()) {
           <li class="nav-item">
             <a class="nav-link hireai-link" routerLink="/my-applications">My Applications</a>
           </li>
@@ -51,7 +74,8 @@
 
       <ul class="navbar-nav ms-auto m-2">
 
-        @if (authenticated && !isAdmin() && !isRecruiter()) {
+        <!-- Notifications — candidate only -->
+        @if (authenticated && isCandidate()) {
           <li class="nav-item">
             <app-notification-menu></app-notification-menu>
           </li>
@@ -69,7 +93,7 @@
               role="button"
               data-bs-toggle="dropdown"
               aria-expanded="false"
-            >Account</a>
+            >{{ displayName }}</a>
             <ul class="dropdown-menu dropdown-menu-end hireai-dropdown" aria-labelledby="authDropdown">
               <li class="nav-item">
                 <a class="nav-link hireai-link" routerLink="/profile">My Profile</a>

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(MAVEN_OPTS=\"-Xmx512m -Xms128m\" ../mvnw.cmd clean package -DskipTests)",
+      "Bash(MAVEN_OPTS=\"-Xmx256m -Xms64m -XX:+UseSerialGC\" ../mvnw.cmd clean package -DskipTests)",
+      "Bash(docker stop *)",
+      "Bash(docker exec *)",
+      "Bash(xargs grep *)",
+      "Bash(docker build *)",
+      "Bash(docker rm *)",
+      "Bash(docker compose *)",
+      "Bash(../mvnw.cmd clean *)",
+      "Bash(curl -s -X POST 'http://localhost:8090/realms/HireAI/protocol/openid-connect/token' -d 'grant_type=password&client_id=hireai-client&username=selimlassoued&password=selim123&client_secret=your-secret')",
+      "Bash(curl -s -X POST \"http://localhost:8888/api/applications/478eb965-fb52-45b3-86cc-d6c4180b30b1/analysis/retry\" -H \"Authorization: Bearer $\\(curl -s -X POST 'http://localhost:8090/realms/HireAI/protocol/openid-connect/token' -d 'grant_type=password&client_id=hireai-client&username=selimlassoued&password=selim123&client_secret=your-secret')",
+      "Bash(python -m json.tool)"
+    ]
+  }
+}

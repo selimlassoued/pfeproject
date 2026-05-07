@@ -1,16 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { JobService } from '../services/job.service';           // adjust path
-import { ApplicationService } from '../services/application.service'; // adjust path
-import { UserService } from '../services/user-service';         // adjust path
-import { JobOffer } from '../model/jobOffer.model';             // adjust path
-import { ApplicationDto } from '../model/application.dto';     // adjust path
-import { AdminUserRow } from '../model/admin_users.type';       // adjust path
-import { PageResponse } from '../model/page-response';         // adjust path
+import Keycloak from 'keycloak-js';
+import { JobService } from '../services/job.service';
+import { ApplicationService } from '../services/application.service';
+import { UserService } from '../services/user-service';
+import { JobOffer } from '../model/jobOffer.model';
+import { AdminUserRow } from '../model/admin_users.type';
+import { PageResponse } from '../model/page-response';
 
 /* ── local models ── */
 export interface AuditLog {
@@ -26,25 +26,26 @@ export interface AuditLog {
   changes: string | Record<string, any> | null;
 }
 export interface AuditStats {
-  total: number; applicationUpdates: number;
-  userBlocks: number; userUnblocks: number; jobUpdates: number;
+  total: number;
+  applicationUpdates: number;
+  userBlocks: number;
+  userUnblocks: number;
+  jobUpdates: number;
+  candidateFlagged: number;
+  candidateUnflagged: number;
 }
-// Use AdminUserRow for users (already has id, firstName, lastName, email, enabled)
 export type KcUser = AdminUserRow;
 export interface EventMeta { label: string; color: string; bg: string; }
 
-/* system-generated reasons that should be treated as "no reason" */
 const SYSTEM_REASONS = new Set([
   'blocked by admin', 'unblocked by admin',
   'unblocked from dashboard', 'blocked from dashboard',
   'he is not connected',
 ]);
-
 function isSystemReason(r: string | null): boolean {
   if (!r) return true;
   return SYSTEM_REASONS.has(r.trim().toLowerCase());
 }
-
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -54,6 +55,7 @@ function isSystemReason(r: string | null): boolean {
 })
 export class AdminDashboard implements OnInit {
   private API = 'http://localhost:8888';
+  private readonly keycloak = inject(Keycloak);
 
   stats: AuditStats | null = null;
   users: KcUser[] = [];
@@ -72,45 +74,136 @@ export class AdminDashboard implements OnInit {
   statsLoading = false;
   loading = true;
 
-  /** expanded log eventId */
   expandedLogId: string | null = null;
-
-  /** caches: userId → "First Last" */
   actorNameCache: Record<string, string> = {};
-  /** caches: targetId → display name */
   targetNameCache: Record<string, string> = {};
 
+  // ── Role helpers ──────────────────────────────────────────────────────────
+
+  isSuperAdmin(): boolean { return this.keycloak.hasRealmRole('SUPERADMIN'); }
+  isAdmin():      boolean { return this.keycloak.hasRealmRole('ADMIN'); }
+  isRecruiter():  boolean { return this.keycloak.hasRealmRole('RECRUITER') && !this.isAdmin() && !this.isSuperAdmin(); }
+
+  /**
+   * Dashboard title based on role
+   */
+  get callerRole(): string {
+    if (this.isSuperAdmin()) return 'SUPERADMIN';
+    if (this.isAdmin())      return 'ADMIN';
+    return 'RECRUITER';
+  }
+
+  get dashboardTitle(): string {
+    return this.isSuperAdmin() ? 'SuperAdmin Dashboard' : 'Admin Dashboard';
+  }
+
+  get dashboardSub(): string {
+    if (this.isSuperAdmin()) return 'Full platform overview — all roles activity · HireAI';
+    if (this.isAdmin())      return 'Recruiter & candidate activity overview · HireAI';
+    return 'Your recruitment activity overview · HireAI';
+  }
+
+  // ── Filters — SUPERADMIN sees all, ADMIN sees recruiter/candidate only ────
+
   readonly TIME_RANGES = [
-    { key: 'week', label: 'Last Week'  },
-    { key: 'month', label: 'Last Month' },
-    { key: 'year', label: 'Last Year'  },
-    { key: 'overall', label: 'Overall'  },
+    { key: 'week',    label: 'Last Week'  },
+    { key: 'month',   label: 'Last Month' },
+    { key: 'year',    label: 'Last Year'  },
+    { key: 'overall', label: 'Overall'    },
   ];
-  readonly FILTERS = [
-    { key: 'ALL',                       label: 'All',         color: '#79a4e9' },
-    { key: 'APPLICATION_STATUS_UPDATE', label: 'App Updates', color: '#79a4e9' },
-    { key: 'USER_BLOCK',                label: 'Blocks',      color: '#f87171' },
-    { key: 'USER_UNBLOCK',              label: 'Unblocks',    color: '#4ade80' },
-    { key: 'JOB_UPDATED',               label: 'Jobs',        color: '#fbbf24' },
+
+  // SUPERADMIN filters — everything
+  private readonly FILTERS_SUPERADMIN = [
+    { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
+    { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
+    { key: 'APPLICATION_WITHDRAWN',      label: 'Withdrawn',      color: '#94a3b8' },
+    { key: 'USER_BLOCK',                 label: 'Blocks',         color: '#f87171' },
+    { key: 'USER_UNBLOCK',               label: 'Unblocks',       color: '#4ade80' },
+    { key: 'CANDIDATE_FLAGGED',          label: 'Flagged',        color: '#fbbf24' },
+    { key: 'CANDIDATE_UNFLAGGED',        label: 'Unflagged',      color: '#a78bfa' },
+    { key: 'CANDIDATE_SIGNAL_DISMISSED', label: 'Dismissed',      color: '#67e8f9' },
+    { key: 'JOB_UPDATED',                label: 'Jobs',           color: '#fb923c' },
   ];
+
+  // RECRUITER filters — only recruitment events
+  private readonly FILTERS_RECRUITER = [
+    { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
+    { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
+    { key: 'APPLICATION_WITHDRAWN',      label: 'Withdrawn',      color: '#94a3b8' },
+    { key: 'JOB_UPDATED',                label: 'Jobs',           color: '#fb923c' },
+    { key: 'CANDIDATE_FLAGGED',          label: 'Flagged',        color: '#fbbf24' },
+    { key: 'CANDIDATE_UNFLAGGED',        label: 'Unflagged',      color: '#a78bfa' },
+  ];
+
+  // ADMIN filters — recruiter + candidate actions only (no ROLE_UPDATE)
+  private readonly FILTERS_ADMIN = [
+    { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
+    { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
+    { key: 'APPLICATION_WITHDRAWN',      label: 'Withdrawn',      color: '#94a3b8' },
+    { key: 'USER_BLOCK',                 label: 'Blocks',         color: '#f87171' },
+    { key: 'USER_UNBLOCK',               label: 'Unblocks',       color: '#4ade80' },
+    { key: 'CANDIDATE_FLAGGED',          label: 'Flagged',        color: '#fbbf24' },
+    { key: 'CANDIDATE_UNFLAGGED',        label: 'Unflagged',      color: '#a78bfa' },
+    { key: 'CANDIDATE_SIGNAL_DISMISSED', label: 'Dismissed',      color: '#67e8f9' },
+    { key: 'JOB_UPDATED',                label: 'Jobs',           color: '#fb923c' },
+  ];
+
+  get FILTERS() {
+    if (this.isSuperAdmin()) return this.FILTERS_SUPERADMIN;
+    if (this.isAdmin())      return this.FILTERS_ADMIN;
+    return this.FILTERS_RECRUITER;
+  }
+
   readonly EVENT_META: Record<string, EventMeta> = {
-    APPLICATION_STATUS_UPDATE: { label: 'App Update',     color: '#79a4e9', bg: 'rgba(121,164,233,0.12)' },
-    USER_BLOCK:                { label: 'User Blocked',   color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
-    USER_UNBLOCK:              { label: 'User Unblocked', color: '#4ade80', bg: 'rgba(74,222,128,0.12)'  },
-    JOB_UPDATED:               { label: 'Job Updated',    color: '#fbbf24', bg: 'rgba(251,191,36,0.12)'  },
+    APPLICATION_STATUS_UPDATE:  { label: 'App Update',        color: '#79a4e9', bg: 'rgba(121,164,233,0.12)' },
+    APPLICATION_WITHDRAWN:      { label: 'Withdrawn',         color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
+    USER_BLOCK:                 { label: 'User Blocked',      color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+    USER_UNBLOCK:               { label: 'User Unblocked',    color: '#4ade80', bg: 'rgba(74,222,128,0.12)'  },
+    CANDIDATE_FLAGGED:          { label: 'Candidate Flagged', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)'  },
+    CANDIDATE_UNFLAGGED:        { label: 'Signal Removed',    color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+    CANDIDATE_SIGNAL_DISMISSED: { label: 'Signal Dismissed',  color: '#67e8f9', bg: 'rgba(103,232,249,0.12)' },
+    JOB_UPDATED:                { label: 'Job Updated',       color: '#fb923c', bg: 'rgba(251,146,60,0.12)'  },
   };
-  readonly BREAKDOWN = [
-    { key: 'applicationUpdates', label: 'App Updates', color: '#79a4e9' },
-    { key: 'jobUpdates',         label: 'Job Updates', color: '#fbbf24' },
-    { key: 'userBlocks',         label: 'Blocks',      color: '#f87171' },
-    { key: 'userUnblocks',       label: 'Unblocks',    color: '#4ade80' },
+
+  // SUPERADMIN breakdown — includes role updates
+  private readonly BREAKDOWN_SUPERADMIN = [
+    { key: 'applicationUpdates', label: 'App Updates',  color: '#79a4e9' },
+    { key: 'jobUpdates',         label: 'Job Updates',  color: '#fb923c' },
+    { key: 'userBlocks',         label: 'Blocks',       color: '#f87171' },
+    { key: 'userUnblocks',       label: 'Unblocks',     color: '#4ade80' },
+    { key: 'candidateFlagged',   label: 'Flagged',      color: '#fbbf24' },
+    { key: 'candidateUnflagged', label: 'Unflagged',    color: '#a78bfa' },
   ];
+
+  // ADMIN breakdown — same but without role updates
+  private readonly BREAKDOWN_ADMIN = [
+    { key: 'applicationUpdates', label: 'App Updates',  color: '#79a4e9' },
+    { key: 'jobUpdates',         label: 'Job Updates',  color: '#fb923c' },
+    { key: 'userBlocks',         label: 'Blocks',       color: '#f87171' },
+    { key: 'userUnblocks',       label: 'Unblocks',     color: '#4ade80' },
+    { key: 'candidateFlagged',   label: 'Flagged',      color: '#fbbf24' },
+    { key: 'candidateUnflagged', label: 'Unflagged',    color: '#a78bfa' },
+  ];
+
+  private readonly BREAKDOWN_RECRUITER = [
+    { key: 'applicationUpdates', label: 'App Updates',  color: '#79a4e9' },
+    { key: 'jobUpdates',         label: 'Job Updates',  color: '#fb923c' },
+    { key: 'candidateFlagged',   label: 'Flagged',      color: '#fbbf24' },
+    { key: 'candidateUnflagged', label: 'Unflagged',    color: '#a78bfa' },
+  ];
+
+  get BREAKDOWN() {
+    if (this.isSuperAdmin()) return this.BREAKDOWN_SUPERADMIN;
+    if (this.isAdmin())      return this.BREAKDOWN_ADMIN;
+    return this.BREAKDOWN_RECRUITER;
+  }
 
   constructor(
     private http: HttpClient,
     private jobService: JobService,
     private appService: ApplicationService,
     private userService: UserService,
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -124,6 +217,7 @@ export class AdminDashboard implements OnInit {
     const token = localStorage.getItem('access_token') || '';
     return new HttpHeaders({ Authorization: `Bearer ${token}` });
   }
+
   private get rangeParam(): string {
     return this.activeRange !== 'overall' ? `&range=${this.activeRange}` : '';
   }
@@ -139,7 +233,6 @@ export class AdminDashboard implements OnInit {
       this.jobs         = Array.isArray(jobs) ? jobs : [];
       this.appTotal     = apps?.totalElements ?? null;
       this.loading      = false;
-      // pre-populate actor name cache from loaded users
       for (const u of this.users) {
         this.actorNameCache[u.id] = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id.slice(0, 8);
       }
@@ -153,6 +246,7 @@ export class AdminDashboard implements OnInit {
         if (!data) return;
         const counts: Record<string, { title: string; count: number; jobId: string }> = {};
         for (const app of data.content) {
+          if (app.status === 'WITHDRAWN') continue; // exclude withdrawn
           const key = app.jobId;
           if (!counts[key]) counts[key] = { title: app.jobTitle || 'Untitled', count: 0, jobId: app.jobId };
           counts[key].count++;
@@ -163,7 +257,7 @@ export class AdminDashboard implements OnInit {
 
   loadStats(): void {
     this.statsLoading = true;
-    this.http.get<AuditStats>(`${this.API}/api/audit/stats?${this.rangeParam}`, { headers: this.headers })
+    this.http.get<AuditStats>(`${this.API}/api/audit/stats?callerRole=${this.callerRole}&${this.rangeParam}`, { headers: this.headers })
       .pipe(catchError(() => of(null)))
       .subscribe(s => { this.stats = s; this.statsLoading = false; });
   }
@@ -171,7 +265,7 @@ export class AdminDashboard implements OnInit {
   loadLogs(): void {
     const eq = this.activeFilter !== 'ALL' ? `&eventType=${this.activeFilter}` : '';
     this.http.get<PageResponse<AuditLog>>(
-      `${this.API}/api/audit/logs?page=${this.page}&size=${this.PAGE_SIZE}${eq}${this.rangeParam}`,
+      `${this.API}/api/audit/logs?page=${this.page}&size=${this.PAGE_SIZE}${eq}${this.rangeParam}&callerRole=${this.callerRole}`,
       { headers: this.headers }
     ).pipe(catchError(() => of({ content: [], totalElements: 0 } as any)))
      .subscribe(d => {
@@ -181,10 +275,8 @@ export class AdminDashboard implements OnInit {
      });
   }
 
-  /** Resolve actor + target names for a batch of logs */
   private resolveNames(logs: AuditLog[]): void {
     for (const log of logs) {
-      // actor name
       if (log.actorUserId && log.actorUserId !== 'SYSTEM' && !this.actorNameCache[log.actorUserId]) {
         this.http.get<{ email: string; firstName: string; lastName: string }>(
           `${this.API}/api/admin/internal/users/${log.actorUserId}/email`, { headers: this.headers }
@@ -195,7 +287,6 @@ export class AdminDashboard implements OnInit {
           }
         });
       }
-      // target name
       if (log.targetId && !this.targetNameCache[log.targetId]) {
         this.resolveTargetName(log);
       }
@@ -204,31 +295,42 @@ export class AdminDashboard implements OnInit {
 
   private resolveTargetName(log: AuditLog): void {
     if (!log.targetId) return;
-    const producer = (log.producer || '').toLowerCase();
+    const eventType = (log.eventType || '').toUpperCase();
+    const producer  = (log.producer || '').toLowerCase();
 
-    if (producer.includes('job')) {
-      // job target
-      this.jobService.getJobById(log.targetId)
-        .pipe(catchError(() => of(null)))
-        .subscribe(j => {
-          if (j) this.targetNameCache[log.targetId!] = j.title;
-        });
-    } else if (producer.includes('application')) {
-      // application target
+    if (
+      eventType === 'CANDIDATE_FLAGGED' ||
+      eventType === 'CANDIDATE_UNFLAGGED' ||
+      eventType === 'CANDIDATE_SIGNAL_DISMISSED'
+    ) {
+      this.http.get<{ email: string; firstName: string; lastName: string }>(
+        `${this.API}/api/admin/internal/users/${log.targetId}/email`, { headers: this.headers }
+      ).pipe(catchError(() => of(null))).subscribe(u => {
+        if (u) this.targetNameCache[log.targetId!] =
+          `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || log.targetId!.slice(0, 8);
+      });
+    } else if (
+      eventType === 'APPLICATION_STATUS_UPDATE' ||
+      eventType === 'APPLICATION_WITHDRAWN' ||
+      producer.includes('application')
+    ) {
       this.appService.getOne(log.targetId)
         .pipe(catchError(() => of(null)))
         .subscribe(a => {
           if (a) this.targetNameCache[log.targetId!] = a.jobTitle || `App #${log.targetId!.slice(0, 6)}`;
         });
+    } else if (producer.includes('job')) {
+      this.jobService.getJobById(log.targetId)
+        .pipe(catchError(() => of(null)))
+        .subscribe(j => {
+          if (j) this.targetNameCache[log.targetId!] = j.title;
+        });
     } else {
-      // user target (gateway / block / unblock)
       this.http.get<{ email: string; firstName: string; lastName: string }>(
         `${this.API}/api/admin/internal/users/${log.targetId}/email`, { headers: this.headers }
       ).pipe(catchError(() => of(null))).subscribe(u => {
-        if (u) {
-          this.targetNameCache[log.targetId!] =
-            `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || log.targetId!.slice(0, 8);
-        }
+        if (u) this.targetNameCache[log.targetId!] =
+          `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || log.targetId!.slice(0, 8);
       });
     }
   }
@@ -245,9 +347,7 @@ export class AdminDashboard implements OnInit {
     return this.targetNameCache[log.targetId] || log.targetId.slice(0, 8) + '…';
   }
 
-  /** Returns the reason to display, or null if it should be hidden */
   getDisplayReason(log: AuditLog): string | null {
-    // For APPLICATION_STATUS_UPDATE never show reason
     if (log.eventType === 'APPLICATION_STATUS_UPDATE') return null;
     if (isSystemReason(log.reason)) return null;
     return log.reason;
@@ -263,41 +363,20 @@ export class AdminDashboard implements OnInit {
 
   getChangesEntries(log: AuditLog): { key: string; oldVal: string | null; newVal: string | null; simple: string | null }[] {
     if (!log.changes) return [];
-
-    // The backend stores changes as a JSON string — always parse it
     let raw: any = log.changes;
-    if (typeof raw === 'string') {
-      try { raw = JSON.parse(raw); } catch { return []; }
-    }
-    // After parsing, raw might STILL be a string (double-encoded) — parse again
-    if (typeof raw === 'string') {
-      try { raw = JSON.parse(raw); } catch { return []; }
-    }
+    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { return []; } }
+    if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { return []; } }
     if (!raw || typeof raw !== 'object') return [];
-
     return Object.entries(raw as Record<string, any>).map(([key, value]) => {
       if (value && typeof value === 'object' && ('old' in value || 'new' in value)) {
-        // { status: { old: "APPLIED", new: "INTERVIEW_PHASE" } }
-        return {
-          key,
-          oldVal: value['old'] != null ? String(value['old']) : null,
-          newVal: value['new'] != null ? String(value['new']) : null,
-          simple: null,
-        };
+        return { key, oldVal: value['old'] != null ? String(value['old']) : null, newVal: value['new'] != null ? String(value['new']) : null, simple: null };
       }
-      // flat value
-      return {
-        key,
-        oldVal: null,
-        newVal: null,
-        simple: typeof value === 'object' ? JSON.stringify(value) : String(value ?? ''),
-      };
+      return { key, oldVal: null, newVal: null, simple: typeof value === 'object' ? JSON.stringify(value) : String(value ?? '') };
     });
   }
 
   unblockUser(userId: string, event: Event): void {
     event.stopPropagation();
-    // send null body so no default reason is attached
     this.userService.setEnabled(userId, true)
       .then(() => {
         this.blockedUsers = this.blockedUsers.filter(u => u.id !== userId);
@@ -307,7 +386,6 @@ export class AdminDashboard implements OnInit {
       .catch(() => {});
   }
 
-  /** Called by stat cards for Block/App/Job update counts — sets filter and scrolls to audit log */
   scrollToAuditFilter(filter: string): void {
     this.setFilter(filter);
     setTimeout(() => {
@@ -333,7 +411,6 @@ export class AdminDashboard implements OnInit {
   }
   getBreakdownVal(key: string): number { return (this.stats as any)?.[key] || 0; }
   getUserInitials(u: KcUser): string {
-    // AdminUserRow has optional firstName/lastName
     return (((u.firstName ?? '')[0] ?? '') + ((u.lastName ?? '')[0] ?? '')).toUpperCase() || '?';
   }
   getUserHue(u: KcUser): number { return ((u.id ?? '').charCodeAt(0) || 60) * 37 % 360; }
@@ -350,4 +427,32 @@ export class AdminDashboard implements OnInit {
     return new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
   trackById(_: number, item: any): string { return item.id || item.eventId; }
+
+  // ── Navigate from audit log entry ────────────────────────────────────────
+
+  navigateFromLog(log: AuditLog): void {
+    if (!log.targetId) return;
+    const type = (log.eventType || '').toUpperCase();
+
+    if (type === 'APPLICATION_STATUS_UPDATE' || type === 'APPLICATION_WITHDRAWN') {
+      this.router.navigate(['/application', log.targetId]);
+    } else if (
+      type === 'CANDIDATE_FLAGGED' || type === 'CANDIDATE_UNFLAGGED' ||
+      type === 'CANDIDATE_SIGNAL_DISMISSED' ||
+      type === 'USER_BLOCK' || type === 'USER_UNBLOCK' ||
+      type === 'ROLE_UPDATE'
+    ) {
+      this.router.navigate(['/user', log.targetId]);
+    } else if (type === 'JOB_UPDATED') {
+      this.router.navigate(['/jobs', log.targetId]);
+    }
+  }
+
+  canNavigate(log: AuditLog): boolean {
+    if (!log.targetId) return false;
+    const type = (log.eventType || '').toUpperCase();
+    return ['APPLICATION_STATUS_UPDATE', 'APPLICATION_WITHDRAWN',
+            'CANDIDATE_FLAGGED', 'CANDIDATE_UNFLAGGED', 'CANDIDATE_SIGNAL_DISMISSED',
+            'USER_BLOCK', 'USER_UNBLOCK', 'JOB_UPDATED'].includes(type);
+  }
 }

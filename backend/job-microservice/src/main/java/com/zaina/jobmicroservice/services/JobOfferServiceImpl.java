@@ -27,6 +27,7 @@ public class JobOfferServiceImpl implements JobOfferService {
 
     private final AppEventPublisher eventPublisher;
     private final JobOfferRepo jobOfferRepo;
+    private final com.zaina.jobmicroservice.clients.ApplicationClient applicationClient;
 
     private static JobRequirementDto toDtoReq(JobRequirement r) {
         return new JobRequirementDto(
@@ -42,18 +43,29 @@ public class JobOfferServiceImpl implements JobOfferService {
     private static JobOfferDto toDto(JobOffer j) {
         return new JobOfferDto(
                 j.getId(),
-                j.getRefNumber(),   // ← mapped
+                j.getRefNumber(),
                 j.getTitle(),
                 j.getDescription(),
                 j.getLocation(),
+                j.getWorkArrangement(),
                 j.getMinSalary(),
                 j.getMaxSalary(),
+                j.getOpenings(),
+                j.getHiredCount(),
                 j.getEmploymentType(),
                 j.getJobStatus(),
+                j.getSkillsWeight(),
+                j.getSemanticWeight(),
+                j.getExperienceWeight(),
+                j.getSeniorityWeight(),
                 j.getRequirements() == null
                         ? List.of()
                         : j.getRequirements().stream().map(JobOfferServiceImpl::toDtoReq).toList()
         );
+    }
+
+    private static double normalizeWeight(Double w, double defaultVal) {
+        return (w != null && w >= 0) ? w : defaultVal;
     }
 
     @Override
@@ -108,10 +120,17 @@ public class JobOfferServiceImpl implements JobOfferService {
                 .title(dto.getTitle())
                 .description(dto.getDescription())
                 .location(dto.getLocation())
+                .workArrangement(dto.getWorkArrangement())
                 .minSalary(dto.getMinSalary())
                 .maxSalary(dto.getMaxSalary())
+                .openings(dto.getOpenings() == null || dto.getOpenings() < 1 ? 1 : dto.getOpenings())
+                .hiredCount(0)
                 .employmentType(dto.getEmploymentType())
                 .jobStatus(dto.getJobStatus())
+                .skillsWeight(normalizeWeight(dto.getSkillsWeight(), 0.40))
+                .semanticWeight(normalizeWeight(dto.getSemanticWeight(), 0.35))
+                .experienceWeight(normalizeWeight(dto.getExperienceWeight(), 0.15))
+                .seniorityWeight(normalizeWeight(dto.getSeniorityWeight(), 0.10))
                 .build();
 
         if (dto.getRequirements() != null) {
@@ -163,16 +182,45 @@ public class JobOfferServiceImpl implements JobOfferService {
         String oldLocation       = existing.getLocation();
         Integer oldMinSalary     = existing.getMinSalary();
         Integer oldMaxSalary     = existing.getMaxSalary();
+        Integer oldOpenings      = existing.getOpenings();
+        Integer oldHiredCount    = existing.getHiredCount();
         var oldEmploymentType    = existing.getEmploymentType();
         var oldJobStatus         = existing.getJobStatus();
 
         existing.setTitle(dto.getTitle());
         existing.setDescription(dto.getDescription());
         existing.setLocation(dto.getLocation());
+        existing.setWorkArrangement(dto.getWorkArrangement());
         existing.setMinSalary(dto.getMinSalary());
         existing.setMaxSalary(dto.getMaxSalary());
+        // A closed job cannot be reopened — create a new job instead
+        if (existing.getJobStatus() == JobStatus.CLOSED
+                && dto.getJobStatus() == JobStatus.PUBLISHED) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST,
+                "A closed job cannot be republished. Duplicate it as a new job offer instead."
+            );
+        }
+
+        // Openings locked once PUBLISHED or CLOSED — set upfront in DRAFT only
+        boolean isLocked = existing.getJobStatus() == JobStatus.PUBLISHED
+                        || existing.getJobStatus() == JobStatus.CLOSED;
+        if (!isLocked && dto.getOpenings() != null && dto.getOpenings() >= 1) {
+            existing.setOpenings(dto.getOpenings());
+        } else if (isLocked && dto.getOpenings() != null && !dto.getOpenings().equals(existing.getOpenings())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST,
+                "Hiring quota cannot be changed once the job is " + existing.getJobStatus() +
+                ". Set the quota before publishing."
+            );
+        }
+        if (dto.getHiredCount() != null && dto.getHiredCount() >= 0) existing.setHiredCount(dto.getHiredCount());
         existing.setEmploymentType(dto.getEmploymentType());
         existing.setJobStatus(dto.getJobStatus());
+        existing.setSkillsWeight(normalizeWeight(dto.getSkillsWeight(), existing.getSkillsWeight()));
+        existing.setSemanticWeight(normalizeWeight(dto.getSemanticWeight(), existing.getSemanticWeight()));
+        existing.setExperienceWeight(normalizeWeight(dto.getExperienceWeight(), existing.getExperienceWeight()));
+        existing.setSeniorityWeight(normalizeWeight(dto.getSeniorityWeight(), existing.getSeniorityWeight()));
         // refNumber is updatable=false — never touched on update
 
         if (existing.getRequirements() != null) existing.getRequirements().clear();
@@ -198,6 +246,8 @@ public class JobOfferServiceImpl implements JobOfferService {
         if (!java.util.Objects.equals(oldLocation,       saved.getLocation()))       changes.put("location",       Map.of("old", oldLocation,       "new", saved.getLocation()));
         if (!java.util.Objects.equals(oldMinSalary,      saved.getMinSalary()))      changes.put("minSalary",      Map.of("old", oldMinSalary,      "new", saved.getMinSalary()));
         if (!java.util.Objects.equals(oldMaxSalary,      saved.getMaxSalary()))      changes.put("maxSalary",      Map.of("old", oldMaxSalary,      "new", saved.getMaxSalary()));
+        if (!java.util.Objects.equals(oldOpenings,       saved.getOpenings()))       changes.put("openings",       Map.of("old", oldOpenings,       "new", saved.getOpenings()));
+        if (!java.util.Objects.equals(oldHiredCount,     saved.getHiredCount()))     changes.put("hiredCount",     Map.of("old", oldHiredCount,     "new", saved.getHiredCount()));
         if (!java.util.Objects.equals(oldEmploymentType, saved.getEmploymentType())) changes.put("employmentType", Map.of("old", oldEmploymentType, "new", saved.getEmploymentType()));
         if (!java.util.Objects.equals(oldJobStatus,      saved.getJobStatus()))      changes.put("jobStatus",      Map.of("old", oldJobStatus,      "new", saved.getJobStatus()));
 
@@ -215,7 +265,17 @@ public class JobOfferServiceImpl implements JobOfferService {
         if (reason != null && !reason.isBlank()) evt.setReason(reason);
         evt.setPayload(Map.of("jobTitle", saved.getTitle()));
         eventPublisher.publish("audit.job", evt);
-        eventPublisher.publish("notify.job", evt);
+
+        // Notify candidates only when candidate-visible fields change on a PUBLISHED job.
+        // AI scoring weights, openings, hiredCount are internal — candidates never see them.
+        java.util.Set<String> candidateVisibleFields = java.util.Set.of(
+                "title", "description", "location", "minSalary", "maxSalary", "employmentType"
+        );
+        boolean hasVisibleChange = changes.keySet().stream().anyMatch(candidateVisibleFields::contains);
+        boolean isPublished = saved.getJobStatus() == JobStatus.PUBLISHED;
+        if (hasVisibleChange && isPublished) {
+            eventPublisher.publish("notify.job", evt);
+        }
 
         return result;
     }
@@ -224,5 +284,77 @@ public class JobOfferServiceImpl implements JobOfferService {
     public void deleteJobOffer(UUID id) {
         if (!jobOfferRepo.existsById(id)) throw new RuntimeException("JobOffer not found: " + id);
         jobOfferRepo.deleteById(id);
+    }
+
+    @Override
+    public JobOfferDto incrementHiredCount(UUID jobId) {
+        JobOffer job = jobOfferRepo.findById(jobId)
+                .orElseThrow(() -> new RuntimeException("JobOffer not found: " + jobId));
+        if (job.getHiredCount() == null) job.setHiredCount(0);
+        job.setHiredCount(job.getHiredCount() + 1);
+        JobOffer saved = jobOfferRepo.save(job);
+
+        // Notify when quota reached (recruiter can close manually)
+        if (saved.getOpenings() != null && saved.getHiredCount() != null && saved.getHiredCount() >= saved.getOpenings()) {
+            AppEventMessage evt = new AppEventMessage();
+            evt.setEventType("JOB_QUOTA_REACHED");
+            evt.setProducer("job-microservice");
+            AppEventMessage.Target target = new AppEventMessage.Target();
+            target.setType("JOB");
+            target.setId(jobId.toString());
+            evt.setTarget(target);
+            evt.setPayload(Map.of(
+                    "jobId", jobId.toString(),
+                    "jobTitle", saved.getTitle(),
+                    "openings", saved.getOpenings(),
+                    "hiredCount", saved.getHiredCount()
+            ));
+            eventPublisher.publish("notify.job", evt);
+            // No audit entry here — JOB_CLOSED (published by closeJob) covers the audit trail
+        }
+
+        return toDto(saved);
+    }
+
+    @Override
+    public JobOfferDto closeJob(UUID jobId, String actorUserId) {
+        String actor = (actorUserId != null && !actorUserId.isBlank()) ? actorUserId : "SYSTEM";
+        JobOffer job = jobOfferRepo.findById(jobId)
+                .orElseThrow(() -> new RuntimeException("JobOffer not found: " + jobId));
+        job.setJobStatus(JobStatus.CLOSED);
+        JobOffer saved = jobOfferRepo.save(job);
+
+        // Reject all non-HIRED applications for this job
+        try {
+            applicationClient.rejectNonHiredForJob(jobId);
+        } catch (Exception ignored) {}
+
+        AppEventMessage evt = new AppEventMessage();
+        evt.setEventType("JOB_CLOSED");
+        evt.setProducer("job-microservice");
+        AppEventMessage.Actor actorObj = new AppEventMessage.Actor();
+        actorObj.setUserId(actor);
+        evt.setActor(actorObj);
+        AppEventMessage.Target target = new AppEventMessage.Target();
+        target.setType("JOB");
+        target.setId(jobId.toString());
+        evt.setTarget(target);
+
+        // Include reason: quota reached when closed automatically, manual otherwise
+        boolean quotaReached = saved.getOpenings() != null && saved.getHiredCount() != null
+                && saved.getHiredCount() >= saved.getOpenings();
+        String reason = quotaReached
+                ? "Hiring quota reached (" + saved.getHiredCount() + "/" + saved.getOpenings() + ") — position filled automatically"
+                : "Closed manually";
+        evt.setReason(reason);
+        evt.setPayload(Map.of(
+                "jobId",    jobId.toString(),
+                "jobTitle", saved.getTitle(),
+                "reason",   reason
+        ));
+        eventPublisher.publish("audit.job", evt);
+        eventPublisher.publish("notify.job", evt);
+
+        return toDto(saved);
     }
 }

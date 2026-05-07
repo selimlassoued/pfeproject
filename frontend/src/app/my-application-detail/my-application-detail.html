@@ -13,7 +13,7 @@
         </div>
 
         <p class="cad-subtitle">
-          Here’s what you submitted and where your application currently stands.
+          Here's what you submitted and where your application currently stands.
         </p>
 
         <div class="cad-metaRow">
@@ -41,6 +41,17 @@
           <button class="btn btn-primary" type="button" (click)="downloadCv()">
             ⬇ Download CV
           </button>
+
+          <!-- Withdraw button — only shown when APPLIED -->
+          @if (canWithdraw()) {
+            <button
+              class="btn btn-withdraw"
+              type="button"
+              [disabled]="withdrawing()"
+              (click)="withdraw()">
+              {{ withdrawing() ? 'Withdrawing…' : '✕ Withdraw' }}
+            </button>
+          }
         </div>
 
         <!-- Progress Timeline -->
@@ -122,9 +133,7 @@
 
         <div class="cad-card-body">
           <a *ngIf="app.githubUrl" class="cad-url"
-             [href]="app.githubUrl"
-             target="_blank"
-             rel="noopener">
+             [href]="app.githubUrl" target="_blank" rel="noopener">
             {{ app.githubUrl }}
           </a>
           <span *ngIf="!app.githubUrl" class="cad-url cad-url-muted">—</span>
@@ -154,13 +163,13 @@
             </div>
           </div>
 
-          <!-- ✅ Edit block (only while APPLIED) -->
+          <!-- Edit block (only while APPLIED) -->
           <div class="cad-edit" *ngIf="canEdit()">
             <div class="cad-edit-head">
               <div>
                 <div class="cad-edit-title">Edit submission</div>
                 <div class="cad-edit-sub">
-                  You can update your GitHub link and CV while it’s still APPLIED.
+                  You can update your GitHub link and CV while it's still APPLIED.
                 </div>
               </div>
 
@@ -189,17 +198,12 @@
                       class="btn btn-ghost"
                       type="button"
                       [disabled]="!form.value.githubUrl?.trim() || githubChecking()"
-                      (click)="checkGithub()"
-                    >
+                      (click)="checkGithub()">
                       {{ githubChecking() ? 'Checking…' : 'Verify' }}
                     </button>
                   </div>
-                  <div class="cad-field-ok" *ngIf="githubValid() === true">
-                    ✓ Link is valid
-                  </div>
-                  <div class="cad-field-err" *ngIf="githubValid() === false">
-                    ✗ Link is broken or unreachable
-                  </div>
+                  <div class="cad-field-ok" *ngIf="githubValid() === true">✓ Link is valid</div>
+                  <div class="cad-field-err" *ngIf="githubValid() === false">✗ Link is broken or unreachable</div>
                   <div class="cad-field-err" *ngIf="form.get('githubUrl')?.touched && form.get('githubUrl')?.invalid">
                     Please enter a valid URL (must start with http:// or https://).
                   </div>
@@ -230,12 +234,26 @@
 
           <div class="cad-cv-actions">
             <button class="btn btn-primary" type="button" (click)="downloadCv()">⬇ Download CV</button>
+
+            <!-- Withdraw button in CV section too — only when APPLIED -->
+            @if (canWithdraw()) {
+              <button
+                class="btn btn-withdraw"
+                type="button"
+                [disabled]="withdrawing()"
+                (click)="withdraw()">
+                {{ withdrawing() ? 'Withdrawing…' : '✕ Withdraw application' }}
+              </button>
+            }
+
             <button class="btn btn-ghost" type="button" (click)="backToList()">Back to My Applications</button>
           </div>
         </div>
       </article>
 
     </section>
+
+    <div class="cad-msg cad-msg-err" *ngIf="error" style="margin-top:1rem">{{ error }}</div>
 
   </ng-container>
 

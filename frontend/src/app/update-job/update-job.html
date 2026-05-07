@@ -19,23 +19,22 @@
         </button>
 
         <div style="display:flex; gap: var(--space-3); flex-wrap: wrap;">
-          <button
-            class="btn btn-ghost"
-            type="button"
-            [disabled]="saving || loading"
-            (click)="submitAs('DRAFT')"
-          >
-            @if (saving && status === 'DRAFT') { Saving… } @else { Save as Draft }
-          </button>
-
-          <button
-            class="btn btn-primary"
-            type="button"
-            [disabled]="saving || loading"
-            (click)="submitAs('PUBLISHED')"
-          >
-            @if (saving && status === 'PUBLISHED') { Publishing… } @else { Publish }
-          </button>
+          @if (form.value.jobStatus === 'DRAFT') {
+            <button class="btn btn-ghost" type="button" [disabled]="saving || loading" (click)="submitAs('DRAFT')">
+              @if (saving) { Saving… } @else { Save as Draft }
+            </button>
+            <button class="btn btn-primary" type="button" [disabled]="saving || loading" (click)="submitAs('PUBLISHED')">
+              @if (saving) { Publishing… } @else { Publish }
+            </button>
+          } @else if (form.value.jobStatus === 'PUBLISHED') {
+            <button class="btn btn-primary" type="button" [disabled]="saving || loading" (click)="submitAs('PUBLISHED')">
+              @if (saving) { Saving… } @else { Save changes }
+            </button>
+          } @else {
+            <button class="btn btn-primary" type="button" [disabled]="saving || loading" (click)="duplicateJob()">
+              Duplicate as new job
+            </button>
+          }
         </div>
       </div>
     </div>
@@ -84,15 +83,24 @@
 
         <div class="addjob-row2">
           <div class="field">
-            <label class="toolbar-label">Location <span style="color:var(--color-secondary)">*</span></label>
-            <input
-              class="input"
-              type="text"
-              placeholder="In Person / Remote / Hybrid"
-              formControlName="location"
-            />
+            <label class="toolbar-label">City / Location <span style="color:var(--color-secondary)">*</span></label>
+            <input class="input" type="text" placeholder="e.g. Tunis, Sfax, Nabeul…"
+              formControlName="location" />
             @if (form.get('location')?.touched && form.get('location')?.invalid) {
               <div class="text-muted" style="margin-top:.35rem;">Location is required.</div>
+            }
+          </div>
+
+          <div class="field">
+            <label class="toolbar-label">Work arrangement <span style="color:var(--color-secondary)">*</span></label>
+            <select class="input" formControlName="workArrangement">
+              <option value="" disabled>Select arrangement</option>
+              <option value="ON_SITE">On-site</option>
+              <option value="HYBRID">Hybrid</option>
+              <option value="REMOTE">Remote</option>
+            </select>
+            @if (form.get('workArrangement')?.touched && form.get('workArrangement')?.invalid) {
+              <div class="text-muted" style="margin-top:.35rem;">Work arrangement is required.</div>
             }
           </div>
 
@@ -130,6 +138,23 @@
           <span class="pill">Step 2</span>
         </div>
 
+        <div class="field">
+          <label class="toolbar-label">Number of positions to fill</label>
+          @if (isQuotaLocked) {
+            <input class="input" type="number" formControlName="openings" [attr.readonly]="true"
+              style="opacity:.5; cursor:not-allowed;" />
+            <div class="text-muted" style="margin-top:.35rem; font-size:.8rem; color:#fbbf24;">
+              Quota is locked — cannot be changed once the job is {{ status }}.
+            </div>
+          } @else {
+            <input class="input" type="number" min="1" formControlName="openings"
+              placeholder="e.g. 3 — leave empty for unlimited" />
+            <div class="text-muted" style="margin-top:.35rem; font-size:.8rem;">
+              Set before publishing — quota cannot be changed once the job is published.
+            </div>
+          }
+        </div>
+
         <div class="salary-box">
           <div class="salary-head">
             <div>
@@ -165,25 +190,65 @@
             Cancel
           </button>
 
-          <div style="display:flex; gap: var(--space-3); flex-wrap: wrap;">
-            <button
-              class="btn btn-ghost"
-              type="button"
-              [disabled]="saving"
-              (click)="submitAs('DRAFT')"
-            >
-              @if (saving && status === 'DRAFT') { Saving… } @else { Save as Draft }
+          @if (form.value.jobStatus === 'CLOSED') {
+            <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+              <span class="text-muted" style="font-size:.82rem;">
+                This position is closed. Duplicate it to open a new hiring round.
+              </span>
+              <button class="btn btn-primary" type="button" (click)="duplicateJob()">
+                Duplicate as new job
+              </button>
+            </div>
+          } @else if (form.value.jobStatus === 'DRAFT') {
+            <div style="display:flex; gap: var(--space-3); flex-wrap: wrap;">
+              <button class="btn btn-ghost" type="button" [disabled]="saving" (click)="submitAs('DRAFT')">
+                @if (saving && status === 'DRAFT') { Saving… } @else { Save as Draft }
+              </button>
+              <button class="btn btn-primary" type="button" [disabled]="saving" (click)="submitAs('PUBLISHED')">
+                @if (saving) { Publishing… } @else { Publish }
+              </button>
+            </div>
+          } @else {
+            <button class="btn btn-primary" type="button" [disabled]="saving" (click)="submitAs('PUBLISHED')">
+              @if (saving) { Saving… } @else { Save changes }
             </button>
+          }
+        </div>
+      </section>
 
-            <button
-              class="btn btn-primary"
-              type="button"
-              [disabled]="saving"
-              (click)="submitAs('PUBLISHED')"
-            >
-              @if (saving && status === 'PUBLISHED') { Publishing… } @else { Publish }
-            </button>
+      <!-- AI Scoring Weights -->
+      <section class="card addjob-panel addjob-wide">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">AI Scoring Weights</div>
+            <div class="text-muted" style="margin-top:.25rem;">
+              Adjust what matters most. Changing these will prompt a re-score of all applications.
+            </div>
           </div>
+          <span class="pill">Step 3</span>
+        </div>
+        <div class="weights-grid" [formGroup]="form">
+          @for (w of [
+            {key:'skillsWeight',     label:'Technical Skills',    hint:'How much skill match counts'},
+            {key:'semanticWeight',   label:'Semantic Fit',        hint:'How much profile narrative matches the job'},
+            {key:'experienceWeight', label:'Years of Experience', hint:'How much experience gap matters'},
+            {key:'seniorityWeight',  label:'Seniority Level',     hint:'How much seniority match matters'}
+          ]; track w.key) {
+            <div class="weight-row">
+              <div class="weight-label">
+                <span>{{ w.label }}</span>
+                <span class="text-muted" style="font-size:.75rem;">{{ w.hint }}</span>
+              </div>
+              <div class="weight-slider-wrap">
+                <input type="range" min="0" max="100" step="1"
+                       class="weight-slider"
+                       [formControlName]="w.key"
+                       (input)="onWeightChange(w.key)" />
+                <span class="weight-val">{{ form.get(w.key)?.value }}%</span>
+              </div>
+            </div>
+          }
+          <div class="weight-total weight-total-ok">Total: {{ weightsTotal }}%</div>
         </div>
       </section>
 
@@ -192,14 +257,23 @@
           <div>
             <div class="panel-title">Requirements</div>
             <div class="text-muted" style="margin-top:.25rem;">
-              Add up to anything you want: skills, experience, education, languages…
+              Add skills, education, experience, certifications…
             </div>
           </div>
-
-          <button class="btn btn-ghost" type="button" (click)="addRequirement()">
-            + Add requirement
-          </button>
+          <div style="display:flex; align-items:center; gap:.75rem;">
+            <button class="btn btn-customize" type="button" (click)="toggleCustomizeWeights()">
+              {{ customizeWeights ? '✓ Weights on' : '⚖ Customize weights' }}
+            </button>
+            <button class="btn btn-ghost" type="button" (click)="addRequirement()">+ Add requirement</button>
+          </div>
         </div>
+
+        @if (customizeWeights) {
+          <div class="req-weights-hint">
+            Weights sum: <strong [style.color]="reqWeightsTotal === 100 ? '#68d391' : '#fc8181'">{{ reqWeightsTotal }}%</strong>
+            — adjust sliders so they total 100%.
+          </div>
+        }
 
         <div formArrayName="requirements" class="req-list">
           <div class="req-item" *ngFor="let r of requirements().controls; let i = index" [formGroupName]="i">
@@ -208,15 +282,13 @@
                 <span class="pill">#{{ i + 1 }}</span>
                 <span class="text-muted">Requirement</span>
               </div>
-
-              <button class="btn btn-ghost" type="button" (click)="removeRequirement(i)">
-                Remove
-              </button>
+              <button class="btn btn-ghost" type="button" (click)="removeRequirement(i)">Remove</button>
             </div>
 
             <div class="req-grid">
+              <!-- Category -->
               <div class="field">
-                <label class="toolbar-label">Category<span style="color:var(--color-secondary)">*</span></label>
+                <label class="toolbar-label">Category <span style="color:var(--color-secondary)">*</span></label>
                 <select class="input" formControlName="category">
                   <option value="" disabled>Select category</option>
                   <option value="SKILL">SKILL</option>
@@ -227,29 +299,86 @@
                 </select>
               </div>
 
+              <!-- Description -->
               <div class="field req-desc">
                 <label class="toolbar-label">Description <span style="color:var(--color-secondary)">*</span></label>
                 <input class="input" type="text" formControlName="description"
-                  placeholder="e.g. Angular 16+, English B2, 2+ years Spring Boot…" />
+                  placeholder="e.g. Java, Bachelor in CS, English B2…" />
               </div>
 
-              <div class="field req-desc">
-                <label class="toolbar-label">Weight<span style="color:var(--color-secondary)">*</span></label>
-                <input class="input" type="number" formControlName="weight" placeholder="e.g. 5" />
-                @if (r.get('weight')?.touched && r.get('weight')?.invalid) {
-                  <div class="text-muted" style="margin-top:.35rem;">Weight is required and must be a number.</div>
-                }
-              </div>
+              <!-- SKILL level -->
+              @if (r.get('category')?.value === 'SKILL') {
+                <div class="field">
+                  <label class="toolbar-label">Required level</label>
+                  <select class="input" formControlName="skillLevel">
+                    <option [ngValue]="null">Any level</option>
+                    <option value="BASIC">Basic</option>
+                    <option value="INTERMEDIATE">Intermediate</option>
+                    <option value="ADVANCED">Advanced</option>
+                  </select>
+                </div>
+              }
 
-              <div class="field">
-                <label class="toolbar-label">Minimum years required</label>
-                <input class="input" type="number" formControlName="minYears" placeholder="e.g. 1" />
-              </div>
+              <!-- EDUCATION structured fields -->
+              @if (r.get('category')?.value === 'EDUCATION') {
+                <div class="field">
+                  <label class="toolbar-label">Degree required</label>
+                  <select class="input" formControlName="degreeLevel">
+                    <option [ngValue]="null">Any degree</option>
+                    <option value="BAC">Baccalaureate</option>
+                    <option value="LICENCE_BACHELOR">Licence / Bachelor</option>
+                    <option value="MASTER">Master</option>
+                    <option value="PHD">PhD / Doctorate</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="toolbar-label">Enrollment</label>
+                  <select class="input" formControlName="enrollmentType">
+                    <option [ngValue]="null">Student or Graduate</option>
+                    <option value="STUDENT">Student (ongoing)</option>
+                    <option value="GRADUATE">Graduate (completed)</option>
+                    <option value="BOTH">Either</option>
+                  </select>
+                </div>
+              }
 
-              <div class="field">
-                <label class="toolbar-label">Maximum years required</label>
-                <input class="input" type="number" formControlName="maxYears" placeholder="e.g. 3" />
-              </div>
+              <!-- EXPERIENCE: years -->
+              @if (r.get('category')?.value === 'EXPERIENCE') {
+                <div class="field">
+                  <label class="toolbar-label">Min years</label>
+                  <input class="input" type="number" formControlName="minYears" placeholder="e.g. 2" />
+                </div>
+                <div class="field">
+                  <label class="toolbar-label">Max years</label>
+                  <input class="input" type="number" formControlName="maxYears" placeholder="e.g. 5" />
+                </div>
+              }
+
+              <!-- LANGUAGE: CEFR level -->
+              @if (r.get('category')?.value === 'LANGUAGE') {
+                <div class="field">
+                  <label class="toolbar-label">Minimum level required</label>
+                  <select class="input" formControlName="languageLevel">
+                    <option [ngValue]="null">Any level</option>
+                    <option value="A1">A1 — Beginner</option>
+                    <option value="A2">A2 — Elementary</option>
+                    <option value="B1">B1 — Conversational</option>
+                    <option value="B2">B2 — Professional</option>
+                    <option value="C1">C1 — Advanced</option>
+                    <option value="C2">C2 — Native / Mastery</option>
+                  </select>
+                </div>
+              }
+
+              <!-- Weight slider -->
+              @if (customizeWeights) {
+                <div class="field req-weight-field">
+                  <label class="toolbar-label">Weight: {{ r.get('weight')?.value ?? 0 }}%</label>
+                  <input type="range" min="0" max="100" step="1" class="weight-slider"
+                    [value]="r.get('weight')?.value ?? 0"
+                    (input)="r.get('weight')?.setValue(+$any($event.target).value); onReqWeightChange(i)" />
+                </div>
+              }
             </div>
 
             @if (r.touched && r.invalid) {

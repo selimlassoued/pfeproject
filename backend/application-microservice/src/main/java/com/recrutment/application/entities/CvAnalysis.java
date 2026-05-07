@@ -6,6 +6,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
+import com.recrutment.application.dto.SemanticMatchDto;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -57,6 +59,10 @@ public class CvAnalysis {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
+    private List<String> knowledge;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
     private List<String> softSkills;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -101,6 +107,16 @@ public class CvAnalysis {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private GitHubProfileEmbedded githubProfile;
+
+    // LinkedIn enrichment — disabled, requires Proxycurl API in production
+    // @JdbcTypeCode(SqlTypes.JSON)
+    // @Column(columnDefinition = "jsonb")
+    // private LinkedInEnrichmentEmbedded linkedinEnrichment;
+
+    // Semantic matching result — computed once and stored for recruiters
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private SemanticMatchDto semanticMatch;
 
     // Stats
     private Float totalYearsExperience;
@@ -288,5 +304,34 @@ public class CvAnalysis {
         private Boolean hasSkills;
         private Boolean hasLanguages;
         private EvidenceSignalsEmbedded evidenceSignals;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class LinkedInEnrichmentEmbedded {
+        private String profileUrl;
+        private String headline;
+        private String ethicalStatus;       // SAFE / FLAGGED
+        private String ethicalSummary;      // reason from ethical analysis
+        private String activityLevel;       // LOW / HIGH / UNKNOWN
+        private List<String> topTopics;
+        private Integer socialScore;        // computed: HIGH=75, Low=30, UNKNOWN=50
+        // Career insights
+        private Boolean jobHoppingFlag;
+        private Integer longestTenureMonths;
+        private String senioritySummary;
+        // Extracurricular
+        private Boolean hackathonEnthusiast;
+        private List<String> leadershipRoles;
+        private String communityImpact;
+        // Skill validation
+        private List<SkillValidationEmbedded> skillValidation;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class SkillValidationEmbedded {
+        private String skill;
+        private String evidenceSource;
+        private String description;
+        private String confidenceLevel;     // High / Medium / Low
     }
 }

@@ -3,22 +3,15 @@
 
     <!-- Header -->
     <div class="ad-header">
-
       <div class="ad-head-left">
         <div>
-          <!-- Breadcrumb row with Back button -->
           <div class="ad-breadcrumb-row">
-            <button class="ad-back" type="button" (click)="backToList()" aria-label="Back">
-              ← Back
-            </button>
+            <button class="ad-back" type="button" (click)="backToList()">← Back</button>
             <span class="ad-breadcrumb-sep">•</span>
             <span class="ad-breadcrumb">Applications / Detail</span>
           </div>
-
           <h2 class="ad-title">Application</h2>
-          <p class="ad-subtitle">
-            Review candidate information, job reference, and download the CV.
-          </p>
+          <p class="ad-subtitle">Review candidate information, job reference, and download the CV.</p>
         </div>
       </div>
 
@@ -28,35 +21,43 @@
           {{ app.status }}
         </span>
 
-        <!-- Update status -->
-        <div class="ad-status-edit">
-          <select class="input" [(ngModel)]="newStatus">
-            <option value="APPLIED">APPLIED</option>
-            <option value="UNDER_REVIEW">UNDER_REVIEW</option>
-            <option value="INTERVIEW_PHASE">INTERVIEW_PHASE</option>
-            <option value="OFFER">OFFER</option>
-            <option value="REJECTED">REJECTED</option>
-            <option value="HIRED">HIRED</option>
-          </select>
+        <!-- Contextual action buttons based on current status -->
+        @if (!isFinalStatus && !isModerated) {
+          <div class="ad-actions-row">
+            @for (action of contextualActions; track action.status) {
+              <button
+                class="btn"
+                [class.btn-primary]="action.style === 'primary'"
+                [class.btn-ghost]="action.style === 'secondary'"
+                [class.btn-danger]="action.style === 'danger'"
+                type="button"
+                [disabled]="updatingStatus"
+                (click)="moveTo(action.status)">
+                {{ updatingStatus ? '…' : action.label }}
+              </button>
+            }
+          </div>
+        } @else if (isModerated) {
+          <span class="ad-status-moderated">
+            {{ app.status === 'FLAGGED' ? '⚑ Flagged — pending admin review' : '⊘ Blocked by admin' }}
+          </span>
+        } @else {
+          <span class="ad-status-final">
+            {{ app.status === 'HIRED' ? '✓ Hired' : '✗ Rejected' }} — status is final
+          </span>
+        }
 
-          <button
-            class="btn btn-primary"
-            type="button"
-            (click)="updateStatus()"
-            [disabled]="updatingStatus || !newStatus || newStatus === app.status"
-          >
-            {{ updatingStatus ? 'Updating…' : 'Update Status' }}
+        <!-- AI Analysis -->
+        <button class="btn btn-ai" type="button" (click)="openAnalysis()">🤖 AI Analysis</button>
+
+        <!-- Signal candidate — RECRUITER only, not shown when already moderated -->
+        @if (canSignal() && !isModerated) {
+          <button class="btn btn-signal" type="button" (click)="openSignalModal()">
+            ⚑ Signal Candidate
           </button>
-        </div>
+        }
 
-        <!-- AI Analysis button -->
-        <button class="btn btn-ai" type="button" (click)="openAnalysis()">
-          🤖 AI Analysis
-        </button>
-
-        <button class="btn btn-ghost" type="button" (click)="downloadCv()">
-          ⬇ Download CV
-        </button>
+        <button class="btn btn-ghost" type="button" (click)="downloadCv()">⬇ Download CV</button>
       </div>
     </div>
 
@@ -68,23 +69,18 @@
         <div class="ad-avatar">
           {{ (app.candidateName || app.candidateUserId || 'U').slice(0,1) | uppercase }}
         </div>
+        <div class="ad-name">{{ app.candidateName || 'Unknown candidate' }}</div>
+        <div class="ad-meta mono">{{ app.candidateUserId }}</div>
 
-        <div class="ad-name">
-          {{ app.candidateName || 'Unknown candidate' }}
-        </div>
+        <button class="ad-linkbtn" type="button" (click)="goToUser()">View candidate profile →</button>
+        <button class="ad-linkbtn ad-linkbtn-ai" type="button" (click)="openAnalysis()">🤖 View AI CV Analysis →</button>
 
-        <div class="ad-meta mono">
-          {{ app.candidateUserId }}
-        </div>
-
-        <button class="ad-linkbtn" type="button" (click)="goToUser()">
-          View candidate profile →
-        </button>
-
-        <!-- AI Analysis shortcut in left panel -->
-        <button class="ad-linkbtn ad-linkbtn-ai" type="button" (click)="openAnalysis()">
-          🤖 View AI CV Analysis →
-        </button>
+        <!-- Signal shortcut — RECRUITER only, not shown when already moderated -->
+        @if (canSignal() && !isModerated) {
+          <button class="ad-linkbtn ad-linkbtn-signal" type="button" (click)="openSignalModal()">
+            ⚑ Signal this candidate →
+          </button>
+        }
 
         <div class="ad-divider"></div>
 
@@ -92,34 +88,54 @@
           <div class="ad-mini-label">Applied</div>
           <div class="ad-mini-value">{{ app.appliedAt | date:'medium' }}</div>
         </div>
-
         <div class="ad-mini">
           <div class="ad-mini-label">Application ID</div>
           <div class="ad-mini-value mono">{{ app.applicationId }}</div>
+        </div>
+
+        <!-- Pipeline -->
+        <div class="ad-divider"></div>
+        <div class="ad-mini-label" style="margin-bottom:0.5rem">Pipeline</div>
+        <div class="ad-pipeline">
+          @for (step of ['APPLIED','UNDER_REVIEW','INTERVIEW_PHASE','OFFER','HIRED']; track step) {
+            <div class="ad-pipeline-step"
+                 [class.active]="app.status === step"
+                 [class.done]="isStepDone(step)"
+                 [class.rejected]="app.status === 'REJECTED'"
+                 [class.moderated]="isModerated">
+              {{ stepLabel(step) }}
+            </div>
+          }
+          @if (app.status === 'REJECTED') {
+            <div class="ad-pipeline-step rejected active">REJECTED</div>
+          }
+          @if (app.status === 'FLAGGED') {
+            <div class="ad-pipeline-step flagged active">⚑ FLAGGED</div>
+          }
+          @if (app.status === 'BLOCKED') {
+            <div class="ad-pipeline-step blocked active">⊘ BLOCKED</div>
+          }
+          @if (app.status === 'WITHDRAWN') {
+            <div class="ad-pipeline-step withdrawn active">↩ WITHDRAWN</div>
+          }
         </div>
       </div>
 
       <!-- Right panel -->
       <div class="ad-right">
-
         <div class="ad-block">
           <div class="ad-block-head">
             <div>
               <div class="ad-block-title">Job</div>
               <div class="ad-block-sub">Job reference and title</div>
             </div>
-
-            <button class="ad-chip" type="button" (click)="goToJob()">
-              Open job →
-            </button>
+            <button class="ad-chip" type="button" (click)="goToJob()">Open job →</button>
           </div>
-
           <div class="ad-block-body">
             <div class="ad-kv">
               <div class="ad-k">Title</div>
               <div class="ad-v">{{ app.jobTitle || 'Unknown job title' }}</div>
             </div>
-
             <div class="ad-kv">
               <div class="ad-k">Job ID</div>
               <div class="ad-v mono">{{ app.jobId }}</div>
@@ -127,8 +143,186 @@
           </div>
         </div>
 
-        <div class="ad-grid2">
+        <div class="ad-block">
+            <div class="ad-block-head">
+              <div>
+                <div class="ad-block-title">Semantic Matching</div>
+                <div class="ad-block-sub">Job requirements compared with the parsed CV</div>
+              </div>
+            </div>
+            <div class="ad-block-body">
+              @if (semanticLoading) {
+                <div class="ad-empty">Computing semantic matching…</div>
+              } @else if (hasSemanticMatch) {
+                <div class="ad-match-score-row">
+                  <div>
+                    <div class="ad-k">Job fit score</div>
+                    <div class="ad-match-score">{{ app.jobFitScore }}%</div>
+                  </div>
+                  <div class="ad-match-badge">{{ semanticScoreLabel(app.jobFitScore) }}</div>
+                  @if (rank !== null && rankTotal !== null) {
+                    <div class="ad-rank-badge">#{{ rank }} of {{ rankTotal }} applicants</div>
+                  }
+                </div>
+                @if (app.scoreExplanation) {
+                  <div class="ad-score-explanation">{{ app.scoreExplanation }}</div>
+                }
+                <div class="ad-grid2 ad-grid2-match">
+                  <div class="ad-kv">
+                    <div class="ad-k">Experience gap</div>
+                    <div class="ad-v">
+                      {{ (app.experienceGap ?? 0) === 0 ? 'None' : (app.experienceGap + ' year(s)') }}
+                    </div>
+                  </div>
+                  <div class="ad-kv">
+                    <div class="ad-k">Seniority match</div>
+                    <div class="ad-v">{{ app.seniorityMatch ? 'Yes' : 'No' }}</div>
+                  </div>
+                </div>
+                <div class="ad-kv">
+                  <div class="ad-k">Embedding semantic score</div>
+                  <div class="ad-v">{{ app.embeddingScore ?? 0 }}%</div>
+                </div>
 
+                <div class="ad-match-section">
+                  <div class="ad-k">Required skills breakdown</div>
+                  @if (app.skillScores?.length) {
+                    <div class="ad-skill-score-list">
+                      @for (s of app.skillScores; track s.skill) {
+                        <div class="ad-skill-score-row">
+                          <span class="ad-tag"
+                            [class.ad-tag-match]="s.status === 'matched'"
+                            [class.ad-tag-partial]="s.status === 'partial'"
+                            [class.ad-tag-missing]="s.status === 'missing'">
+                            {{ s.skill }}
+                          </span>
+                          <span class="ad-skill-pct"
+                            [class.ad-skill-pct-match]="s.status === 'matched'"
+                            [class.ad-skill-pct-partial]="s.status === 'partial'"
+                            [class.ad-skill-pct-missing]="s.status === 'missing'">
+                            {{ s.score }}%
+                          </span>
+                          <div class="ad-skill-bar-track">
+                            <div class="ad-skill-bar"
+                              [class.ad-skill-bar-match]="s.status === 'matched'"
+                              [class.ad-skill-bar-partial]="s.status === 'partial'"
+                              [class.ad-skill-bar-missing]="s.status === 'missing'"
+                              [style.width.%]="s.score">
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="ad-tags">
+                      @for (skill of app.requiredSkillsMatched || []; track skill) {
+                        <span class="ad-tag ad-tag-match">{{ skill }}</span>
+                      }
+                      @for (skill of app.requiredSkillsMissing || []; track skill) {
+                        <span class="ad-tag ad-tag-missing">{{ skill }}</span>
+                      }
+                      @if (!(app.requiredSkillsMatched?.length) && !(app.requiredSkillsMissing?.length)) {
+                        <span class="ad-empty">No required skills defined for this job.</span>
+                      }
+                    </div>
+                  }
+                </div>
+
+                @if (app.requirementScores?.length) {
+                  <div class="ad-match-section">
+                    <div class="ad-k">Requirement-level semantic evidence</div>
+                    <div class="ad-req-list">
+                      @for (req of app.requirementScores || []; track req.description) {
+                        <div class="ad-req-item">
+                          <div class="ad-req-top">
+                            <span class="ad-tag ad-tag-match">{{ req.category || 'REQUIREMENT' }}</span>
+                            @if (req.score != null) {
+                              <span class="ad-req-score"
+                                [class.ad-req-score-high]="req.score >= 70"
+                                [class.ad-req-score-mid]="req.score >= 40 && req.score < 70"
+                                [class.ad-req-score-low]="req.score < 40">
+                                {{ req.score }}%
+                              </span>
+                            }
+                          </div>
+                          <div class="ad-req-desc">{{ req.description || 'No description' }}</div>
+                          @if (req.score != null) {
+                            <div class="ad-req-bar-track">
+                              <div class="ad-req-bar"
+                                [class.ad-req-bar-high]="req.score >= 70"
+                                [class.ad-req-bar-mid]="req.score >= 40 && req.score < 70"
+                                [class.ad-req-bar-low]="req.score < 40"
+                                [style.width.%]="req.score">
+                              </div>
+                            </div>
+                          }
+                          @if (req.evidence) {
+                            <div class="ad-req-sources">
+                              @for (tag of req.evidence.split(' | '); track tag) {
+                                <span class="ad-source-tag">{{ tag }}</span>
+                              }
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <div class="ad-grid2 ad-grid2-match">
+                  <div class="ad-match-section">
+                    <div class="ad-k">AI strengths</div>
+                    <div class="ad-tags">
+                      @for (line of app.strengths || []; track line) {
+                        <span class="ad-tag ad-tag-match">{{ line }}</span>
+                      }
+                      @if (!(app.strengths?.length)) {
+                        <span class="ad-empty">No strengths generated yet.</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="ad-match-section">
+                    <div class="ad-k">AI weaknesses</div>
+                    <div class="ad-tags">
+                      @for (line of app.weaknesses || []; track line) {
+                        <span class="ad-tag ad-tag-missing">{{ line }}</span>
+                      }
+                      @if (!(app.weaknesses?.length)) {
+                        <span class="ad-empty">No weaknesses generated yet.</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ad-kv">
+                  <div class="ad-k">AI recommendation</div>
+                  <div class="ad-v">{{ recommendationLabel(app.recommendation) }}</div>
+                </div>
+
+                <div class="ad-match-section">
+                  <div class="ad-k">Suggested interview questions</div>
+                  <div class="ad-q-list">
+                    @for (q of app.interviewQuestions || []; track q) {
+                      <div class="ad-q-item">• {{ q }}</div>
+                    }
+                    @if (!(app.interviewQuestions?.length)) {
+                      <span class="ad-empty">No AI interview questions generated yet.</span>
+                    }
+                  </div>
+                </div>
+              } @else if (semanticPending) {
+                <div class="ad-empty">
+                  Semantic matching is processing. It will appear automatically in a few seconds.
+                </div>
+              } @else {
+                <div class="ad-empty">
+                  Semantic matching will appear once CV analysis is available for this application.
+                </div>
+              }
+            </div>
+          </div>
+
+        <div class="ad-grid2">
           <div class="ad-block">
             <div class="ad-block-head">
               <div>
@@ -136,18 +330,13 @@
                 <div class="ad-block-sub">Candidate repository/profile link</div>
               </div>
             </div>
-
             <div class="ad-block-body">
-              <a class="ad-url"
-                 [href]="app.githubUrl"
-                 target="_blank"
-                 rel="noopener">
+              <a class="ad-url" [href]="app.githubUrl" target="_blank" rel="noopener">
                 {{ app.githubUrl || '—' }}
               </a>
             </div>
           </div>
 
-          <!-- CV -->
           <div class="ad-block">
             <div class="ad-block-head">
               <div>
@@ -155,25 +344,19 @@
                 <div class="ad-block-sub">File name and type</div>
               </div>
             </div>
-
             <div class="ad-block-body">
               <div class="ad-kv">
                 <div class="ad-k">File</div>
                 <div class="ad-v mono">{{ app.cvFileName || 'cv.pdf' }}</div>
               </div>
-
               <div class="ad-kv">
                 <div class="ad-k">Type</div>
                 <div class="ad-v mono">{{ app.cvContentType || 'application/pdf' }}</div>
               </div>
-
-              <button class="btn btn-primary" type="button" (click)="downloadCv()">
-                Download CV
-              </button>
+              <button class="btn btn-primary" type="button" (click)="downloadCv()">Download CV</button>
             </div>
           </div>
         </div>
-
       </div>
     </section>
 
@@ -192,3 +375,46 @@
   [candidateName]="app?.candidateName ?? null"
   (closed)="closeDrawer()">
 </app-cv-analysis-drawer>
+
+<!-- Signal Candidate Modal — RECRUITER only -->
+@if (signalModalOpen && canSignal()) {
+  <div class="modal-backdrop" (click)="closeSignalModal()"></div>
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h3 class="modal-title">⚑ Signal Candidate</h3>
+      <button class="modal-close" type="button" (click)="closeSignalModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <p class="modal-desc">
+        Signaling this candidate will flag <strong>all their applications</strong>
+        and notify the admin for review. This action is reversible by the admin.
+      </p>
+
+      <label class="modal-label">Reason <span class="modal-required">*</span></label>
+      <textarea
+        class="modal-textarea"
+        [(ngModel)]="signalReason"
+        placeholder="Describe the issue (e.g. Fake CV, inappropriate behavior, spam applications…)"
+        rows="4"
+        [disabled]="signaling || signalSuccess">
+      </textarea>
+
+      @if (signalError) {
+        <div class="modal-error">{{ signalError }}</div>
+      }
+      @if (signalSuccess) {
+        <div class="modal-success">✓ Candidate has been flagged successfully.</div>
+      }
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" type="button" (click)="closeSignalModal()"
+              [disabled]="signaling">Cancel</button>
+      <button class="btn btn-signal" type="button" (click)="submitSignal()"
+              [disabled]="signaling || !signalReason.trim() || signalSuccess">
+        {{ signaling ? 'Signaling…' : '⚑ Confirm Signal' }}
+      </button>
+    </div>
+  </div>
+}

@@ -31,22 +31,90 @@ export const routes: Routes = [
   },
   { path: 'profile', component: Profile },
   { path: 'forbidden', component: Forbidden },
-  {path:'',component:Hero, canActivate: [homeGuard]  },
-  {path:'hero',component:Hero },
+  { path: '', component: Hero, canActivate: [homeGuard] },
+  { path: 'hero', component: Hero },
   { path: 'browse', component: BrowseJobsComponent },
   { path: 'jobs/:id', component: JobDetails },
-  {path:'listUsers',component:ListUsers,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
-  {path:'user/:id',component:UserDetails,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
-  { path: 'apply/:jobId', component: Application,canActivate: [canActivateAuthRole],data: { role: 'CANDIDATE' } },
-  {path:'listApplications',component:ListApplications,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
-  {path:'application/:id',component:ApplicationDetail,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
-  {path:'add-job', component:AddJob, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
-  {path:'edit-job/:id', component:UpdateJob, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
-  { path: 'my-applications', component: MyApplications,canActivate: [canActivateAuthRole],data: { role: 'CANDIDATE' } },
-  {path:'my-application/:id',component:MyApplicationDetail,canActivate: [canActivateAuthRole],data: { role: 'CANDIDATE' }},
-  {path:'notification-menu',component:NotificationsMenu},
-  { path: 'admin-dashboard', component: AdminDashboard },
-  {path:'recruiter-activity',component:RecruiterActivity},
-  {path:'action-history',component:ActionHistory},
-  {path:'cv-analysis',component:CvAnalysisDrawer}
+
+  // ── ADMIN + SUPERADMIN + RECRUITER (filtered) ─────────────────────────────
+  {
+    path: 'listUsers',
+    component: ListUsers,
+    canActivate: [canActivateAuthRole],
+    data: { allowedRoles: ['ADMIN', 'SUPERADMIN', 'RECRUITER'] },
+  },
+
+  // ── SUPERADMIN + ADMIN + RECRUITER ────────────────────────────────────────
+  {
+    path: 'user/:id',
+    component: UserDetails,
+    canActivate: [canActivateAuthRole],
+    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
+  },
+  {
+    path: 'listApplications',
+    component: ListApplications,
+    canActivate: [canActivateAuthRole],
+    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
+  },
+  {
+    path: 'application/:id',
+    component: ApplicationDetail,
+    canActivate: [canActivateAuthRole],
+    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
+  },
+  {
+    path: 'add-job',
+    component: AddJob,
+    canActivate: [canActivateAuthRole],
+    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
+  },
+  {
+    path: 'edit-job/:id',
+    component: UpdateJob,
+    canActivate: [canActivateAuthRole],
+    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
+  },
+  {
+    path: 'admin-dashboard',
+    component: AdminDashboard,
+    canActivate: [canActivateAuthRole],
+    data: { allowedRoles: ['ADMIN', 'SUPERADMIN', 'RECRUITER'] },
+  },
+  {
+    path: 'recruiter-activity',
+    component: RecruiterActivity,
+    canActivate: [canActivateAuthRole],
+    data: { allowedRoles: ['ADMIN', 'SUPERADMIN'] },
+  },
+  {
+    path: 'action-history',
+    component: ActionHistory,
+    canActivate: [canActivateAuthRole],
+    data: { allowedRoles: ['ADMIN', 'SUPERADMIN'] },
+  },
+
+  // ── CANDIDATE only ────────────────────────────────────────────────────────
+  {
+    path: 'apply/:jobId',
+    component: Application,
+    canActivate: [canActivateAuthRole],
+    data: { role: 'CANDIDATE' },
+  },
+  {
+    path: 'my-applications',
+    component: MyApplications,
+    canActivate: [canActivateAuthRole],
+    data: { role: 'CANDIDATE' },
+  },
+  {
+    path: 'my-application/:id',
+    component: MyApplicationDetail,
+    canActivate: [canActivateAuthRole],
+    data: { role: 'CANDIDATE' },
+  },
+
+  // ── Other ─────────────────────────────────────────────────────────────────
+  { path: 'notification-menu', component: NotificationsMenu },
+  { path: 'cv-analysis', component: CvAnalysisDrawer },
 ];

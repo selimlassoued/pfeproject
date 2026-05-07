@@ -61,7 +61,7 @@
 .users-table{
   width:100%;
   border-collapse: collapse;
-  min-width: 900px;
+  min-width: 960px;
   background: rgba(255,255,255,0.02);
 }
 
@@ -74,10 +74,20 @@
   background: rgba(255,255,255,0.03);
 }
 
+/* Action column header — no label, fixed width */
+.users-table thead th:last-child {
+  width: 56px;
+  text-align: center;
+}
+
 .users-table tbody td{
   padding: 0.85rem 0.9rem;
   border-bottom: 1px solid rgba(121,164,233,0.12);
   vertical-align: middle;
+}
+
+.users-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .row-click{
@@ -97,6 +107,7 @@
   text-align:center;
   padding: 1.5rem !important;
 }
+
 
 /* status pills */
 .pill-success{
@@ -197,11 +208,9 @@
 }
 
 /* =========================
-   Custom Rows dropdown (fixes white select)
+   Custom Rows dropdown
 ========================= */
-.rows-dd{
-  position: relative;
-}
+.rows-dd{ position: relative; }
 
 .rows-btn{
   min-width: 92px;
@@ -233,10 +242,9 @@
 .rows-menu{
   position:absolute;
   left: 0;
-  top: calc(100% + 10px); /* opens downward (visible) */
+  top: calc(100% + 10px);
   min-width: 100%;
   z-index: 50;
-
   border-radius: 14px;
   border: 1px solid rgba(121, 164, 233, 0.22);
   background: rgba(11, 16, 38, 0.92);
@@ -269,15 +277,17 @@
   border-color: rgba(121, 164, 233, 0.38);
   color: var(--color-cream);
 }
+
 select {
-  background-color: #1b2236;   /* dark control background */
-  color: #f5f7ff;              /* text color */
+  background-color: #1b2236;
+  color: #f5f7ff;
 }
 
 select option {
-  background-color: #1b2236;   /* dropdown background */
-  color: #f5f7ff;              /* dropdown text */
+  background-color: #1b2236;
+  color: #f5f7ff;
 }
+
 select:hover {
   border-color: rgba(121, 164, 233, 0.758);
 }
@@ -289,18 +299,13 @@ select:hover {
     align-items: stretch;
     gap: .75rem;
   }
-
   .users-pager-left,
   .users-pager-mid,
   .users-pager-right{
     justify-content: space-between;
     width: 100%;
   }
-
-  .users-pager-mid{
-    justify-content: center;
-  }
-
+  .users-pager-mid{ justify-content: center; }
   .users-pageBtns{
     overflow-x: auto;
     max-width: 100%;

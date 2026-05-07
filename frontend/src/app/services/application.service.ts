@@ -1,13 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { ApplicationDto } from '../model/application.dto';
 import { PageResponse } from '../model/page-response';
 import { CvAnalysis } from '../model/cv-analysis.model';
 
 @Injectable({ providedIn: 'root' })
 export class ApplicationService {
-  private readonly API_URL = 'http://localhost:8888/api/applications';
+  private readonly API_URL   = 'http://localhost:8888/api/applications';
+  private readonly AUDIT_URL = 'http://localhost:8888/api/audit';
 
   constructor(private http: HttpClient) {}
 
@@ -36,6 +37,14 @@ export class ApplicationService {
 
   getOne(id: string): Observable<ApplicationDto> {
     return this.http.get<ApplicationDto>(`${this.API_URL}/${id}`);
+  }
+
+  getSemanticMatch(id: string): Observable<Partial<ApplicationDto> | null> {
+    return this.http.get<Partial<ApplicationDto> | null>(`${this.API_URL}/${id}/match`, {
+      observe: 'response'
+    }).pipe(
+      map(resp => resp.status === 202 ? null : (resp.body ?? null))
+    );
   }
 
   downloadCv(applicationId: string): Observable<Blob> {
@@ -76,6 +85,17 @@ export class ApplicationService {
     return this.http.patch<ApplicationDto>(`${this.API_URL}/me/${applicationId}`, form);
   }
 
+  /**
+   * Candidate withdraws their own application (soft delete).
+   * Only allowed when status is APPLIED.
+   * Application stays in DB with WITHDRAWN status.
+   * Hidden from candidate dashboard after withdrawal.
+   * Candidate can re-apply to the same job after withdrawing.
+   */
+  withdrawApplication(applicationId: string): Observable<void> {
+    return this.http.delete<void>(`${this.API_URL}/me/${applicationId}`);
+  }
+
   updateApplicationStatus(applicationId: string, status: string): Observable<ApplicationDto> {
     return this.http.patch<ApplicationDto>(
       `${this.API_URL}/${applicationId}/status`,
@@ -104,11 +124,59 @@ export class ApplicationService {
     return this.http.get<PageResponse<ApplicationDto>>(`${this.API_URL}/paged`, { params });
   }
 
+  getApplicationRank(applicationId: string): Observable<{ rank: number; total: number }> {
+    return this.http.get<{ rank: number; total: number }>(`${this.API_URL}/${applicationId}/rank`);
+  }
+
   getCvAnalysis(applicationId: string): Observable<CvAnalysis> {
     return this.http.get<CvAnalysis>(`${this.API_URL}/${applicationId}/analysis`);
   }
 
   hasCvAnalysis(applicationId: string): Observable<boolean> {
     return this.http.get<boolean>(`${this.API_URL}/${applicationId}/analysis/exists`);
+  }
+
+  retryAnalysis(applicationId: string): Observable<void> {
+    return this.http.post<void>(`${this.API_URL}/${applicationId}/analysis/retry`, null);
+  }
+
+  rematchApplicationsForJob(jobId: string): Observable<void> {
+    return this.http.post<void>(`${this.API_URL}/internal/job/${jobId}/rematch`, null);
+  }
+
+  shortlistApplications(jobId: string, threshold: number): Observable<{ shortlisted: number; skipped: number; threshold: number }> {
+    return this.http.post<{ shortlisted: number; skipped: number; threshold: number }>(
+      `${this.API_URL}/internal/job/${jobId}/shortlist`,
+      null,
+      { params: { threshold: String(threshold) } }
+    );
+  }
+
+  // ── Moderation ────────────────────────────────────────────────────────────
+
+  signalCandidate(candidateUserId: string, reason: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.API_URL}/signal/${candidateUserId}`,
+      { reason }
+    );
+  }
+
+  unsignalCandidate(candidateUserId: string, reason: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.API_URL}/signal/${candidateUserId}`,
+      { body: { reason } }
+    );
+  }
+
+  getCandidateModerationStatus(candidateUserId: string): Observable<{ status: string }> {
+    return this.http.get<{ status: string }>(
+      `${this.AUDIT_URL}/candidate/${candidateUserId}/moderation-status`
+    );
+  }
+
+  getLastFlaggedBy(candidateUserId: string): Observable<{ flaggedBy: string }> {
+    return this.http.get<{ flaggedBy: string }>(
+      `${this.AUDIT_URL}/candidate/${candidateUserId}/flagged-by`
+    );
   }
 }

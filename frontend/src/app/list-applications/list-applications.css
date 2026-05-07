@@ -398,3 +398,27 @@
   transition: color 0.15s;
 }
 .clear-filter-btn:hover { color: #f87171; }
+
+/* AI Score column */
+.td-score { min-width: 120px; max-width: 200px; }
+
+.score-badge {
+  display: inline-block;
+  font-size: .8rem;
+  font-weight: 700;
+  padding: .2rem .55rem;
+  border-radius: 99px;
+  margin-bottom: .25rem;
+}
+.score-high    { background: rgba(72,187,120,.15); color: #48bb78; border: 1px solid rgba(72,187,120,.3); }
+.score-mid     { background: rgba(237,137,54,.15);  color: #ed8936; border: 1px solid rgba(237,137,54,.3); }
+.score-low     { background: rgba(252,129,129,.15); color: #fc8181; border: 1px solid rgba(252,129,129,.3); }
+.score-pending { color: rgba(255,255,255,.3); font-size: .85rem; }
+
+.score-hint {
+  font-size: .7rem;
+  color: rgba(255,255,255,.4);
+  line-height: 1.4;
+  cursor: help;
+  display: block;
+}

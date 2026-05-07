@@ -17,6 +17,8 @@ export class CvAnalysisDrawer implements OnChanges {
   analysis: CvAnalysis | null = null;
   loading = false;
   error: string | null = null;
+  pending = false;
+  retrying = false;
 
   constructor(private appService: ApplicationService) {}
 
@@ -30,16 +32,34 @@ export class CvAnalysisDrawer implements OnChanges {
     this.loading = true;
     this.error = null;
     this.analysis = null;
+    this.pending = false;
 
-    this.appService.getCvAnalysis(this.applicationId!).subscribe({
-      next: (data) => {
-        this.analysis = data;
-        this.loading = false;
+    this.appService.hasCvAnalysis(this.applicationId!).subscribe({
+      next: (exists) => {
+        if (!exists) {
+          this.loading = false;
+          this.pending = true;
+          setTimeout(() => {
+            if (this.applicationId) this.load();
+          }, 4000);
+          return;
+        }
+
+        this.appService.getCvAnalysis(this.applicationId!).subscribe({
+          next: (data) => {
+            this.analysis = data;
+            this.loading = false;
+          },
+          error: (err) => {
+            this.error = err?.error?.message || err?.message || 'Analysis not available yet.';
+            this.loading = false;
+          },
+        });
       },
-      error: (err) => {
-        this.error = err?.error?.message || err?.message || 'Analysis not available yet.';
+      error: () => {
         this.loading = false;
-      },
+        this.pending = true;
+      }
     });
   }
 
@@ -82,10 +102,47 @@ export class CvAnalysisDrawer implements OnChanges {
     }
   }
 
+  linkedinStatusClass(status: string): string {
+    switch (status) {
+      case 'SAFE':   return 'linkedin-status-safe';
+      case 'FLAGGED': return 'linkedin-status-flagged';
+      default:       return 'linkedin-status-unknown';
+    }
+  }
+
+  linkedinActivityClass(level: string): string {
+    switch (level) {
+      case 'HIGH':   return 'linkedin-activity-high';
+      case 'LOW':    return 'linkedin-activity-low';
+      default:       return 'linkedin-activity-unknown';
+    }
+  }
+
   /** Format 0.0–1.0 ratio as a percentage string e.g. "73%" */
   ownershipPercent(ratio: number | null | undefined): string {
     if (ratio == null) return '';
     return Math.round(ratio * 100) + '%';
+  }
+
+  get isFailed(): boolean {
+    return this.analysis?.parsingStatus === 'FAILED';
+  }
+
+  retry(): void {
+    if (!this.applicationId || this.retrying) return;
+    this.retrying = true;
+    this.appService.retryAnalysis(this.applicationId).subscribe({
+      next: () => {
+        this.analysis = null;
+        this.error = null;
+        this.pending = true;
+        this.retrying = false;
+        setTimeout(() => {
+          if (this.applicationId) this.load();
+        }, 4000);
+      },
+      error: () => { this.retrying = false; }
+    });
   }
 
   trackByIndex(index: number): number { return index; }

@@ -27,20 +27,37 @@ public class JobOffer {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
-    @Column(unique = true, updatable = false, length = 20)
-    private String refNumber;   // ← e.g. "JOB-00001"
+    @Column(unique = true, length = 20)
+    private String refNumber;   // set once after first save — never changed after that
 
     private String title;
     private String description;
     private String location;
+    private String workArrangement; // REMOTE / HYBRID / ON_SITE
     private Integer minSalary;
     private Integer maxSalary;
+
+    // ATS quota
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer openings = 1;     // number of positions
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer hiredCount = 0;   // incremented when a candidate is HIRED
 
     @Enumerated(EnumType.STRING)
     private EmploymentType employmentType;
 
     @Enumerated(EnumType.STRING)
     private JobStatus jobStatus;
+
+    // ── Recruiter-configurable scoring weights ────────────────────────────────
+    // Nullable to support existing rows — service falls back to defaults when null.
+    @Builder.Default private Double skillsWeight     = 0.40;
+    @Builder.Default private Double semanticWeight   = 0.35;
+    @Builder.Default private Double experienceWeight = 0.15;
+    @Builder.Default private Double seniorityWeight  = 0.10;
 
     @OneToMany(mappedBy = "jobOffer", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

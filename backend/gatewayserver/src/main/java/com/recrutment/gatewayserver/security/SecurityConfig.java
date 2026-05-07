@@ -52,51 +52,68 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeExchange(exchanges -> exchanges
 
-                        // Actuator
+                        // ── Actuator ──────────────────────────────────────────
                         .pathMatchers("/actuator/health/**", "/actuator/info").permitAll()
-                        .pathMatchers("/actuator/**").hasRole("RECRUITER")
+                        .pathMatchers("/actuator/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
 
-                        // Admin
+                        // ── Admin — SUPERADMIN only: manage admins ────────────
                         .pathMatchers(HttpMethod.GET, "/api/admin/internal/users/*/email").permitAll()
-                        .pathMatchers("/api/admin/**").hasRole("ADMIN")
+                        .pathMatchers("/api/admin/users/*/roles").hasAnyRole("SUPERADMIN")
+                        .pathMatchers("/api/admin/roles").hasAnyRole("SUPERADMIN")
 
-                        // Jobs
-                        .pathMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
-                        .pathMatchers(HttpMethod.POST, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
-                        .pathMatchers(HttpMethod.PUT, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
-                        .pathMatchers(HttpMethod.PATCH, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
-                        .pathMatchers(HttpMethod.DELETE, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN")
+                        // ── Admin — ADMIN + SUPERADMIN: manage recruiters/candidates ──
+                        .pathMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN", "RECRUITER")
 
+                        // ── Jobs ──────────────────────────────────────────────
+                        .pathMatchers(HttpMethod.GET,    "/api/jobs/**").permitAll()
+                        .pathMatchers(HttpMethod.POST,   "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.PUT,    "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.PATCH,  "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+
+                        // ── Applications — public ─────────────────────────────
                         .pathMatchers(HttpMethod.GET, "/api/applications/check-github").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/applications/*/analysis").hasAnyRole("RECRUITER", "ADMIN")
-                        .pathMatchers(HttpMethod.GET, "/api/applications/*/analysis/exists").hasAnyRole("RECRUITER", "ADMIN")
-
                         .pathMatchers(HttpMethod.GET, "/api/applications/internal/job/*/candidate-ids").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/api/applications/internal/**").permitAll()
 
-                        // Applications - candidate "me" endpoints (IMPORTANT: must be before /api/applications/**)
+                        // ── Applications — analysis ───────────────────────────
+                        .pathMatchers(HttpMethod.GET, "/api/applications/*/analysis").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.GET, "/api/applications/*/analysis/exists").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+
+                        // ── Applications — candidate "me" endpoints ───────────
+                        .pathMatchers(HttpMethod.GET,    "/api/applications/me").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.GET,    "/api/applications/me/**").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.PATCH,  "/api/applications/me/**").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.DELETE, "/api/applications/me/**").hasRole("CANDIDATE")
+
+                        // ── Applications — moderation ─────────────────────────
+                        .pathMatchers(HttpMethod.POST,   "/api/applications/signal/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/applications/signal/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+
+                        // ── Applications — apply (candidate only) ─────────────
                         .pathMatchers(HttpMethod.POST, "/api/applications/**").hasRole("CANDIDATE")
-                        .pathMatchers(HttpMethod.GET, "/api/applications/me").hasRole("CANDIDATE")
-                        .pathMatchers(HttpMethod.GET, "/api/applications/me/**").hasRole("CANDIDATE")   // ✅ FIX
-                        .pathMatchers(HttpMethod.PATCH, "/api/applications/me/**").hasRole("CANDIDATE")
 
-                        // Applications - recruiter/admin
-                        .pathMatchers(HttpMethod.GET, "/api/applications/*/cv").hasAnyRole("RECRUITER", "ADMIN")
-                        .pathMatchers(HttpMethod.GET, "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN")
-                        .pathMatchers(HttpMethod.PUT, "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN")
-                        .pathMatchers(HttpMethod.PATCH, "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN")
-                        .pathMatchers(HttpMethod.DELETE, "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN")
+                        // ── Applications — recruiter/admin/superadmin ─────────
+                        .pathMatchers(HttpMethod.GET,    "/api/applications/*/cv").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.GET,    "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.PUT,    "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.PATCH,  "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/applications/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
 
-                        // Notifications
-                        .pathMatchers(HttpMethod.GET, "/api/notifications/**").hasRole("CANDIDATE")
-                        .pathMatchers(HttpMethod.POST, "/api/notifications/**").hasRole("CANDIDATE")
-                        .pathMatchers(HttpMethod.PUT, "/api/notifications/**").hasRole("CANDIDATE")
+                        // ── Notifications (candidate) ─────────────────────────
+                        .pathMatchers(HttpMethod.GET,   "/api/notifications/**").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.POST,  "/api/notifications/**").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.PUT,   "/api/notifications/**").hasRole("CANDIDATE")
                         .pathMatchers(HttpMethod.PATCH, "/api/notifications/**").hasRole("CANDIDATE")
 
-                        // WebSocket
+                        // ── WebSocket ─────────────────────────────────────────
                         .pathMatchers("/ws/notifications/**").permitAll()
-                        .pathMatchers("/api/audit/**").hasRole("ADMIN")
 
-                        // Everything else
+                        // ── Audit ─────────────────────────────────────────────
+                        .pathMatchers("/api/audit/candidate/**").authenticated()
+                        .pathMatchers("/api/audit/**").hasAnyRole("ADMIN", "SUPERADMIN","RECRUITER")
+
+                        // ── Everything else ───────────────────────────────────
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

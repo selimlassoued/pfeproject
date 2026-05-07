@@ -9,7 +9,7 @@ import { AuthService } from '../services/AuthService.service';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
 import Keycloak from 'keycloak-js';
-
+import { inject } from '@angular/core';
 
 type SalaryRange = 'any' | 'specified' | '0-1000' | '1000-2000' | '2000-5000' | '5000+';
 
@@ -42,7 +42,9 @@ export class BrowseJobsComponent implements OnInit {
   private myAppsByJobId = new Map<string, string>();
   checkingMyApps = false;
 
-  constructor(private jobService: JobService, private authService: AuthService, private applicationService: ApplicationService,private router: Router, private keycloak: Keycloak) {}
+  private readonly keycloak = inject(Keycloak);
+
+  constructor(private jobService: JobService, private authService: AuthService, private applicationService: ApplicationService, private router: Router) {}
 
   ngOnInit(): void {
     this.fetchJobs();
@@ -51,25 +53,23 @@ export class BrowseJobsComponent implements OnInit {
     }
   }
 
-  get isRecruiter(): boolean {
-    return this.authService.isRecruiter();
-  }
+  // ── Role helpers — strict hierarchy ──────────────────────────────────────
 
-  get isAdmin(): boolean {
-    return this.authService.isAdmin();
-  }
-  get isGuest(): boolean {
-    return !this.keycloak.authenticated;
-}
+  get isSuperAdmin(): boolean { return this.authService.isSuperAdmin(); }
 
+  get isRecruiter(): boolean { return this.authService.isRecruiter(); }
 
+  get isAdmin(): boolean { return this.authService.isAdmin(); }
 
-  /**
-   * Fetch jobs from backend with current filters and pagination
-   */
-   get isCandidate(): boolean {
-    return !this.isRecruiter && !this.isAdmin && this.authService.isCandidate();
-  }
+  get isGuest(): boolean { return !this.keycloak.authenticated; }
+
+  get isCandidate(): boolean { return this.authService.isCandidate(); }
+
+  /** Only RECRUITER can create/edit/delete jobs */
+  get canManageJobs(): boolean { return this.isRecruiter; }
+
+  /** RECRUITER + ADMIN + SUPERADMIN see all job statuses */
+  get showAllJobs(): boolean { return this.isRecruiter || this.isAdmin || this.isSuperAdmin; }
 
   private loadMyApplications(): void {
       this.checkingMyApps = true;
@@ -121,10 +121,13 @@ export class BrowseJobsComponent implements OnInit {
 
     const [minSalary, maxSalary] = this.getSalaryRange();
 
+    // Candidates always see only PUBLISHED jobs — filter server-side
+    const effectiveStatus = this.isCandidate ? 'PUBLISHED' : this.status;
+
     this.jobService.searchJobs(
       this.query,
       this.employmentType,
-      this.status,
+      effectiveStatus,
       minSalary,
       maxSalary,
       this.currentPage,
@@ -233,8 +236,6 @@ export class BrowseJobsComponent implements OnInit {
     );
   }
 
- 
-
   uniqueNonEmpty(values: string[]): string[] {
     const set = new Set(values.map(v => (v ?? '').trim()).filter(v => !!v));
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -254,10 +255,38 @@ export class BrowseJobsComponent implements OnInit {
     return job.jobStatus ?? 'UNKNOWN';
   }
 
-  getVisibleJobs(): JobOffer[] {
-    if (this.isRecruiter || this.isAdmin) {
-      return this.filteredJobs;
+  spotsLeft(job: JobOffer): number | null {
+    if (job.openings == null) return null;
+    return Math.max(0, job.openings - (job.hiredCount ?? 0));
+  }
+
+  spotsLabel(job: JobOffer): string | null {
+    const left = this.spotsLeft(job);
+    if (left == null) return null;
+    if (left === 0) return 'Filled';
+    if (left === 1) return '1 spot left';
+    return `${left} spots left`;
+  }
+
+  spotsStyle(job: JobOffer): string {
+    const left = this.spotsLeft(job);
+    if (left == null) return '';
+    if (left === 0) return 'color:#f87171;';
+    if (left === 1) return 'color:#fbbf24;';
+    return 'color:#68d391;';
+  }
+
+  badgeStyle(job: JobOffer): string {
+    switch (job.jobStatus) {
+      case 'PUBLISHED': return 'background:rgba(72,187,120,0.12);color:#68d391;border:1px solid rgba(72,187,120,0.25);';
+      case 'DRAFT':     return 'background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);';
+      case 'CLOSED':    return 'background:rgba(248,113,113,0.12);color:#f87171;border:1px solid rgba(248,113,113,0.25);';
+      default:          return '';
     }
+  }
+
+  getVisibleJobs(): JobOffer[] {
+    if (this.showAllJobs) return this.filteredJobs;
     return this.filteredJobs.filter(job => job.jobStatus === 'PUBLISHED');
   }
 

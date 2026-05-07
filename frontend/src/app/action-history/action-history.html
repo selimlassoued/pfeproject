@@ -51,7 +51,9 @@
     <div class="section-label fade-up" style="animation-delay:.13s">
       History
       <span class="log-count">({{ totalLogs }})</span>
-      <span class="range-badge" *ngIf="activeFilter !== 'ALL'">{{ activeFilter }}</span>
+      <span class="range-badge" *ngIf="activeFilter !== 'ALL'">
+        {{ getEventMeta(activeFilter).label }}
+      </span>
     </div>
 
     <div class="filters fade-up" style="animation-delay:.15s">
@@ -68,7 +70,7 @@
 
     <ng-container *ngIf="!loading">
 
-      <!-- ── Log card — identical structure to dashboard ── -->
+      <!-- ── Log card ── -->
       <div class="glass-card log-card fade-up" style="animation-delay:.2s">
         <ng-container *ngIf="logs.length > 0; else noLogs">
           <div *ngFor="let log of logs; let i = index; trackBy: trackById"

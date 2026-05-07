@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-my-applications',
@@ -15,12 +16,14 @@ export class MyApplications implements OnInit {
   applications: ApplicationDto[] = [];
   loading = false;
   error: string | null = null;
+  withdrawingId: string | null = null;
+
+  // Statuses from which withdraw is NOT allowed
+  private readonly NON_WITHDRAWABLE = ['HIRED', 'REJECTED', 'FLAGGED', 'BLOCKED', 'WITHDRAWN'];
 
   constructor(private appService: ApplicationService, private router: Router) {}
 
-  ngOnInit(): void {
-    this.load();
-  }
+  ngOnInit(): void { this.load(); }
 
   load() {
     this.loading = true;
@@ -44,5 +47,47 @@ export class MyApplications implements OnInit {
 
   statusClass(status: string): string {
     return (status || '').toLowerCase();
+  }
+
+  /**
+   * Candidate can withdraw from any status except:
+   * HIRED, REJECTED, FLAGGED, BLOCKED, WITHDRAWN
+   */
+  canWithdraw(app: ApplicationDto): boolean {
+    return !this.NON_WITHDRAWABLE.includes(app.status ?? '');
+  }
+
+  async withdraw(app: ApplicationDto, event: Event): Promise<void> {
+    event.stopPropagation();
+
+    const result = await Swal.fire({
+      title: 'Withdraw application?',
+      html: `<p style="color:rgba(255,255,255,0.7);font-size:.9rem">
+        Your application for <strong>${app.jobTitle ?? 'this job'}</strong>
+        will be withdrawn. You can re-apply later if you change your mind.
+      </p>`,
+      showCancelButton: true,
+      confirmButtonText: 'Yes, withdraw',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#d32f2f',
+    });
+
+    if (!result.isConfirmed) return;
+
+    this.withdrawingId = app.applicationId;
+    this.error = null;
+
+    this.appService.withdrawApplication(app.applicationId).subscribe({
+      next: () => {
+        this.withdrawingId = null;
+        this.applications = this.applications.filter(
+          a => a.applicationId !== app.applicationId
+        );
+      },
+      error: (err) => {
+        this.withdrawingId = null;
+        this.error = err?.error?.message || 'Failed to withdraw application.';
+      },
+    });
   }
 }
