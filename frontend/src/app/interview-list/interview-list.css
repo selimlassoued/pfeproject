@@ -8,8 +8,52 @@
   display: flex;
   justify-content: space-between;
   align-items: end;
+  gap: var(--space-6);
+  flex-wrap: wrap;
   margin-bottom: var(--space-8);
 }
+
+/* FILTERS */
+.interviews-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.interviews-filters .input {
+  min-width: 180px;
+}
+
+.active-filter-row {
+  margin-bottom: 1rem;
+}
+
+.active-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(121, 164, 233, 0.10);
+  border: 1px solid rgba(121, 164, 233, 0.30);
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.78rem;
+  color: var(--color-secondary);
+  font-weight: 600;
+}
+
+.clear-filter-btn {
+  background: none;
+  border: none;
+  color: rgba(121, 164, 233, 0.7);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0;
+  transition: color 0.15s;
+}
+.clear-filter-btn:hover { color: var(--color-cream); }
 
 .interviews-title {
   font-family: var(--font-display);
@@ -99,9 +143,16 @@
   border: 1px solid rgba(121, 164, 233, 0.25);
 }
 
-/* Example statuses */
+/* Per-status colours — class is the lowercased status (getStatusClass). */
 .interview-status.scheduled {
-  background: rgba(121, 164, 233, 0.1);
+  background: rgba(121, 164, 233, 0.12);
+  color: var(--color-secondary);
+}
+
+.interview-status.in_progress {
+  background: rgba(245, 198, 116, 0.14);
+  color: #f5c674;
+  border-color: rgba(245, 198, 116, 0.30);
 }
 
 .interview-status.completed {
@@ -112,6 +163,157 @@
 .interview-status.cancelled {
   background: rgba(233, 121, 121, 0.12);
   color: rgba(255, 220, 220, 0.95);
+}
+
+/* Actions cell — buttons sit in one row, wrap on narrow screens. */
+.interviews-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.interviews-actions .btn {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.88rem;
+}
+
+.interviews-dash {
+  color: var(--color-text-muted);
+}
+
+/* PAGINATION */
+.interviews-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0.85rem 1rem;
+  border-top: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(11, 16, 38, 0.35);
+}
+
+.interviews-pager-left,
+.interviews-pager-mid,
+.interviews-pager-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.interviews-pager-label {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.interviews-pager-mid {
+  color: rgba(248, 250, 252, 0.78);
+  font-size: 0.92rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.interviews-pager-right { gap: 0.7rem; justify-content: flex-end; }
+
+.interviews-pageBtns {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.interviews-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 32px;
+  color: rgba(248, 250, 252, 0.55);
+  user-select: none;
+  font-weight: 900;
+}
+
+.interviews-pageBtn {
+  min-width: 34px;
+  height: 32px;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(248, 250, 252, 0.88);
+  font-weight: 900;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.interviews-pageBtn:hover {
+  background: rgba(121, 164, 233, 0.10);
+  border-color: rgba(121, 164, 233, 0.32);
+  transform: translateY(-1px);
+}
+
+.interviews-pageBtn.active {
+  background: rgba(121, 164, 233, 0.18);
+  border-color: rgba(121, 164, 233, 0.45);
+  color: var(--color-cream);
+  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.12);
+}
+
+.interviews-pager .btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+/* Dark-mode native selects */
+.interviews-page select,
+.interviews-page select.input {
+  color-scheme: dark;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  border-radius: 12px;
+  padding: 0.7rem 2.4rem 0.7rem 0.9rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(248, 250, 252, 0.75) 50%),
+    linear-gradient(135deg, rgba(248, 250, 252, 0.75) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.interviews-page select option {
+  background: #0b1026;
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.interviews-pager-select { min-width: 92px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .interviews-filters { width: 100%; justify-content: flex-start; }
+  .interviews-filters .input { width: 100%; min-width: unset; }
+  .interviews-tableWrap { overflow-x: auto; }
+  .interviews-table { min-width: 760px; }
+  .interviews-pager { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+  .interviews-pager-left,
+  .interviews-pager-mid,
+  .interviews-pager-right { justify-content: space-between; width: 100%; }
+  .interviews-pageBtns { overflow-x: auto; max-width: 100%; }
 }
 
 /* EMPTY */

@@ -160,6 +160,40 @@ def _chunk_after_label(text: str, label_re: str) -> str:
     return re.sub(r"\s+", "", text[start:end])
 
 
+# A loose phone pattern also matches employment date ranges like
+# "2016 - 2018". These two helpers filter those out.
+_YEAR_RANGE_RE = re.compile(r"^\s*(?:19|20)\d{2}\s*[-–—]\s*(?:19|20)\d{2}\s*$")
+_PHONE_CANDIDATE_RE = re.compile(r"\+?\d[\d \-\.\(\)]{6,}\d")
+
+
+def _is_plausible_phone(s: str) -> bool:
+    """A real phone has 8-15 digits and is not a year range."""
+    if _YEAR_RANGE_RE.match(s):
+        return False
+    digits = re.sub(r"\D", "", s)
+    return 8 <= len(digits) <= 15
+
+
+def _extract_phone(text: str) -> Optional[str]:
+    """Phone extraction that won't mistake a date range for a number.
+
+    Prefers a value sitting next to a Phone/Tel label; otherwise takes the
+    first full-text candidate. Both paths require a realistic 8-15 digit
+    count and reject year ranges, so "2016 - 2018" is never taken as a phone.
+    """
+    label = re.search(
+        r"(?:Phone|Tel|T[ée]l|T[ée]l[ée]phone|Mobile|Portable|Cell|GSM)\s*:?\s*"
+        r"(\+?\d[\d \-\.\(\)]{6,}\d)",
+        text, re.IGNORECASE,
+    )
+    if label and _is_plausible_phone(label.group(1)):
+        return label.group(1).strip()
+    for m in _PHONE_CANDIDATE_RE.finditer(text):
+        if _is_plausible_phone(m.group(0)):
+            return m.group(0).strip()
+    return None
+
+
 def extract_contact_fields(text: str) -> dict:
     """
     Extract email, phone, LinkedIn, GitHub from anywhere in the CV text.
@@ -174,9 +208,9 @@ def extract_contact_fields(text: str) -> dict:
         r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,6}",
         email_chunk,
     )
-    # Phone: always search original text to preserve digit spacing (+216 29 176 273)
-    # Use [^\n] to prevent matching across newlines into address numbers
-    phone_m    = re.search(r"(\+?\d[\d \-\(\)]{6,}\d)(?!\d)", text)
+    # Phone: label-anchored, with a validated full-text fallback that rejects
+    # date ranges (a loose digit pattern otherwise matches "2016 - 2018").
+    phone    = _extract_phone(text)
     linkedin_m = re.search(
         r"(?:https?://)?(?:www\.)?linkedin\.com/in/[a-zA-Z0-9_\-]+", linkedin_chunk,
     )
@@ -223,7 +257,7 @@ def extract_contact_fields(text: str) -> dict:
 
     return {
         "email":    email_m.group(0)            if email_m    else None,
-        "phone":    phone_m.group(0).strip()    if phone_m    else None,
+        "phone":    phone,
         "linkedin": _https(linkedin_m.group(0)) if linkedin_m else None,
         "github":   _github_url(github_m),
     }

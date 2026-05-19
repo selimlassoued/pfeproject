@@ -24,6 +24,7 @@ export class CvAnalysisDrawer implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['applicationId'] && this.applicationId) {
+      console.log('Loading analysis for:', this.applicationId);
       this.load();
     }
   }

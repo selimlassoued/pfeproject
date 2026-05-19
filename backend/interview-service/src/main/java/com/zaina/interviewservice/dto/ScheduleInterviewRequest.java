@@ -17,6 +17,8 @@ public class ScheduleInterviewRequest {
     private UUID candidateId;
     private String candidateEmail;
     private String recruiterEmail;
+    private String candidateName;
+    private String recruiterName;
     private String jobTitle;
     private LocalDateTime scheduledAt;
     private Boolean recordingConsent;

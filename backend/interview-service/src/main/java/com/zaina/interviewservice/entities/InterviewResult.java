@@ -54,13 +54,13 @@ public class InterviewResult {
     @ElementCollection
     @CollectionTable(name = "interview_result_strengths",
             joinColumns = @JoinColumn(name = "result_id"))
-    @Column(name = "strength")
+    @Column(name = "strength", columnDefinition = "TEXT")
     private List<String> candidateStrengths;
 
     @ElementCollection
     @CollectionTable(name = "interview_result_weaknesses",
             joinColumns = @JoinColumn(name = "result_id"))
-    @Column(name = "weakness")
+    @Column(name = "weakness", columnDefinition = "TEXT")
     private List<String> candidateWeaknesses;
 
     @ElementCollection
@@ -72,4 +72,21 @@ public class InterviewResult {
     /** STRONG_YES / YES / MAYBE / NO */
     @Column(length = 20)
     private String hiringRecommendation;
+
+    // ── Unified scoring pipeline (Phase 1) ────────────────────────────────
+    // These let the UI render the journey: CV+GitHub → Semantic → Interview.
+    // Snapshotted at analysis time so the result row stays self-contained
+    // even if the underlying CV/match changes later.
+    private Integer preInterviewScore;   // 0-100 — semantic match job_fit_score at the time
+    private Integer interviewDelta;      // -20..+20 — what the interview added or subtracted
+    private Integer finalScore;          // 0-100 — clip(pre + delta)
+    /** A+ / A / B / C / D — derived from finalScore. */
+    @Column(length = 4)
+    private String  finalGrade;
+    /** CONFIRMED / RAISED / LOWERED / NEW — interview's effect on the verdict. */
+    @Column(length = 20)
+    private String  interviewVerdict;
+    /** JSON map of {dimension: {score, evidence}}. Kept as TEXT — small enough. */
+    @Column(columnDefinition = "TEXT")
+    private String  dimensionalScoresJson;
 }

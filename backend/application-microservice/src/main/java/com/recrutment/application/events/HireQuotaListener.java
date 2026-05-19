@@ -24,7 +24,6 @@ public class HireQuotaListener {
     private final AppEventPublisher  eventPublisher;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
     public void onHireCompleted(HireCompletedEvent event) {
         try {
             jobClient.incrementHired(event.jobId());
