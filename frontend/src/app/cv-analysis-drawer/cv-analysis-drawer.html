@@ -38,7 +38,6 @@
   <!-- Error -->
   @if (!loading && error) {
     <div class="drawer-error">
-      <span class="drawer-error-icon">⚠</span>
       <div>
         <div class="drawer-error-title">Analysis unavailable</div>
         <div class="drawer-error-msg">{{ error }}</div>
@@ -54,10 +53,22 @@
     </div>
   }
 
+  <!-- Not started — no analysis exists and none is running -->
+  @if (!loading && !error && notStarted) {
+    <div class="drawer-error">
+      <div>
+        <div class="drawer-error-title">No analysis yet</div>
+        <div class="drawer-error-msg">This application hasn't been analyzed.</div>
+      </div>
+      <button class="retry-btn" (click)="retry()" [disabled]="retrying">
+        {{ retrying ? 'Starting…' : 'Run AI Analysis' }}
+      </button>
+    </div>
+  }
+
   <!-- Failed — show retry -->
   @if (!loading && analysis && isFailed) {
     <div class="drawer-error">
-      <span class="drawer-error-icon">⚠</span>
       <div>
         <div class="drawer-error-title">Analysis failed</div>
         <div class="drawer-error-msg">{{ analysis.errorMessage || 'CV parsing failed.' }}</div>
@@ -76,17 +87,17 @@
       <div class="drawer-contact-row">
         @if (analysis.email) {
           <a [href]="'mailto:' + analysis.email" class="contact-chip">
-            <span class="chip-icon">✉</span> {{ analysis.email }}
+            {{ analysis.email }}
           </a>
         }
         @if (analysis.phone) {
           <span class="contact-chip">
-            <span class="chip-icon">📞</span> {{ analysis.phone }}
+            {{ analysis.phone }}
           </span>
         }
         @if (analysis.location) {
           <span class="contact-chip">
-            <span class="chip-icon">📍</span> {{ analysis.location }}
+            {{ analysis.location }}
           </span>
         }
         @if (analysis.socialLinks?.linkedin) {
@@ -96,7 +107,7 @@
         }
         @if (analysis.socialLinks?.github) {
           <a [href]="analysis.socialLinks!.github!" target="_blank" class="contact-chip chip-link">
-            <span class="chip-icon">⌥</span> GitHub
+            GitHub
           </a>
         }
       </div>
@@ -259,7 +270,7 @@
                     }
                   </div>
                   @if (edu.mention) {
-                    <span class="mention-badge">🏆 {{ edu.mention }}</span>
+                    <span class="mention-badge">{{ edu.mention }}</span>
                   }
                 </div>
               </div>
@@ -277,13 +288,13 @@
           <div class="github-header">
             <div class="github-header-left">
               <a [href]="analysis.githubProfile.accountUrl!" target="_blank" class="github-username">
-                ⌥ {{ analysis.githubProfile.username }}
+                {{ analysis.githubProfile.username }}
               </a>
               <span class="github-score-badge" [ngClass]="githubScoreClass(analysis.githubProfile.githubScore)">
                 {{ analysis.githubProfile.githubScore }}
               </span>
               @if (analysis.githubProfile.collaboration?.hasCollaboration) {
-                <span class="collab-badge">👥 Collaborator</span>
+                <span class="collab-badge">Collaborator</span>
               }
             </div>
 
@@ -363,22 +374,22 @@
                   <!-- Repo meta -->
                   <div class="github-repo-meta">
                     @if (repo.commitCount > 0) {
-                      <span class="repo-meta-item">⬆ {{ repo.commitCount }} commits</span>
+                      <span class="repo-meta-item">{{ repo.commitCount }} commits</span>
                     }
                     @if (repo.ownershipRatio != null) {
-                      <span class="repo-meta-item">👤 {{ ownershipPercent(repo.ownershipRatio) }} ownership</span>
+                      <span class="repo-meta-item">{{ ownershipPercent(repo.ownershipRatio) }} ownership</span>
                     }
                     @if (repo.branchCount > 0) {
-                      <span class="repo-meta-item">⎇ {{ repo.branchCount }} branches</span>
+                      <span class="repo-meta-item">{{ repo.branchCount }} branches</span>
                     }
                     @if (repo.daysOfActivity > 0) {
-                      <span class="repo-meta-item">📅 {{ repo.daysOfActivity }} days active</span>
+                      <span class="repo-meta-item">{{ repo.daysOfActivity }} days active</span>
                     }
                     @if (repo.commitActivity?.isConsistent) {
-                      <span class="repo-meta-item repo-meta-consistent">✦ consistent</span>
+                      <span class="repo-meta-item repo-meta-consistent">consistent</span>
                     }
                     @if (repo.sizeKb > 0) {
-                      <span class="repo-meta-item">💾 {{ repo.sizeKb }}KB</span>
+                      <span class="repo-meta-item">{{ repo.sizeKb }}KB</span>
                     }
                   </div>
 
@@ -457,7 +468,7 @@
                 </a>
               }
               <span class="linkedin-status-badge" [ngClass]="linkedinStatusClass(analysis.linkedinEnrichment.ethicalStatus)">
-                {{ analysis.linkedinEnrichment.ethicalStatus === 'SAFE' ? '✓ Safe' : '⚠ Flagged' }}
+                {{ analysis.linkedinEnrichment.ethicalStatus === 'SAFE' ? '✓ Safe' : 'Flagged' }}
               </span>
             </div>
 
@@ -499,19 +510,17 @@
               <div class="insights-grid">
                 @if (analysis.linkedinEnrichment.jobHoppingFlag != null) {
                   <div class="insight-item" [class.insight-warn]="analysis.linkedinEnrichment.jobHoppingFlag">
-                    <span class="insight-icon">{{ analysis.linkedinEnrichment.jobHoppingFlag ? '⚠' : '✓' }}</span>
+                    <span class="insight-icon">{{ analysis.linkedinEnrichment.jobHoppingFlag ? '' : '✓' }}</span>
                     <span>{{ analysis.linkedinEnrichment.jobHoppingFlag ? 'Job hopping detected' : 'Stable career path' }}</span>
                   </div>
                 }
                 @if (analysis.linkedinEnrichment.longestTenureMonths) {
                   <div class="insight-item">
-                    <span class="insight-icon">📅</span>
                     <span>Longest tenure: {{ analysis.linkedinEnrichment.longestTenureMonths }} months</span>
                   </div>
                 }
                 @if (analysis.linkedinEnrichment.senioritySummary) {
                   <div class="insight-item insight-full">
-                    <span class="insight-icon">📈</span>
                     <span>{{ analysis.linkedinEnrichment.senioritySummary }}</span>
                   </div>
                 }
@@ -605,7 +614,7 @@
           <div class="section-label">Awards & Recognition</div>
           <div class="awards-list">
             @for (award of analysis.awards; track $index) {
-              <div class="award-item">🏅 {{ award }}</div>
+              <div class="award-item">{{ award }}</div>
             }
           </div>
         </div>
@@ -654,10 +663,10 @@
         <div class="drawer-section">
           <div class="section-label section-label-yellow">Warnings</div>
           @for (w of analysis.evaluation!.dateWarnings; track $index) {
-            <div class="warning-item">⚠ {{ w }}</div>
+            <div class="warning-item">{{ w }}</div>
           }
           @for (w of analysis.evaluation!.gapWarnings; track $index) {
-            <div class="warning-item">⚠ {{ w }}</div>
+            <div class="warning-item">{{ w }}</div>
           }
         </div>
       }

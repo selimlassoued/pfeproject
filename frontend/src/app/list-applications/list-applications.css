@@ -156,7 +156,7 @@
   color: var(--color-text-muted);
 }
 
-/* ✅ Pagination */
+/* Pagination */
 .apps-pager{
   display:flex;
   align-items:center;
@@ -311,13 +311,13 @@
     flex: 0 0 auto;
   }
 }
-/* ✅ Make native selects render in dark mode (helps Chrome/Edge) */
+/* Make native selects render in dark mode (helps Chrome/Edge) */
 .apps-page select,
 .apps-page select.input {
   color-scheme: dark;
 }
 
-/* ✅ Style the select control itself (closed state) */
+/*  Style the select control itself (closed state) */
 .apps-page select.input,
 .apps-pager-select {
   -webkit-appearance: none;
@@ -346,13 +346,13 @@
   box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.14);
 }
 
-/* ✅ Try to style the dropdown list (options) */
+/* Try to style the dropdown list (options) */
 .apps-page select option {
   background: #0b1026;  /* dark popup background */
   color: rgba(248, 250, 252, 0.95);
 }
 
-/* ✅ Add a custom arrow */
+/* Add a custom arrow */
 .apps-pager-left,
 .apps-filters {
   position: relative;

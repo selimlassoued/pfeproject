@@ -18,13 +18,19 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import com.zaina.interviewservice.RabbitMQConfig;
 import com.zaina.interviewservice.messaging.AnalysisRequestMessage;
+import com.zaina.interviewservice.messaging.AppEventMessage;
+import com.zaina.interviewservice.messaging.InterviewEventPublisher;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -41,9 +47,14 @@ public class InterviewService {
     private final JitsiTokenService    jitsiTokenService;
     private final RabbitTemplate       rabbitTemplate;
     private final JobClient jobClient;
+    private final GoogleCalendarService googleCalendarService;
+    private final InterviewEventPublisher eventPublisher;
 
     @Value("${recordings.dir:recordings}")
     private String recordingsDir;
+
+    /** Two interviews for the same recruiter or candidate must be at least this far apart. */
+    private static final int MIN_GAP_MINUTES = 60;
 
     @Transactional
     public InterviewResponse scheduleInterview(ScheduleInterviewRequest request) {
@@ -58,6 +69,22 @@ public class InterviewService {
             throw new ConflictException(
                     "An active interview already exists for this application. " +
                             "Cancel or complete it before scheduling a new one."
+            );
+        }
+
+        // ── Neither the recruiter nor the candidate can be double-booked ─────
+        LocalDateTime when = request.getScheduledAt();
+
+        if (clashes(interviewRepo.findByRecruiterId(request.getRecruiterId()), when)) {
+            throw new ConflictException(
+                    "You already have an interview within " + MIN_GAP_MINUTES
+                            + " minutes of that time. Please pick another slot."
+            );
+        }
+        if (clashes(interviewRepo.findByCandidateId(request.getCandidateId()), when)) {
+            throw new ConflictException(
+                    "This candidate already has an interview within " + MIN_GAP_MINUTES
+                            + " minutes of that time. Please pick another slot."
             );
         }
 
@@ -128,6 +155,22 @@ public class InterviewService {
             log.error("Could not update application status for {}: {}", request.getApplicationId(), e.getMessage());
         }
 
+        // ── Mirror onto the recruiter's Google Calendar, if they linked it ────
+        try {
+            String eventId = googleCalendarService.createInterviewEvent(
+                    saved.getRecruiterId(), saved.getJobTitle(),
+                    saved.getCandidateEmail(), saved.getScheduledAt(), saved.getRoomUrl());
+            if (eventId != null) {
+                saved.setGoogleEventId(eventId);
+                interviewRepo.save(saved);
+                log.info("Interview {} mirrored to Google Calendar (event {})",
+                        saved.getId(), eventId);
+            }
+        } catch (Exception e) {
+            log.warn("Could not push interview {} to Google Calendar: {}",
+                    saved.getId(), e.getMessage());
+        }
+
         log.info("Interview {} scheduled for application {}", saved.getId(), saved.getApplicationId());
         return toResponse(saved);
     }
@@ -158,14 +201,77 @@ public class InterviewService {
     }
 
     @Transactional
-    public InterviewResponse cancelInterview(UUID interviewId) {
+    public InterviewResponse cancelInterview(UUID interviewId, UUID requesterId, boolean admin) {
         Interview interview = findById(interviewId);
+        // Only the recruiter who scheduled it may cancel — admins/superadmins override.
+        if (!admin && (requesterId == null
+                || !requesterId.equals(interview.getRecruiterId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Only the recruiter who scheduled this interview can cancel it.");
+        }
         interview.setStatus(InterviewStatus.CANCELLED);
         return toResponse(interviewRepo.save(interview));
     }
 
     public InterviewResponse getInterview(UUID interviewId) {
         return toResponse(findById(interviewId));
+    }
+
+    /** Invite another recruiter so they too may join this interview's room. */
+    @Transactional
+    public InterviewResponse inviteRecruiter(UUID interviewId, UUID recruiterId) {
+        Interview interview = findById(interviewId);
+        List<UUID> invited = interview.getInvitedRecruiterIds();
+        if (invited == null) invited = new ArrayList<>();
+        if (!recruiterId.equals(interview.getRecruiterId()) && !invited.contains(recruiterId)) {
+            invited.add(recruiterId);
+            interview.setInvitedRecruiterIds(invited);
+            interviewRepo.save(interview);
+
+            Map<String, Object> payload = baseEventPayload(interview);
+            payload.put("invitedRecruiterId", recruiterId.toString());
+            publishEvent("INTERVIEW_INVITE", payload);
+        }
+        return toResponse(interview);
+    }
+
+    /** A recruiter asks the interview's organizer to be invited. */
+    public void requestToJoin(UUID interviewId, UUID requesterId, String requesterName) {
+        Interview interview = findById(interviewId);
+        Map<String, Object> payload = baseEventPayload(interview);
+        payload.put("organizerId", interview.getRecruiterId().toString());
+        payload.put("requesterId", requesterId.toString());
+        payload.put("requesterName",
+                (requesterName != null && !requesterName.isBlank()) ? requesterName : "A recruiter");
+        publishEvent("INTERVIEW_JOIN_REQUEST", payload);
+    }
+
+    private Map<String, Object> baseEventPayload(Interview interview) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("interviewId", interview.getId().toString());
+        payload.put("applicationId", interview.getApplicationId().toString());
+        payload.put("jobTitle",
+                interview.getJobTitle() != null ? interview.getJobTitle() : "an interview");
+        return payload;
+    }
+
+    private void publishEvent(String type, Map<String, Object> payload) {
+        AppEventMessage evt = new AppEventMessage();
+        evt.setEventType(type);
+        evt.setProducer("interview-service");
+        evt.setPayload(payload);
+        eventPublisher.publish("notify.interview", evt);
+    }
+
+    /** Revoke a previously invited recruiter. */
+    @Transactional
+    public InterviewResponse uninviteRecruiter(UUID interviewId, UUID recruiterId) {
+        Interview interview = findById(interviewId);
+        if (interview.getInvitedRecruiterIds() != null) {
+            interview.getInvitedRecruiterIds().remove(recruiterId);
+            interviewRepo.save(interview);
+        }
+        return toResponse(interview);
     }
 
     public List<InterviewResponse> getByApplication(UUID applicationId) {
@@ -183,10 +289,25 @@ public class InterviewService {
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    /** Every interview across the team — drives the shared calendar. */
+    public List<InterviewResponse> getAll() {
+        return interviewRepo.findAll()
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
     private Interview findById(UUID id) {
         return interviewRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Interview not found: " + id));
+    }
+
+    /** True if any active interview in the list is within MIN_GAP_MINUTES of {@code when}. */
+    private boolean clashes(List<Interview> interviews, LocalDateTime when) {
+        return interviews.stream()
+                .filter(i -> i.getStatus() == InterviewStatus.SCHEDULED
+                        || i.getStatus() == InterviewStatus.IN_PROGRESS)
+                .anyMatch(i -> Math.abs(
+                        Duration.between(i.getScheduledAt(), when).toMinutes()) < MIN_GAP_MINUTES);
     }
 
     private InterviewResponse toResponse(Interview i) {
@@ -197,11 +318,13 @@ public class InterviewService {
                 .jobTitle(i.getJobTitle())
                 .candidateEmail(i.getCandidateEmail())
                 .recruiterEmail(i.getRecruiterEmail())
+                .recruiterId(i.getRecruiterId())
                 .scheduledAt(i.getScheduledAt())
                 .roomUrl(i.getRoomUrl())
                 .recordingConsent(i.getRecordingConsent())
                 .status(i.getStatus())
                 .createdAt(i.getCreatedAt())
+                .invitedRecruiterIds(i.getInvitedRecruiterIds())
                 .build();
     }
 

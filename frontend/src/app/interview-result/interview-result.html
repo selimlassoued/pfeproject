@@ -15,15 +15,15 @@
          class="ir-processing">
       <div class="ir-spinner"></div>
       <div class="ir-processing-label">
-        <span *ngIf="result.processingStatus === 'PENDING'">⏳ Waiting for recordings…</span>
-        <span *ngIf="result.processingStatus === 'TRANSCRIBING'">🎙 Transcribing audio…</span>
-        <span *ngIf="result.processingStatus === 'ANALYSING'">🧠 Analysing with AI…</span>
+        <span *ngIf="result.processingStatus === 'PENDING'">Waiting for recordings…</span>
+        <span *ngIf="result.processingStatus === 'TRANSCRIBING'">Transcribing audio…</span>
+        <span *ngIf="result.processingStatus === 'ANALYSING'">Analysing with AI…</span>
       </div>
       <p class="ir-processing-sub">This page refreshes automatically every 5 seconds.</p>
     </div>
 
     <div *ngIf="result.processingStatus === 'FAILED'" class="ir-failed">
-      ❌ Analysis failed: {{ result.errorMessage || 'Unknown error' }}
+      Analysis failed: {{ result.errorMessage || 'Unknown error' }}
     </div>
 
     <!-- Results -->
@@ -48,7 +48,7 @@
 
       <!-- Summary -->
       <div class="ir-card">
-        <div class="ir-card-title">📋 Summary</div>
+        <div class="ir-card-title">Summary</div>
         <p class="ir-summary-text">{{ result.summary }}</p>
       </div>
 
@@ -56,14 +56,14 @@
       <div class="ir-two-col">
 
         <div class="ir-card">
-          <div class="ir-card-title">💪 Strengths</div>
+          <div class="ir-card-title">Strengths</div>
           <ul class="ir-list ir-list-strengths">
             <li *ngFor="let s of result.candidateStrengths">{{ s }}</li>
           </ul>
         </div>
 
         <div class="ir-card">
-          <div class="ir-card-title">⚠️ Weaknesses</div>
+          <div class="ir-card-title">Weaknesses</div>
           <ul class="ir-list ir-list-weaknesses">
             <li *ngFor="let w of result.candidateWeaknesses">{{ w }}</li>
           </ul>
@@ -73,7 +73,7 @@
 
       <!-- Suggested Questions -->
       <div class="ir-card">
-        <div class="ir-card-title">❓ Suggested Follow-up Questions</div>
+        <div class="ir-card-title">Suggested Follow-up Questions</div>
         <ol class="ir-list ir-list-questions">
           <li *ngFor="let q of result.suggestedQuestions">{{ q }}</li>
         </ol>
@@ -82,7 +82,7 @@
       <!-- Transcript (collapsible) -->
       <div class="ir-card">
         <div class="ir-card-title ir-transcript-toggle" (click)="showTranscript = !showTranscript">
-          🗒 Transcript
+          Transcript
           <span class="ir-toggle-icon">{{ showTranscript ? '▲' : '▼' }}</span>
         </div>
         <pre *ngIf="showTranscript" class="ir-transcript">{{ result.transcript }}</pre>

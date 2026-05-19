@@ -53,7 +53,7 @@
             @if (canSignal()) {
               <button class="btn btn-signal" type="button"
                       [disabled]="acting" (click)="signalCandidate()">
-                ⚑ Signal candidate
+                Signal candidate
               </button>
             }
 
@@ -67,12 +67,12 @@
 
             <!-- RECRUITER: flagged by someone else -->
             @if (isRecruiter() && isViewedUserCandidate() && isFlagged() && !isCurrentRecruiterTheSignaler()) {
-              <span class="ad-status-moderated">⚑ Flagged by another recruiter</span>
+              <span class="ad-status-moderated"> Flagged by another recruiter</span>
             }
 
             <!-- RECRUITER: blocked by admin -->
             @if (isRecruiter() && isViewedUserCandidate() && isBlocked()) {
-              <span class="ad-status-moderated">⊘ Blocked by admin</span>
+              <span class="ad-status-moderated">Blocked by admin</span>
             }
           }
 
@@ -109,7 +109,6 @@
       <!-- Moderation banners -->
       @if (isViewedUserCandidate() && isFlagged()) {
         <div class="moderation-banner moderation-banner--flagged">
-          <span class="moderation-icon">⚑</span>
           <div>
             <div class="moderation-title">This candidate has been flagged</div>
             <div class="moderation-desc">Their applications are suspended pending admin review.</div>
@@ -118,7 +117,6 @@
       }
       @if (isViewedUserCandidate() && isBlocked()) {
         <div class="moderation-banner moderation-banner--blocked">
-          <span class="moderation-icon">⊘</span>
           <div>
             <div class="moderation-title">This candidate is blocked</div>
             <div class="moderation-desc">Their account is disabled and applications are out of consideration.</div>

@@ -212,7 +212,7 @@
   font-size:.85rem; font-weight:700;
   padding:.35rem .7rem; border-radius:999px;
 }
-.ad-status-moderated:has(⚑){ color:#ffa500; border:1px solid rgba(255,180,0,0.25); background:rgba(255,180,0,0.08); }
+.ad-status-moderated:has(){ color:#ffa500; border:1px solid rgba(255,180,0,0.25); background:rgba(255,180,0,0.08); }
 
 .ad-state{ color:var(--color-text-muted); padding:1rem 0; }
 .ad-error{
@@ -405,6 +405,30 @@
 .ad-skill-pct-missing { color:#fc8181; }
 .ad-tag-partial{ background:rgba(237,137,54,0.15); color:#ed8936; border:1px solid rgba(237,137,54,0.3); }
 
+.ad-skill-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-bottom: .3rem;
+  padding-left: .2rem;
+}
+.ad-ev-tag {
+  font-size: .7rem;
+  font-weight: 600;
+  padding: .15rem .55rem;
+  border-radius: 999px;
+  background: rgba(121,164,233,0.1);
+  color: rgba(121,164,233,0.85);
+  border: 1px solid rgba(121,164,233,0.2);
+}
+.ad-skill-reason {
+  font-size: .72rem;
+  color: rgba(255,255,255,0.45);
+  font-style: italic;
+  padding-left: .2rem;
+  margin-bottom: .5rem;
+}
+
 .ad-req-sources { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.4rem; }
 .ad-source-tag {
   font-size:.7rem; font-weight:600; padding:.2rem .55rem;
@@ -568,6 +592,109 @@
 
 .interview-join-btn {
   width: 100%;
+}
+
+.interview-private-note {
+  display: block;
+  font-size: 0.8rem;
+  color: rgba(248,250,252,0.45);
+  font-style: italic;
+}
+.interview-private-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.5rem 0;
+}
+.interview-request-btn {
+  font-size: 0.82rem;
+  padding: 0.5rem 1.1rem;
+}
+.interview-request-sent {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(121,233,170,0.85);
+}
+
+/* ── Recruiter invitations ── */
+.interview-invite {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(121,164,233,0.12);
+}
+.interview-invite-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(121,164,233,0.7);
+  margin-bottom: 0.5rem;
+}
+.interview-invite-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+}
+.interview-invite-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.3rem 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  color: rgba(200,255,230,0.95);
+  background: rgba(121,233,170,0.1);
+  border: 1px solid rgba(121,233,170,0.25);
+}
+.interview-invite-x {
+  border: none;
+  background: transparent;
+  color: rgba(248,250,252,0.45);
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  border-radius: 5px;
+  transition: color 0.14s, background 0.14s;
+}
+.interview-invite-x:hover { color: #f87171; background: rgba(248,113,113,0.12); }
+.interview-invite-x:disabled { cursor: not-allowed; opacity: 0.5; }
+.interview-invite-empty {
+  font-size: 0.78rem;
+  color: rgba(248,250,252,0.4);
+  margin-bottom: 0.55rem;
+}
+.interview-invite-add {
+  display: flex;
+  gap: 0.5rem;
+}
+.interview-invite-select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(121,164,233,0.22);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-family: inherit;
+  outline: none;
+}
+.interview-invite-select:focus { border-color: rgba(121,164,233,0.5); }
+/* Dark dropdown options — the native list is white by default */
+.interview-invite-select option {
+  background: #141c3c;
+  color: #e8f0fe;
+}
+.interview-invite-select option:disabled {
+  color: rgba(248,250,252,0.4);
+}
+.interview-invite-btn {
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  padding: 0.5rem 1rem;
 }
 
 .interview-blocked-badge {

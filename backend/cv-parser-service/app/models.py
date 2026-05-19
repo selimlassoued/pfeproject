@@ -131,6 +131,10 @@ class GitHubProfile(BaseModel):
     # Verdict
     github_score: str = "INACTIVE"
 
+    # Set True when account can't be assessed (NO_PUBLIC_WORK / RATE_LIMITED).
+    # Signals downstream code to treat the profile as neutral (no penalty).
+    verification_skipped: bool = False
+
     # Three-tier CV skills verification
     cv_skills_confirmed: List[str] = Field(default_factory=list)
     cv_skills_likely: List[str] = Field(default_factory=list)
@@ -145,6 +149,12 @@ class GitHubProfile(BaseModel):
 
     # ── New: collaboration signals ────────────────────────────────────────────
     collaboration: CollaborationSignals = Field(default_factory=CollaborationSignals)
+
+    # ── New: per-tech usage stats (languages + frameworks) ───────────────────
+    # Keyed by lowercase tech name. Each value: {repo_count, first_used, last_used, years}
+    # Built from all own repos with size > 10 KB. Provides a real-evidence floor
+    # for "years of experience per skill" used by the scoring system.
+    tech_stats: Dict[str, Dict[str, int]] = Field(default_factory=dict)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -259,6 +269,12 @@ class CvAnalysisResult(BaseModel):
     awards: List[str] = Field(default_factory=list)
 
     github_profile: Optional[GitHubProfile] = None
+
+    # LLM-derived per-skill classification: {skill_lower: {volatility:int, implies:list[str]}}.
+    # Populated by skill_intel.get_skill_intelligence() after parsing. Used by the
+    # scoring system to obtain per-skill half-life and framework→language implications
+    # generically (no hardcoded framework lists). Cached across CVs.
+    skill_intel: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
     raw_text_length: Optional[int] = None
     parsing_status: str = "SUCCESS"

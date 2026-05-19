@@ -23,7 +23,7 @@ public class AuditLogService {
     /** All events — SUPERADMIN sees everything */
     private static final List<String> ALL_EVENTS = List.of(
             "APPLICATION_STATUS_UPDATE", "APPLICATION_WITHDRAWN",
-            "JOB_UPDATED",
+            "JOB_CREATED", "JOB_UPDATED", "JOB_CLOSED", "JOB_QUOTA_REACHED",
             "USER_BLOCK", "USER_UNBLOCK",
             "CANDIDATE_FLAGGED", "CANDIDATE_UNFLAGGED", "CANDIDATE_SIGNAL_DISMISSED",
             "ROLE_UPDATE"
@@ -32,16 +32,32 @@ public class AuditLogService {
     /** ADMIN sees all except ROLE_UPDATE and SUPERADMIN actions */
     private static final List<String> ADMIN_EVENTS = List.of(
             "APPLICATION_STATUS_UPDATE", "APPLICATION_WITHDRAWN",
-            "JOB_UPDATED",
+            "JOB_CREATED", "JOB_UPDATED", "JOB_CLOSED", "JOB_QUOTA_REACHED",
             "USER_BLOCK", "USER_UNBLOCK",
             "CANDIDATE_FLAGGED", "CANDIDATE_UNFLAGGED", "CANDIDATE_SIGNAL_DISMISSED"
     );
 
-    /** RECRUITER sees only recruitment events — no blocks, no dismiss, no roles */
+    /** RECRUITER sees recruitment events — all job events + applications +
+     *  candidate flags — but no user blocks, no dismiss, no role changes. */
     private static final List<String> RECRUITER_EVENTS = List.of(
             "APPLICATION_STATUS_UPDATE", "APPLICATION_WITHDRAWN",
-            "JOB_UPDATED",
+            "JOB_CREATED", "JOB_UPDATED", "JOB_CLOSED", "JOB_QUOTA_REACHED",
             "CANDIDATE_FLAGGED", "CANDIDATE_UNFLAGGED"
+    );
+
+    /** Every job event type — backs the single "Jobs" filter chip. */
+    private static final List<String> JOB_EVENTS = List.of(
+            "JOB_CREATED", "JOB_UPDATED", "JOB_CLOSED", "JOB_QUOTA_REACHED"
+    );
+
+    /** Candidate flag events — backs the single "Flags" filter chip. */
+    private static final List<String> FLAG_EVENTS = List.of(
+            "CANDIDATE_FLAGGED", "CANDIDATE_UNFLAGGED"
+    );
+
+    /** User block events — backs the single "Blocks" filter chip. */
+    private static final List<String> BLOCK_EVENTS = List.of(
+            "USER_BLOCK", "USER_UNBLOCK"
     );
 
     // ── Main log query — role-aware ───────────────────────────────────────────
@@ -62,6 +78,27 @@ public class AuditLogService {
         Pageable nativePageable = PageRequest.of(page, size);
 
         Instant from = resolveFrom(range);
+
+        // "JOBS" category — one filter chip covering every job event type
+        if ("JOBS".equalsIgnoreCase(eventType)) {
+            return from != null
+                    ? repository.findByEventTypeInAndCreatedAtBetween(JOB_EVENTS, from, Instant.now(), sortedPageable)
+                    : repository.findByEventTypeIn(JOB_EVENTS, sortedPageable);
+        }
+
+        // "FLAGS" category — flagged + unflagged in a single filter chip
+        if ("FLAGS".equalsIgnoreCase(eventType)) {
+            return from != null
+                    ? repository.findByEventTypeInAndCreatedAtBetween(FLAG_EVENTS, from, Instant.now(), sortedPageable)
+                    : repository.findByEventTypeIn(FLAG_EVENTS, sortedPageable);
+        }
+
+        // "BLOCKS" category — block + unblock in a single filter chip
+        if ("BLOCKS".equalsIgnoreCase(eventType)) {
+            return from != null
+                    ? repository.findByEventTypeInAndCreatedAtBetween(BLOCK_EVENTS, from, Instant.now(), sortedPageable)
+                    : repository.findByEventTypeIn(BLOCK_EVENTS, sortedPageable);
+        }
 
         // targetId filter — use simple JPQL query
         if (targetId != null && eventType != null) {
@@ -195,6 +232,15 @@ public class AuditLogService {
 
     public Page<AuditLog> getLogsByActor(String actorUserId, String eventType, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "occurredAt"));
+        if ("JOBS".equalsIgnoreCase(eventType)) {
+            return repository.findByActorUserIdAndEventTypeIn(actorUserId, JOB_EVENTS, pageable);
+        }
+        if ("FLAGS".equalsIgnoreCase(eventType)) {
+            return repository.findByActorUserIdAndEventTypeIn(actorUserId, FLAG_EVENTS, pageable);
+        }
+        if ("BLOCKS".equalsIgnoreCase(eventType)) {
+            return repository.findByActorUserIdAndEventTypeIn(actorUserId, BLOCK_EVENTS, pageable);
+        }
         if (eventType != null) {
             return repository.findByActorUserIdAndEventType(actorUserId, eventType, pageable);
         }

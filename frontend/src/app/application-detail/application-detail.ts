@@ -8,6 +8,11 @@ import { CvAnalysisDrawer } from '../cv-analysis-drawer/cv-analysis-drawer';
 import { JobService } from '../services/job.service';
 import Keycloak from 'keycloak-js';
 import Swal from 'sweetalert2';
+import { InterviewResponse } from '../services/interview-service';
+import { ScheduleInterview } from '../schedule-interview/schedule-interview';
+import{ InterviewService } from '../services/interview-service';
+import { UserService } from '../services/user-service';
+import { AdminUserRow } from '../model/admin_users.type';
 
 // Allowed status transitions — mirrors backend logic
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -22,11 +27,6 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   WITHDRAWN:        [],
 };
 
-import { InterviewResponse } from '../services/interview-service';
-import { ScheduleInterview } from '../schedule-interview/schedule-interview';
-import { inject } from '@angular/core';
-import{ InterviewService } from '../services/interview-service';
-import Keycloak from 'keycloak-js';
 @Component({
   selector: 'app-application-detail',
   imports: [CommonModule, FormsModule, CvAnalysisDrawer,ScheduleInterview],
@@ -59,7 +59,13 @@ export class ApplicationDetail implements OnInit, OnDestroy {
   scheduledInterview: InterviewResponse | null = null;
   cancellingId: string | null = null;
 
-  private keycloak = inject(Keycloak);
+  // ── Recruiter invitations to the interview room ──
+  recruiters: AdminUserRow[] = [];
+  inviteSelection = '';
+  invitingId: string | null = null;
+  requestingJoin = false;
+  joinRequestSent = false;
+
 
   drawerOpen = false;
 
@@ -73,10 +79,10 @@ export class ApplicationDetail implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private appService: ApplicationService,
     private interviewService: InterviewService,
     private appService: ApplicationService,
-    private jobService: JobService
+    private jobService: JobService,
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {
@@ -85,6 +91,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     if (id) {
       this.loadApplication(id);
     }
+    this.loadRecruiters();
     if (!id) {
       this.error = 'Missing application id';
       return;
@@ -270,7 +277,8 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     switch (this.app?.status) {
       case 'APPLIED':
         return [
-          { label: '→ Move to Review',     status: 'UNDER_REVIEW',    style: 'primary' },
+          { label: '→ Move to Interview',  status: 'INTERVIEW_PHASE', style: 'primary' },
+          { label: 'Still deciding',     status: 'UNDER_REVIEW',    style: 'secondary' },
           { label: '✗ Reject',             status: 'REJECTED',         style: 'danger' },
         ];
       case 'UNDER_REVIEW':
@@ -411,10 +419,16 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     ) ?? null;
   }
 
+  /** A recruiter may only cancel interviews they scheduled — admins can cancel any. */
+  canCancel(iv: InterviewResponse): boolean {
+    return this.isAdmin() || this.isSuperAdmin() || iv.recruiterId === this.recruiterId;
+  }
+
   cancelInterview(interview: InterviewResponse) {
   if (!confirm('Are you sure you want to cancel this interview?')) return;
   this.cancellingId = interview.id;
-  this.interviewService.cancelInterview(interview.id).subscribe({
+  const admin = this.isAdmin() || this.isSuperAdmin();
+  this.interviewService.cancelInterview(interview.id, this.recruiterId, admin).subscribe({
     next: (updated) => {
       const idx = this.interviews.findIndex(i => i.id === updated.id);
       if (idx !== -1) this.interviews[idx] = updated;
@@ -424,7 +438,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
   });
 }
   get canSchedule(): boolean {
-    return this.activeInterview === null;
+    return this.app?.status === 'INTERVIEW_PHASE' && this.activeInterview === null;
   }
   get recruiterEmail(): string {
   return this.keycloak.tokenParsed?.['email'] ?? '';
@@ -445,8 +459,88 @@ get isKeycloakReady(): boolean {
     this.scheduledInterview = null;
 }
 joinInterview() {
-  if (!this.activeInterview) return;
-  this.router.navigate(['/interview', this.activeInterview.id, 'room']);
+  const iv = this.activeInterview;
+  if (!iv || !this.canJoin(iv)) return;
+  this.router.navigate(['/interview', iv.id, 'room']);
+}
+
+// ── Interview-room access ────────────────────────────────────────────────
+
+/** Load the team's recruiters so the organizer can pick who to invite. */
+private loadRecruiters(): void {
+  this.userService.listUsers({ max: 200 })
+    .then(users => {
+      this.recruiters = users.filter(u =>
+        ((u.roles ?? []).includes('RECRUITER') || u.role === 'RECRUITER')
+        && u.id !== this.recruiterId);
+    })
+    .catch(() => { this.recruiters = []; });
+}
+
+/** A recruiter may join only their own interview, one they're invited to, or as admin. */
+canJoin(iv: InterviewResponse): boolean {
+  return this.isAdmin() || this.isSuperAdmin()
+    || iv.recruiterId === this.recruiterId
+    || (iv.invitedRecruiterIds ?? []).includes(this.recruiterId);
+}
+
+/** Only the recruiter who scheduled the interview manages its invitations. */
+canManageInvites(iv: InterviewResponse): boolean {
+  return iv.recruiterId === this.recruiterId;
+}
+
+/** Notify the organizer that this recruiter would like to be invited. */
+requestToJoin(iv: InterviewResponse): void {
+  this.requestingJoin = true;
+  const t = this.keycloak.tokenParsed as Record<string, string> | undefined;
+  const name = t?.['name']
+    || `${t?.['given_name'] ?? ''} ${t?.['family_name'] ?? ''}`.trim()
+    || t?.['preferred_username']
+    || this.recruiterEmail
+    || 'A recruiter';
+  this.interviewService.requestJoin(iv.id, this.recruiterId, name).subscribe({
+    next: () => { this.requestingJoin = false; this.joinRequestSent = true; },
+    error: () => { this.requestingJoin = false; },
+  });
+}
+
+/** Recruiters not yet invited — drives the invite dropdown. */
+availableRecruiters(iv: InterviewResponse): AdminUserRow[] {
+  const invited = new Set(iv.invitedRecruiterIds ?? []);
+  return this.recruiters.filter(r => !invited.has(r.id));
+}
+
+recruiterLabel(id: string): string {
+  const r = this.recruiters.find(x => x.id === id);
+  if (!r) return 'Recruiter';
+  const name = `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim();
+  return name || r.username || r.email || 'Recruiter';
+}
+
+inviteRecruiter(iv: InterviewResponse): void {
+  if (!this.inviteSelection) return;
+  this.invitingId = iv.id;
+  this.interviewService.invite(iv.id, this.inviteSelection).subscribe({
+    next: updated => {
+      const idx = this.interviews.findIndex(i => i.id === updated.id);
+      if (idx !== -1) this.interviews[idx] = updated;
+      this.inviteSelection = '';
+      this.invitingId = null;
+    },
+    error: () => { this.invitingId = null; },
+  });
+}
+
+uninviteRecruiter(iv: InterviewResponse, recruiterId: string): void {
+  this.invitingId = iv.id;
+  this.interviewService.uninvite(iv.id, recruiterId).subscribe({
+    next: updated => {
+      const idx = this.interviews.findIndex(i => i.id === updated.id);
+      if (idx !== -1) this.interviews[idx] = updated;
+      this.invitingId = null;
+    },
+    error: () => { this.invitingId = null; },
+  });
 }
 viewResult(interviewId: string) {
   this.router.navigate(['/interview', interviewId, 'result']);

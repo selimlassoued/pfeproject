@@ -1,5 +1,7 @@
 server:
   port: ${SERVER_PORT:8086}
+  error:
+    include-message: always
 
 recordings:
   dir: ${RECORDINGS_DIR:recordings}
@@ -44,3 +46,12 @@ eureka:
 analysis:
   sidecar:
     url: ${ANALYSIS_SIDECAR_URL:http://analysis-service:8000}
+
+google:
+  client-id: ${GOOGLE_CLIENT_ID:}
+  client-secret: ${GOOGLE_CLIENT_SECRET:}
+  redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4200/google-callback}
+
+app:
+  messaging:
+    exchange: ${APP_MESSAGING_EXCHANGE:app.events}

@@ -44,6 +44,9 @@ public class Interview {
 
     private String roomName;
 
+    /** Id of the event mirrored into the recruiter's Google Calendar, if connected. */
+    private String googleEventId;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean recordingConsent = false;
@@ -68,6 +71,13 @@ public class Interview {
     @Column(nullable = false)
     @Builder.Default
     private Boolean candidateLeft = false;
+
+    /** Recruiters the organizer invited to also join this interview. */
+    @ElementCollection
+    @CollectionTable(name = "interview_invited_recruiters",
+            joinColumns = @JoinColumn(name = "interview_id"))
+    @Column(name = "recruiter_id")
+    private List<UUID> invitedRecruiterIds;
 
     // ── CV context — populated at scheduling time from application service ──
     private String candidateName;

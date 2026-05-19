@@ -1,10 +1,16 @@
 <section class="container" style="padding: 3.5rem 0;">
-  <header style="margin-bottom: 1.25rem;">
-    <span class="pill">Jobs</span>
-    <h2 class="section-title">Browse open positions</h2>
-    <p class="text-muted">
-      Explore our current opportunities and apply when you're ready.
-    </p>
+  <header style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+    <div>
+      <span class="pill">Jobs</span>
+      <h2 class="section-title">Browse open positions</h2>
+      <p class="text-muted">Explore our current opportunities and apply when you're ready.</p>
+    </div>
+    @if (isCandidate) {
+      <a class="btn btn-primary" [routerLink]="['/preferences']"
+        style="display:flex;align-items:center;gap:.5rem;white-space:nowrap;">
+        My Preferences
+      </a>
+    }
   </header>
 
   <!-- Recruiter tools — RECRUITER only -->
@@ -39,9 +45,12 @@
         <label class="toolbar-label">Employment type</label>
         <select class="input" [value]="employmentType" (change)="onEmploymentTypeChange($event)">
           <option value="">All</option>
-          <option *ngFor="let t of employmentTypes" [value]="t">{{ formatEmploymentType(t) }}</option>
+          @for (t of employmentTypes; track t) {
+            <option [value]="t">{{ formatEmploymentType(t) }}</option>
+          }
         </select>
       </div>
+
       @if (showAllJobs) {
         <div class="field">
           <label class="toolbar-label">Status</label>
@@ -53,6 +62,7 @@
           </select>
         </div>
       }
+
       <div class="field">
         <label class="toolbar-label">Salary</label>
         <select class="input" [value]="salaryRange" (change)="onSalaryRangeChange($event)">
@@ -71,9 +81,28 @@
         Showing <strong>{{ pageResponse?.content?.length ?? 0 }}</strong> of
         <strong>{{ pageResponse?.totalElements ?? 0 }}</strong>
       </div>
-      <button class="btn btn-ghost" type="button" (click)="resetFilters()" [disabled]="!hasActiveFilters()">
-        Reset
-      </button>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        @if (isCandidate) {
+          <div class="sort-toggle">
+            <button type="button"
+              class="sort-btn"
+              [class.sort-btn--active]="sortMode === 'date'"
+              (click)="setSortMode('date')">
+              Newest
+            </button>
+            <button type="button"
+              class="sort-btn"
+              [class.sort-btn--active]="sortMode === 'match'"
+              (click)="setSortMode('match')"
+              [disabled]="rankingLoading">
+              @if (rankingLoading) { Computing… } @else { Recommendation }
+            </button>
+          </div>
+        }
+        <button class="btn btn-ghost" type="button" (click)="resetFilters()" [disabled]="!hasActiveFilters()">
+          Reset
+        </button>
+      </div>
     </div>
   </div>
 
@@ -89,65 +118,77 @@
 
   @if (!loading && !error && (pageResponse?.content?.length ?? 0) > 0) {
     <div style="display:grid; gap:1rem;">
-      <article *ngFor="let job of getVisibleJobs()" class="card card--hover" style="padding:1.25rem;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;">
-          <div>
-            <h3 style="margin:0;font-size:1.1rem;font-family:var(--font-display);">{{ job.title }}</h3>
-            <div class="text-muted" style="margin-top:.35rem;">
-              {{ job.location }}
-              @if (job.workArrangement) { • {{ job.workArrangement | titlecase }} }
-              • {{ job.employmentType }}
+      @for (job of getVisibleJobs(); track job.id) {
+        <article class="card card--hover" style="padding:1.25rem;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;">
+            <div>
+              <h3 style="margin:0;font-size:1.1rem;font-family:var(--font-display);">{{ job.title }}</h3>
+              <div class="text-muted" style="margin-top:.35rem;">
+                {{ job.location }}
+                @if (job.workArrangement) { • {{ job.workArrangement | titlecase }} }
+                • {{ job.employmentType }}
+              </div>
             </div>
-          </div>
-          <span class="pill" [style]="badgeStyle(job)">{{ badgeText(job) }}</span>
-        </div>
-
-        <p class="text-muted" style="margin-top:.75rem;">{{ job.description }}</p>
-
-        <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-          <div class="text-muted">{{ salaryText(job) }}</div>
-          @if (showAllJobs && job.jobStatus === 'PUBLISHED' && spotsLabel(job)) {
-            <span style="font-size:.78rem; font-weight:700; padding:.2rem .6rem; border-radius:999px; border:1px solid rgba(255,255,255,.1);"
-                  [style]="spotsStyle(job)">
-              {{ spotsLabel(job) }}
-            </span>
-          }
-        </div>
-
-        @if ((job.requirements?.length ?? 0) > 0) {
-          <div style="margin-top:.75rem;">
-            <div class="text-muted" style="font-size:.9rem; margin-bottom:.35rem;">Requirements</div>
-            <div style="display:flex; flex-wrap:wrap; gap:.4rem;">
-              <span class="pill" *ngFor="let r of (job.requirements ?? []).slice(0, 5)">
-                {{ r.category }}: {{ r.description }}
-              </span>
-              @if ((job.requirements?.length ?? 0) > 5) {
-                <span class="pill">+{{ (job.requirements?.length ?? 0) - 5 }} more</span>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+              @if (sortMode === 'match' && matchLabel(job)) {
+                <span class="pill" [style]="matchStyle(job)">{{ matchLabel(job) }}</span>
               }
+              <span class="pill" [style]="badgeStyle(job)">{{ badgeText(job) }}</span>
             </div>
           </div>
-        }
 
-        <div style="display:flex; gap:.5rem; margin-top:1rem;">
-          <button class="btn btn-ghost" type="button" [routerLink]="['/jobs', job.id]">View details</button>
+          <p class="text-muted" style="margin-top:.75rem;">{{ job.description }}</p>
 
-          <!-- Edit/Delete — RECRUITER only -->
-          @if (canManageJobs) {
-            <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job.id]">Edit</button>
-            <button class="btn btn-ghost" type="button" (click)="deleteJob(job.id)"
-              style="color: var(--color-secondary);">Delete</button>
+          <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div class="text-muted">{{ salaryText(job) }}</div>
+            @if (showAllJobs && job.jobStatus === 'PUBLISHED' && spotsLabel(job)) {
+              <span style="font-size:.78rem; font-weight:700; padding:.2rem .6rem; border-radius:999px; border:1px solid rgba(255,255,255,.1);"
+                    [style]="spotsStyle(job)">
+                {{ spotsLabel(job) }}
+              </span>
+            }
+          </div>
+
+          @if ((job.requirements?.length ?? 0) > 0) {
+            <div style="margin-top:.75rem;">
+              <div class="text-muted" style="font-size:.9rem; margin-bottom:.35rem;">Requirements</div>
+              <div style="display:flex; flex-wrap:wrap; gap:.4rem;">
+                @for (r of (job.requirements ?? []).slice(0, 5); track r.id) {
+                  <span class="pill">{{ r.category }}: {{ r.description }}</span>
+                }
+                @if ((job.requirements?.length ?? 0) > 5) {
+                  <span class="pill">+{{ (job.requirements?.length ?? 0) - 5 }} more</span>
+                }
+              </div>
+            </div>
           }
 
-          @if (isCandidate) {
-            <button class="btn btn-primary" type="button" [disabled]="checkingMyApps" (click)="applyOrView(job.id)">
-              {{ applyBtnLabel(job.id) }}
-            </button>
-          }
-          @if (isGuest) {
-            <button class="btn btn-primary" type="button" (click)="applyOrView(job.id)">Apply</button>
-          }
-        </div>
-      </article>
+          <div style="display:flex; gap:.5rem; margin-top:1rem;">
+            <button class="btn btn-ghost" type="button" [routerLink]="['/jobs', job.id]">View details</button>
+
+            @if (canManageJobs) {
+              <!-- DRAFT jobs are freely editable from the list. PUBLISHED jobs may
+                   still be editable (if no applicants) — but that check needs the
+                   applicant count, so editing them is done from the job detail page. -->
+              @if (job.jobStatus === 'DRAFT') {
+                <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job.id]">Edit</button>
+              }
+              @if (job.jobStatus === 'PUBLISHED') {
+                <button class="btn btn-warn" type="button" (click)="closeJob(job.id)">Close</button>
+              }
+            }
+
+            @if (isCandidate) {
+              <button class="btn btn-primary" type="button" [disabled]="checkingMyApps" (click)="applyOrView(job.id)">
+                {{ applyBtnLabel(job.id) }}
+              </button>
+            }
+            @if (isGuest) {
+              <button class="btn btn-primary" type="button" (click)="applyOrView(job.id)">Apply</button>
+            }
+          </div>
+        </article>
+      }
     </div>
 
     <!-- Pagination -->

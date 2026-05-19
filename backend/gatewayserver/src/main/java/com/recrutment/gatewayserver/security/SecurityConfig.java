@@ -86,6 +86,10 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.PATCH,  "/api/applications/me/**").hasRole("CANDIDATE")
                         .pathMatchers(HttpMethod.DELETE, "/api/applications/me/**").hasRole("CANDIDATE")
 
+                        // ── Candidate profile preferences ─────────────────────
+                        .pathMatchers(HttpMethod.GET, "/api/applications/profile/me").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.PUT, "/api/applications/profile/me").hasRole("CANDIDATE")
+
                         // ── Applications — moderation ─────────────────────────
                         .pathMatchers(HttpMethod.POST,   "/api/applications/signal/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
                         .pathMatchers(HttpMethod.DELETE, "/api/applications/signal/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
@@ -121,9 +125,11 @@ public class SecurityConfig {
                                 .pathMatchers(HttpMethod.POST, "/api/interviews/*/left").hasAnyRole("RECRUITER", "CANDIDATE")
                                 .pathMatchers(HttpMethod.PATCH, "/api/interviews/*/consent").hasAnyRole("RECRUITER", "CANDIDATE")
 
-                                .pathMatchers(HttpMethod.GET, "/api/interviews/**").hasAnyRole("RECRUITER", "ADMIN", "CANDIDATE")
+                                .pathMatchers(HttpMethod.GET, "/api/interviews/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN", "CANDIDATE")
+                                // POST = scheduling / Google Calendar / join requests — recruiter actions only
                                 .pathMatchers(HttpMethod.POST, "/api/interviews/**").hasAnyRole("RECRUITER")
-                                .pathMatchers(HttpMethod.PATCH, "/api/interviews/**").hasAnyRole("RECRUITER", "CANDIDATE")
+                                // PATCH = cancel / invite / consent — admins included so they can moderate (e.g. a recruiter left)
+                                .pathMatchers(HttpMethod.PATCH, "/api/interviews/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN", "CANDIDATE")
 
                         // Everything else
                         .anyExchange().authenticated()

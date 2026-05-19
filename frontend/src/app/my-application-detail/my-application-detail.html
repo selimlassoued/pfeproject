@@ -39,7 +39,7 @@
             Open job →
           </button>
           <button class="btn btn-primary" type="button" (click)="downloadCv()">
-            ⬇ Download CV
+            Download CV
           </button>
 
           <!-- Withdraw button — only shown when APPLIED -->
@@ -127,7 +127,7 @@
       <div class="cad-iv-row">
         <span class="cad-iv-pill">{{ iv.status }}</span>
         <span class="cad-iv-date">
-          📅 {{ iv.scheduledAt | date:'dd/MM/yyyy' }} &nbsp; ⏰ {{ iv.scheduledAt | date:'HH:mm' }}
+          {{ iv.scheduledAt | date:'dd/MM/yyyy' }} &nbsp; {{ iv.scheduledAt | date:'HH:mm' }}
         </span>
       </div>
 
@@ -144,22 +144,22 @@
     class="btn btn-primary cad-iv-join"
     type="button"
     (click)="openConsentModal(iv)">
-    🎥 Join Interview
+    Join Interview
   </button>
   <span class="cad-iv-consent-badge" *ngIf="iv.recordingConsent">
-    ✅ Consent given
+    Consent given
   </span>
   <span class="cad-iv-consent-badge cad-iv-consent-pending" *ngIf="!iv.recordingConsent">
-    ⚠️ Consent required
+    Consent required
   </span>
 </div>
 
       <!-- Terminal states -->
       <div class="cad-iv-row" *ngIf="iv.status === 'COMPLETED'">
-        <span class="cad-iv-done">✅ Interview completed</span>
+        <span class="cad-iv-done"> Interview completed</span>
       </div>
       <div class="cad-iv-row" *ngIf="iv.status === 'CANCELLED'">
-        <span class="cad-iv-cancelled">❌ This interview was cancelled</span>
+        <span class="cad-iv-cancelled">This interview was cancelled</span>
       </div>
 
     </div>
@@ -303,7 +303,7 @@
           <div class="cad-divider"></div>
 
           <div class="cad-cv-actions">
-            <button class="btn btn-primary" type="button" (click)="downloadCv()">⬇ Download CV</button>
+            <button class="btn btn-primary" type="button" (click)="downloadCv()">Download CV</button>
 
             <!-- Withdraw button in CV section too — only when APPLIED -->
             @if (canWithdraw()) {
@@ -331,8 +331,6 @@
 <div class="cad-consent-overlay" *ngIf="consentInterviewId()" (click)="closeConsentModal()">
   <div class="cad-consent-modal" (click)="$event.stopPropagation()">
 
-    <div class="cad-consent-icon">🎙️</div>
-
     <h3 class="cad-consent-title">Recording Consent</h3>
 
     <p class="cad-consent-body">
@@ -359,7 +357,7 @@
       <button class="btn btn-primary" type="button"
               (click)="confirmConsent()"
               [disabled]="consentLoading()">
-        {{ consentLoading() ? 'Saving…' : '✅ I consent — Join Now' }}
+        {{ consentLoading() ? 'Saving…' : 'I consent — Join Now' }}
       </button>
     </div>
 

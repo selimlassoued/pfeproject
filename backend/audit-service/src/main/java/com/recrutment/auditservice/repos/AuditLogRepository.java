@@ -25,9 +25,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     List<AuditLog> findByActorUserId(String actorUserId);
     Page<AuditLog> findByActorUserId(String actorUserId, Pageable pageable);
     List<AuditLog> findByActorUserIdAndEventTypeIn(String actorUserId, List<String> eventTypes);
+    Page<AuditLog> findByActorUserIdAndEventTypeIn(String actorUserId, List<String> eventTypes, Pageable pageable);
     Page<AuditLog> findByActorUserIdAndEventType(String actorUserId, String eventType, Pageable pageable);
 
     Page<AuditLog> findByEventTypeIn(List<String> eventTypes, Pageable pageable);
+    Page<AuditLog> findByEventTypeInAndCreatedAtBetween(List<String> eventTypes, Instant from, Instant to, Pageable pageable);
     Page<AuditLog> findByEventTypeAndTargetId(String eventType, String targetId, Pageable pageable);
     Page<AuditLog> findByTargetIdAndEventTypeIn(String targetId, List<String> eventTypes, Pageable pageable);
 

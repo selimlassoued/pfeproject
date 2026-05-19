@@ -146,8 +146,9 @@ public class JobOfferController {
     @PostMapping("/{id}/close")
     public JobOfferDto closeJob(
             @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
             @RequestHeader(name = ACTOR_USER_ID_HEADER, required = false) String actorUserId) {
-        return service.closeJob(id, actorUserId);
+        return service.closeJob(id, actorUserId, reason);
     }
 
     /**

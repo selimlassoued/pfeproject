@@ -1,0 +1,225 @@
+<section class="pref-page">
+  <div class="container">
+
+    <header class="pref-header">
+      <div>
+        <button class="btn btn-ghost btn-sm" type="button" (click)="goBack()">← Back to profile</button>
+        <h2 class="pref-title">Job Preferences</h2>
+        <p class="text-muted">Help us match you with the right opportunities.</p>
+      </div>
+      <button class="btn btn-primary" (click)="save()" [disabled]="saving">
+        @if (saving) { Saving… } @else { Save preferences }
+      </button>
+    </header>
+
+    @if (loading) { <div class="status status--info">Loading…</div> }
+    @if (error)   { <div class="status status--error">{{ error }}</div> }
+    @if (success) { <div class="status status--success">{{ success }}</div> }
+
+    @if (!loading) {
+
+      <!-- ── Step 1: Professional Background ─────────────────────────── -->
+      <div class="pref-card card">
+        <div class="card-top">
+          <div>
+            <h3 class="card-title">Professional Background</h3>
+            <p class="text-muted">Your experience and education level.</p>
+          </div>
+          <div class="card-badge">Step 1</div>
+        </div>
+
+        <div class="pref-grid" [formGroup]="form">
+          <div class="form-group">
+            <label>Status</label>
+            <select class="input" formControlName="status">
+              <option value="">Select status</option>
+              <option value="STUDENT">Student</option>
+              <option value="GRADUATE">Graduate</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Years of experience</label>
+            <select class="input" formControlName="yearsOfExperience">
+              <option value="">Select range</option>
+              <option value="0-1">Less than 1 year</option>
+              <option value="1-3">1 – 3 years</option>
+              <option value="3-5">3 – 5 years</option>
+              <option value="5-10">5 – 10 years</option>
+              <option value="10+">10+ years</option>
+            </select>
+          </div>
+
+          <div class="form-group pref-span-2">
+            <label>Education level</label>
+            <select class="input" formControlName="educationLevel">
+              <option value="">Select level</option>
+              <option value="BACCALAUREATE">Baccalaureate</option>
+              <option value="LICENCE">Licence (BAC+3)</option>
+              <option value="MASTER">Master (BAC+5)</option>
+              <option value="ENGINEERING">Engineering (BAC+5)</option>
+              <option value="PHD">PhD</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 2 & 3: Domain & Skills ─────────────────────────────── -->
+      <div class="pref-card card">
+        <div class="card-top">
+          <div>
+            <h3 class="card-title">Domain & Skills</h3>
+            <p class="text-muted">Select your field then pick skills in order of priority — first click = #1.</p>
+          </div>
+          <div class="card-badge">Steps 2 & 3</div>
+        </div>
+
+        <div class="pref-section">
+          <h4 class="pref-section-title">Your domain</h4>
+          <div class="domain-grid">
+            @for (d of domains; track d.value) {
+              <button type="button"
+                class="domain-chip"
+                [class.domain-chip--active]="form.get('domain')?.value === d.value"
+                (click)="setDomain(d.value)">
+                {{ d.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        @if (form.get('domain')?.value) {
+          <div class="pref-section">
+            <h4 class="pref-section-title">
+              Hard skills
+              <span class="pref-hint">Click to select · click again to remove</span>
+            </h4>
+            <div class="skills-grid">
+              @for (skill of availableHardSkills; track skill) {
+                <button type="button"
+                  class="skill-chip"
+                  [class.skill-chip--selected]="hardSkillRank(skill) !== null"
+                  (click)="toggleHardSkill(skill)">
+                  {{ skill }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="pref-section">
+          <h4 class="pref-section-title">
+            Soft skills
+            <span class="pref-hint">Click to select · click again to remove</span>
+          </h4>
+          <div class="skills-grid">
+            @for (skill of softSkills; track skill) {
+              <button type="button"
+                class="skill-chip"
+                [class.skill-chip--selected]="softSkillRank(skill) !== null"
+                (click)="toggleSoftSkill(skill)">
+                {{ skill }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Languages ────────────────────────────────────────────────── -->
+      <div class="pref-card card">
+        <div class="card-top">
+          <div>
+            <h3 class="card-title">Languages</h3>
+            <p class="text-muted">Languages you speak and your proficiency level.</p>
+          </div>
+          <div class="card-badge">Step 3.5</div>
+        </div>
+
+        <!-- Add language row -->
+        <div class="lang-add-row">
+          <div class="form-group" style="flex:1">
+            <label>Language</label>
+            <input class="input" [(ngModel)]="newLanguage" [ngModelOptions]="{standalone:true}"
+              placeholder="e.g. French, English…" list="lang-suggestions" />
+            <datalist id="lang-suggestions">
+              @for (l of commonLanguages; track l) { <option [value]="l"></option> }
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label>Level (CEFR)</label>
+            <select class="input" [(ngModel)]="newLevel" [ngModelOptions]="{standalone:true}">
+              @for (lvl of cefrLevels; track lvl) { <option [value]="lvl">{{ lvl }}</option> }
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary lang-add-btn" (click)="addLanguage()">Add</button>
+        </div>
+
+        <!-- Language list -->
+        @if (languages.length > 0) {
+          <div class="lang-list">
+            @for (lang of languages; track lang.language; let i = $index) {
+              <div class="lang-item">
+                <span class="lang-name">{{ lang.language }}</span>
+                <select class="input lang-level-select"
+                  [value]="lang.level"
+                  (change)="updateLanguageLevel(i, $any($event.target).value)">
+                  @for (lvl of cefrLevels; track lvl) {
+                    <option [value]="lvl" [selected]="lang.level === lvl">{{ lvl }}</option>
+                  }
+                </select>
+                <button type="button" class="lang-remove" (click)="removeLanguage(i)">✕</button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- ── Step 4: Job Preferences ──────────────────────────────────── -->
+      <div class="pref-card card">
+        <div class="card-top">
+          <div>
+            <h3 class="card-title">Job Preferences</h3>
+            <p class="text-muted">Used to rank job offers for you.</p>
+          </div>
+          <div class="card-badge">Step 4</div>
+        </div>
+
+        <div class="pref-section">
+          <h4 class="pref-section-title">Work arrangement</h4>
+          <div class="pref-chips">
+            @for (opt of [['ON_SITE','On-site'],['HYBRID','Hybrid'],['REMOTE','Remote']]; track opt[0]) {
+              <button type="button"
+                class="pref-chip"
+                [class.pref-chip--active]="form.get('preferredWorkArrangement')?.value === opt[0]"
+                (click)="setWorkArrangement(opt[0])">
+                {{ opt[1] }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="pref-section">
+          <h4 class="pref-section-title">Job type</h4>
+          <div class="pref-chips">
+            @for (opt of [['FULL_TIME','Full-time'],['INTERNSHIP','Internship'],['ALTERNANCE','Alternance']]; track opt[0]) {
+              <button type="button"
+                class="pref-chip"
+                [class.pref-chip--active]="form.get('preferredJobType')?.value === opt[0]"
+                (click)="setJobType(opt[0])">
+                {{ opt[1] }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <div class="text-muted">Preferences are used to rank job offers for you.</div>
+          <button class="btn btn-primary" (click)="save()" [disabled]="saving">
+            @if (saving) { Saving… } @else { Save preferences }
+          </button>
+        </div>
+      </div>
+
+    }
+  </div>
+</section>

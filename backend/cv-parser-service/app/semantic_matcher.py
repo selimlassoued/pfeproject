@@ -1,8 +1,9 @@
+import datetime
 import math
 import os
 import re
 import json
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 import ollama
 
@@ -30,12 +31,159 @@ SKILL_SEM_PARTIAL_THRESHOLD = 0.43  # ≥43% → partial (orange): language/fram
 
 ollama_client = ollama.Client(host=OLLAMA_HOST)
 
+# ── Tech volatility + recency/duration scoring ────────────────────────────────
+# Half-life in years: how fast each tech "ages." Used by _recency_factor() to
+# discount old evidence in fast-moving tech (Angular, React) more than in slow
+# tech (SQL, HTML).
+#   - Fast (2yr): breaking releases every 1-2yr; 4yr-old code often unmaintainable
+#   - Medium (4yr, default): LTS-cycle languages and platforms
+#   - Slow (8yr): mature APIs with no breaking changes for a decade+
+_CURRENT_YEAR = datetime.datetime.now().year
+
+_TECH_VOLATILITY: dict[str, float] = {
+    # Fast-moving — JS/TS frontend frameworks
+    "angular": 2.0, "react": 2.0, "vue": 2.0, "svelte": 2.0,
+    "next.js": 2.0, "nextjs": 2.0, "nuxt": 2.0, "nuxt.js": 2.0,
+    "remix": 2.0, "ember": 2.0, "sveltekit": 2.0, "astro": 2.0,
+    # Fast-moving — mobile cross-platform
+    "flutter": 2.0, "react native": 2.0, "swiftui": 2.0,
+    # Fast-moving — ML/AI libs
+    "tensorflow": 2.0, "pytorch": 2.0, "keras": 2.0,
+    "transformers": 2.0, "langchain": 2.0, "huggingface": 2.0,
+    # Slow-moving — mature, stable APIs
+    "sql": 8.0, "html": 8.0, "css": 8.0, "bash": 8.0, "shell": 8.0,
+    "git": 8.0, "linux": 8.0, "unix": 8.0, "c": 8.0, "c++": 8.0,
+    "regex": 8.0, "json": 8.0, "xml": 8.0, "rest": 8.0, "http": 8.0,
+    "mysql": 8.0, "postgresql": 8.0, "postgres": 8.0, "oracle": 8.0,
+    "sql server": 8.0, "sqlite": 8.0,
+}
+_DEFAULT_HALF_LIFE = 4.0
+
+# Framework → required-technology relationships are NOT hardcoded here.
+# They come entirely from the LLM-derived per-skill classification in
+# skill_intel.py ({skill: {volatility, implies}}), which is computed once per
+# skill and cached to a persistent JSON store. This is fully generic — it works
+# for any framework the candidate lists, including ones unknown to this codebase.
+# See _implied_techs() below.
+
+
+# Recency: lose at most 30% over 2×half_life years, then floor at 70%.
+# Floor exists because knowing what a tech IS still has value even if rusty.
+_RECENCY_FLOOR    = 0.70
+_RECENCY_MAX_LOSS = 0.30
+
+# Duration boost: log curve so each extra year matters less than the previous one.
+# Caps at +30% so a 20yr senior doesn't dominate; pairs symmetrically with recency loss.
+_DURATION_BOOST_CAP    = 0.30
+_DURATION_BOOST_FACTOR = 0.10   # boost = factor × ln(years)
+
+
+def _tech_half_life(normalized_skill: str, skill_intel: Optional[dict] = None) -> float:
+    """Return half-life (years) for a normalized skill name.
+
+    Lookup order (generic first, hardcoded fallback):
+      1. LLM-derived skill_intel[skill]["volatility"] (1-10) → exponential map
+         half_life = max(1.5, 2 ** ((10 - volatility) / 3))
+         calibrated so rating 1→8yr, 4→4yr, 7→2yr, 10→1yr (floored).
+      2. Hardcoded _TECH_VOLATILITY (per-skill or per-word).
+      3. _DEFAULT_HALF_LIFE (4yr, medium).
+    """
+    if skill_intel:
+        entry = skill_intel.get(normalized_skill)
+        if isinstance(entry, dict):
+            vol = entry.get("volatility")
+            if isinstance(vol, int) and 1 <= vol <= 10:
+                return max(1.5, 2.0 ** ((10 - vol) / 3.0))
+
+    if normalized_skill in _TECH_VOLATILITY:
+        return _TECH_VOLATILITY[normalized_skill]
+    for word in normalized_skill.split():
+        if word in _TECH_VOLATILITY:
+            return _TECH_VOLATILITY[word]
+    return _DEFAULT_HALF_LIFE
+
+
+def _recency_factor(normalized_skill: str, year: Optional[int],
+                    skill_intel: Optional[dict] = None) -> float:
+    """Multiplier ∈ [0.70, 1.0]. 1.0 = current year, decays linearly to 0.70 over 2×half_life."""
+    if year is None or year <= 0:
+        return 1.0
+    years_since = max(0, _CURRENT_YEAR - year)
+    half_life   = _tech_half_life(normalized_skill, skill_intel)
+    return max(
+        _RECENCY_FLOOR,
+        1.0 - (years_since / (2.0 * half_life)) * _RECENCY_MAX_LOSS,
+    )
+
+
+def _duration_boost(years_worked: float) -> float:
+    """Multiplier ∈ [1.0, 1.30] for cumulative years of practice. Log-curve."""
+    if years_worked <= 1.0:
+        return 1.0
+    boost = 1.0 + math.log(years_worked) * _DURATION_BOOST_FACTOR
+    return min(boost, 1.0 + _DURATION_BOOST_CAP)
+
+
+# ── Duration string parsing ───────────────────────────────────────────────────
+# Handles: "2022-2024", "Jan 2020 - Mar 2023", "Since 2023", "2 years", "6 months",
+# "2 ans", "Depuis 2023", etc.
+_YEAR_RANGE_RE = re.compile(
+    r'(\d{4})\s*(?:[-–—/]+|to|au)\s*(\d{4}|present|current|now|ongoing|'
+    r'pr[ée]sent|aujourd|en\s+cours)',
+    re.IGNORECASE,
+)
+_SINCE_RE           = re.compile(r'(?:since|depuis|from|de(?:puis)?)\s+(\d{4})', re.IGNORECASE)
+_DURATION_YEARS_RE  = re.compile(r'(\d+(?:\.\d+)?)\s*(?:years?|ans?|yrs?)', re.IGNORECASE)
+_DURATION_MONTHS_RE = re.compile(r'(\d+(?:\.\d+)?)\s*(?:months?|mois|mos?)', re.IGNORECASE)
+_BARE_YEAR_RE       = re.compile(r'\b(\d{4})\b')
+
+
+def _parse_duration_info(text: Optional[str]) -> tuple[Optional[int], float]:
+    """Parse a free-form duration/date string into (latest_year, years_worked).
+    Returns (None, 0.0) when nothing parseable is found."""
+    if not text:
+        return None, 0.0
+    t = text.strip().lower()
+
+    m = _YEAR_RANGE_RE.search(t)
+    if m:
+        start = int(m.group(1))
+        end_text = m.group(2)
+        end = _CURRENT_YEAR if not end_text.isdigit() else int(end_text)
+        if 1990 <= start <= _CURRENT_YEAR + 1 and start <= end:
+            return end, float(end - start) or 1.0
+
+    m = _SINCE_RE.search(t)
+    if m:
+        start = int(m.group(1))
+        if 1990 <= start <= _CURRENT_YEAR + 1:
+            return _CURRENT_YEAR, float(max(1, _CURRENT_YEAR - start))
+
+    m = _DURATION_YEARS_RE.search(t)
+    if m:
+        return _CURRENT_YEAR, float(m.group(1))
+
+    m = _DURATION_MONTHS_RE.search(t)
+    if m:
+        return _CURRENT_YEAR, float(m.group(1)) / 12.0
+
+    m = _BARE_YEAR_RE.search(t)
+    if m:
+        y = int(m.group(1))
+        if 1990 <= y <= _CURRENT_YEAR + 1:
+            return y, 1.0
+
+    return None, 0.0
+
+
 # ── Education degree hierarchy ─────────────────────────────────────────────────
 _DEGREE_LEVELS: dict[str, int] = {
     "phd": 4, "doctorate": 4, "doctor": 4,
+    # Engineering diploma (ingénieur, bac+5) ranks with Master — NOT with bachelor.
+    "ingénieur": 3, "ingenieur": 3, "engineer": 3,
     "master": 3, "msc": 3, "mba": 3,
     "bachelor": 2, "licence": 2, "license": 2, "bsc": 2,
-    "engineering": 2, "ingénieur": 2, "ingenieur": 2, "licence professionnelle": 2,
+    "engineering": 2, "licence professionnelle": 2,   # "engineering" alone is ambiguous → bachelor-level
     "associate": 1, "dut": 1, "bts": 1, "iset": 1, "technicien": 1,
     "baccalaureate": 0, "baccalauréat": 0, "bac": 0, "high school": 0,
 }
@@ -92,6 +240,9 @@ _QUALIFIER_THRESHOLDS: dict[str, float] = {
 _OR_SPLIT_RE  = re.compile(r"\s+or\s+",  re.IGNORECASE)
 _AND_SPLIT_RE = re.compile(r"\s+and\s+", re.IGNORECASE)
 
+# Minimum semantic similarity for a proxy skill to prove a concept requirement
+PROXY_SIM_THRESHOLD = 0.63
+
 # Phrases containing these words are education/HR requirements, not technical skills
 _EDUCATION_KEYWORDS = {
     "bachelor", "master", "licence", "license", "degree", "diploma",
@@ -105,7 +256,14 @@ _MULTI_WORD_SKILLS = {
     "computer vision", "data science", "big data", "node.js", "react.js",
     "vue.js", "angular.js", "rest api", "web services", "agile methodology",
     "ci/cd", "test driven", "object oriented", "design patterns",
+    "responsive design", "web design", "ui design", "ux design",
+    "ui/ux", "power bi", "sql server", "pl/sql", "stored procedures",
+    "unit testing", "integration testing", "test automation",
+    "clean code", "clean architecture", "domain driven", "event driven",
 }
+
+# Tokens that look like version numbers or qualifiers — never a skill name
+_VERSION_RE = re.compile(r'^v?\d[\d+.*x-]*$')
 
 _SPLIT_RE = re.compile(r"[,;/|()\n]+")
 
@@ -123,6 +281,8 @@ def _normalize(text: Optional[str]) -> str:
     s = s.replace("reactjs", "react")
     s = s.replace("vuejs", "vue")
     s = s.replace("angularjs", "angular")
+    # Strip version numbers attached to skill names: "Angular 16+", "Node 18.x", "React v18"
+    s = re.sub(r"\s+v?\d[\d+.*x-]*", "", s)
     s = re.sub(r"[^a-z0-9+#.\-/ ]+", " ", s)
     s = re.sub(r"\s+", " ", s)
     return s.strip()
@@ -160,7 +320,7 @@ def _extract_raw_skills(text: str) -> list[str]:
             remaining = remaining.replace(mws, " ")
 
     for w in re.sub(r"\s+", " ", remaining).strip().split():
-        if len(w) >= 2 and w not in all_stop:
+        if len(w) >= 2 and w not in all_stop and not _VERSION_RE.match(w):
             tokens.append(w)
 
     return list(dict.fromkeys(tokens))  # dedup preserving order
@@ -273,54 +433,304 @@ def _extract_required_skill_groups(
     return deduped
 
 
-def _collect_cv_skills(cv: CvAnalysisResult) -> set[str]:
-    """Collect all structured skills from CV.
-    Multi-word skills are expanded into individual tokens and 2-word sub-phrases
-    so a single required word can match against a longer compound skill."""
-    collected: set[str] = set()
+class SkillSources:
+    """Tracks where each skill was found in the CV plus per-skill year/duration metadata,
+    so confidence scores can apply a recency decay and a duration boost."""
+    def __init__(self, skill_intel: Optional[dict] = None):
+        self.primary:    set[str] = set()   # cv.skills (main declared section)
+        self.experience: set[str] = set()   # exp.skills_used
+        self.project:    set[str] = set()   # proj.skills_used
+        self.github_confirmed: set[str] = set()
+        self.github_detected:  set[str] = set()
+        # Per-skill metadata (keys are normalized skill names):
+        self.exp_year:     dict[str, int]   = {}   # latest year worked, from experience
+        self.exp_duration: dict[str, float] = {}   # cumulative years across jobs
+        self.proj_year:    dict[str, int]   = {}   # latest year worked, from a project
+        # Implied-skills tracking (Angular implies TypeScript, Spring implies Java, …):
+        self.explicit_skills: set[str] = set()   # tokens the candidate explicitly listed
+        self.implied_by:      dict[str, str] = {}   # token -> framework name that implied it
+        self.declared_literal: set[str] = set()  # tokens LITERALLY in cv.skills / cv.knowledge
+        self.implied_primary:  set[str] = set()  # in primary tier ONLY via framework implication
+        # LLM-derived per-skill intel: {skill_lower: {volatility, implies}}. Generic;
+        # populated upstream by skill_intel.get_skill_intelligence(). Consulted by
+        # _tech_half_life() and the implies-expansion in _expand_experience/_expand_project.
+        self.skill_intel: dict = skill_intel or {}
 
-    def add(values: Optional[Iterable[Optional[str]]]) -> None:
-        for v in (values or []):
-            n = _normalize(v)
-            if not n or len(n) <= 1:
-                continue
-            collected.add(n)
-            words = n.split()
-            if len(words) > 1:
-                for w in words:
-                    if len(w) >= 3 and w not in _STOPWORDS:
-                        collected.add(w)
-                for i in range(len(words) - 1):
-                    collected.add(f"{words[i]} {words[i+1]}")
-            # Extract sub-words from compound terms (pl/sql→sql, mysql→sql, postgresql→sql)
-            for delimiter in ['/', '-', '.']:
-                if delimiter in n:
-                    for part in n.split(delimiter):
-                        if len(part) >= 2 and part not in _STOPWORDS:
-                            collected.add(part)
-            # Extract trailing technology keyword from compound words (mysql→sql, mongodb→db)
-            for suffix in ['sql', 'db', 'js', 'py', 'ml']:
-                if n.endswith(suffix) and len(n) > len(suffix) + 1:
-                    collected.add(suffix)
+    @property
+    def all_skills(self) -> set[str]:
+        return (self.primary | self.experience | self.project
+                | self.github_confirmed | self.github_detected)
 
-    add(cv.skills)
-    add(cv.knowledge)
-    add(cv.soft_skills)
+    def record_experience(self, normalized: str, year: Optional[int], duration: float) -> None:
+        if not normalized:
+            return
+        self.experience.add(normalized)
+        if year is not None and year > 0:
+            self.exp_year[normalized] = max(self.exp_year.get(normalized, 0), year)
+        if duration > 0:
+            self.exp_duration[normalized] = self.exp_duration.get(normalized, 0.0) + duration
 
+    def record_project(self, normalized: str, year: Optional[int]) -> None:
+        if not normalized:
+            return
+        self.project.add(normalized)
+        if year is not None and year > 0:
+            self.proj_year[normalized] = max(self.proj_year.get(normalized, 0), year)
+
+    def merge_github_floor(self, normalized: str, last_used: Optional[int], years: float) -> None:
+        """GitHub tech_stats sets a FLOOR on year/duration for skills already in experience or
+        projects. Does NOT promote GitHub-only skills to experience tier — that stays bonus-only."""
+        if not normalized:
+            return
+        if normalized in self.experience:
+            if last_used:
+                self.exp_year[normalized] = max(self.exp_year.get(normalized, 0), last_used)
+            if years > 0:
+                self.exp_duration[normalized] = max(self.exp_duration.get(normalized, 0.0), float(years))
+        elif normalized in self.project:
+            if last_used:
+                self.proj_year[normalized] = max(self.proj_year.get(normalized, 0), last_used)
+
+    def confidence(self, skill: str) -> int:
+        """
+        Source-weighted confidence (0-100) with duration boost and recency decay
+        applied to evidence components only. The primary-declaration base (70) is
+        unaffected — the candidate is currently claiming the skill.
+
+          Base:
+            cv.skills (main section)           → 70  (flat, no decay)
+            exp.skills_used only               → 50 × duration_boost × recency
+            proj.skills_used only              → 40 × recency
+          Bonuses (corroborating evidence):
+            primary + experience               → +15 × duration_boost × recency
+            primary + project                  → +8  × recency
+          GitHub bonus (external validation, flat):
+            confirmed                          → +5
+            detected                           → +3
+        """
+        n = _normalize(skill)
+
+        in_primary = n in self.primary
+        in_exp     = n in self.experience
+        in_proj    = n in self.project
+
+        if in_primary:
+            score = 70.0
+        elif in_exp:
+            duration = self.exp_duration.get(n, 0.0)
+            year     = self.exp_year.get(n)
+            score = 50.0 * _duration_boost(duration) * _recency_factor(n, year, self.skill_intel)
+        elif in_proj:
+            year  = self.proj_year.get(n)
+            score = 40.0 * _recency_factor(n, year, self.skill_intel)
+        else:
+            return 0
+
+        if in_primary and in_exp:
+            duration = self.exp_duration.get(n, 0.0)
+            year     = self.exp_year.get(n)
+            score += 15.0 * _duration_boost(duration) * _recency_factor(n, year, self.skill_intel)
+        if in_primary and in_proj:
+            year   = self.proj_year.get(n)
+            score += 8.0 * _recency_factor(n, year, self.skill_intel)
+
+        if n in self.github_confirmed:
+            score += 5
+        elif n in self.github_detected:
+            score += 3
+
+        return min(int(round(score)), 100)
+
+    def experience_only_credit(self, skill: str) -> int:
+        """Score 1 for proxy matching — counts experience/project/GitHub but never the
+        primary declaration (candidate didn't claim the concept directly).
+        Same recency/duration treatment as confidence()."""
+        n = _normalize(skill)
+        score = 0.0
+        if n in self.experience:
+            duration = self.exp_duration.get(n, 0.0)
+            year     = self.exp_year.get(n)
+            score = 50.0 * _duration_boost(duration) * _recency_factor(n, year, self.skill_intel)
+        elif n in self.project:
+            year  = self.proj_year.get(n)
+            score = 40.0 * _recency_factor(n, year, self.skill_intel)
+
+        if n in self.github_confirmed:
+            score += 5
+        elif n in self.github_detected:
+            score += 3
+        return min(int(round(score)), 100)
+
+
+def _expand_tokens(value: Optional[str]) -> set[str]:
+    """Expand a single skill value into normalized tokens (the same set that
+    _expand_into would have added). Centralized so experience/project records can
+    apply the same expansion while also carrying year/duration metadata."""
+    n = _normalize(value)
+    if not n or len(n) <= 1:
+        return set()
+    tokens: set[str] = {n}
+    words = n.split()
+    if len(words) > 1:
+        for w in words:
+            if len(w) >= 3 and w not in _STOPWORDS:
+                tokens.add(w)
+        for i in range(len(words) - 1):
+            tokens.add(f"{words[i]} {words[i+1]}")
+    for delimiter in ['/', '-', '.']:
+        if delimiter in n:
+            for part in n.split(delimiter):
+                if len(part) >= 2 and part not in _STOPWORDS:
+                    tokens.add(part)
+    for suffix in ['sql', 'db', 'js', 'py', 'ml']:
+        if n.endswith(suffix) and len(n) > len(suffix) + 1:
+            tokens.add(suffix)
+    return tokens
+
+
+def _expand_into(target: set[str], values: Optional[Iterable[Optional[str]]]) -> None:
+    """Expand skill values into normalized tokens and add to target set."""
+    for v in (values or []):
+        for tok in _expand_tokens(v):
+            target.add(tok)
+
+
+def _implied_techs(sources: SkillSources, normalized: str) -> list[str]:
+    """Return the technologies a framework strictly requires (e.g. Angular →
+    TypeScript/HTML/CSS, Spring Boot → Java).
+
+    Source: the LLM-derived per-skill classification in skill_intel.py, computed
+    once per skill and cached to a persistent store. Fully generic — works for
+    ANY framework, including ones unknown to this codebase.
+
+    If a skill has no skill_intel entry (the classifier was unavailable the first
+    time it was seen), returns [] — the skill simply gets no implication
+    expansion on that run, and will be classified + cached on a later run."""
+    entry = sources.skill_intel.get(normalized) if sources.skill_intel else None
+    if isinstance(entry, dict):
+        implies = entry.get("implies")
+        if isinstance(implies, list):
+            return [str(x) for x in implies if isinstance(x, str) and x]
+    return []
+
+
+def _expand_experience(sources: SkillSources,
+                       values: Optional[Iterable[Optional[str]]],
+                       year: Optional[int],
+                       duration: float) -> None:
+    """Add experience skills with per-token year/duration metadata.
+    For each framework value (e.g. "Angular"), also adds its implied
+    technologies (TypeScript, JS, HTML, CSS) with the SAME year/duration."""
+    for v in (values or []):
+        normalized = _normalize(v)
+        # 1) Original skill — explicit
+        for tok in _expand_tokens(v):
+            sources.record_experience(tok, year, duration)
+        # 2) Implied techs — recorded as implied (only if not explicitly stated elsewhere)
+        for implied in _implied_techs(sources, normalized):
+            for tok in _expand_tokens(implied):
+                sources.record_experience(tok, year, duration)
+                if tok not in sources.explicit_skills:
+                    sources.implied_by.setdefault(tok, normalized)
+
+
+def _expand_project(sources: SkillSources,
+                    values: Optional[Iterable[Optional[str]]],
+                    year: Optional[int]) -> None:
+    """Add project skills with per-token year metadata + implied techs."""
+    for v in (values or []):
+        normalized = _normalize(v)
+        for tok in _expand_tokens(v):
+            sources.record_project(tok, year)
+        for implied in _implied_techs(sources, normalized):
+            for tok in _expand_tokens(implied):
+                sources.record_project(tok, year)
+                if tok not in sources.explicit_skills:
+                    sources.implied_by.setdefault(tok, normalized)
+
+
+def _expand_primary(sources: SkillSources,
+                    values: Optional[Iterable[Optional[str]]]) -> None:
+    """Add declared skills to the primary set. For each framework value
+    (e.g. "Angular"), also adds its implied technologies (TypeScript, HTML, CSS)
+    to the SAME primary tier — declaring a framework declares its required stack:
+    you cannot do Angular without TypeScript/HTML/CSS, Spring Boot without Java, etc."""
+    for v in (values or []):
+        normalized = _normalize(v)
+        for tok in _expand_tokens(v):
+            sources.primary.add(tok)
+        for implied in _implied_techs(sources, normalized):
+            for tok in _expand_tokens(implied):
+                sources.primary.add(tok)
+                if tok not in sources.explicit_skills:
+                    sources.implied_by.setdefault(tok, normalized)
+                if tok not in sources.declared_literal:
+                    sources.implied_primary.add(tok)
+
+
+def _build_skill_sources(cv: CvAnalysisResult) -> SkillSources:
+    """Build source-aware skill sets from the CV, with year/duration metadata
+    parsed from work_experience.duration and floored by GitHub tech_stats when
+    available. Framework→language implications expand EACH tier so e.g. listing
+    "Angular" in CV Skills also credits TypeScript/HTML/CSS at the declared tier,
+    and using "Angular" in a job credits them at the experience tier."""
+    sources = SkillSources(skill_intel=getattr(cv, "skill_intel", None) or {})
+
+    # ── Pre-pass: collect every EXPLICITLY listed skill token FIRST, so the
+    # implication logic below can distinguish "candidate stated this" vs
+    # "framework implies this" (drives the "(implied by …)" reason text).
+    for src in (cv.skills or []):
+        for tok in _expand_tokens(src):
+            sources.explicit_skills.add(tok)
+            sources.declared_literal.add(tok)   # literally in CV Skills section
+    for src in (cv.knowledge or []):
+        for tok in _expand_tokens(src):
+            sources.explicit_skills.add(tok)
+            sources.declared_literal.add(tok)   # literally declared (secondary)
     for exp in (cv.work_experience or []):
-        add(exp.skills_used)
+        for v in (exp.skills_used or []):
+            for tok in _expand_tokens(v): sources.explicit_skills.add(tok)
     for proj in (cv.projects or []):
-        add(proj.skills_used)
+        for v in (proj.skills_used or []):
+            for tok in _expand_tokens(v): sources.explicit_skills.add(tok)
+
+    # ── Primary (declared) skills + framework implications at declared tier ──
+    _expand_primary(sources, cv.skills)
+    _expand_primary(sources, cv.knowledge)  # knowledge = secondary declared skills
+
+    # ── Work experience: parse duration string for year + cumulative years ───
+    for exp in (cv.work_experience or []):
+        year, duration = _parse_duration_info(exp.duration)
+        _expand_experience(sources, exp.skills_used, year, duration)
+
+    # ── Projects: try to parse a year from the description (no duration field) ─
+    for proj in (cv.projects or []):
+        year, _ = _parse_duration_info(proj.description)
+        _expand_project(sources, proj.skills_used, year)
+
+    # ── Hackathons: treated as small experience entries ──────────────────────
     for hack in (cv.hackathons or []):
-        add(hack.skills_used)
+        year, _ = _parse_duration_info(hack.date)
+        _expand_experience(sources, hack.skills_used, year, 0.1)
 
     if cv.github_profile:
-        add(cv.github_profile.all_technologies)
-        add(cv.github_profile.all_repo_frameworks)
-        add(cv.github_profile.cv_skills_confirmed)
-        add(cv.github_profile.cv_skills_likely)
+        _expand_into(sources.github_confirmed, cv.github_profile.cv_skills_confirmed)
+        _expand_into(sources.github_detected,  cv.github_profile.cv_skills_likely)
+        _expand_into(sources.github_detected,  cv.github_profile.all_technologies)
+        _expand_into(sources.github_detected,  cv.github_profile.all_repo_frameworks)
 
-    return collected
+        # ── GitHub tech_stats: floor on year/duration for already-known skills ─
+        # We DON'T promote GitHub-only skills to experience tier — that stays
+        # bonus-only by design (see "GitHub as bonus-only prevents gaming").
+        for tech, stats in (cv.github_profile.tech_stats or {}).items():
+            last_used = int(stats.get("last_used") or 0)
+            years     = float(stats.get("years") or 0.0)
+            for tok in _expand_tokens(tech):
+                sources.merge_github_floor(tok, last_used or None, years)
+
+    return sources
+
+
 
 
 # ── Embeddings ────────────────────────────────────────────────────────────────
@@ -359,64 +769,30 @@ def _cosine(a: list[float], b: list[float]) -> float:
     return 0.0 if na <= 0 or nb <= 0 else dot / (math.sqrt(na) * math.sqrt(nb))
 
 
-# ── Skill matching ────────────────────────────────────────────────────────────
+# Rescaling window for cosine similarity → [0, 1].
+#
+# IMPORTANT: _normalize_cosine is applied to SKILL-vs-DOCUMENT comparisons
+# (a 1-2 word skill embedded against a full ~4000-char CV, or a job vs a CV).
+# These cosines are structurally MUCH lower than skill-vs-skill pairs:
+#   - skill-vs-skill (react/reactjs):        matched ≈ 0.81, unrelated ≈ 0.48
+#   - skill-vs-document (angular vs CV):     strong ≈ 0.60-0.70, unrelated ≈ 0.35-0.45
+# A short query embedded against a long document never reaches high cosine —
+# document length dilutes the similarity. So we rescale the *document* window
+# [_COSINE_FLOOR, _COSINE_CEIL] → [0, 1]:
+#   - below FLOOR  → 0.0  (unrelated)
+#   - above CEIL   → 1.0  (strongly present)
+# (Do NOT reuse _CALIBRATION_PAIRS thresholds here — those are skill-vs-skill.)
+_COSINE_FLOOR = 0.35   # at/below this, the skill is effectively absent
+_COSINE_CEIL  = 0.78   # at/above this, the skill is strongly present in the doc
 
-def _match_skill_scored(
-    req_skill: str,
-    cv_skills: set[str],
-    embed_cache: dict[str, list[float]],
-    matched_threshold: float = SKILL_SEM_THRESHOLD,
-) -> tuple[int, str]:
-    """
-    Match a required skill against all CV skills.
-    Returns (score 0-100, status: 'matched'|'partial'|'missing').
-    matched_threshold is driven by the qualifier level (basic/intermediate/advanced).
-    """
-    normalized = _normalize(req_skill)
-    if not normalized:
-        return 0, "missing"
 
-    # 1 — Exact match
-    if normalized in cv_skills:
-        return 100, "matched"
-
-    # 2 — Token overlap
-    req_tokens = {w for w in normalized.split() if len(w) >= 3 and w not in _STOPWORDS}
-    if req_tokens:
-        best_overlap = 0.0
-        for cv_skill in cv_skills:
-            cv_tokens = set(cv_skill.split())
-            overlap = req_tokens & cv_tokens
-            if overlap:
-                ratio = len(overlap) / len(req_tokens)
-                if ratio > best_overlap:
-                    best_overlap = ratio
-        if best_overlap >= 1.0:
-            return 95, "matched"
-        elif best_overlap >= 0.5:
-            return 70, "partial"
-        elif best_overlap > 0:
-            return 45, "partial"
-
-    # 3 — Semantic similarity
-    req_vec = _embed_cached(normalized, embed_cache)
-    if not req_vec:
-        return 0, "missing"
-
-    best_sim = 0.0
-    for cv_skill in cv_skills:
-        sim = _cosine(req_vec, _embed_cached(cv_skill, embed_cache))
-        if sim > best_sim:
-            best_sim = sim
-
-    score = round(max(0.0, min(best_sim, 1.0)) * 100)
-
-    if score >= matched_threshold * 100:
-        return score, "matched"
-    elif score >= SKILL_SEM_PARTIAL_THRESHOLD * 100:
-        return score, "partial"
-    else:
-        return score, "missing"
+def _normalize_cosine(cos: float) -> float:
+    """Rescale a skill-vs-document cosine into [0, 1] over the document window.
+    cos ≤ 0.35 → 0.0  (unrelated)
+    cos = 0.55 → 0.47 (moderately present)
+    cos = 0.65 → 0.70 (clearly present)
+    cos ≥ 0.78 → 1.0  (strongly present)"""
+    return max(0.0, min((cos - _COSINE_FLOOR) / (_COSINE_CEIL - _COSINE_FLOOR), 1.0))
 
 
 # ── Context builders for embedding ───────────────────────────────────────────
@@ -533,13 +909,27 @@ def _match_education_req(
         req_wants_student  = any(kw in req_n for kw in {"student", "pursuing", "enrolled", "studying"})
         req_wants_graduate = any(kw in req_n for kw in {"graduate", "graduated", "completed", "degree"})
 
-    # ── Structured degree_level — set by recruiter via dropdown ──────────────
+    # ── Structured degree_level — recruiter dropdown (may be MULTI-SELECT) ───
+    # degree_level can carry several comma/pipe-separated values, e.g.
+    # "LICENCE_BACHELOR,ENGINEER,MASTER" — the recruiter accepts ANY of them.
+    # ENGINEER (ingénieur, bac+5) ranks with MASTER, above LICENCE.
     _STRUCTURED_DEGREE_MAP = {
-        "BAC": 0, "LICENCE_BACHELOR": 2, "MASTER": 3, "PHD": 4, "ANY": None,
+        "BAC": 0, "BTS_DUT": 1, "LICENCE_BACHELOR": 2,
+        "ENGINEER": 3, "MASTER": 3, "PHD": 4, "ANY": None,
     }
     structured_req_level: Optional[int] = None
-    if degree_level and degree_level.upper() in _STRUCTURED_DEGREE_MAP:
-        structured_req_level = _STRUCTURED_DEGREE_MAP[degree_level.upper()]
+    structured_is_any = False
+    if degree_level:
+        selected = [d.strip().upper() for d in re.split(r"[,|/]+", degree_level) if d.strip()]
+        if "ANY" in selected or "NONE" in selected:
+            structured_is_any = True
+        else:
+            levels = [_STRUCTURED_DEGREE_MAP[d] for d in selected
+                      if d in _STRUCTURED_DEGREE_MAP and _STRUCTURED_DEGREE_MAP[d] is not None]
+            if levels:
+                # Recruiter accepts any of the ticked degrees → the bar is the
+                # LOWEST one (a higher degree always satisfies a lower bar too).
+                structured_req_level = min(levels)
 
     # ── Enrollment check ─────────────────────────────────────────────────────
     if req_wants_student or req_wants_graduate:
@@ -556,10 +946,11 @@ def _match_education_req(
 
     # ── Degree level check ────────────────────────────────────────────────────
     # Use structured degree_level if set, otherwise parse from description text
-    if structured_req_level is not None:
-        req_level: Optional[int] = structured_req_level
-    elif degree_level and degree_level.upper() == "ANY":
-        req_level = None  # any education is acceptable
+    req_level: Optional[int]
+    if structured_is_any:
+        req_level = None  # recruiter ticked "Any degree" — any education accepted
+    elif structured_req_level is not None:
+        req_level = structured_req_level
     else:
         req_level = None
         req_n = _normalize(description)
@@ -601,6 +992,114 @@ def _match_certification_req(description: str, cv: CvAnalysisResult) -> tuple[in
             return 100, "matched"
 
     return 0, "missing"
+
+
+# ── Language matching ─────────────────────────────────────────────────────────
+# Proficiency levels on a single numeric scale (higher = more proficient).
+# Covers CEFR codes plus the word-based levels CVs use, in EN/FR/ES/IT.
+_LANGUAGE_LEVELS: dict[str, int] = {
+    # CEFR
+    "a1": 1, "a2": 2, "b1": 3, "b2": 4, "c1": 5, "c2": 6,
+    # Word-based — English
+    "beginner": 1, "basic": 1, "notions": 1, "elementary": 2, "pre-intermediate": 2,
+    "intermediate": 3, "upper-intermediate": 4,
+    "advanced": 5, "fluent": 5, "proficient": 6, "proficiency": 6,
+    "native": 7, "bilingual": 7, "mother": 7,
+    # Word-based — French
+    "debutant": 1, "elementaire": 2, "intermediaire": 3,
+    "avance": 5, "courant": 5, "bilingue": 7, "maternelle": 7, "natif": 7,
+    # Word-based — Spanish / Italian
+    "principiante": 1, "intermedio": 3, "avanzado": 5, "nativo": 7,
+}
+
+# Language name → canonical key. Keys are accent-folded lowercase (see _fold).
+_LANGUAGE_ALIASES: dict[str, str] = {
+    "english": "english", "anglais": "english", "ingles": "english", "inglese": "english",
+    "french": "french", "francais": "french", "frances": "french", "francese": "french",
+    "arabic": "arabic", "arabe": "arabic", "arabo": "arabic",
+    "spanish": "spanish", "espagnol": "spanish", "espanol": "spanish", "spagnolo": "spanish",
+    "german": "german", "allemand": "german", "deutsch": "german", "tedesco": "german",
+    "italian": "italian", "italien": "italian", "italiano": "italian",
+    "portuguese": "portuguese", "portugais": "portuguese",
+    "chinese": "chinese", "chinois": "chinese", "mandarin": "chinese",
+    "japanese": "japanese", "japonais": "japanese",
+    "russian": "russian", "russe": "russian",
+}
+
+_ACCENT_MAP = str.maketrans("àâäéèêëçîïôöùûü", "aaaeeeeciioouuu")
+
+
+def _fold(s: Optional[str]) -> str:
+    """Lowercase + strip accents — for accent-insensitive language-name matching."""
+    return (s or "").lower().translate(_ACCENT_MAP)
+
+
+def _canonical_language(name: Optional[str]) -> Optional[str]:
+    """Map a language name in any of EN/FR/ES/IT to its canonical key."""
+    folded = _fold(name)
+    for alias, canon in _LANGUAGE_ALIASES.items():
+        if alias in folded:
+            return canon
+    return None
+
+
+def _parse_language_level(text: Optional[str]) -> Optional[int]:
+    """Parse a proficiency level (CEFR code or word) from text. None if absent."""
+    folded = _fold(text)
+    if "upper" in folded and "intermediate" in folded:
+        return 4
+    tokens = set(re.split(r"[^a-z0-9-]+", folded))
+    for key, val in _LANGUAGE_LEVELS.items():
+        if key in tokens:
+            return val
+    return None
+
+
+def _match_language_req(
+    description: str,
+    cv: CvAnalysisResult,
+    language_level: Optional[str] = None,
+) -> tuple[int, str]:
+    """Match a LANGUAGE requirement against the candidate's languages.
+
+    Compares proficiency on a unified scale (CEFR + word levels). The structured
+    language_level field (A1-C2) takes priority over text parsing.
+      candidate level ≥ required        → 100 matched
+      candidate level == required − 1   → 65  partial (one level short)
+      candidate level ≤ required − 2    → 25  missing
+      language present, level unknown   → 60  partial (benefit of the doubt)
+      language present, no level asked  → 100 matched
+      language absent from CV           → 0   missing
+    """
+    if not cv.languages:
+        return 0, "missing"
+
+    required_lang  = _canonical_language(description)
+    req_level      = _parse_language_level(language_level) or _parse_language_level(description)
+
+    # Find the candidate's matching language (best level if several entries match)
+    cand_found = False
+    cand_level: Optional[int] = None
+    for lang in cv.languages:
+        canon = _canonical_language(lang.name)
+        if required_lang is not None and canon != required_lang:
+            continue
+        cand_found = True
+        lvl = _parse_language_level(lang.level)
+        if lvl is not None:
+            cand_level = max(cand_level or 0, lvl)
+
+    if not cand_found:
+        return 0, "missing"
+    if req_level is None:
+        return 100, "matched"          # language named, no level demanded
+    if cand_level is None:
+        return 60, "partial"           # has the language, level not stated
+    if cand_level >= req_level:
+        return 100, "matched"
+    if cand_level == req_level - 1:
+        return 65, "partial"
+    return 25, "missing"
 
 
 def calibrate_thresholds() -> dict:
@@ -672,15 +1171,19 @@ def _extract_source_tags(req_text: str, cv: CvAnalysisResult) -> str:
 
     # 2 — Work experience
     for exp in (cv.work_experience or []):
-        exp_match = any(matches(s) for s in (exp.skills_used or [])) or matches(exp.description)
-        if exp_match:
+        in_skills_used = any(matches(s) for s in (exp.skills_used or []))
+        in_description = matches(exp.description)
+        if in_skills_used or in_description:
             company = exp.company or "Experience"
             year = ""
             if exp.duration:
                 y = re.search(r"\d{4}", exp.duration)
                 year = f" ({y.group()})" if y else ""
-            tags.append(f"Experience: {company}{year}")
-            break  # one experience tag is enough
+            if in_skills_used:
+                tags.append(f"Experience: {company}{year}")
+            else:
+                tags.append(f"Inferred from: {company}{year}")
+            break
 
     # 3 — Projects
     for proj in (cv.projects or []):
@@ -879,9 +1382,240 @@ def _llm_analysis(
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
+def _skill_status(score: int, matched_threshold: float = SKILL_SEM_THRESHOLD) -> str:
+    if score >= matched_threshold * 100: return "matched"
+    if score >= SKILL_SEM_PARTIAL_THRESHOLD * 100: return "partial"
+    return "missing"
+
+
+def _evidence_suffix(sources: 'SkillSources', normalized: str, kind: str) -> str:
+    """Build a `(~3yr, last used 2024)` style suffix for an evidence component
+    when year/duration metadata is available. Empty string otherwise."""
+    bits: list[str] = []
+    if kind == "experience":
+        duration = sources.exp_duration.get(normalized, 0.0)
+        year     = sources.exp_year.get(normalized)
+        if duration >= 1:
+            bits.append(f"~{duration:.0f}yr")
+        if year:
+            years_since = max(0, _CURRENT_YEAR - year)
+            if years_since == 0:
+                bits.append("current")
+            elif years_since == 1:
+                bits.append("last year")
+            else:
+                bits.append(f"last used {year}")
+    elif kind == "project":
+        year = sources.proj_year.get(normalized)
+        if year:
+            years_since = max(0, _CURRENT_YEAR - year)
+            if years_since <= 1:
+                bits.append("recent")
+            else:
+                bits.append(f"from {year}")
+    return f" ({', '.join(bits)})" if bits else ""
+
+
+def _build_skill_reason(
+    normalized: str,
+    sources: 'SkillSources',
+    mode: str,
+    proxy: str | None = None,
+    proxy_in_primary: bool = False,
+) -> str:
+    """Generate a human-readable explanation of why a skill received its score."""
+    if mode == "DIRECT":
+        parts: list[str] = []
+        fw         = sources.implied_by.get(normalized)
+        fw_display = fw.replace("-", " ").title() if fw else None
+
+        if normalized in sources.declared_literal:
+            # Literally listed in the CV Skills / knowledge section.
+            parts.append("Declared in CV Skills")
+            if normalized in sources.experience:
+                parts.append("confirmed in work experience"
+                             + _evidence_suffix(sources, normalized, "experience"))
+            if normalized in sources.project:
+                parts.append("confirmed in a project"
+                             + _evidence_suffix(sources, normalized, "project"))
+            if normalized in sources.github_confirmed:
+                parts.append("GitHub Verified")
+            elif normalized in sources.github_detected:
+                parts.append("GitHub Detected")
+
+        elif normalized in sources.implied_primary:
+            # Not listed directly, but a DECLARED framework requires it
+            # (e.g. Angular declared → TypeScript/HTML/CSS credited at declared tier).
+            parts.append(f"Required by {fw_display or 'a declared framework'} "
+                         f"— cannot be used without it")
+            if normalized in sources.experience:
+                parts.append("also used in work experience"
+                             + _evidence_suffix(sources, normalized, "experience"))
+            if normalized in sources.github_confirmed:
+                parts.append("GitHub Verified")
+            elif normalized in sources.github_detected:
+                parts.append("GitHub Detected")
+
+        else:
+            # Experience / project tier (not declared, not implied by a declared fw).
+            implied_note = (f" (implied by {fw_display})"
+                            if fw and normalized not in sources.explicit_skills else "")
+            if normalized in sources.experience:
+                parts.append("Used in work experience" + implied_note
+                             + _evidence_suffix(sources, normalized, "experience"))
+            else:
+                parts.append("Used in a project" + implied_note
+                             + _evidence_suffix(sources, normalized, "project"))
+            if not implied_note:
+                parts.append("not declared in main CV Skills — score reduced")
+        return " · ".join(parts)
+
+    elif mode == "PROXY":
+        display = (proxy or "related skill").replace("-", " ").title()
+        if proxy_in_primary:
+            return f"Not listed directly — implied by {display} (declared in CV Skills)"
+        else:
+            return f"Not listed directly — inferred from {display} in experience · {display} not in CV Skills (partial credit)"
+
+    else:  # SEMANTIC
+        return "Not found in CV sources — score reflects semantic similarity from overall CV context"
+
+
+def _compute_skill_score(
+    req_skill: str,
+    cv: CvAnalysisResult,
+    cv_skills: set[str],
+    sources: 'SkillSources',
+    embed_cache: dict,
+    cv_vec: list[float],
+    matched_threshold: float = SKILL_SEM_THRESHOLD,
+) -> tuple[int, str, str]:  # (score, status, reason)
+    """
+    Three-mode skill scoring — Score 1 and Score 2 are fully independent:
+
+    DIRECT (Score1 > 0):
+      Score1 = source confidence (cv.skills/exp/proj/github)
+      Score2 = embed(skill) vs embed(full CV text)
+      Blend  = 70% × Score1 + 30% × Score2
+
+    PROXY (Score1=0, related skill in exp/proj with sim >= 0.70):
+      Score1 = experience_only_credit of the proxy skill (sanction: no primary bonus)
+      Score2 = embed(skill) vs embed(best experience/project description)
+      Blend  = 10% × Score1 + 90% × Score2
+
+    SEMANTIC ONLY (Score1=0, no proxy found):
+      Score2 = embed(skill) vs embed(full CV text)
+      Final  = 100% × Score2
+    """
+    normalized = _normalize(req_skill)
+    if not normalized:
+        return 0, "missing"
+
+    req_vec = _embed_cached(normalized, embed_cache)
+
+    # ── Score 1: Direct source evidence ───────────────────────────────────────
+    score1 = sources.confidence(normalized)
+
+    direct_final: int | None = None
+    if score1 > 0:
+        score2_direct = 0.0
+        if req_vec:
+            emb_sim       = _cosine(req_vec, cv_vec)
+            score2_direct = _normalize_cosine(emb_sim) * 100
+        # DIRECT mode: the skill is confirmed by HARD source evidence (declared
+        # in CV / used in work experience / GitHub-verified). That evidence IS
+        # the score. score2_direct is a single skill word embedded against the
+        # whole CV document — a structurally low, noisy cosine (~0.35-0.45 even
+        # for a strong match). It gets only a 10% contextual weight so it can
+        # nudge but never override direct evidence.
+        direct_final = round(0.90 * score1 + 0.10 * score2_direct)
+
+    # ── Proxy: find a related skill confirmed in experience/project ────────────
+    proxy_final: int | None = None
+    best_proxy:  str | None = None
+    proxy_in_primary = False
+
+    if req_vec:
+        best_sim = 0.0
+        for cv_skill in cv_skills:
+            if sources.experience_only_credit(cv_skill) == 0:
+                continue
+            sim = _cosine(req_vec, _embed_cached(cv_skill, embed_cache))
+            if sim > best_sim:
+                best_sim   = sim
+                best_proxy = cv_skill
+
+        if best_proxy and best_sim >= PROXY_SIM_THRESHOLD:
+            proxy_in_primary = best_proxy in sources.primary
+            proxy_score1 = (sources.confidence(best_proxy) if proxy_in_primary
+                            else sources.experience_only_credit(best_proxy))
+
+            best_desc_sim = 0.0
+            for exp in (cv.work_experience or []):
+                if exp.description:
+                    desc_vec = _embed_cached(exp.description[:500], embed_cache)
+                    sim = _cosine(req_vec, desc_vec)
+                    if sim > best_desc_sim:
+                        best_desc_sim = sim
+            for proj in (cv.projects or []):
+                if proj.description:
+                    desc_vec = _embed_cached(proj.description[:300], embed_cache)
+                    sim = _cosine(req_vec, desc_vec)
+                    if sim > best_desc_sim:
+                        best_desc_sim = sim
+
+            score2_proxy = _normalize_cosine(best_desc_sim) * 100
+            proxy_final  = round(0.10 * proxy_score1 + 0.90 * score2_proxy)
+
+    # ── Take the best available score and build reason ─────────────────────────
+    if direct_final is not None and proxy_final is not None:
+        if proxy_final > direct_final:
+            final  = proxy_final
+            reason = _build_skill_reason(normalized, sources, "PROXY", best_proxy, proxy_in_primary)
+        else:
+            final  = direct_final
+            reason = _build_skill_reason(normalized, sources, "DIRECT")
+    elif direct_final is not None:
+        final  = direct_final
+        reason = _build_skill_reason(normalized, sources, "DIRECT")
+    elif proxy_final is not None:
+        final  = proxy_final
+        reason = _build_skill_reason(normalized, sources, "PROXY", best_proxy, proxy_in_primary)
+    else:
+        if req_vec:
+            emb_sim = _cosine(req_vec, cv_vec)
+            final   = round(_normalize_cosine(emb_sim) * 100)
+        else:
+            final = 0
+        reason = _build_skill_reason(normalized, sources, "SEMANTIC")
+
+    return final, _skill_status(final, matched_threshold), reason
+
+
 def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
     cv            = request.cv_analysis
     embed_cache: dict[str, list[float]] = {}
+
+    # ── Ensure skill_intel is available ───────────────────────────────────────
+    # skill_intel (volatility + framework implications) is computed at parse time,
+    # but it can be lost in transit if the caller's DTO doesn't carry the field.
+    # Recompute it here so /match is self-sufficient — the classifier is cached
+    # to a persistent store, so this is just cache hits (near-zero cost).
+    if not getattr(cv, "skill_intel", None):
+        try:
+            from app.skill_intel import get_skill_intelligence
+            all_skill_names: list[str] = list(cv.skills or []) + list(cv.knowledge or [])
+            for exp in (cv.work_experience or []):
+                all_skill_names += list(exp.skills_used or [])
+            for proj in (cv.projects or []):
+                all_skill_names += list(proj.skills_used or [])
+            for hack in (cv.hackathons or []):
+                all_skill_names += list(hack.skills_used or [])
+            cv.skill_intel = get_skill_intelligence(all_skill_names)
+            print(f"[match] Recomputed skill_intel for {len(cv.skill_intel)} skills "
+                  f"(was missing from request)")
+        except Exception as e:
+            print(f"[match] skill_intel recompute skipped: {e}")
 
     # ── CV text + vector — computed once, reused by skills blend and global sim ─
     cv_text = _build_cv_text(cv)
@@ -891,26 +1625,12 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
     required_skill_groups = _extract_required_skill_groups(
         request.requirements, request.job_title, request.job_description
     )
-    cv_skills = _collect_cv_skills(cv)
+    skill_sources = _build_skill_sources(cv)
+    cv_skills     = skill_sources.all_skills
 
     matched: list[str] = []
     missing: list[str] = []
     skill_scores: list[dict] = []
-
-    def _blend(keyword_score: int, skill_text: str) -> tuple[int, str]:
-        """Blend keyword match score with embedding depth score.
-        keyword_score: precise — did the candidate declare this skill?
-        embedding: contextual — how deeply is it present throughout the full CV?
-        60/40 split: keyword is more reliable, embedding adds evidence depth.
-        """
-        emb_sim   = _cosine(_embed_cached(skill_text, embed_cache), cv_vec)
-        emb_score = max(0.0, min((emb_sim + 1.0) / 2.0, 1.0)) * 100
-        final     = round(0.6 * keyword_score + 0.4 * emb_score)
-        if final >= SKILL_SEM_THRESHOLD * 100:
-            return final, "matched"
-        elif final >= SKILL_SEM_PARTIAL_THRESHOLD * 100:
-            return final, "partial"
-        return final, "missing"
 
     for group in required_skill_groups:
         threshold = _QUALIFIER_THRESHOLDS.get(group["qualifier"], SKILL_SEM_THRESHOLD)
@@ -918,24 +1638,21 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         qualifier = group["qualifier"]
         prefix    = f"[{qualifier.upper()}] " if qualifier != "any" else ""
 
-        results = [
-            (skill, *_match_skill_scored(skill, cv_skills, embed_cache, threshold))
-            for skill in group["skills"]
-        ]
-
         if logic == "OR":
-            # Keyword: best individual skill score
-            _, best_kw_score, _ = max(results, key=lambda x: x[1])
             label = " or ".join(group["skills"])
-            # Blend using the full label so embedding sees all alternatives
-            final_score, final_status = _blend(best_kw_score, label)
-            skill_scores.append({"skill": f"{prefix}{label}", "score": final_score, "status": final_status})
+            final_score, final_status, reason = _compute_skill_score(
+                label, cv, cv_skills, skill_sources, embed_cache, cv_vec, threshold
+            )
+            evidence = _extract_source_tags(label, cv)
+            skill_scores.append({"skill": f"{prefix}{label}", "score": final_score, "status": final_status, "evidence": evidence, "reason": reason})
             (matched if final_status == "matched" else missing).append(label)
         else:
-            # AND — each skill blended independently
-            for skill, kw_score, _ in results:
-                final_score, final_status = _blend(kw_score, skill)
-                skill_scores.append({"skill": f"{prefix}{skill}", "score": final_score, "status": final_status})
+            for skill in group["skills"]:
+                final_score, final_status, reason = _compute_skill_score(
+                    skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, threshold
+                )
+                evidence = _extract_source_tags(skill, cv)
+                skill_scores.append({"skill": f"{prefix}{skill}", "score": final_score, "status": final_status, "evidence": evidence, "reason": reason})
                 (matched if final_status == "matched" else missing).append(skill)
 
     # Skills component: average score across all required skills (not binary ratio)
@@ -961,7 +1678,7 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
     # ── Global embedding similarity ───────────────────────────────────────────
     job_text = _build_job_text(request)
     global_sim       = _cosine(_embed_cached(job_text, embed_cache), cv_vec)
-    global_sim_score = max(0.0, min((global_sim + 1.0) / 2.0, 1.0))
+    global_sim_score = _normalize_cosine(global_sim)
 
     # ── Per-requirement semantic scoring ──────────────────────────────────────
     requirement_scores: list[dict] = []
@@ -989,30 +1706,29 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         elif cat == "CERTIFICATION":
             score_val, _ = _match_certification_req(req.description or "", cv)
             req_score = score_val / 100.0
+        elif cat in ("LANGUAGE", "LANGUE", "LANGUAGES"):
+            score_val, _ = _match_language_req(
+                req.description or "", cv, language_level=req.language_level,
+            )
+            req_score = score_val / 100.0
         elif cat in ("SKILL", "TECHNICAL", "TECHNOLOGY", "COMPÉTENCE"):
-            # Use the same blended formula as the skills breakdown —
-            # so the requirement card and the skills bar always show the same number.
             groups = _parse_description_to_groups(req.description or "")
-            blended_scores: list[int] = []
+            scores: list[int] = []
             for g in groups:
-                thresh   = _QUALIFIER_THRESHOLDS.get(g["qualifier"], SKILL_SEM_THRESHOLD)
-                kw_vals  = [_match_skill_scored(s, cv_skills, embed_cache, thresh)[0] for s in g["skills"]]
+                thresh = _QUALIFIER_THRESHOLDS.get(g["qualifier"], SKILL_SEM_THRESHOLD)
                 if g["logic"] == "OR":
-                    best_kw   = max(kw_vals) if kw_vals else 0
-                    label     = " or ".join(g["skills"])
-                    emb_sim   = _cosine(_embed_cached(label, embed_cache), cv_vec)
-                    emb_score = max(0.0, min((emb_sim + 1.0) / 2.0, 1.0)) * 100
-                    blended_scores.append(round(0.6 * best_kw + 0.4 * emb_score))
+                    label = " or ".join(g["skills"])
+                    s, _, _r = _compute_skill_score(label, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh)
+                    scores.append(s)
                 else:
-                    for skill, kw in zip(g["skills"], kw_vals):
-                        emb_sim   = _cosine(_embed_cached(skill, embed_cache), cv_vec)
-                        emb_score = max(0.0, min((emb_sim + 1.0) / 2.0, 1.0)) * 100
-                        blended_scores.append(round(0.6 * kw + 0.4 * emb_score))
-            req_score = (sum(blended_scores) / len(blended_scores)) / 100 if blended_scores else 0.0
+                    for skill in g["skills"]:
+                        s, _, _r = _compute_skill_score(skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh)
+                        scores.append(s)
+            req_score = (sum(scores) / len(scores)) / 100 if scores else 0.0
         else:
             # EXPERIENCE / other — embedding similarity
             req_sim   = _cosine(_embed_cached(req_text, embed_cache), cv_vec)
-            req_score = max(0.0, min((req_sim + 1.0) / 2.0, 1.0))
+            req_score = _normalize_cosine(req_sim)
 
         requirement_scores.append({
             "category":    cat or "REQUIREMENT",

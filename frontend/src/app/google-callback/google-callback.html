@@ -1,0 +1,29 @@
+<section class="gcb-page">
+  <div class="gcb-card card">
+
+    @if (state === 'working') {
+      <div class="gcb-spinner"></div>
+    } @else if (state === 'done') {
+      <div class="gcb-icon gcb-icon--ok">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+      </div>
+    } @else {
+      <div class="gcb-icon gcb-icon--err">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </div>
+    }
+
+    <h2 class="gcb-title">Google Calendar</h2>
+    <p class="gcb-msg">{{ message }}</p>
+
+    @if (state === 'error') {
+      <button class="btn btn-primary" type="button" (click)="back()">Back to calendar</button>
+    }
+  </div>
+</section>

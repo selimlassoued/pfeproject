@@ -72,12 +72,10 @@ export class ActionHistory implements OnInit {
     { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
     { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
     { key: 'APPLICATION_WITHDRAWN',      label: 'Withdrawn',      color: '#94a3b8' },
-    { key: 'USER_BLOCK',                 label: 'Blocks',         color: '#f87171' },
-    { key: 'USER_UNBLOCK',               label: 'Unblocks',       color: '#4ade80' },
-    { key: 'CANDIDATE_FLAGGED',          label: 'Flagged',        color: '#fbbf24' },
-    { key: 'CANDIDATE_UNFLAGGED',        label: 'Unflagged',      color: '#a78bfa' },
+    { key: 'BLOCKS',                     label: 'Blocks',         color: '#f87171' },
+    { key: 'FLAGS',                      label: 'Flags',          color: '#fbbf24' },
     { key: 'CANDIDATE_SIGNAL_DISMISSED', label: 'Dismissed',      color: '#67e8f9' },
-    { key: 'JOB_UPDATED',                label: 'Jobs',           color: '#fb923c' },
+    { key: 'JOBS',                       label: 'Jobs',           color: '#fb923c' },
     { key: 'ROLE_UPDATE',                label: 'Role Updates',   color: '#c084fc' },
   ];
 
@@ -89,7 +87,10 @@ export class ActionHistory implements OnInit {
     CANDIDATE_FLAGGED:          { label: 'Candidate Flagged', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)'  },
     CANDIDATE_UNFLAGGED:        { label: 'Signal Removed',    color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
     CANDIDATE_SIGNAL_DISMISSED: { label: 'Signal Dismissed',  color: '#67e8f9', bg: 'rgba(103,232,249,0.12)' },
+    JOB_CREATED:                { label: 'Job Created',       color: '#34d399', bg: 'rgba(52,211,153,0.12)'  },
     JOB_UPDATED:                { label: 'Job Updated',       color: '#fb923c', bg: 'rgba(251,146,60,0.12)'  },
+    JOB_CLOSED:                 { label: 'Job Closed',        color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+    JOB_QUOTA_REACHED:          { label: 'Quota Reached',     color: '#22d3ee', bg: 'rgba(34,211,238,0.12)'  },
     ROLE_UPDATE:                { label: 'Role Updated',      color: '#c084fc', bg: 'rgba(192,132,252,0.12)' },
   };
 

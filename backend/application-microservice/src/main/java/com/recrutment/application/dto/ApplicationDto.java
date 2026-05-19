@@ -24,6 +24,7 @@ public class ApplicationDto {
 
     private String jobTitle;
     private String candidateName;
+    private String candidateEmail;
     private Integer jobFitScore;
     private java.util.List<String> requiredSkillsMatched;
     private java.util.List<String> requiredSkillsMissing;

@@ -29,6 +29,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.util.Optional;
 import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
@@ -48,7 +49,7 @@ public class ApplicationService {
 
     // ── Allowed status transitions (normal pipeline only) ─────────────────────
     private static final Map<ApplicationStatus, List<ApplicationStatus>> ALLOWED_TRANSITIONS = Map.of(
-            ApplicationStatus.APPLIED,          List.of(ApplicationStatus.UNDER_REVIEW, ApplicationStatus.REJECTED),
+            ApplicationStatus.APPLIED,          List.of(ApplicationStatus.UNDER_REVIEW, ApplicationStatus.INTERVIEW_PHASE, ApplicationStatus.REJECTED),
             ApplicationStatus.UNDER_REVIEW,     List.of(ApplicationStatus.INTERVIEW_PHASE, ApplicationStatus.REJECTED),
             ApplicationStatus.INTERVIEW_PHASE,  List.of(ApplicationStatus.OFFER, ApplicationStatus.REJECTED),
             ApplicationStatus.OFFER,            List.of(ApplicationStatus.HIRED, ApplicationStatus.REJECTED),
@@ -130,6 +131,7 @@ public class ApplicationService {
         JobDto job = null;
         String jobTitle = null;
         String candidateName = null;
+        String candidateEmail = null;
         SemanticMatchDto semanticMatch = null;
 
         try {
@@ -144,6 +146,7 @@ public class ApplicationService {
                 String ln = user.getLastName() == null ? "" : user.getLastName().trim();
                 String full = (fn + " " + ln).trim();
                 candidateName = full.isBlank() ? user.getUsername() : full;
+                candidateEmail = user.getEmail();
             }
         } catch (Exception ignored) {}
 
@@ -157,7 +160,7 @@ public class ApplicationService {
         return new ApplicationDto(
                 a.getApplicationId(), a.getJobId(), a.getCandidateUserId(),
                 a.getGithubUrl(), a.getStatus(), a.getAppliedAt(),
-                a.getCvFileName(), a.getCvContentType(), jobTitle, candidateName,
+                a.getCvFileName(), a.getCvContentType(), jobTitle, candidateName, candidateEmail,
                 semanticMatch != null ? semanticMatch.getJobFitScore() : null,
                 semanticMatch != null ? semanticMatch.getRequiredSkillsMatched() : List.of(),
                 semanticMatch != null ? semanticMatch.getRequiredSkillsMissing() : List.of(),
@@ -226,7 +229,6 @@ public class ApplicationService {
 
         try {
             Application saved = repo.save(app);
-            // AI pipeline runs immediately after apply
             cvAnalysisService.analyzeAsync(saved);
             return toDto(saved);
         } catch (DataIntegrityViolationException e) {

@@ -19,6 +19,6 @@ public interface JobOfferService {
     JobOfferDto createJobOffer(JobOfferDto dto, String actorUserId);
     JobOfferDto updateJobOffer(UUID id, JobOfferDto dto, String reason, String actorUserId);
     JobOfferDto incrementHiredCount(UUID jobId);
-    JobOfferDto closeJob(UUID jobId, String actorUserId);
+    JobOfferDto closeJob(UUID jobId, String actorUserId, String reason);
     void deleteJobOffer(UUID id);
 }

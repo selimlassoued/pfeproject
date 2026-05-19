@@ -240,14 +240,6 @@ export class ListUsers implements OnInit, OnDestroy {
       html: `
         <div style="display:grid;gap:.85rem;text-align:left;margin-top:.25rem">
           <div>
-            <label style="${labelStyle}">First Name *</label>
-            <input id="swal-fn" placeholder="First name" style="${inputStyle}">
-          </div>
-          <div>
-            <label style="${labelStyle}">Last Name *</label>
-            <input id="swal-ln" placeholder="Last name" style="${inputStyle}">
-          </div>
-          <div>
             <label style="${labelStyle}">Email *</label>
             <input id="swal-em" type="email" placeholder="email@vermeg.com" style="${inputStyle}">
           </div>
@@ -258,7 +250,8 @@ export class ListUsers implements OnInit, OnDestroy {
             </select>
           </div>
           <p style="font-size:.8rem;color:rgba(121,164,233,0.55);margin:0">
-            ✉ An invitation email will be sent so they can set their password.
+            An invitation email will be sent — they'll set their password and
+            complete their profile (name, phone) on first sign-in.
           </p>
         </div>
       `,
@@ -275,20 +268,18 @@ export class ListUsers implements OnInit, OnDestroy {
         actions: 'swal-hireai-actions',
       },
       preConfirm: () => {
-        const fn    = (document.getElementById('swal-fn')   as HTMLInputElement).value.trim();
-        const ln    = (document.getElementById('swal-ln')   as HTMLInputElement).value.trim();
         const em    = (document.getElementById('swal-em')   as HTMLInputElement).value.trim();
         const role  = (document.getElementById('swal-role') as HTMLSelectElement).value;
 
-        if (!fn || !ln || !em) {
-          Swal.showValidationMessage('First name, last name and email are required.');
+        if (!em) {
+          Swal.showValidationMessage('Email is required.');
           return false;
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
           Swal.showValidationMessage('Please enter a valid email address.');
           return false;
         }
-        return { firstName: fn, lastName: ln, email: em, role };
+        return { email: em, role };
       },
     });
 
@@ -296,10 +287,7 @@ export class ListUsers implements OnInit, OnDestroy {
 
     this.acting = true;
     try {
-      await this.adminUsers.createUser(
-        formValues.firstName, formValues.lastName,
-        formValues.email, formValues.role
-      );
+      await this.adminUsers.createUser(formValues.email, formValues.role);
       await Swal.fire({
         title: 'Account created!',
         html: `<p style="color:rgba(255,255,255,0.7)">

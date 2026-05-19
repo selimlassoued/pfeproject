@@ -7,6 +7,7 @@ import { JobOffer } from '../model/jobOffer.model';
 import { AuthService } from '../services/AuthService.service';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
+import Swal from 'sweetalert2';
 
 const STATUS_LIST = ['APPLIED', 'UNDER_REVIEW', 'INTERVIEW_PHASE', 'OFFER', 'HIRED', 'REJECTED'] as const;
 type AppStatus = typeof STATUS_LIST[number];
@@ -57,6 +58,7 @@ export class JobDetails implements OnInit {
   readonly APP_PAGE_SIZE = 8;
 
   statusCounts = signal<Partial<Record<AppStatus, number>>>({});
+  statusCountsLoaded = signal(false);   // true once all per-status counts have loaded
 
   // Smart shortlist
   shortlistOpen      = signal(false);
@@ -111,11 +113,17 @@ export class JobDetails implements OnInit {
   private loadStatusCounts(jobId: string): void {
     const counts: Partial<Record<AppStatus, number>> = {};
     let done = 0;
+    const finish = () => {
+      if (done === STATUS_LIST.length) {
+        this.statusCounts.set({ ...counts });
+        this.statusCountsLoaded.set(true);   // unlocks canEditJob for PUBLISHED jobs
+      }
+    };
     for (const s of STATUS_LIST) {
       this.applicationService.listApplicationsPaged({ jobId, status: s, page: 0, size: 1 })
         .subscribe({
-          next:  res => { counts[s] = res.totalElements; done++; if (done === STATUS_LIST.length) this.statusCounts.set({ ...counts }); },
-          error: ()  => { done++; }
+          next:  res => { counts[s] = res.totalElements; done++; finish(); },
+          error: ()  => { done++; finish(); }
         });
     }
   }
@@ -193,13 +201,53 @@ export class JobDetails implements OnInit {
     return `${min}–${max} TND`;
   }
 
-  deleteJob(id: string): void {
-    if (confirm('Are you sure you want to delete this job offer? This action cannot be undone.')) {
-      this.jobService.deleteJob(id).subscribe({
-        next:  ()  => this.router.navigate(['/browse']),
-        error: err => this.error.set(err?.status ? `Delete failed (HTTP ${err.status}).` : 'Failed to delete job offer.'),
-      });
-    }
+  // ── Edit / Close eligibility ────────────────────────────────────────────────
+  // Total applicants across all statuses (statusCounts is per-status).
+  get totalApplicants(): number {
+    return Object.values(this.statusCounts()).reduce((sum, n) => sum + (n || 0), 0);
+  }
+
+  /** A job can be edited only while DRAFT, or PUBLISHED with zero applicants.
+   *  Once CLOSED, or once a candidate has applied, it is locked. */
+  get canEditJob(): boolean {
+    const j = this.job();
+    if (!j || !this.canManageJobs) return false;
+    if (j.jobStatus === 'DRAFT')     return true;
+    if (j.jobStatus === 'PUBLISHED') return this.statusCountsLoaded() && this.totalApplicants === 0;
+    return false;   // CLOSED → locked
+  }
+
+  /** Only a PUBLISHED job can be closed by the recruiter. */
+  get canCloseJob(): boolean {
+    const j = this.job();
+    return !!j && this.canManageJobs && j.jobStatus === 'PUBLISHED';
+  }
+
+  async closeJob(id: string): Promise<void> {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Close this job offer?',
+      text: 'It will stop accepting new applications. Provide a reason — it is recorded in the audit trail.',
+      input: 'textarea',
+      inputPlaceholder: 'e.g. Position filled, budget cancelled, requirements changed…',
+      inputAttributes: { rows: '3' },
+      inputValidator: (value) =>
+        (!value || !value.trim()) ? 'A reason is required to close the job.' : null,
+      showCancelButton: true,
+      confirmButtonText: 'Close job',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#ed8936',
+    });
+    if (!result.isConfirmed) return;
+
+    const reason = (result.value as string).trim();
+    this.jobService.closeJob(id, reason).subscribe({
+      next:  job => {
+        this.job.set(job);
+        Swal.fire({ icon: 'success', title: 'Job closed', timer: 1600, showConfirmButton: false });
+      },
+      error: err => this.error.set(err?.status ? `Close failed (HTTP ${err.status}).` : 'Failed to close job offer.'),
+    });
   }
 
   statusColor(s: string): string { return (this.STATUS_COLORS as any)[s]?.color ?? '#79a4e9'; }

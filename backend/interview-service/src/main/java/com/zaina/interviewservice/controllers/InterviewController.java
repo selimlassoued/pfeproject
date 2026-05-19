@@ -36,6 +36,12 @@ public class InterviewController {
         return ResponseEntity.ok(interviewService.scheduleInterview(request));
     }
 
+    /** Every interview across the team — drives the shared calendar. */
+    @GetMapping
+    public ResponseEntity<List<InterviewResponse>> getAll() {
+        return ResponseEntity.ok(interviewService.getAll());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<InterviewResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(interviewService.getInterview(id));
@@ -77,8 +83,33 @@ public class InterviewController {
     }
 
     @PatchMapping("/{id}/cancel")
-    public ResponseEntity<InterviewResponse> cancel(@PathVariable UUID id) {
-        return ResponseEntity.ok(interviewService.cancelInterview(id));
+    public ResponseEntity<InterviewResponse> cancel(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID requesterId,
+            @RequestParam(defaultValue = "false") boolean admin) {
+        return ResponseEntity.ok(interviewService.cancelInterview(id, requesterId, admin));
+    }
+
+    @PatchMapping("/{id}/invite")
+    public ResponseEntity<InterviewResponse> invite(
+            @PathVariable UUID id, @RequestParam UUID recruiterId) {
+        return ResponseEntity.ok(interviewService.inviteRecruiter(id, recruiterId));
+    }
+
+    @PatchMapping("/{id}/uninvite")
+    public ResponseEntity<InterviewResponse> uninvite(
+            @PathVariable UUID id, @RequestParam UUID recruiterId) {
+        return ResponseEntity.ok(interviewService.uninviteRecruiter(id, recruiterId));
+    }
+
+    /** A recruiter asks the organizer to be invited to this interview. */
+    @PostMapping("/{id}/request-join")
+    public ResponseEntity<Void> requestJoin(
+            @PathVariable UUID id,
+            @RequestParam UUID requesterId,
+            @RequestParam(required = false) String requesterName) {
+        interviewService.requestToJoin(id, requesterId, requesterName);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/recording")

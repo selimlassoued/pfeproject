@@ -70,6 +70,7 @@ export class AdminDashboard implements OnInit {
   readonly PAGE_SIZE = 8;
 
   activeFilter = 'ALL';
+  activeSubFilter = 'ALL';
   activeRange = 'overall';
   statsLoading = false;
   loading = true;
@@ -117,12 +118,10 @@ export class AdminDashboard implements OnInit {
     { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
     { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
     { key: 'APPLICATION_WITHDRAWN',      label: 'Withdrawn',      color: '#94a3b8' },
-    { key: 'USER_BLOCK',                 label: 'Blocks',         color: '#f87171' },
-    { key: 'USER_UNBLOCK',               label: 'Unblocks',       color: '#4ade80' },
-    { key: 'CANDIDATE_FLAGGED',          label: 'Flagged',        color: '#fbbf24' },
-    { key: 'CANDIDATE_UNFLAGGED',        label: 'Unflagged',      color: '#a78bfa' },
+    { key: 'BLOCKS',                     label: 'Blocks',         color: '#f87171' },
+    { key: 'FLAGS',                      label: 'Flags',          color: '#fbbf24' },
     { key: 'CANDIDATE_SIGNAL_DISMISSED', label: 'Dismissed',      color: '#67e8f9' },
-    { key: 'JOB_UPDATED',                label: 'Jobs',           color: '#fb923c' },
+    { key: 'JOBS',                       label: 'Jobs',           color: '#fb923c' },
   ];
 
   // RECRUITER filters — only recruitment events
@@ -130,9 +129,8 @@ export class AdminDashboard implements OnInit {
     { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
     { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
     { key: 'APPLICATION_WITHDRAWN',      label: 'Withdrawn',      color: '#94a3b8' },
-    { key: 'JOB_UPDATED',                label: 'Jobs',           color: '#fb923c' },
-    { key: 'CANDIDATE_FLAGGED',          label: 'Flagged',        color: '#fbbf24' },
-    { key: 'CANDIDATE_UNFLAGGED',        label: 'Unflagged',      color: '#a78bfa' },
+    { key: 'JOBS',                       label: 'Jobs',           color: '#fb923c' },
+    { key: 'FLAGS',                      label: 'Flags',          color: '#fbbf24' },
   ];
 
   // ADMIN filters — recruiter + candidate actions only (no ROLE_UPDATE)
@@ -140,18 +138,41 @@ export class AdminDashboard implements OnInit {
     { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
     { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
     { key: 'APPLICATION_WITHDRAWN',      label: 'Withdrawn',      color: '#94a3b8' },
-    { key: 'USER_BLOCK',                 label: 'Blocks',         color: '#f87171' },
-    { key: 'USER_UNBLOCK',               label: 'Unblocks',       color: '#4ade80' },
-    { key: 'CANDIDATE_FLAGGED',          label: 'Flagged',        color: '#fbbf24' },
-    { key: 'CANDIDATE_UNFLAGGED',        label: 'Unflagged',      color: '#a78bfa' },
+    { key: 'BLOCKS',                     label: 'Blocks',         color: '#f87171' },
+    { key: 'FLAGS',                      label: 'Flags',          color: '#fbbf24' },
     { key: 'CANDIDATE_SIGNAL_DISMISSED', label: 'Dismissed',      color: '#67e8f9' },
-    { key: 'JOB_UPDATED',                label: 'Jobs',           color: '#fb923c' },
+    { key: 'JOBS',                       label: 'Jobs',           color: '#fb923c' },
   ];
 
   get FILTERS() {
     if (this.isSuperAdmin()) return this.FILTERS_SUPERADMIN;
     if (this.isAdmin())      return this.FILTERS_ADMIN;
     return this.FILTERS_RECRUITER;
+  }
+
+  // Secondary filters — revealed only when a grouped category chip is active.
+  readonly SUBFILTERS: Record<string, { key: string; label: string }[]> = {
+    JOBS: [
+      { key: 'ALL',               label: 'All jobs' },
+      { key: 'JOB_CREATED',       label: 'Created' },
+      { key: 'JOB_UPDATED',       label: 'Edited' },
+      { key: 'JOB_CLOSED',        label: 'Closed' },
+      { key: 'JOB_QUOTA_REACHED', label: 'Quota reached' },
+    ],
+    FLAGS: [
+      { key: 'ALL',                 label: 'All flags' },
+      { key: 'CANDIDATE_FLAGGED',   label: 'Flagged' },
+      { key: 'CANDIDATE_UNFLAGGED', label: 'Unflagged' },
+    ],
+    BLOCKS: [
+      { key: 'ALL',          label: 'All' },
+      { key: 'USER_BLOCK',   label: 'Blocked' },
+      { key: 'USER_UNBLOCK', label: 'Unblocked' },
+    ],
+  };
+
+  get currentSubFilters(): { key: string; label: string }[] {
+    return this.SUBFILTERS[this.activeFilter] ?? [];
   }
 
   readonly EVENT_META: Record<string, EventMeta> = {
@@ -162,7 +183,10 @@ export class AdminDashboard implements OnInit {
     CANDIDATE_FLAGGED:          { label: 'Candidate Flagged', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)'  },
     CANDIDATE_UNFLAGGED:        { label: 'Signal Removed',    color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
     CANDIDATE_SIGNAL_DISMISSED: { label: 'Signal Dismissed',  color: '#67e8f9', bg: 'rgba(103,232,249,0.12)' },
+    JOB_CREATED:                { label: 'Job Created',       color: '#34d399', bg: 'rgba(52,211,153,0.12)'  },
     JOB_UPDATED:                { label: 'Job Updated',       color: '#fb923c', bg: 'rgba(251,146,60,0.12)'  },
+    JOB_CLOSED:                 { label: 'Job Closed',        color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+    JOB_QUOTA_REACHED:          { label: 'Quota Reached',     color: '#22d3ee', bg: 'rgba(34,211,238,0.12)'  },
   };
 
   // SUPERADMIN breakdown — includes role updates
@@ -263,7 +287,12 @@ export class AdminDashboard implements OnInit {
   }
 
   loadLogs(): void {
-    const eq = this.activeFilter !== 'ALL' ? `&eventType=${this.activeFilter}` : '';
+    // A specific sub-filter overrides the grouped category; otherwise the
+    // category key (JOBS/FLAGS/BLOCKS) or the plain filter is used.
+    const effective = (this.currentSubFilters.length && this.activeSubFilter !== 'ALL')
+      ? this.activeSubFilter
+      : this.activeFilter;
+    const eq = effective !== 'ALL' ? `&eventType=${effective}` : '';
     this.http.get<PageResponse<AuditLog>>(
       `${this.API}/api/audit/logs?page=${this.page}&size=${this.PAGE_SIZE}${eq}${this.rangeParam}&callerRole=${this.callerRole}`,
       { headers: this.headers }
@@ -395,7 +424,13 @@ export class AdminDashboard implements OnInit {
   }
 
   setRange(key: string): void { this.activeRange = key; this.page = 0; this.loadStats(); this.loadLogs(); }
-  setFilter(key: string): void { this.activeFilter = key; this.page = 0; this.loadLogs(); }
+  setFilter(key: string): void {
+    this.activeFilter = key;
+    this.activeSubFilter = 'ALL';
+    this.page = 0;
+    this.loadLogs();
+  }
+  setSubFilter(key: string): void { this.activeSubFilter = key; this.page = 0; this.loadLogs(); }
   prevPage(): void { if (this.page > 0) { this.page--; this.loadLogs(); } }
   nextPage(): void { if (this.page + 1 < this.totalPages) { this.page++; this.loadLogs(); } }
 
@@ -443,7 +478,7 @@ export class AdminDashboard implements OnInit {
       type === 'ROLE_UPDATE'
     ) {
       this.router.navigate(['/user', log.targetId]);
-    } else if (type === 'JOB_UPDATED') {
+    } else if (['JOB_UPDATED', 'JOB_CREATED', 'JOB_CLOSED', 'JOB_QUOTA_REACHED'].includes(type)) {
       this.router.navigate(['/jobs', log.targetId]);
     }
   }
@@ -453,6 +488,7 @@ export class AdminDashboard implements OnInit {
     const type = (log.eventType || '').toUpperCase();
     return ['APPLICATION_STATUS_UPDATE', 'APPLICATION_WITHDRAWN',
             'CANDIDATE_FLAGGED', 'CANDIDATE_UNFLAGGED', 'CANDIDATE_SIGNAL_DISMISSED',
-            'USER_BLOCK', 'USER_UNBLOCK', 'JOB_UPDATED'].includes(type);
+            'USER_BLOCK', 'USER_UNBLOCK',
+            'JOB_UPDATED', 'JOB_CREATED', 'JOB_CLOSED', 'JOB_QUOTA_REACHED'].includes(type);
   }
 }

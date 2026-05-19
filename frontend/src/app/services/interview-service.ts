@@ -21,11 +21,13 @@ export interface InterviewResponse {
   jobTitle: string;
   candidateEmail: string;
   recruiterEmail: string;
+  recruiterId: string;
   scheduledAt: string;
   roomUrl: string;
   recordingConsent: boolean;
   status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   createdAt: string;
+  invitedRecruiterIds?: string[];
 }
 export interface InterviewResultResponse {
   id: string;
@@ -62,9 +64,10 @@ export class InterviewService {
     return this.http.post<InterviewResponse>(this.base, request);
   }
 
-  cancelInterview(id: string): Observable<InterviewResponse> {
-  return this.http.patch<InterviewResponse>(`${this.base}/${id}/cancel`, {});
-}
+  cancelInterview(id: string, requesterId: string, admin: boolean): Observable<InterviewResponse> {
+    return this.http.patch<InterviewResponse>(
+      `${this.base}/${id}/cancel?requesterId=${requesterId}&admin=${admin}`, {});
+  }
 
   getById(id: string): Observable<InterviewResponse> {
     return this.http.get<InterviewResponse>(`${this.base}/${id}`);
@@ -86,6 +89,29 @@ export class InterviewService {
     return this.http.get<InterviewResponse[]>(
       `${this.base}/recruiter/${recruiterId}`
     );
+  }
+
+  /** Every interview across the team — drives the shared calendar. */
+  getAll(): Observable<InterviewResponse[]> {
+    return this.http.get<InterviewResponse[]>(this.base);
+  }
+
+  /** Invite another recruiter so they too can join this interview. */
+  invite(id: string, recruiterId: string): Observable<InterviewResponse> {
+    return this.http.patch<InterviewResponse>(
+      `${this.base}/${id}/invite?recruiterId=${recruiterId}`, {});
+  }
+
+  uninvite(id: string, recruiterId: string): Observable<InterviewResponse> {
+    return this.http.patch<InterviewResponse>(
+      `${this.base}/${id}/uninvite?recruiterId=${recruiterId}`, {});
+  }
+
+  /** Ask the organizer of an interview to invite you. */
+  requestJoin(id: string, requesterId: string, requesterName: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.base}/${id}/request-join?requesterId=${requesterId}`
+      + `&requesterName=${encodeURIComponent(requesterName)}`, {});
   }
 
 updateConsent(id: string, consent: boolean): Observable<InterviewResponse> {

@@ -262,7 +262,7 @@
           </div>
           <div style="display:flex; align-items:center; gap:.75rem;">
             <button class="btn btn-customize" type="button" (click)="toggleCustomizeWeights()">
-              {{ customizeWeights ? '✓ Weights on' : '⚖ Customize weights' }}
+              {{ customizeWeights ? '✓ Weights on' : 'Customize weights' }}
             </button>
             <button class="btn btn-ghost" type="button" (click)="addRequirement()">+ Add requirement</button>
           </div>
@@ -322,14 +322,18 @@
               <!-- EDUCATION structured fields -->
               @if (r.get('category')?.value === 'EDUCATION') {
                 <div class="field">
-                  <label class="toolbar-label">Degree required</label>
-                  <select class="input" formControlName="degreeLevel">
-                    <option [ngValue]="null">Any degree</option>
-                    <option value="BAC">Baccalaureate</option>
-                    <option value="LICENCE_BACHELOR">Licence / Bachelor</option>
-                    <option value="MASTER">Master</option>
-                    <option value="PHD">PhD / Doctorate</option>
-                  </select>
+                  <label class="toolbar-label">Degree(s) accepted</label>
+                  <div class="degree-checkboxes">
+                    @for (opt of degreeOptions; track opt.value) {
+                      <label class="degree-check">
+                        <input type="checkbox"
+                               [checked]="isDegreeSelected(r, opt.value)"
+                               (change)="toggleDegree(r, opt.value, $any($event.target).checked)">
+                        <span>{{ opt.label }}</span>
+                      </label>
+                    }
+                  </div>
+                  <small class="field-hint">Tick every degree that qualifies. Leave all unchecked = any degree accepted.</small>
                 </div>
                 <div class="field">
                   <label class="toolbar-label">Enrollment</label>

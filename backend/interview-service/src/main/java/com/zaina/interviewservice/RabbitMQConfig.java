@@ -6,6 +6,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,6 +16,13 @@ public class RabbitMQConfig {
     public static final String ANALYSIS_QUEUE    = "interview.analysis.queue";
     public static final String ANALYSIS_EXCHANGE = "interview.analysis.exchange";
     public static final String ANALYSIS_ROUTING  = "interview.analysis";
+
+    /** Shared cross-service topic exchange — interview events fan out to notifications here. */
+    @Bean
+    public TopicExchange appEventsExchange(
+            @Value("${app.messaging.exchange:app.events}") String exchangeName) {
+        return new TopicExchange(exchangeName, true, false);
+    }
 
     @Bean
     public Queue analysisQueue() {

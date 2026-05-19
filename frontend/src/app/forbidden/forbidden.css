@@ -1,10 +1,81 @@
-header h1 {
-  margin-bottom: 0.5em;
-  color: #d9534f;
+.forbidden-page {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-4);
 }
 
-.error-message {
-  font-size: 1.2em;
-  margin-bottom: 1.5em;
-  color: #555;
+.forbidden-card {
+  position: relative;
+  width: 100%;
+  max-width: 30rem;
+  text-align: center;
+  padding: var(--space-12) var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: forbidden-rise 320ms ease both;
+}
+
+/* Soft brand glow behind the code */
+.forbidden-card::before {
+  content: "";
+  position: absolute;
+  top: -45%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20rem;
+  height: 20rem;
+  background: radial-gradient(circle, rgba(121, 164, 233, 0.18), transparent 70%);
+  pointer-events: none;
+}
+
+.forbidden-code {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 5.5rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, var(--color-secondary), var(--color-primary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.forbidden-title {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--color-cream);
+  margin: var(--space-4) 0 var(--space-3);
+}
+
+.forbidden-title .accent {
+  color: var(--color-secondary);
+}
+
+.forbidden-msg {
+  position: relative;
+  max-width: 24rem;
+  margin: 0 auto var(--space-8);
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.forbidden-actions {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@keyframes forbidden-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

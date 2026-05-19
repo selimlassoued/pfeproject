@@ -110,17 +110,24 @@
           </button>
         }
         <button class="btn btn-ghost" type="button" [routerLink]="['/browse']">Back to jobs</button>
-        <!-- Edit/Delete/Duplicate — RECRUITER only -->
+        <!-- Edit / Close / Duplicate — RECRUITER only -->
         @if (canManageJobs) {
+          <!-- Editable only while DRAFT, or PUBLISHED with zero applicants -->
+          @if (canEditJob) {
+            <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job()!.id]">Edit</button>
+          }
+          <!-- Recruiter can close a published job -->
+          @if (canCloseJob) {
+            <button class="btn btn-warn" type="button" (click)="closeJob(job()!.id)">Close job</button>
+          }
           @if (job()!.jobStatus === 'CLOSED') {
             <button class="btn btn-primary" type="button" (click)="duplicateJob()">
               Duplicate as new job
             </button>
-          } @else {
-            <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job()!.id]">Edit</button>
           }
-          <button class="btn btn-ghost" type="button" (click)="deleteJob(job()!.id)"
-            style="color:var(--color-secondary);">Delete</button>
+          @if (job()!.jobStatus === 'PUBLISHED' && statusCountsLoaded() && totalApplicants > 0) {
+            <span class="lock-note">Locked for editing — {{ totalApplicants }} candidate(s) applied</span>
+          }
         }
       </div>
     </article>
@@ -137,7 +144,7 @@
           <div style="display:flex; align-items:center; gap:.75rem;">
             @if (canManageJobs && (statusCounts()['APPLIED'] ?? 0) > 0) {
               <button class="btn btn-shortlist" type="button" (click)="openShortlist()">
-                ⚡ Smart Shortlist
+                Smart Shortlist
               </button>
             }
             <span class="apps-total-badge">{{ appTotal() }} total</span>
@@ -215,7 +222,7 @@
                     <td (click)="$event.stopPropagation()">
                       <button class="btn btn-ghost" type="button"
                         style="font-size:.75rem; padding:.3rem .7rem;"
-                        (click)="downloadCv(app, $event)">⬇ CV</button>
+                        (click)="downloadCv(app, $event)">CV</button>
                     </td>
                   </tr>
                 }
@@ -237,7 +244,7 @@
   <div class="modal-backdrop" (click)="closeShortlist()"></div>
   <div class="sl-modal">
     <div class="sl-modal-header">
-      <h3 class="sl-modal-title">⚡ Smart Shortlist</h3>
+      <h3 class="sl-modal-title"> Smart Shortlist</h3>
       <button class="sl-modal-close" type="button" (click)="closeShortlist()">✕</button>
     </div>
 

@@ -1,6 +1,6 @@
 import { Component, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormArray, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormArray, FormBuilder, Validators, AbstractControl } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -228,6 +228,34 @@ private readonly fb = inject(FormBuilder);
     if (this.customizeWeights) this.redistributeWeights();
   }
 
+  // ── EDUCATION: multi-select accepted degrees ────────────────────────────────
+  // degreeLevel is stored as a comma-joined string ("LICENCE_BACHELOR,ENGINEER").
+  // Empty = any degree accepted.
+  readonly degreeOptions: { value: string; label: string }[] = [
+    { value: 'BAC',              label: 'Baccalaureate' },
+    { value: 'BTS_DUT',          label: 'BTS / DUT' },
+    { value: 'LICENCE_BACHELOR', label: 'Licence / Bachelor' },
+    { value: 'ENGINEER',         label: 'Engineering degree' },
+    { value: 'MASTER',           label: 'Master' },
+    { value: 'PHD',              label: 'PhD / Doctorate' },
+  ];
+
+  isDegreeSelected(req: AbstractControl, value: string): boolean {
+    const raw = (req.get('degreeLevel')?.value as string) || '';
+    return raw.split(',').map(s => s.trim()).includes(value);
+  }
+
+  toggleDegree(req: AbstractControl, value: string, checked: boolean): void {
+    const ctrl = req.get('degreeLevel');
+    if (!ctrl) return;
+    const current = ((ctrl.value as string) || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    const next = checked
+      ? (current.includes(value) ? current : [...current, value])
+      : current.filter(v => v !== value);
+    ctrl.setValue(next.length ? next.join(',') : null);
+  }
+
   private validateRanges(): string | null {
     const minSalary = this.form.value.minSalary ?? null;
     const maxSalary = this.form.value.maxSalary ?? null;
@@ -326,7 +354,7 @@ private readonly fb = inject(FormBuilder);
         text: 'Job requirements or scoring weights changed. Re-calculating AI scores for all existing applications will update their rankings. This runs in the background.',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: '🔄 Yes, re-score all',
+        confirmButtonText: 'Yes, re-score all',
         cancelButtonText: 'Skip',
       });
 

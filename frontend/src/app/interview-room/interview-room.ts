@@ -324,8 +324,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
       next: () => {
         console.log(`Upload success: ${role}`);
         this.ngZone.run(() => this.uploadStatus = 'done');
-        // Only notify left once — after the recruiter's own upload completes
-        if (role === 'recruiter') this.notifyLeft();
+       this.notifyLeft();
       },
       error: (err) => {
         console.error(`Upload failed for ${role}:`, err);
@@ -337,7 +336,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
         form.append('leftAt', leftAt);
         const sent = navigator.sendBeacon(`/api/interviews/${this.interviewId}/recording`, form);
         this.ngZone.run(() => this.uploadStatus = sent ? 'done' : 'error');
-        if (sent && role === 'recruiter') this.notifyLeft();
+        if (sent) this.notifyLeft();
       }
     });
   }
@@ -353,9 +352,9 @@ export class InterviewRoom implements OnInit, OnDestroy {
   get groupedQuestions(): QuestionGroup[] {
     const order: Array<InterviewQuestion['category']> = ['technical', 'cv_specific', 'behavioral'];
     const labels: Record<string, string> = {
-      technical:   '🔧 Technical',
-      cv_specific: '📄 CV-Specific',
-      behavioral:  '🤝 Behavioral',
+      technical:   'Technical',
+      cv_specific: 'CV-Specific',
+      behavioral:  'Behavioral',
     };
     return order
       .map(cat => ({

@@ -1,7 +1,7 @@
 <div class="room-shell">
 
   <div *ngIf="state === 'waiting'" class="overlay-state waiting">
-    <p class="state-label">⏳ {{ countdown }}</p>
+    <p class="state-label">{{ countdown }}</p>
   </div>
 
   <div *ngIf="state === 'error'" class="overlay-state error">
@@ -38,13 +38,13 @@
 
   <!-- Manual end button — always visible while recording -->
   <button *ngIf="isRecording" class="btn btn-stop" (click)="stopRecording()">
-    ⏹ End & Save
+    End & Save
   </button>
 
-  <span *ngIf="uploadStatus === 'uploading'" class="upload-msg">⏳ Saving…</span>
-  <span *ngIf="uploadStatus === 'done'" class="upload-msg success">✅ Saved</span>
+  <span *ngIf="uploadStatus === 'uploading'" class="upload-msg">Saving…</span>
+  <span *ngIf="uploadStatus === 'done'" class="upload-msg success">Saved</span>
   <span *ngIf="uploadStatus === 'error'" class="upload-msg error">
-    ❌ Save failed
+    Save failed
     <button class="btn btn-ghost btn-sm" (click)="stopRecording()">↺ Retry</button>
   </span>
 </div>

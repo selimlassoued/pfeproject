@@ -13,8 +13,7 @@
       aria-controls="navbarContent"
       aria-expanded="false"
       aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+      </button>
 
     <div class="collapse navbar-collapse" id="navbarContent">
 
@@ -75,8 +74,29 @@
 
       <ul class="navbar-nav ms-auto m-2">
 
-        <!-- Notifications — candidate only -->
-        @if (authenticated && isCandidate()) {
+        <!-- Interview calendar — staff only -->
+        @if (authenticated && !isCandidate()) {
+          <li class="nav-item">
+            <a class="nav-link hireai-link nav-icon-link" routerLink="/calendar"
+               title="Interview calendar" aria-label="Interview calendar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#79a4e9" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 2v4"/>
+                <path d="M16 2v4"/>
+                <rect x="3" y="4" width="18" height="18" rx="2.5"/>
+                <path d="M3 10h18"/>
+                <path d="M8 14h.01"  stroke="#4ade80"/>
+                <path d="M12 14h.01" stroke="#fbbf24"/>
+                <path d="M16 14h.01" stroke="#f87171"/>
+                <path d="M8 18h.01"  stroke="#79a4e9"/>
+                <path d="M12 18h.01" stroke="#4ade80"/>
+              </svg>
+            </a>
+          </li>
+        }
+
+        <!-- Notifications — all signed-in users -->
+        @if (authenticated) {
           <li class="nav-item">
             <app-notification-menu></app-notification-menu>
           </li>

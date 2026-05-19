@@ -663,11 +663,253 @@ def _neutral_profile(username: str, profile: dict, account_age_days: int,
             "collaborated_repos": [],
             "has_collaboration":  False,
         },
+        # Per-tech years/repo-count map — empty for unassessable accounts
+        "tech_stats":            {},
         # Internal verification helpers — empty
         "confirmed_lower":       [],
         "top_langs_lower":       [],
         "lang_implies_fw":       {},
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-repo framework tracking + tech_stats aggregation
+# ─────────────────────────────────────────────────────────────────────────────
+
+class _FwTracker(set):
+    """Set subclass that also records which repo each framework was added under.
+    Existing code calls .add(fw) unchanged; we additionally append fw to per_repo[current]."""
+    def __init__(self):
+        super().__init__()
+        self.per_repo: dict[str, list[str]] = {}
+        self.current: str = ""
+
+    def add(self, fw: str) -> None:
+        if not fw:
+            return
+        super().add(fw)
+        if self.current:
+            lst = self.per_repo.setdefault(self.current, [])
+            if fw not in lst:
+                lst.append(fw)
+
+
+def _detect_repo_frameworks_light(username: str, repo: dict) -> List[str]:
+    """Detect frameworks for a single repo. Same depth as the top-3 deep scan:
+    root + up to 8 subfolders, with ALL framework config files probed at each level.
+    Pure function (no shared state) → safe to call from ThreadPoolExecutor workers.
+
+    Coverage matches `_get_repo_frameworks` (used for top-3) so every "real" repo
+    gets equivalent framework detection regardless of which tier it falls into.
+    """
+    import json as _json_local
+    frameworks: list[str] = []
+
+    def add(fw: str) -> None:
+        if fw and fw not in frameworks:
+            frameworks.append(fw)
+
+    def _scan_files(files: dict) -> None:
+        """Apply every framework-detection pattern to a given {filename: download_url} map."""
+        if "pubspec.yaml" in files: add("Flutter")
+        if "angular.json" in files: add("Angular")
+        if "manage.py"    in files: add("Django")
+
+        if "pom.xml" in files:
+            pom = _get_raw(files["pom.xml"]).lower()
+            if   "spring-boot" in pom: add("Spring Boot")
+            elif "quarkus"     in pom: add("Quarkus")
+            elif "micronaut"   in pom: add("Micronaut")
+            else:                      add("Java/Maven")
+
+        if "requirements.txt" in files:
+            req = _get_raw(files["requirements.txt"]).lower()
+            if   "django"    in req: add("Django")
+            elif "fastapi"   in req: add("FastAPI")
+            elif "flask"     in req: add("Flask")
+            elif "streamlit" in req: add("Streamlit")
+            else:                    add("Python")
+
+        if "pyproject.toml" in files:
+            content = _get_raw(files["pyproject.toml"]).lower()
+            if   "django"  in content: add("Django")
+            elif "fastapi" in content: add("FastAPI")
+            elif "flask"   in content: add("Flask")
+            else:                      add("Python")
+
+        if "package.json" in files:
+            try:
+                pkg = _json_local.loads(_get_raw(files["package.json"]))
+                deps = set()
+                deps.update(pkg.get("dependencies", {}).keys())
+                deps.update(pkg.get("devDependencies", {}).keys())
+                d = {x.lower() for x in deps}
+                if   "@angular/core"    in d: add("Angular")
+                elif "react-native"     in d: add("React Native")
+                elif "@remix-run/react" in d: add("Remix")
+                elif "react"            in d: add("Next.js" if "next" in d else "React")
+                elif "@sveltejs/kit"    in d: add("SvelteKit")
+                elif "svelte"           in d: add("Svelte")
+                elif "astro"            in d: add("Astro")
+                elif "vue"              in d: add("Nuxt.js" if "nuxt" in d else "Vue.js")
+                elif "@nestjs/core"     in d: add("NestJS")
+                elif "fastify"          in d: add("Fastify")
+                elif "express"          in d: add("Express.js")
+                else:                         add("Node.js")
+            except Exception:
+                pass
+
+        if "composer.json" in files:
+            comp = _get_raw(files["composer.json"]).lower()
+            if   "laravel" in comp: add("Laravel")
+            elif "symfony" in comp: add("Symfony")
+            else:                   add("PHP")
+
+        if "gemfile" in files:
+            gem = _get_raw(files["gemfile"]).lower()
+            add("Ruby on Rails" if "rails" in gem else "Ruby")
+
+        csproj = next((f for f in files if f.endswith(".csproj")), None)
+        if csproj:
+            cs = _get_raw(files[csproj]).lower()
+            if   "maui"       in cs: add(".NET MAUI")
+            elif "aspnetcore" in cs: add("ASP.NET Core")
+            else:                    add(".NET")
+
+        if "build.gradle" in files or "build.gradle.kts" in files:
+            gradle_url = files.get("build.gradle") or files.get("build.gradle.kts")
+            content    = _get_raw(gradle_url).lower()
+            if   "spring-boot" in content: add("Spring Boot")
+            elif "compose"     in content: add("Jetpack Compose")
+            elif "android"     in content: add("Android")
+
+    # ── Scan repo root ───────────────────────────────────────────────────────
+    root_data = _get(f"https://api.github.com/repos/{username}/{repo['name']}/contents")
+    if not root_data or not isinstance(root_data, list):
+        return frameworks
+
+    root_files = {
+        item["name"].lower(): item.get("download_url")
+        for item in root_data
+        if isinstance(item, dict) and item.get("type") == "file"
+    }
+    root_folders = [
+        item["name"]
+        for item in root_data
+        if isinstance(item, dict) and item.get("type") == "dir"
+    ]
+
+    _scan_files(root_files)
+
+    # ── Dive into up to 8 project subfolders ─────────────────────────────────
+    _SKIP = {
+        ".github", "node_modules", "vendor", "test", "tests",
+        "docs", "documentation", "assets", "resources", "public",
+        "static", "images", "img", "dist", "build", "target",
+        ".git", ".idea", ".vscode",
+    }
+    project_folders = [f for f in root_folders if f.lower() not in _SKIP][:8]
+
+    for folder in project_folders:
+        sub = _get(
+            f"https://api.github.com/repos/{username}/{repo['name']}/contents/{folder}",
+            timeout=5,
+        )
+        if not sub or not isinstance(sub, list):
+            continue
+        sub_files = {
+            item["name"].lower(): item.get("download_url")
+            for item in sub
+            if isinstance(item, dict) and item.get("type") == "file"
+        }
+        _scan_files(sub_files)
+
+    return frameworks
+
+
+def _aggregate_tech_stats(
+    own_repos: List[dict],
+    scored_repos: List[dict],
+    framework_per_repo: dict,
+) -> dict:
+    """
+    Build per-tech aggregated stats from all real repos (non-fork, ≥10 KB):
+      {
+        "<tech_lower>": {
+          "repo_count":    int,    # number of repos using this tech
+          "first_used":    int,    # earliest created_at year
+          "last_used":     int,    # latest pushed_at year
+          "years":         int,    # last_used - first_used + 1
+          "total_size_kb": int,    # sum of repo sizes — quality signal
+          "avg_size_kb":   int,    # total_size_kb / repo_count
+          "max_size_kb":   int,    # largest single repo — flagship signal
+        }
+      }
+    The size fields let the recruiter distinguish "4 substantial projects" from
+    "4 tiny tutorial repos" — same count, very different evidence quality.
+    Uses multi-language data for top-3 repos (from /languages call) and dominant
+    language for the rest (from the single repos call).
+    """
+    detailed_langs: dict[str, list[str]] = {
+        r["name"]: r.get("all_languages", [])
+        for r in scored_repos
+        if r.get("name") and r.get("all_languages")
+    }
+
+    stats: dict[str, dict] = {}
+
+    def _update(tech: str, year_start: int, year_end: int, size_kb: int) -> None:
+        if not tech:
+            return
+        key = tech.lower()
+        if key not in stats:
+            stats[key] = {
+                "repo_count":    0,
+                "first_used":    year_start,
+                "last_used":     year_end,
+                "total_size_kb": 0,
+                "max_size_kb":   0,
+            }
+        s = stats[key]
+        s["repo_count"]    += 1
+        s["first_used"]     = min(s["first_used"], year_start)
+        s["last_used"]      = max(s["last_used"],  year_end)
+        s["total_size_kb"] += size_kb
+        s["max_size_kb"]    = max(s["max_size_kb"], size_kb)
+
+    for repo in own_repos:
+        if repo.get("fork", False):
+            continue
+        size_kb = repo.get("size") or 0
+        if size_kb < 10:    # < 10 KB → empty/placeholder, skip
+            continue
+
+        try:
+            year_start = int((repo.get("created_at") or "")[:4])
+            year_end   = int((repo.get("pushed_at")  or "")[:4])
+        except ValueError:
+            continue
+        if year_start > year_end:
+            continue
+
+        name = repo.get("name") or ""
+        langs = detailed_langs.get(name)
+        if not langs:
+            dom = repo.get("language")
+            langs = [dom] if dom else []
+
+        for lang in langs:
+            _update(lang, year_start, year_end, size_kb)
+
+        for fw in framework_per_repo.get(name, []):
+            _update(fw, year_start, year_end, size_kb)
+
+    # Derived fields
+    for s in stats.values():
+        s["years"]       = max(1, s["last_used"] - s["first_used"] + 1)
+        s["avg_size_kb"] = s["total_size_kb"] // s["repo_count"] if s["repo_count"] else 0
+
+    return stats
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -788,9 +1030,10 @@ def enrich_from_github(github_url: Optional[str]) -> Optional[dict]:
 
     # ── Framework scan of ALL repos ───────────────────────────────────────────
     logger.info(f"[GitHub] Scanning all {len(own_repos)} repos for frameworks...")
-    all_repo_frameworks: set[str] = set()
+    all_repo_frameworks: _FwTracker = _FwTracker()
 
     for repo in scored_repos:
+        all_repo_frameworks.current = repo.get("name") or ""
         for fw in repo.get("frameworks", []):
             if fw:
                 all_repo_frameworks.add(fw)
@@ -806,180 +1049,71 @@ def enrich_from_github(github_url: Optional[str]) -> Optional[dict]:
             continue
         lang = (repo.get("language") or "").lower()
         if lang in _LANG_IMPLIES_FRAMEWORK:
+            all_repo_frameworks.current = repo["name"]
             all_repo_frameworks.add(_LANG_IMPLIES_FRAMEWORK[lang])
 
+    # ── Eligible repos for the all-repo framework scan ───────────────────────
+    # Exclude: top-3 already deep-scanned, repos with dominant lang already
+    # implying a framework (handled above), and repos < 10 KB.
+    eligible_for_fw_scan = [
+        r for r in own_repos
+        if (r.get("size") or 0) >= 10
+        and r["name"] not in repos_to_check_names
+        and (r.get("language") or "").lower() not in _LANG_IMPLIES_FRAMEWORK
+    ]
+    # Oldest-first: even if budget exhausts, earliest first_used years survive.
+    eligible_for_fw_scan.sort(key=lambda r: r.get("created_at") or "9999")
+
+    # ── Parallel framework scan ──────────────────────────────────────────────
+    # Each repo's detection is independent and I/O-bound (waiting on GitHub HTTP).
+    # ThreadPoolExecutor with 5 workers cuts wall-clock time ~3-5×.
+    # Results merged into the tracker on the MAIN thread → thread-safe.
+    import concurrent.futures as _cf
     import time as _time
-    _scan_start = _time.time()
-    _SCAN_BUDGET = 18
 
-    for repo in own_repos:
-        if _time.time() - _scan_start > _SCAN_BUDGET:
-            logger.info("[GitHub] All-repo scan budget exhausted — stopping early")
-            break
+    _scan_start  = _time.time()
+    _SCAN_BUDGET = 25     # seconds — parallel scan should finish well inside
 
-        if repo.get("size", 0) == 0:
-            continue
-        if repo["name"] in repos_to_check_names:
-            continue
+    logger.info(
+        f"[GitHub] Parallel framework scan: {len(eligible_for_fw_scan)} eligible repos, "
+        f"5 workers, budget {_SCAN_BUDGET}s"
+    )
 
-        lang = (repo.get("language") or "").lower()
-        if lang in _LANG_IMPLIES_FRAMEWORK:
-            continue
-
-        root_data = _get(
-            f"https://api.github.com/repos/{username}/{repo['name']}/contents"
-        )
-        if not root_data or not isinstance(root_data, list):
-            continue
-
-        root_files = {
-            item["name"].lower(): item.get("download_url")
-            for item in root_data
-            if isinstance(item, dict) and item.get("type") == "file"
+    with _cf.ThreadPoolExecutor(max_workers=5) as _pool:
+        future_to_repo = {
+            _pool.submit(_detect_repo_frameworks_light, username, r): r
+            for r in eligible_for_fw_scan
         }
-        root_folders = {
-            item["name"].lower()
-            for item in root_data
-            if isinstance(item, dict) and item.get("type") == "dir"
-        }
-
-        if "pubspec.yaml" in root_files:    all_repo_frameworks.add("Flutter")
-        if "angular.json" in root_files:    all_repo_frameworks.add("Angular")
-        if "manage.py" in root_files:       all_repo_frameworks.add("Django")
-
-        if "pom.xml" in root_files:
-            pom = _get_raw(root_files["pom.xml"]).lower()
-            if "spring-boot"  in pom: all_repo_frameworks.add("Spring Boot")
-            elif "quarkus"    in pom: all_repo_frameworks.add("Quarkus")
-            elif "micronaut"  in pom: all_repo_frameworks.add("Micronaut")
-            else:                     all_repo_frameworks.add("Java/Maven")
-
-        if "requirements.txt" in root_files:
-            req = _get_raw(root_files["requirements.txt"]).lower()
-            if "django"      in req: all_repo_frameworks.add("Django")
-            elif "fastapi"   in req: all_repo_frameworks.add("FastAPI")
-            elif "flask"     in req: all_repo_frameworks.add("Flask")
-            elif "streamlit" in req: all_repo_frameworks.add("Streamlit")
-            else:                    all_repo_frameworks.add("Python")
-
-        if "package.json" in root_files:
-            try:
-                import json as _json2
-                pkg = _json2.loads(_get_raw(root_files["package.json"]))
-                deps = set()
-                deps.update(pkg.get("dependencies", {}).keys())
-                deps.update(pkg.get("devDependencies", {}).keys())
-                deps_lower = {d.lower() for d in deps}
-                if "@angular/core"      in deps_lower: all_repo_frameworks.add("Angular")
-                elif "react-native"     in deps_lower: all_repo_frameworks.add("React Native")
-                elif "@remix-run/react" in deps_lower: all_repo_frameworks.add("Remix")
-                elif "react"            in deps_lower:
-                    all_repo_frameworks.add("Next.js" if "next" in deps_lower else "React")
-                elif "@sveltejs/kit"    in deps_lower: all_repo_frameworks.add("SvelteKit")
-                elif "svelte"           in deps_lower: all_repo_frameworks.add("Svelte")
-                elif "astro"            in deps_lower: all_repo_frameworks.add("Astro")
-                elif "vue"              in deps_lower:
-                    all_repo_frameworks.add("Nuxt.js" if "nuxt" in deps_lower else "Vue.js")
-                elif "@nestjs/core"     in deps_lower: all_repo_frameworks.add("NestJS")
-                elif "fastify"          in deps_lower: all_repo_frameworks.add("Fastify")
-                elif "express"          in deps_lower: all_repo_frameworks.add("Express.js")
-                else:                                  all_repo_frameworks.add("Node.js")
-            except Exception:
-                pass
-
-        if "composer.json" in root_files:
-            comp = _get_raw(root_files["composer.json"]).lower()
-            if "laravel"   in comp: all_repo_frameworks.add("Laravel")
-            elif "symfony" in comp: all_repo_frameworks.add("Symfony")
-            else:                   all_repo_frameworks.add("PHP")
-
-        if "gemfile" in root_files:
-            gem = _get_raw(root_files["gemfile"]).lower()
-            all_repo_frameworks.add("Ruby on Rails" if "rails" in gem else "Ruby")
-
-        csproj = next((f for f in root_files if f.endswith(".csproj")), None)
-        if csproj:
-            cs = _get_raw(root_files[csproj]).lower()
-            if "maui"         in cs: all_repo_frameworks.add(".NET MAUI")
-            elif "aspnetcore" in cs: all_repo_frameworks.add("ASP.NET Core")
-            else:                    all_repo_frameworks.add(".NET")
-
-        _LANG_TO_CONFIG = {
-            "php":        "composer.json",
-            "java":       "pom.xml",
-            "kotlin":     "pom.xml",
-            "python":     "requirements.txt",
-            "dart":       "pubspec.yaml",
-            "typescript": "package.json",
-            "javascript": "package.json",
-        }
-
-        repo_lang = (repo.get("language") or "").lower()
-        target_config = _LANG_TO_CONFIG.get(repo_lang)
-
-        if target_config and root_files:
-            _SKIP = {".github","node_modules","vendor","test","tests",
-                     "docs","assets","dist","build","target",".git",".idea"}
-            project_folders = [f for f in root_folders if f not in _SKIP][:3]
-
-            for folder in project_folders:
-                sub = _get(
-                    f"https://api.github.com/repos/{username}/{repo['name']}"
-                    f"/contents/{folder}",
-                    timeout=5,
-                )
-                if not sub or not isinstance(sub, list):
+        try:
+            for future in _cf.as_completed(future_to_repo, timeout=_SCAN_BUDGET):
+                repo = future_to_repo[future]
+                try:
+                    fws = future.result()
+                except Exception as e:
+                    logger.warning(f"[GitHub] {repo['name']} scan failed: {e}")
                     continue
-                sub_files = {
-                    item["name"].lower(): item.get("download_url")
-                    for item in sub
-                    if isinstance(item, dict) and item.get("type") == "file"
-                }
-                if target_config not in sub_files:
+                if not fws:
                     continue
+                # Merge on main thread — _FwTracker.add() not thread-safe.
+                all_repo_frameworks.current = repo["name"]
+                for fw in fws:
+                    all_repo_frameworks.add(fw)
+        except _cf.TimeoutError:
+            # Cancel any pending futures so workers don't keep running
+            cancelled = 0
+            for f in future_to_repo:
+                if not f.done():
+                    f.cancel()
+                    cancelled += 1
+            logger.info(
+                f"[GitHub] Parallel scan budget exhausted at "
+                f"{_time.time() - _scan_start:.1f}s — {cancelled} repos cancelled"
+            )
 
-                frameworks_before = len(all_repo_frameworks)
-
-                if target_config == "composer.json":
-                    comp = _get_raw(sub_files["composer.json"]).lower()
-                    if "laravel"   in comp: all_repo_frameworks.add("Laravel")
-                    elif "symfony" in comp: all_repo_frameworks.add("Symfony")
-                    else:                   all_repo_frameworks.add("PHP")
-                elif target_config == "pom.xml":
-                    pom = _get_raw(sub_files["pom.xml"]).lower()
-                    if "spring-boot" in pom: all_repo_frameworks.add("Spring Boot")
-                    elif "quarkus"   in pom: all_repo_frameworks.add("Quarkus")
-                    else:                    all_repo_frameworks.add("Java/Maven")
-                elif target_config == "requirements.txt":
-                    req = _get_raw(sub_files["requirements.txt"]).lower()
-                    if "django"    in req: all_repo_frameworks.add("Django")
-                    elif "fastapi" in req: all_repo_frameworks.add("FastAPI")
-                    elif "flask"   in req: all_repo_frameworks.add("Flask")
-                    else:                  all_repo_frameworks.add("Python")
-                elif target_config == "pubspec.yaml":
-                    all_repo_frameworks.add("Flutter")
-                elif target_config == "package.json":
-                    try:
-                        import json as _json3
-                        pkg = _json3.loads(_get_raw(sub_files["package.json"]))
-                        deps = set()
-                        deps.update(pkg.get("dependencies", {}).keys())
-                        deps.update(pkg.get("devDependencies", {}).keys())
-                        dep_names = {d.lower() for d in deps}
-                        if "@angular/core"  in dep_names: all_repo_frameworks.add("Angular")
-                        elif "react-native" in dep_names: all_repo_frameworks.add("React Native")
-                        elif "react"        in dep_names:
-                            all_repo_frameworks.add("Next.js" if "next" in dep_names else "React")
-                        elif "vue"          in dep_names: all_repo_frameworks.add("Vue.js")
-                        elif "@nestjs/core" in dep_names: all_repo_frameworks.add("NestJS")
-                        elif "express"      in dep_names: all_repo_frameworks.add("Express.js")
-                    except Exception:
-                        pass
-
-                if len(all_repo_frameworks) > frameworks_before:
-                    break
-
-    logger.info(f"[GitHub] All-repo framework scan complete: {all_repo_frameworks}")
+    logger.info(
+        f"[GitHub] All-repo framework scan complete in "
+        f"{_time.time() - _scan_start:.1f}s: {all_repo_frameworks}"
+    )
 
     # ── Framework → implied languages mapping ─────────────────────────────────
     _FRAMEWORK_IMPLIES: dict[str, set[str]] = {
@@ -1166,6 +1300,17 @@ def enrich_from_github(github_url: Optional[str]) -> Optional[dict]:
         if total_weight > 0 else 0.0
     )
 
+    # ── Per-tech years/repo-count aggregation (languages + frameworks) ───────
+    tech_stats = _aggregate_tech_stats(
+        own_repos=own_repos,
+        scored_repos=scored_repos,
+        framework_per_repo=all_repo_frameworks.per_repo,
+    )
+    logger.info(
+        f"[GitHub] tech_stats built: {len(tech_stats)} entries — "
+        f"sample: {dict(list(tech_stats.items())[:3])}"
+    )
+
     result = {
         "username":              username,
         "account_url":           f"https://github.com/{username}",
@@ -1190,6 +1335,7 @@ def enrich_from_github(github_url: Optional[str]) -> Optional[dict]:
         "recently_active_repos": sum(1 for r in top_repos_detail
                                      if r["commit_activity"].get("recently_active", False)),
         "avg_ownership_ratio":   round(avg_ownership, 2),
+        "tech_stats":            tech_stats,
         # Internal helpers for nlp_parser skill verification
         "confirmed_lower":       list(confirmed_lower),
         "top_langs_lower":       list(top_langs_lower),

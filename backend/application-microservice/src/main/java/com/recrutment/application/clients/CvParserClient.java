@@ -319,9 +319,11 @@ public class CvParserClient {
                 .map(item -> {
                     Map<?, ?> m = (Map<?, ?>) item;
                     return new SemanticMatchDto.SkillScoreDto(
-                            m.get("skill") instanceof String s ? s : null,
+                            m.get("skill")    instanceof String s ? s : null,
                             toInt(m.get("score")),
-                            m.get("status") instanceof String s ? s : "missing"
+                            m.get("status")   instanceof String s ? s : "missing",
+                            m.get("evidence") instanceof String e ? e : null,
+                            m.get("reason")   instanceof String r ? r : null
                     );
                 })
                 .toList();

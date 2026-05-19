@@ -29,24 +29,38 @@ export class KeycloakAccountService {
 
   async getUser(): Promise<User> {
     const p = await firstValueFrom(this.http.get<KCAccountProfile>(this.accountUrl));
-
     return {
-      username: p.username,
-      email: p.email,
-      firstName: p.firstName ?? '',
-      lastName: p.lastName ?? '',
+      username:    p.username,
+      email:       p.email,
+      firstName:   p.firstName ?? '',
+      lastName:    p.lastName  ?? '',
       phoneNumber: this.getAttr(p, 'phoneNumber'),
     };
   }
 
   async updateUser(user: User): Promise<void> {
     const p = await firstValueFrom(this.http.get<KCAccountProfile>(this.accountUrl));
-
-    p.username = user.username;
+    p.username  = user.username;
     p.firstName = user.firstName;
-    p.lastName = user.lastName;
+    p.lastName  = user.lastName;
     this.setAttr(p, 'phoneNumber', user.phoneNumber);
-
     await firstValueFrom(this.http.post<void>(this.accountUrl, p));
+  }
+
+  /**
+   * True if the account is linked to a social identity provider
+   * (Google / GitHub). Such users authenticate through the broker, which
+   * bypasses the password OTP flow — so 2-factor self-setup is not offered
+   * to them. Any failure is treated as "not linked" so the check is safe.
+   */
+  async hasLinkedSocialAccount(): Promise<boolean> {
+    try {
+      const linked = await firstValueFrom(
+        this.http.get<{ connected: boolean }[]>(`${this.accountUrl}/linked-accounts`),
+      );
+      return Array.isArray(linked) && linked.some(a => a.connected);
+    } catch {
+      return false;
+    }
   }
 }

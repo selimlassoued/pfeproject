@@ -357,3 +357,13 @@
 }
 .sl-result-ok    { background: rgba(72,187,120,.12); color: #68d391; border: 1px solid rgba(72,187,120,.25); }
 .sl-result-empty { background: rgba(251,191,36,.10); color: #fbbf24; border: 1px solid rgba(251,191,36,.22); }
+
+/* "Locked for editing" note shown on a published job that has applicants */
+.lock-note {
+  display: inline-flex; align-items: center;
+  font-size: .8rem; color: #fbbf24;
+  padding: .35rem .6rem;
+  background: rgba(251,191,36,.10);
+  border: 1px solid rgba(251,191,36,.22);
+  border-radius: 6px;
+}

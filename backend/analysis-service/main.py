@@ -15,7 +15,7 @@ import whisper
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-ENERGY_DOMINANCE_RATIO = 1.4   # speaker must be 40% louder to be confirmed
+ENERGY_DOMINANCE_RATIO = 1.5   # speaker must be 50% louder to be confirmed
 ENERGY_WINDOW_SEC      = 0.8   # seconds around segment start to sample
 ENERGY_FRAME_MS        = 20    # ms per energy frame
 
@@ -27,7 +27,7 @@ app = FastAPI(title="Interview Analysis Sidecar")
 # ── Config ────────────────────────────────────────────────────────────────────
 WHISPER_MODEL  = os.getenv("WHISPER_MODEL", "base")       # tiny/base/small/medium
 OLLAMA_BASE    = os.getenv("OLLAMA_BASE",   "http://ollama:11434")
-OLLAMA_MODEL   = os.getenv("OLLAMA_MODEL",  "llama3.2")
+OLLAMA_MODEL   = os.getenv("OLLAMA_MODEL",  "qwen2.5:7b")
 RECORDINGS_DIR = os.getenv("RECORDINGS_DIR", "/recordings")
 
 # Load Whisper once at startup (expensive)
@@ -91,19 +91,13 @@ def _transcribe(path: Path, speaker: str,
         word_timestamps=True,
         language="en",
         fp16=False,
+        condition_on_previous_text=False,
         initial_prompt=(
-            f"This is a technical job interview at VERMEG, a fintech company "
-            f"specializing in banking and insurance software platforms. "
-            f"This is a recording of the {speaker}'s microphone during a technical job interview. "
-            f"Only {speaker} speech should be present. "
-            f"The position is: {job_title}. "
-            f"Job context: {job_description[:300] if job_description else ''} "
-            f"Key technical topics and requirements: {req_text[:400] if req_text else ''} "
-            "Expect technical terms such as: PostgreSQL, Oracle, partitioning, "
-            "indexing, query optimization, EXPLAIN ANALYZE, pg_stat_activity, "
-            "pg_locks, AWR reports, lock contention, reconciliation, settlement, "
-            "Docker, Kubernetes, microservices, SQL, DBA, "
-            "transaction isolation, index fragmentation, composite index."
+            f"Job interview for {job_title} at VERMEG. "
+            f"{job_description[:200] if job_description else ''} "
+            f"{req_text[:300] if req_text else ''} "
+            "PostgreSQL, Oracle, Docker, Kubernetes, microservices, SQL, "
+            "indexing, query optimization, transaction isolation."
         )
     )
     segments = []
@@ -127,6 +121,42 @@ def _merge_transcripts(recruiter_segs: list[dict],
         who  = "Recruiter" if seg["speaker"] == "recruiter" else "Candidate"
         lines.append(f"{ts} {who}: {seg['text']}")
     return "\n".join(lines)
+
+
+def _word_overlap(a: str, b: str) -> float:
+    wa = set(a.lower().split())
+    wb = set(b.lower().split())
+    if not wa or not wb:
+        return 0.0
+    return len(wa & wb) / min(len(wa), len(wb))
+
+
+def _remove_repeated_phrases(text: str) -> str:
+    """Remove consecutive duplicate sentences within a segment."""
+    parts = [p.strip() for p in text.replace('?', '.').replace('!', '.').split('.') if p.strip()]
+    deduped = []
+    for p in parts:
+        if not deduped or p.lower() != deduped[-1].lower():
+            deduped.append(p)
+    return '. '.join(deduped)
+
+
+def _filter_echo_segments(segments: list[dict], similarity_threshold: float = 0.65) -> list[dict]:
+    """Drop segments whose text is too similar to a recent segment from the other speaker."""
+    filtered: list[dict] = []
+    for seg in segments:
+        is_echo = False
+        for prev in filtered[-4:]:
+            if prev['speaker'] != seg['speaker']:
+                if _word_overlap(prev['text'], seg['text']) >= similarity_threshold:
+                    log.debug("Echo dropped [%s @ %.1fs]: %s", seg['speaker'], seg['start'], seg['text'][:60])
+                    is_echo = True
+                    break
+        if not is_echo:
+            seg = dict(seg)
+            seg['text'] = _remove_repeated_phrases(seg['text'])
+            filtered.append(seg)
+    return filtered
 
 
 def _call_ollama(prompt: str) -> str:
@@ -256,7 +286,13 @@ def analyse(req: AnalyseRequest):
         log.error("Transcription failed:\n%s", traceback.format_exc())
         raise HTTPException(status_code=500, detail="Transcription failed")
 
-    try:                                              # ← wrap merge separately
+    # Text-based echo filter applied before energy-based VAD
+    all_segs = sorted(recruiter_segs + candidate_segs, key=lambda s: s["start"])
+    all_segs = _filter_echo_segments(all_segs)
+    recruiter_segs = [s for s in all_segs if s["speaker"] == "recruiter"]
+    candidate_segs = [s for s in all_segs if s["speaker"] == "candidate"]
+
+    try:
         transcript = _merge_by_vad(
             recruiter_path, candidate_path,
             recruiter_segs, candidate_segs,
@@ -265,7 +301,6 @@ def analyse(req: AnalyseRequest):
         )
     except Exception:
         log.error("VAD merge failed:\n%s", traceback.format_exc())
-        # Fallback to simple interleave so you always get something
         transcript = _merge_transcripts(recruiter_segs, candidate_segs)
 
     log.info("Merged transcript length: %d chars", len(transcript))

@@ -39,7 +39,7 @@
           </div>
         } @else if (isModerated) {
           <span class="ad-status-moderated">
-            {{ app.status === 'FLAGGED' ? '⚑ Flagged — pending admin review' : '⊘ Blocked by admin' }}
+            {{ app.status === 'FLAGGED' ? 'Flagged — pending admin review' : 'Blocked by admin' }}
           </span>
         } @else {
           <span class="ad-status-final">
@@ -48,16 +48,16 @@
         }
 
         <!-- AI Analysis -->
-        <button class="btn btn-ai" type="button" (click)="openAnalysis()">🤖 AI Analysis</button>
+        <button class="btn btn-ai" type="button" (click)="openAnalysis()">AI Analysis</button>
 
         <!-- Signal candidate — RECRUITER only, not shown when already moderated -->
         @if (canSignal() && !isModerated) {
           <button class="btn btn-signal" type="button" (click)="openSignalModal()">
-            ⚑ Signal Candidate
+            Signal Candidate
           </button>
         }
 
-        <button class="btn btn-ghost" type="button" (click)="downloadCv()">⬇ Download CV</button>
+        <button class="btn btn-ghost" type="button" (click)="downloadCv()">Download CV</button>
       </div>
     </div>
     <section class="interview-section">
@@ -77,14 +77,14 @@
       <div class="interview-card-top">
         <span class="interview-status-pill">{{ iv.status }}</span>
         <span class="interview-date">
-          📅 {{ iv.scheduledAt | date:'dd/MM/yyyy' }} &nbsp;⏰ {{ iv.scheduledAt | date:'HH:mm' }}
+          {{ iv.scheduledAt | date:'dd/MM/yyyy' }} &nbsp;{{ iv.scheduledAt | date:'HH:mm' }}
         </span>
       </div>
 
       <div class="interview-card-bottom">
-        <span class="interview-room-label">🔗 {{ iv.roomUrl }}</span>
+        <span class="interview-room-label">{{ iv.roomUrl }}</span>
         <button
-          *ngIf="iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS'"
+          *ngIf="(iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS') && canCancel(iv)"
           class="btn btn-danger interview-cancel-btn"
           (click)="cancelInterview(iv)"
           [disabled]="cancellingId === iv.id">
@@ -95,24 +95,67 @@
   *ngIf="iv.status === 'COMPLETED'"
   class="btn btn-ai"
   (click)="viewResult(iv.id)">
-  🧠 View AI Result
+  View AI Result
 </button>
+
+      <!-- Invite recruiters — only the organizer sees this -->
+      <div class="interview-invite"
+           *ngIf="(iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS') && canManageInvites(iv)">
+        <div class="interview-invite-label">Invited recruiters</div>
+
+        <div class="interview-invite-chips" *ngIf="iv.invitedRecruiterIds?.length">
+          <span class="interview-invite-chip" *ngFor="let rid of iv.invitedRecruiterIds">
+            {{ recruiterLabel(rid) }}
+            <button type="button" class="interview-invite-x"
+                    [disabled]="invitingId === iv.id"
+                    (click)="uninviteRecruiter(iv, rid)" aria-label="Remove">✕</button>
+          </span>
+        </div>
+        <div class="interview-invite-empty" *ngIf="!iv.invitedRecruiterIds?.length">
+          Only you can join this interview. Invite a colleague to let them join too.
+        </div>
+
+        <div class="interview-invite-add">
+          <select class="interview-invite-select" [(ngModel)]="inviteSelection">
+            <option value="">Select a recruiter…</option>
+            <option *ngFor="let r of availableRecruiters(iv)" [value]="r.id">
+              {{ recruiterLabel(r.id) }}
+            </option>
+          </select>
+          <button type="button" class="btn btn-ghost interview-invite-btn"
+                  [disabled]="!inviteSelection || invitingId === iv.id"
+                  (click)="inviteRecruiter(iv)">
+            {{ invitingId === iv.id ? 'Inviting…' : 'Invite' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="interview-room-wrapper">
-    <button *ngIf="activeInterview" class="btn btn-primary interview-join-btn" (click)="joinInterview()">
-      🎥 Join Interview
+    <button *ngIf="activeInterview && canJoin(activeInterview)"
+            class="btn btn-primary interview-join-btn" (click)="joinInterview()">
+      Join Interview
     </button>
+    <div *ngIf="activeInterview && !canJoin(activeInterview)" class="interview-private-block">
+      <span class="interview-private-note">This interview is private to its organizer.</span>
+      <button *ngIf="!joinRequestSent" class="btn btn-ghost interview-request-btn" type="button"
+              [disabled]="requestingJoin" (click)="requestToJoin(activeInterview)">
+        {{ requestingJoin ? 'Sending request…' : 'Request to join' }}
+      </button>
+      <span *ngIf="joinRequestSent" class="interview-request-sent">
+        ✓ Request sent — the organizer has been notified.
+      </span>
+    </div>
   </div>
 
   <button *ngIf="!showScheduleForm && canSchedule" class="btn btn-primary interview-trigger-btn"
     type="button" (click)="showScheduleForm = true">
-    📅 Schedule Interview
+    Schedule Interview
   </button>
 
   <span class="interview-blocked-badge" *ngIf="!canSchedule && !showScheduleForm">
-    🔒 Interview already scheduled
+    Interview already scheduled
   </span>
 
   <div class="interview-form-panel" *ngIf="showScheduleForm">
@@ -121,7 +164,7 @@
       [jobId]="app.jobId"
       [jobTitle]="app.jobTitle || ''"
       [candidateId]="app.candidateUserId"
-      [candidateEmail]="app.candidateName || app.candidateUserId"
+      [candidateEmail]="app.candidateEmail || ''"
       [recruiterId]="recruiterId"
       [recruiterEmail]="recruiterEmail"
       (scheduled)="onInterviewScheduled($event)" />
@@ -141,13 +184,13 @@
         <div class="ad-name">{{ app.candidateName || 'Unknown candidate' }}</div>
         <div class="ad-meta mono">{{ app.candidateUserId }}</div>
 
-        <button class="ad-linkbtn" type="button" (click)="goToUser()">View candidate profile →</button>
-        <button class="ad-linkbtn ad-linkbtn-ai" type="button" (click)="openAnalysis()">🤖 View AI CV Analysis →</button>
+        <button class="ad-linkbtn" type="button" (click)="goToUser()">View candidate profile</button>
+        <button class="ad-linkbtn ad-linkbtn-ai" type="button" (click)="openAnalysis()">View AI CV Analysis</button>
 
         <!-- Signal shortcut — RECRUITER only, not shown when already moderated -->
         @if (canSignal() && !isModerated) {
           <button class="ad-linkbtn ad-linkbtn-signal" type="button" (click)="openSignalModal()">
-            ⚑ Signal this candidate →
+            Signal this candidate →
           </button>
         }
 
@@ -180,13 +223,13 @@
             <div class="ad-pipeline-step rejected active">REJECTED</div>
           }
           @if (app.status === 'FLAGGED') {
-            <div class="ad-pipeline-step flagged active">⚑ FLAGGED</div>
+            <div class="ad-pipeline-step flagged active"> FLAGGED</div>
           }
           @if (app.status === 'BLOCKED') {
-            <div class="ad-pipeline-step blocked active">⊘ BLOCKED</div>
+            <div class="ad-pipeline-step blocked active">BLOCKED</div>
           }
           @if (app.status === 'WITHDRAWN') {
-            <div class="ad-pipeline-step withdrawn active">↩ WITHDRAWN</div>
+            <div class="ad-pipeline-step withdrawn active">WITHDRAWN</div>
           }
         </div>
       </div>
@@ -284,6 +327,16 @@
                             </div>
                           </div>
                         </div>
+                        @if (s.evidence) {
+                          <div class="ad-skill-evidence">
+                            @for (tag of s.evidence.split(' | '); track tag) {
+                              <span class="ad-ev-tag">{{ tag }}</span>
+                            }
+                          </div>
+                        }
+                        @if (s.reason) {
+                          <div class="ad-skill-reason">{{ s.reason }}</div>
+                        }
                       }
                     </div>
                   } @else {
@@ -456,7 +509,7 @@
   <div class="modal-backdrop" (click)="closeSignalModal()"></div>
   <div class="modal-panel">
     <div class="modal-header">
-      <h3 class="modal-title">⚑ Signal Candidate</h3>
+      <h3 class="modal-title">Signal Candidate</h3>
       <button class="modal-close" type="button" (click)="closeSignalModal()">✕</button>
     </div>
 
@@ -488,7 +541,7 @@
               [disabled]="signaling">Cancel</button>
       <button class="btn btn-signal" type="button" (click)="submitSignal()"
               [disabled]="signaling || !signalReason.trim() || signalSuccess">
-        {{ signaling ? 'Signaling…' : '⚑ Confirm Signal' }}
+        {{ signaling ? 'Signaling…' : ' Confirm Signal' }}
       </button>
     </div>
   </div>

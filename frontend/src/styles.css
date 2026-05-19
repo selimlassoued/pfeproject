@@ -165,6 +165,16 @@ p { margin: 0; }
 }
 .btn-ghost:hover { background: rgba(255,255,255,0.06); }
 
+/* Cautionary action (e.g. Close job) — prominent amber, clearly visible */
+.btn-warn {
+  background: linear-gradient(135deg, #ed8936, #dd6b20);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: var(--shadow-md);
+  font-weight: 700;
+}
+.btn-warn:hover { box-shadow: var(--shadow-lg); filter: brightness(1.05); }
+
 /* Pills / badges */
 .pill {
   display: inline-flex;

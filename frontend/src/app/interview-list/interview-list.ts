@@ -48,7 +48,10 @@ export class InterviewList implements OnInit {
   cancel(interview: InterviewResponse) {
     if (!confirm('Are you sure you want to cancel this interview?')) return;
     this.cancellingId = interview.id;
-    this.interviewService.cancelInterview(interview.id).subscribe({
+    const requesterId = this.keycloak.subject ?? '';
+    const admin = this.keycloak.hasRealmRole('ADMIN')
+      || this.keycloak.hasRealmRole('SUPERADMIN');
+    this.interviewService.cancelInterview(interview.id, requesterId, admin).subscribe({
       next: (updated) => {
         const idx = this.interviews.findIndex(i => i.id === updated.id);
         if (idx !== -1) this.interviews[idx] = updated;

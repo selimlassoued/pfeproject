@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { NotificationService } from '../services/notification.service';
 import { Notification } from '../model/notification.model';
 import { Subscription } from 'rxjs';
@@ -15,6 +16,7 @@ import { NotificationSocketService } from '../services/notification-socket.servi
 export class NotificationsMenu implements OnInit, OnDestroy {
   private readonly notifService = inject(NotificationService);
   private readonly socket       = inject(NotificationSocketService);
+  private readonly router       = inject(Router);
 
   notifications: Notification[] = [];
   unreadCount   = 0;
@@ -85,15 +87,33 @@ export class NotificationsMenu implements OnInit, OnDestroy {
     });
   }
 
+  /** Whether the notification points at a page we can open. */
+  hasTarget(n: Notification): boolean {
+    return n.relatedEntityType === 'APPLICATION' && !!n.relatedEntityId;
+  }
+
+  ctaLabel(n: Notification): string {
+    return (n.type === 'INTERVIEW_INVITE' || n.type === 'INTERVIEW_JOIN_REQUEST')
+      ? 'Go to the interview'
+      : 'Open';
+  }
+
+  /** Navigate to the related page and close the menu. */
+  openTarget(n: Notification): void {
+    if (!this.hasTarget(n)) return;
+    this.close();
+    this.router.navigate(['/application', n.relatedEntityId]);
+  }
+
   /* ── helpers ── */
   getTypeIcon(type: string): string {
     switch (type) {
-      case 'USER_BLOCK':                return '🚫';
-      case 'USER_UNBLOCK':              return '✅';
-      case 'APPLICATION_STATUS_UPDATE': return '📋';
-      case 'JOB_UPDATED':               return '💼';
-      case 'ROLE_UPDATE':               return '🔑';
-      default:                          return '🔔';
+      case 'USER_BLOCK':                return '';
+      case 'USER_UNBLOCK':              return '';
+      case 'APPLICATION_STATUS_UPDATE': return '';
+      case 'JOB_UPDATED':               return '';
+      case 'ROLE_UPDATE':               return '';
+      default:                          return '';
     }
   }
 
@@ -104,6 +124,8 @@ export class NotificationsMenu implements OnInit, OnDestroy {
       case 'APPLICATION_STATUS_UPDATE': return 'Application Update';
       case 'JOB_UPDATED':               return 'Job Updated';
       case 'ROLE_UPDATE':               return 'Role Updated';
+      case 'INTERVIEW_INVITE':          return 'Interview Invitation';
+      case 'INTERVIEW_JOIN_REQUEST':    return 'Join Request';
       default:                          return type;
     }
   }

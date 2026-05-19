@@ -9,6 +9,7 @@ from app.extractor import extract_text
 from app.nlp_parser import parse_cv
 from app.models import CvAnalysisResult, SemanticMatchRequest, SemanticMatchResult
 from app.semantic_matcher import match_job_to_cv, calibrate_thresholds
+from app.github_enricher import enrich_from_github
 
 MAX_FILE_SIZE_MB    = 10
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
@@ -30,6 +31,27 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"status": "UP", "service": "cv-parser-service"}
+
+
+@app.get("/api/cv-parser/debug/github/{username}")
+def debug_github(username: str):
+    """Debug endpoint: run GitHub enrichment for one username and return the raw result.
+    Use to verify tech_stats, framework detection, and per-tech years without
+    going through a full CV upload. Example:
+      GET http://localhost:8001/api/cv-parser/debug/github/selimlassoued
+    """
+    result = enrich_from_github(f"https://github.com/{username}")
+    if not result:
+        raise HTTPException(status_code=404, detail=f"GitHub user not found or unreachable: {username}")
+    return {
+        "username":            result.get("username"),
+        "github_score":        result.get("github_score"),
+        "own_repos_count":     result.get("own_repos_count"),
+        "tech_stats":          result.get("tech_stats", {}),
+        "all_technologies":    result.get("all_technologies", []),
+        "all_repo_frameworks": result.get("all_repo_frameworks", []),
+        "top_langs_lower":     result.get("top_langs_lower", []),
+    }
 
 
 @app.post("/api/cv-parser/analyze", response_model=CvAnalysisResult)
@@ -118,3 +140,46 @@ async def semantic_match(request: SemanticMatchRequest):
         return match_job_to_cv(request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Semantic matching failed: {str(e)}")
+
+
+# ── Job recommendation ranking ────────────────────────────────────────────────
+from pydantic import BaseModel as _BaseModel
+
+class JobRankItem(_BaseModel):
+    id: str
+    text: str
+
+class RankJobsRequest(_BaseModel):
+    candidate_text: str
+    jobs: list[JobRankItem]
+
+class JobRankResult(_BaseModel):
+    id: str
+    score: float
+
+class RankJobsResponse(_BaseModel):
+    results: list[JobRankResult]
+
+
+@app.post("/api/cv-parser/rank-jobs", response_model=RankJobsResponse)
+async def rank_jobs(req: RankJobsRequest):
+    """
+    Rank job offers by semantic similarity to a candidate profile.
+    Uses nomic-embed-text embeddings + cosine similarity.
+    Returns jobs sorted by score descending (0.0 – 1.0).
+    """
+    from app.semantic_matcher import _embed, _cosine
+
+    candidate_vec = _embed(req.candidate_text)
+    if not candidate_vec:
+        return RankJobsResponse(results=[JobRankResult(id=j.id, score=0.0) for j in req.jobs])
+
+    results: list[JobRankResult] = []
+    for job in req.jobs:
+        job_vec = _embed(job.text)
+        raw_sim = _cosine(candidate_vec, job_vec)
+        score   = round(max(0.0, min((raw_sim + 1.0) / 2.0, 1.0)), 4)
+        results.append(JobRankResult(id=job.id, score=score))
+
+    results.sort(key=lambda r: r.score, reverse=True)
+    return RankJobsResponse(results=results)

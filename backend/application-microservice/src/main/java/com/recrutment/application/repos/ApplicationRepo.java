@@ -20,6 +20,10 @@ public interface ApplicationRepo extends JpaRepository<Application, UUID> {
     Optional<Application> findByJobIdAndCandidateUserIdAndStatusNot(
             UUID jobId, String candidateUserId, ApplicationStatus status);
 
+    // Used in re-apply — finds the WITHDRAWN application to reactivate
+    Optional<Application> findByJobIdAndCandidateUserIdAndStatus(
+            UUID jobId, String candidateUserId, ApplicationStatus status);
+
     List<Application> findByCandidateUserId(String candidateUserId);
 
     // Used in listMyApplications() — excludes WITHDRAWN from candidate dashboard

@@ -18,7 +18,14 @@ export class CvAnalysisDrawer implements OnChanges {
   loading = false;
   error: string | null = null;
   pending = false;
+  notStarted = false;          // polled long enough — no analysis exists or is running
   retrying = false;
+
+  // Bounded polling: 30 × 4s = 120s — covers a slow parse (~96s) + semantic match.
+  // After this, we stop the spinner and offer a "Run Analysis" button instead of
+  // polling forever (the old behaviour, which spun indefinitely for never-analyzed apps).
+  private pollCount = 0;
+  private readonly MAX_POLLS = 30;
 
   constructor(private appService: ApplicationService) {}
 
@@ -33,32 +40,52 @@ export class CvAnalysisDrawer implements OnChanges {
     this.error = null;
     this.analysis = null;
     this.pending = false;
+    this.notStarted = false;
+    this.pollCount = 0;
+    this.poll();
+  }
 
-    this.appService.hasCvAnalysis(this.applicationId!).subscribe({
+  /** Poll for an analysis result, bounded by MAX_POLLS so the spinner never
+   *  runs forever when no analysis was ever triggered for this application. */
+  private poll(): void {
+    const idAtStart = this.applicationId;
+    this.appService.hasCvAnalysis(idAtStart!).subscribe({
       next: (exists) => {
-        if (!exists) {
-          this.loading = false;
-          this.pending = true;
-          setTimeout(() => {
-            if (this.applicationId) this.load();
-          }, 4000);
+        if (this.applicationId !== idAtStart) return;   // drawer switched apps — abort
+
+        if (exists) {
+          this.appService.getCvAnalysis(idAtStart!).subscribe({
+            next: (data) => {
+              this.analysis = data;
+              this.loading = false;
+              this.pending = false;
+            },
+            error: (err) => {
+              this.error = err?.error?.message || err?.message || 'Analysis not available yet.';
+              this.loading = false;
+              this.pending = false;
+            },
+          });
           return;
         }
 
-        this.appService.getCvAnalysis(this.applicationId!).subscribe({
-          next: (data) => {
-            this.analysis = data;
-            this.loading = false;
-          },
-          error: (err) => {
-            this.error = err?.error?.message || err?.message || 'Analysis not available yet.';
-            this.loading = false;
-          },
-        });
+        // No analysis row yet — keep polling up to MAX_POLLS, then give up.
+        this.loading = false;
+        this.pollCount++;
+        if (this.pollCount >= this.MAX_POLLS) {
+          this.pending = false;
+          this.notStarted = true;       // → UI shows "Run AI Analysis" button
+          return;
+        }
+        this.pending = true;
+        setTimeout(() => {
+          if (this.applicationId === idAtStart) this.poll();
+        }, 4000);
       },
       error: () => {
         this.loading = false;
-        this.pending = true;
+        this.pending = false;
+        this.notStarted = true;
       }
     });
   }
@@ -128,18 +155,15 @@ export class CvAnalysisDrawer implements OnChanges {
     return this.analysis?.parsingStatus === 'FAILED';
   }
 
+  /** Triggers an analysis — used both to retry a FAILED one and to start one
+   *  for an application that was never analyzed (notStarted state). */
   retry(): void {
     if (!this.applicationId || this.retrying) return;
     this.retrying = true;
     this.appService.retryAnalysis(this.applicationId).subscribe({
       next: () => {
-        this.analysis = null;
-        this.error = null;
-        this.pending = true;
         this.retrying = false;
-        setTimeout(() => {
-          if (this.applicationId) this.load();
-        }, 4000);
+        this.load();   // resets pollCount + state, starts bounded polling fresh
       },
       error: () => { this.retrying = false; }
     });

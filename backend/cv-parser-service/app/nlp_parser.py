@@ -309,7 +309,7 @@ def _extract_experience(text: str) -> dict:
       "company": "employer name or null",
       "duration": "date range or null",
       "description": "responsibilities and achievements as a single string, or null",
-      "skills_used": ["technology or skill used in this role"]
+      "skills_used": ["every technology, framework, library, or tool explicitly mentioned in this role"]
     }}
   ],
   "total_years_experience": 0
@@ -323,6 +323,7 @@ Important:
   "Company Name (2020 - 2022)\\nJOB TITLE" → title="JOB TITLE", company="Company Name"
   "JOB TITLE\\nCompany Name (dates)" → title="JOB TITLE", company="Company Name"
 - description: extract the bullet points or paragraph that appear BELOW each job entry. Join multiple bullet points into a single string. Never leave null if bullets exist below the title.
+- skills_used: include ALL technologies, libraries, frameworks, and tools explicitly named in the description — do not omit any. Also add the base language or runtime that a framework strictly requires to run. This rule applies to EVERY framework in any ecosystem, not only the examples shown — reason from your own knowledge of how each framework works (illustrative examples: Spring Boot → Java, Angular → TypeScript, Django → Python, Laravel → PHP).
 - NEVER include academic degrees or diplomas as work experience.
 - total_years_experience: sum of all durations. Return 0 for students.
 - Return [] if no work experience exists.
@@ -382,6 +383,7 @@ Rules:
 - skills: extract ONLY from a dedicated SKILLS / COMPÉTENCES / TECHNICAL SKILLS section.
   Concrete tools, technologies, languages, platforms, methodologies. Short terms (1-5 words).
   Never extract from profile paragraphs, experience descriptions, or education sections.
+- For each framework or library listed, also include the primary language a developer writes when using it, if not already listed.
 - certifications: professional certificates only (e.g. AWS Certified, PMP, Cisco CCNA, CFA).
   Never include academic degrees or diplomas.
 - Return a JSON object, NOT an array.
@@ -1174,6 +1176,8 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
                         collaboration=CollaborationSignals(
                             **raw_gh.get("collaboration", {})
                         ),
+                        # ── Per-tech usage stats (languages + frameworks) ─────
+                        tech_stats=raw_gh.get("tech_stats", {}),
                     )
 
                     # ── Three-tier CV skills verification ─────────────────────
@@ -1242,6 +1246,27 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
         # LinkedIn data always None — enrichment disabled
         linkedin_data = None
 
+        # ── Skill intelligence (LLM-derived volatility + implied techs) ──────
+        # Generic classifier — same prompt for every CV, results cached globally
+        # so the per-CV cost is near-zero after the first few runs.
+        try:
+            from app.skill_intel import get_skill_intelligence
+            all_skill_names: set[str] = set()
+            for s in (merged_skills or []):                    all_skill_names.add(s)
+            for s in (knowledge or []):                        all_skill_names.add(s)
+            for exp in (experience_list or []):
+                for s in (exp.skills_used or []):              all_skill_names.add(s)
+            for proj in (projects_list or []):
+                for s in (proj.skills_used or []):             all_skill_names.add(s)
+            if github_profile_data and github_profile_data.tech_stats:
+                for tech in github_profile_data.tech_stats.keys():
+                    all_skill_names.add(tech)
+            skill_intel_data = get_skill_intelligence(all_skill_names)
+            logger.info(f"[skill_intel] Classified {len(skill_intel_data)} unique skills")
+        except Exception as e:
+            logger.warning(f"[skill_intel] Skipped: {e}")
+            skill_intel_data = {}
+
         github_executor.shutdown(wait=False)
         result = CvAnalysisResult(
             application_id=application_id,
@@ -1268,6 +1293,7 @@ def parse_cv(text: str, application_id: str, github_url: Optional[str] = None) -
             awards=awards,
             github_profile=github_profile_data,
             linkedin_enrichment=linkedin_data,
+            skill_intel=skill_intel_data,
             raw_text_length=len(text),
             parsing_status="SUCCESS",
         )

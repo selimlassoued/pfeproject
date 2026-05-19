@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormArray, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormArray, FormBuilder, Validators, AbstractControl } from '@angular/forms';
 import { Router, RouterLink, NavigationExtras } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -160,6 +160,34 @@ export class AddJob{
   removeRequirement(i: number) {
     this.requirements().removeAt(i);
     if (this.customizeWeights) this.redistributeWeights();
+  }
+
+  // ── EDUCATION: multi-select accepted degrees ────────────────────────────────
+  // degreeLevel is stored as a comma-joined string ("LICENCE_BACHELOR,ENGINEER").
+  // Empty = any degree accepted.
+  readonly degreeOptions: { value: string; label: string }[] = [
+    { value: 'BAC',              label: 'Baccalaureate' },
+    { value: 'BTS_DUT',          label: 'BTS / DUT' },
+    { value: 'LICENCE_BACHELOR', label: 'Licence / Bachelor' },
+    { value: 'ENGINEER',         label: 'Engineering degree' },
+    { value: 'MASTER',           label: 'Master' },
+    { value: 'PHD',              label: 'PhD / Doctorate' },
+  ];
+
+  isDegreeSelected(req: AbstractControl, value: string): boolean {
+    const raw = (req.get('degreeLevel')?.value as string) || '';
+    return raw.split(',').map(s => s.trim()).includes(value);
+  }
+
+  toggleDegree(req: AbstractControl, value: string, checked: boolean): void {
+    const ctrl = req.get('degreeLevel');
+    if (!ctrl) return;
+    const current = ((ctrl.value as string) || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    const next = checked
+      ? (current.includes(value) ? current : [...current, value])
+      : current.filter(v => v !== value);
+    ctrl.setValue(next.length ? next.join(',') : null);
   }
 
   private validateRanges(): string | null {

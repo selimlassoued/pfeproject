@@ -26,6 +26,17 @@ public class ApplicationClient {
         }
     }
 
+    public boolean hasApplications(UUID jobId) {
+        String url = "http://gateway:8888/api/applications/internal/job/" + jobId + "/candidate-ids";
+        try {
+            ResponseEntity<java.util.List> resp = restTemplate.getForEntity(url, java.util.List.class);
+            return resp.getBody() != null && !resp.getBody().isEmpty();
+        } catch (Exception e) {
+            log.warn("[ApplicationClient] hasApplications check failed for job {}: {}", jobId, e.getMessage());
+            return false;
+        }
+    }
+
     public void deleteApplicationsForJob(UUID jobId) {
         String url = "http://gateway:8888/api/applications/internal/job/" + jobId;
         try {

@@ -6,8 +6,8 @@ services:
       - ai-recruitment-network
     environment:
       - POSTGRES_DB=keycloak
-      - POSTGRES_USER=keycloak
-      - POSTGRES_PASSWORD=keycloak
+      - POSTGRES_USER=${KEYCLOAK_DB_USER}
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD}
     volumes:
       - keycloak_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -24,14 +24,14 @@ services:
     networks:
       - ai-recruitment-network
     environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN_USER}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
       - KC_HEALTH_ENABLED=true
 
       - KC_DB=postgres
       - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
-      - KC_DB_USERNAME=keycloak
-      - KC_DB_PASSWORD=keycloak
+      - KC_DB_USERNAME=${KEYCLOAK_DB_USER}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD}
 
       - KC_HOSTNAME=localhost
       - KC_HOSTNAME_PORT=8090
@@ -156,8 +156,8 @@ services:
       - ai-recruitment-network
     environment:
       - POSTGRES_DB=jobdb
-      - POSTGRES_USER=jobuser
-      - POSTGRES_PASSWORD=jobpass
+      - POSTGRES_USER=${JOB_DB_USER}
+      - POSTGRES_PASSWORD=${JOB_DB_PASSWORD}
     ports:
       - "5434:5432"
     volumes:
@@ -177,8 +177,8 @@ services:
       - "8082:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://job-db:5432/jobdb
-      - SPRING_DATASOURCE_USERNAME=jobuser
-      - SPRING_DATASOURCE_PASSWORD=jobpass
+      - SPRING_DATASOURCE_USERNAME=${JOB_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${JOB_DB_PASSWORD}
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
     depends_on:
       job-db:
@@ -203,6 +203,11 @@ services:
       - SEMANTIC_MATCH_EMBED_MODEL=nomic-embed-text
       - SEMANTIC_MATCH_ANALYSIS_MODEL=qwen2.5:7b
       - GITHUB_TOKEN=${GITHUB_TOKEN}
+      # Persistent skill-intelligence cache (framework→stack + volatility,
+      # LLM-classified once per skill). Lives in a volume so it survives rebuilds.
+      - SKILL_INTEL_CACHE=/data/skill_intel_cache.json
+    volumes:
+      - skill_intel_data:/data
   application-db:
     image: postgres:16
     container_name: application-db
@@ -210,8 +215,8 @@ services:
       - ai-recruitment-network
     environment:
       - POSTGRES_DB=appdb
-      - POSTGRES_USER=appuser
-      - POSTGRES_PASSWORD=apppass
+      - POSTGRES_USER=${APP_DB_USER}
+      - POSTGRES_PASSWORD=${APP_DB_PASSWORD}
     ports:
       - "5435:5432"
     volumes:
@@ -229,8 +234,8 @@ services:
       - ai-recruitment-network
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://application-db:5432/appdb
-      - SPRING_DATASOURCE_USERNAME=appuser
-      - SPRING_DATASOURCE_PASSWORD=apppass
+      - SPRING_DATASOURCE_USERNAME=${APP_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${APP_DB_PASSWORD}
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
     depends_on:
       application-db:
@@ -249,8 +254,8 @@ services:
       - ai-recruitment-network
     environment:
       - POSTGRES_DB=auditdb
-      - POSTGRES_USER=audituser
-      - POSTGRES_PASSWORD=auditpass
+      - POSTGRES_USER=${AUDIT_DB_USER}
+      - POSTGRES_PASSWORD=${AUDIT_DB_PASSWORD}
     volumes:
       - audit_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -284,8 +289,8 @@ services:
       - ai-recruitment-network
     environment:
       - POSTGRES_DB=notificationdb
-      - POSTGRES_USER=notificationuser
-      - POSTGRES_PASSWORD=notificationpass
+      - POSTGRES_USER=${NOTIFICATION_DB_USER}
+      - POSTGRES_PASSWORD=${NOTIFICATION_DB_PASSWORD}
     ports:
       - "5436:5432"
     volumes:
@@ -302,8 +307,8 @@ services:
       - ai-recruitment-network
     environment:
       - POSTGRES_DB=interviewdb
-      - POSTGRES_USER=interviewuser
-      - POSTGRES_PASSWORD=interviewpass
+      - POSTGRES_USER=${INTERVIEW_DB_USER}
+      - POSTGRES_PASSWORD=${INTERVIEW_DB_PASSWORD}
     ports:
       - "5437:5432"
     volumes:
@@ -323,14 +328,17 @@ services:
       - "8086:8086"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://interview-db:5432/interviewdb
-      - SPRING_DATASOURCE_USERNAME=interviewuser
-      - SPRING_DATASOURCE_PASSWORD=interviewpass
+      - SPRING_DATASOURCE_USERNAME=${INTERVIEW_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${INTERVIEW_DB_PASSWORD}
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - CONFIG_SERVICE_URL=http://config-server:9999
       - RABBITMQ_HOST=rabbitmq
       - RECORDINGS_DIR=/recordings
       - SPRING_RECORDINGS_DIR=/recordings
       - ANALYSIS_SIDECAR_URL=http://analysis-service:8000
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
     depends_on:
       interview-db:
         condition: service_healthy
@@ -357,18 +365,19 @@ services:
     build:
       context: ./analysis-service
       args:
-        WHISPER_MODEL: small
+        WHISPER_MODEL: large-v3
     container_name: analysis-service
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      - WHISPER_MODEL=small
-      - OLLAMA_BASE=http://ollama:11434
+      - WHISPER_MODEL=large-v3
+      - OLLAMA_BASE=http://host.docker.internal:11434
       - OLLAMA_MODEL=qwen2.5:3b
       - RECORDINGS_DIR=/recordings
     volumes:
       - recordings:/recordings       # shared with interview-service
-    depends_on:
-      - ollama
+      - whisper-cache:/root/.cache/whisper  # model persists across restarts
     networks:
       - ai-recruitment-network
 
@@ -379,8 +388,8 @@ services:
       - ai-recruitment-network
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://notification-db:5432/notificationdb
-      - SPRING_DATASOURCE_USERNAME=notificationuser
-      - SPRING_DATASOURCE_PASSWORD=notificationpass
+      - SPRING_DATASOURCE_USERNAME=${NOTIFICATION_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${NOTIFICATION_DB_PASSWORD}
       - CONFIG_SERVICE_URL=http://config-server:9999
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - MAIL_HOST=${KC_MAIL_HOST}
@@ -416,3 +425,5 @@ volumes:
   interview_pgdata:
   recordings:
   ollama_data:
+  whisper-cache:
+  skill_intel_data:        # persistent LLM skill-classification cache (cv-parser-service)

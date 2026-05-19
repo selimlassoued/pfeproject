@@ -218,3 +218,9 @@ select:hover {
 .weight-total { font-size:.85rem; font-weight:700; padding:.5rem 0; border-top:1px solid rgba(255,255,255,.08); margin-top:.5rem; }
 .weight-total-ok   { color:#48bb78; }
 .weight-total-warn { color:#ed8936; }
+
+/* ── EDUCATION: multi-select accepted degrees ── */
+.degree-checkboxes { display:flex; flex-wrap:wrap; gap:.4rem .9rem; padding:.15rem 0; }
+.degree-check { display:flex; align-items:center; gap:.4rem; font-size:.88rem; cursor:pointer; user-select:none; }
+.degree-check input { accent-color:#63b3ed; cursor:pointer; }
+.field-hint { display:block; font-size:.78rem; color:rgba(255,255,255,.45); margin-top:.35rem; }

@@ -1,0 +1,205 @@
+<div class="onboarding-overlay">
+  <div class="onboarding-card">
+
+    <!-- Header -->
+    <div class="ob-header">
+      @if (step === 1) {
+        <h2 class="ob-title">Welcome, {{ firstName }}!</h2>
+        <p class="ob-subtitle">Let's set up your profile so we can match you with the right opportunities.</p>
+      } @else {
+        <h2 class="ob-title">{{ stepTitle }}</h2>
+      }
+      <div class="ob-dismiss">
+        <button class="ob-skip" type="button" (click)="remindLater()">Remind me later</button>
+        <button class="ob-skip ob-skip--muted" type="button" (click)="dontAskAgain()">Don't ask again</button>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="ob-progress">
+      @for (i of [1,2,3,4,5]; track i) {
+        <div class="ob-step-dot" [class.ob-step-dot--done]="i < step" [class.ob-step-dot--active]="i === step"></div>
+      }
+    </div>
+
+    <!-- Error -->
+    @if (error) { <div class="ob-error">{{ error }}</div> }
+
+    <!-- ── Step 1: Background ────────────────────────────────────────────── -->
+    @if (step === 1) {
+      <div class="ob-body" [formGroup]="form">
+        <div class="ob-grid">
+          <div class="form-group ob-span-2">
+            <label>Status</label>
+            <div class="pref-chips">
+              <button type="button" class="pref-chip" [class.pref-chip--active]="form.get('status')?.value === 'STUDENT'" (click)="form.get('status')?.setValue('STUDENT')">Student</button>
+              <button type="button" class="pref-chip" [class.pref-chip--active]="form.get('status')?.value === 'GRADUATE'" (click)="form.get('status')?.setValue('GRADUATE')">Graduate</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Years of experience</label>
+            <select class="input" formControlName="yearsOfExperience">
+              <option value="">Select range</option>
+              <option value="0-1">Less than 1 year</option>
+              <option value="1-3">1 – 3 years</option>
+              <option value="3-5">3 – 5 years</option>
+              <option value="5-10">5 – 10 years</option>
+              <option value="10+">10+ years</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Education level</label>
+            <select class="input" formControlName="educationLevel">
+              <option value="">Select level</option>
+              <option value="BACCALAUREATE">Baccalaureate</option>
+              <option value="LICENCE">Licence (BAC+3)</option>
+              <option value="MASTER">Master (BAC+5)</option>
+              <option value="ENGINEERING">Engineering (BAC+5)</option>
+              <option value="PHD">PhD</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Step 2: Domain ───────────────────────────────────────────────── -->
+    @if (step === 2) {
+      <div class="ob-body">
+        <p class="ob-hint">Choose the field you work in or want to work in.</p>
+        <div class="domain-grid">
+          @for (d of domains; track d.value) {
+            <button type="button" class="domain-chip"
+              [class.domain-chip--active]="form.get('domain')?.value === d.value"
+              (click)="setDomain(d.value)">
+              {{ d.label }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ── Step 3: Skills ───────────────────────────────────────────────── -->
+    @if (step === 3) {
+      <div class="ob-body">
+        @if (form.get('domain')?.value) {
+          <div class="ob-section">
+            <h4 class="ob-section-title">Hard skills</h4>
+            <div class="skills-grid">
+              @for (skill of availableHardSkills; track skill) {
+                <button type="button" class="skill-chip"
+                  [class.skill-chip--selected]="isHardSelected(skill)"
+                  (click)="toggleHard(skill)">
+                  {{ skill }}
+                </button>
+              }
+            </div>
+          </div>
+        } @else {
+          <p class="ob-hint">Go back and select your domain first to see relevant hard skills.</p>
+        }
+        <div class="ob-section">
+          <h4 class="ob-section-title">Soft skills</h4>
+          <div class="skills-grid">
+            @for (skill of softSkills; track skill) {
+              <button type="button" class="skill-chip"
+                [class.skill-chip--selected]="isSoftSelected(skill)"
+                (click)="toggleSoft(skill)">
+                {{ skill }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Step 4: Languages ─────────────────────────────────────────────── -->
+    @if (step === 4) {
+      <div class="ob-body">
+        <div class="lang-add-row">
+          <div class="form-group" style="flex:1">
+            <label>Language</label>
+            <input class="input" [(ngModel)]="newLanguage" [ngModelOptions]="{standalone:true}"
+              placeholder="e.g. French, English…" list="ob-lang-list" />
+            <datalist id="ob-lang-list">
+              @for (l of commonLanguages; track l) { <option [value]="l"></option> }
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label>Level</label>
+            <select class="input" [(ngModel)]="newLevel" [ngModelOptions]="{standalone:true}">
+              @for (lvl of cefrLevels; track lvl) { <option [value]="lvl">{{ lvl }}</option> }
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary lang-add-btn" (click)="addLanguage()">Add</button>
+        </div>
+
+        @if (languages.length > 0) {
+          <div class="lang-list">
+            @for (lang of languages; track lang.language; let i = $index) {
+              <div class="lang-item">
+                <span class="lang-name">{{ lang.language }}</span>
+                <select class="input lang-level-select" [value]="lang.level" (change)="updateLevel(i, $any($event.target).value)">
+                  @for (lvl of cefrLevels; track lvl) {
+                    <option [value]="lvl" [selected]="lang.level === lvl">{{ lvl }}</option>
+                  }
+                </select>
+                <button type="button" class="lang-remove" (click)="removeLanguage(i)">✕</button>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="ob-hint">Add at least one language you speak.</p>
+        }
+      </div>
+    }
+
+    <!-- ── Step 5: Job Preferences ──────────────────────────────────────── -->
+    @if (step === 5) {
+      <div class="ob-body" [formGroup]="form">
+        <div class="ob-section">
+          <h4 class="ob-section-title">Work arrangement</h4>
+          <div class="pref-chips">
+            @for (opt of [['ON_SITE','On-site'],['HYBRID','Hybrid'],['REMOTE','Remote']]; track opt[0]) {
+              <button type="button" class="pref-chip"
+                [class.pref-chip--active]="form.get('preferredWorkArrangement')?.value === opt[0]"
+                (click)="setWorkArrangement(opt[0])">
+                {{ opt[1] }}
+              </button>
+            }
+          </div>
+        </div>
+        <div class="ob-section">
+          <h4 class="ob-section-title">Job type</h4>
+          <div class="pref-chips">
+            @for (opt of [['FULL_TIME','Full-time'],['INTERNSHIP','Internship'],['ALTERNANCE','Alternance']]; track opt[0]) {
+              <button type="button" class="pref-chip"
+                [class.pref-chip--active]="form.get('preferredJobType')?.value === opt[0]"
+                (click)="setJobType(opt[0])">
+                {{ opt[1] }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Footer navigation -->
+    <div class="ob-footer">
+      @if (step > 1) {
+        <button class="btn btn-ghost" type="button" (click)="back()">← Back</button>
+      } @else {
+        <div></div>
+      }
+      @if (step < totalSteps) {
+        <button class="btn btn-primary" type="button" (click)="next()" [disabled]="!canNext">
+          Next →
+        </button>
+      } @else {
+        <button class="btn btn-primary" type="button" (click)="finish()" [disabled]="saving">
+          @if (saving) { Saving… } @else { Finish & browse jobs }
+        </button>
+      }
+    </div>
+
+  </div>
+</div>

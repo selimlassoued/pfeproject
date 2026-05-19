@@ -150,6 +150,79 @@ public class NotificationService {
         messagingTemplate.convertAndSendToUser(recruiterUserId, "/queue/notifications", n);
     }
 
+    /** A recruiter was invited to join an interview's room. */
+    public void handleInterviewInvite(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String recruiterId = (String) payload.get("invitedRecruiterId");
+        if (recruiterId == null || recruiterId.isBlank()) return;
+
+        String jobTitle = (String) payload.getOrDefault("jobTitle", "an interview");
+        String applicationId = (String) payload.get("applicationId");
+
+        String body = "You've been invited to join the interview for \"" + jobTitle + "\". "
+                + "Open the application to enter the interview room.";
+
+        Notification n = new Notification();
+        n.setUserId(recruiterId);
+        n.setType(NotificationType.INTERVIEW_INVITE);
+        n.setTitle("You've been invited to an interview");
+        n.setBody(body);
+        n.setRelatedEntityType("APPLICATION");
+        n.setRelatedEntityId(applicationId);
+        repo.save(n);
+
+        messagingTemplate.convertAndSend("/topic/notifications." + recruiterId, n);
+        messagingTemplate.convertAndSendToUser(recruiterId, "/queue/notifications", n);
+
+        String ctaUrl = applicationId != null
+                ? BASE_URL + "/application/" + applicationId
+                : BASE_URL + "/calendar";
+        try {
+            sendEmailToUser(recruiterId, n.getTitle(), n.getBody(), ctaUrl);
+        } catch (Exception e) {
+            log.warn("Email failed for INTERVIEW_INVITE to {}: {}", recruiterId, e.getMessage());
+        }
+    }
+
+    /** A recruiter asked the organizer to be invited to an interview. */
+    public void handleInterviewJoinRequest(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String organizerId = (String) payload.get("organizerId");
+        if (organizerId == null || organizerId.isBlank()) return;
+
+        String jobTitle = (String) payload.getOrDefault("jobTitle", "an interview");
+        String requester = (String) payload.getOrDefault("requesterName", "A recruiter");
+        String applicationId = (String) payload.get("applicationId");
+
+        String body = requester + " is asking to join your interview for \"" + jobTitle + "\". "
+                + "Open the application to invite them.";
+
+        Notification n = new Notification();
+        n.setUserId(organizerId);
+        n.setType(NotificationType.INTERVIEW_JOIN_REQUEST);
+        n.setTitle("A recruiter wants to join your interview");
+        n.setBody(body);
+        n.setRelatedEntityType("APPLICATION");
+        n.setRelatedEntityId(applicationId);
+        repo.save(n);
+
+        messagingTemplate.convertAndSend("/topic/notifications." + organizerId, n);
+        messagingTemplate.convertAndSendToUser(organizerId, "/queue/notifications", n);
+
+        String ctaUrl = applicationId != null
+                ? BASE_URL + "/application/" + applicationId
+                : BASE_URL + "/calendar";
+        try {
+            sendEmailToUser(organizerId, n.getTitle(), n.getBody(), ctaUrl);
+        } catch (Exception e) {
+            log.warn("Email failed for INTERVIEW_JOIN_REQUEST to {}: {}", organizerId, e.getMessage());
+        }
+    }
+
     public void handleJobUpdated(AppEventMessage evt) {
         UUID jobId = UUID.fromString(evt.getTarget().getId());
         String jobTitle = resolveJobTitle(evt);

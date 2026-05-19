@@ -1,10 +1,14 @@
-<div class="section">
-  <header>
-    <h1>403 - Forbidden</h1>
-  </header>
-
-  <main>
-    <p class="error-message">You do not have permission to access this page.</p>
-    <a class="home-link" routerLink="/">Go to Home</a>
-  </main>
+<div class="forbidden-page">
+  <div class="forbidden-card">
+    <div class="forbidden-code">403</div>
+    <h1 class="forbidden-title">Access <span class="accent">Forbidden</span></h1>
+    <p class="forbidden-msg">
+      You don't have permission to view this page. If you believe this is a
+      mistake, contact your administrator.
+    </p>
+    <div class="forbidden-actions">
+      <button class="btn btn-ghost" type="button" (click)="goBack()">Go back</button>
+      <a class="btn btn-primary" routerLink="/">Go to Home</a>
+    </div>
+  </div>
 </div>

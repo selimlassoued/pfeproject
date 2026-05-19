@@ -7,8 +7,9 @@ import {
   typeEventArgs,
   ReadyArgs,
 } from 'keycloak-angular';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { NotificationsMenu } from './notification-menu/notification-menu';
+import { CandidateProfileService } from './services/candidate-profile.service';
 
 @Component({
   selector: 'app-root',
@@ -24,6 +25,8 @@ export class App {
   keycloakStatus: string | undefined;
   private readonly keycloak = inject(Keycloak);
   private readonly keycloakSignal = inject(KEYCLOAK_EVENT_SIGNAL);
+  private readonly router = inject(Router);
+  private readonly candidateProfileService = inject(CandidateProfileService);
 
   constructor() {
     effect(() => {
@@ -40,6 +43,21 @@ export class App {
             const last  = profile.lastName  ?? '';
             this.displayName = `${first} ${last}`.trim() || profile.username || 'Account';
           });
+
+          // Prompt new candidates to onboard — but only ONCE per browser
+          // session (not on every page reload), and never again if they
+          // chose "Don't ask again".
+          if (this.isCandidate()
+              && localStorage.getItem('onboardingDismissed') !== 'true'
+              && sessionStorage.getItem('onboardingPrompted') !== 'true') {
+            this.candidateProfileService.get().then(p => {
+              const isNew = !p.status && !p.domain && !p.hardSkills?.length;
+              if (isNew) {
+                sessionStorage.setItem('onboardingPrompted', 'true');
+                this.router.navigate(['/onboarding']);
+              }
+            }).catch(() => {});
+          }
         }
       }
 

@@ -466,5 +466,506 @@ html,body{
   margin:0 !important;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Mobile Authenticator (OTP / TOTP) setup page
+   ───────────────────────────────────────────────────────────── */
+
+/* Numbered step list — custom gradient step badges */
+#kc-totp-settings{
+  list-style:none !important;
+  counter-reset:totp-step !important;
+  padding:0 !important;
+  margin:0 0 0.75rem !important;
+}
+#kc-totp-settings > li{
+  position:relative !important;
+  padding-left:2.6rem !important;
+  margin-bottom:1.15rem !important;
+  color:var(--color-text-muted) !important;
+  font-size:0.92rem !important;
+  line-height:1.55 !important;
+}
+#kc-totp-settings > li:last-child{ margin-bottom:0 !important; }
+#kc-totp-settings > li::before{
+  counter-increment:totp-step !important;
+  content:counter(totp-step) !important;
+  position:absolute !important;
+  left:0 !important;
+  top:0.05rem !important;
+  width:1.7rem !important;
+  height:1.7rem !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)) !important;
+  color:#fff !important;
+  font-weight:700 !important;
+  font-size:0.82rem !important;
+  border-radius:50% !important;
+  box-shadow:0 4px 12px rgba(30,64,188,0.4) !important;
+}
+#kc-totp-settings > li p{ margin:0 0 0.5rem !important; }
+#kc-totp-settings > li p:last-child{ margin-bottom:0 !important; }
+
+/* Supported authenticator apps → pill chips */
+#kc-totp-supported-apps{
+  list-style:none !important;
+  display:flex !important;
+  flex-wrap:wrap !important;
+  gap:0.4rem !important;
+  padding:0 !important;
+  margin:0.55rem 0 0 !important;
+}
+#kc-totp-supported-apps li{
+  background:rgba(121,164,233,0.12) !important;
+  border:1px solid var(--color-border) !important;
+  border-radius:var(--radius-pill) !important;
+  padding:0.28rem 0.8rem !important;
+  font-size:0.78rem !important;
+  font-weight:500 !important;
+  color:var(--color-text) !important;
+  margin:0 !important;
+}
+
+/* QR code — sits inside a gradient-ring frame (.totp-qr-frame) */
+.totp-qr-frame{
+  width:100% !important;
+  max-width:278px !important;
+  padding:3px !important;
+  border-radius:20px !important;
+  background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)) !important;
+  box-shadow:0 18px 44px rgba(0,0,0,0.5), 0 0 56px rgba(121,164,233,0.20) !important;
+}
+#kc-totp-secret-qr-code{
+  display:block !important;
+  width:100% !important;
+  height:auto !important;
+  aspect-ratio:1 / 1 !important;
+  margin:0 !important;
+  padding:13px !important;
+  background:#fff !important;
+  border-radius:17px !important;
+  box-shadow:none !important;
+}
+
+/* Caption under the QR */
+.totp-visual-caption{
+  margin:0.9rem 0 0.15rem !important;
+  font-size:0.82rem !important;
+  line-height:1.45 !important;
+  color:var(--color-text-muted) !important;
+}
+
+/* Manual secret key (the "Unable to scan?" view) */
+#kc-totp-secret-key{
+  display:inline-block !important;
+  background:rgba(255,255,255,0.06) !important;
+  border:1px solid var(--color-border) !important;
+  border-radius:10px !important;
+  padding:0.55rem 0.85rem !important;
+  margin:0.35rem 0 !important;
+  font-family:"Courier New",monospace !important;
+  letter-spacing:0.08em !important;
+  font-size:0.9rem !important;
+  color:var(--color-cream) !important;
+  word-break:break-all !important;
+}
+
+/* "Unable to scan?" / "Scan barcode" toggle → subtle outlined pill */
+#mode-manual,#mode-barcode{
+  display:inline-block !important;
+  margin-top:0.35rem !important;
+  font-size:0.8rem !important;
+  font-weight:500 !important;
+  padding:0.34rem 0.85rem !important;
+  border:1px solid var(--color-border) !important;
+  border-radius:var(--radius-pill) !important;
+  background:rgba(255,255,255,0.04) !important;
+  transition:background 0.15s ease, color 0.15s ease !important;
+}
+#mode-manual:hover,#mode-barcode:hover{
+  background:rgba(121,164,233,0.14) !important;
+  color:var(--color-cream) !important;
+  text-decoration:none !important;
+}
+
+/* Manual-mode config details (type / digits / period list) */
+.totp-manual-details{
+  list-style:none !important;
+  padding:0.5rem 0.75rem !important;
+  margin:0.4rem 0 0.6rem !important;
+  font-size:0.8rem !important;
+  background:rgba(255,255,255,0.04) !important;
+  border:1px solid var(--color-border) !important;
+  border-radius:10px !important;
+  width:100% !important;
+  box-sizing:border-box !important;
+}
+.totp-manual-details li{
+  padding:0.12rem 0 !important;
+  color:var(--color-text-muted) !important;
+  word-break:break-word !important;
+}
+
+/* Tighten the space before the verification form.
+   The `form#` prefix raises specificity above the generic
+   `#kc-content-wrapper form{padding-top:3.25rem}` rule, which was
+   leaving a large empty gap above the one-time-code field. */
+form#kc-totp-settings-form,
+#kc-totp-settings-form{
+  padding-top:1.35rem !important;
+  margin-top:0.5rem !important;
+  border-top:1px solid var(--color-border) !important;
+}
+
+/* One-time code field → centred, spaced, monospace like a code */
+#totp{
+  text-align:center !important;
+  letter-spacing:0.32em !important;
+  font-size:1.1rem !important;
+  font-weight:600 !important;
+  font-family:"Courier New",monospace !important;
+  padding-left:0.4rem !important;
+}
+#totp::placeholder{
+  letter-spacing:normal !important;
+}
+
+/* "Sign out from other devices" checkbox row.
+   Keycloak's base CSS absolutely-positions the checkbox and pads the
+   label, which clipped the text — reset both and lay it out as a flex row. */
+.checkbox{
+  margin:0.25rem 0 0.25rem !important;
+}
+.checkbox label{
+  display:flex !important;
+  align-items:center !important;
+  gap:0.55rem !important;
+  padding-left:0 !important;
+  margin:0 !important;
+  cursor:pointer !important;
+  color:var(--color-text-muted) !important;
+  font-size:0.88rem !important;
+  line-height:1.4 !important;
+}
+.checkbox input[type="checkbox"]{
+  position:static !important;
+  appearance:auto !important;
+  -webkit-appearance:auto !important;
+  width:1rem !important;
+  height:1rem !important;
+  min-width:1rem !important;
+  flex:0 0 auto !important;
+  margin:0 !important;
+  padding:0 !important;
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  accent-color:var(--color-secondary) !important;
+  cursor:pointer !important;
+}
+
+/* ── Submit / Cancel buttons — side by side ──
+   The form's direct children are: one field-group <div>, then the
+   Submit <input> and Cancel <button>. Make the form a wrapping flex
+   row: the field group spans a full row, the two buttons share the
+   next row. `row-reverse` puts Submit (first in markup) on the RIGHT
+   as the primary action and Cancel on the LEFT. */
+#kc-totp-settings-form{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  flex-direction:row-reverse !important;
+  gap:0.65rem !important;
+}
+#kc-totp-settings-form > div{
+  flex:1 1 100% !important;   /* the one-time-code field — full width */
+}
+#kc-totp-settings-form > input[type="submit"],
+#kc-totp-settings-form > button{
+  flex:1 1 0 !important;       /* Submit + Cancel split the row evenly */
+  width:auto !important;
+  min-width:0 !important;
+  margin:0 !important;
+  float:none !important;
+}
+
+/* Cancel button (AIA cancel) → quiet, outlined — not a second primary CTA */
+button[name="cancel-aia"],
+#kc-totp-settings-form button[name="cancel-aia"],
+#kc-cancel,
+input#kc-cancel{
+  background:rgba(255,255,255,0.05) !important;
+  border:1px solid var(--color-border) !important;
+  color:var(--color-text-muted) !important;
+  box-shadow:none !important;
+  background-image:none !important;
+}
+button[name="cancel-aia"]:hover,
+#kc-cancel:hover,
+input#kc-cancel:hover{
+  background:rgba(255,255,255,0.10) !important;
+  color:var(--color-cream) !important;
+  box-shadow:none !important;
+  transform:translateY(-1px) !important;
+}
+
+/* ── Two-column layout for the OTP setup page ──
+   The card is normally capped at 420px; on this page only (detected
+   via :has(.totp-layout)) it widens so the QR sits beside the steps. */
+#kc-container:has(.totp-layout),
+.login-pf-page .card-pf:has(.totp-layout),
+.pf-c-login__main:has(.totp-layout){
+  max-width:765px !important;
+}
+
+.totp-layout{
+  display:flex !important;
+  align-items:stretch !important;
+  gap:1.75rem !important;
+}
+
+/* Left column — the QR code panel (a defined, slightly raised surface) */
+.totp-visual{
+  flex:0 0 300px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  padding:1.5rem 1.1rem !important;
+  background:rgba(255,255,255,0.035) !important;
+  border:1px solid var(--color-border) !important;
+  border-radius:16px !important;
+}
+
+/* Right column — steps + verification form */
+.totp-steps{
+  flex:1 1 0 !important;
+  min-width:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:center !important;
+}
+
+/* On narrow screens, fall back to a single stacked column */
+@media (max-width:600px){
+  #kc-container:has(.totp-layout),
+  .login-pf-page .card-pf:has(.totp-layout),
+  .pf-c-login__main:has(.totp-layout){
+    max-width:420px !important;
+  }
+  .totp-layout{
+    flex-direction:column !important;
+    gap:1rem !important;
+  }
+  .totp-visual{
+    flex-basis:auto !important;
+    width:100% !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Register page
+   ───────────────────────────────────────────────────────────── */
+
+/* Header — Keycloak wraps the title and the "* Required fields" note in a
+   grid that stacked oddly. Stack them as a clean centred column with the
+   title on top and the note as a small caption beneath it. */
+header > div:has(#kc-page-title){
+  display:flex !important;
+  flex-direction:column-reverse !important;
+  align-items:center !important;
+  gap:0.3rem !important;
+}
+header > div:has(#kc-page-title) > div{
+  width:100% !important;
+  max-width:100% !important;
+  padding:0 !important;
+  margin:0 !important;
+  float:none !important;
+  text-align:center !important;
+}
+/* Cancel the off-centre transform applied to the title elsewhere */
+header > div:has(#kc-page-title) #kc-page-title{
+  left:auto !important;
+  transform:none !important;
+  display:block !important;
+  width:100% !important;
+  max-width:100% !important;
+}
+.subtitle{
+  display:block !important;
+  font-size:0.76rem !important;
+  font-weight:500 !important;
+  color:var(--color-text-muted) !important;
+  text-align:center !important;
+}
+.subtitle .required,
+.required{
+  color:var(--color-secondary) !important;
+}
+
+/* The register form has no absolutely-positioned top error, so it needs
+   no top padding (the global alert renders above the form, outside it). */
+form#kc-register-form{
+  padding-top:0 !important;
+}
+
+/* Per-field validation errors → clear red text, inline under the field */
+[id^="input-error-"]{
+  display:block !important;
+  margin-top:0.4rem !important;
+  color:#fca5a5 !important;
+  font-size:0.8rem !important;
+  line-height:1.4 !important;
+  font-weight:500 !important;
+}
+
+/* ── Registration wizard — step indicator ── */
+.reg-steps{
+  list-style:none !important;
+  display:flex !important;
+  justify-content:space-between !important;
+  align-items:flex-start !important;
+  padding:0 !important;
+  margin:0 0 1.6rem !important;
+  position:relative !important;
+}
+/* connecting line behind the dots */
+.reg-steps::before{
+  content:"" !important;
+  position:absolute !important;
+  top:0.8rem !important;
+  left:16% !important;
+  right:16% !important;
+  height:2px !important;
+  background:var(--color-border) !important;
+  z-index:0 !important;
+}
+.reg-steps > li{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  gap:0.4rem !important;
+  flex:1 1 0 !important;
+  position:relative !important;
+  z-index:1 !important;
+}
+.reg-dot{
+  width:1.7rem !important;
+  height:1.7rem !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border-radius:50% !important;
+  font-size:0.8rem !important;
+  font-weight:700 !important;
+  background:var(--color-bg) !important;
+  border:1px solid var(--color-border) !important;
+  color:var(--color-text-muted) !important;
+  transition:background 0.2s ease, color 0.2s ease !important;
+}
+.reg-steps > li.is-active .reg-dot,
+.reg-steps > li.is-done .reg-dot{
+  background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)) !important;
+  border-color:transparent !important;
+  color:#fff !important;
+  box-shadow:0 4px 12px rgba(30,64,188,0.4) !important;
+}
+.reg-label{
+  font-size:0.72rem !important;
+  font-weight:500 !important;
+  color:var(--color-text-muted) !important;
+}
+.reg-steps > li.is-active .reg-label{
+  color:var(--color-cream) !important;
+  font-weight:600 !important;
+}
+
+/* ── Registration wizard — Back / Next navigation row ── */
+.reg-nav{
+  display:flex !important;
+  gap:0.6rem !important;
+  margin-top:0.85rem !important;
+}
+.reg-nav button,
+.reg-nav input[type="submit"]{
+  width:auto !important;
+  margin:0 !important;
+}
+.reg-nav .reg-next,
+.reg-nav input[type="submit"]{
+  flex:1 1 auto !important;   /* primary action grows */
+}
+.reg-nav .reg-back{
+  flex:0 0 auto !important;
+  background:rgba(255,255,255,0.05) !important;
+  background-image:none !important;
+  border:1px solid var(--color-border) !important;
+  color:var(--color-text-muted) !important;
+  box-shadow:none !important;
+  padding:0.75rem 1.4rem !important;
+}
+.reg-nav .reg-back:hover{
+  background:rgba(255,255,255,0.10) !important;
+  color:var(--color-cream) !important;
+  box-shadow:none !important;
+}
+
+/* ── Registration wizard — live per-field validation ── */
+.reg-error-msg{
+  display:block !important;
+  margin-top:0.35rem !important;
+  color:#fca5a5 !important;
+  font-size:0.78rem !important;
+  font-weight:500 !important;
+  line-height:1.4 !important;
+}
+.reg-invalid{
+  border-color:#dc2626 !important;
+  box-shadow:0 0 0 3px rgba(220,38,38,0.18) !important;
+}
+
+/* ── Registration wizard — phone number with fixed +216 prefix ── */
+.reg-phone{
+  display:flex !important;
+  align-items:stretch !important;
+  background:rgba(255,255,255,0.05) !important;
+  border:1px solid var(--color-border) !important;
+  border-radius:12px !important;
+  overflow:hidden !important;
+}
+.reg-phone:focus-within{
+  border-color:var(--color-secondary) !important;
+  box-shadow:0 0 0 3px rgba(121,164,233,0.35) !important;
+}
+.reg-phone.reg-invalid{
+  border-color:#dc2626 !important;
+  box-shadow:0 0 0 3px rgba(220,38,38,0.18) !important;
+}
+.reg-phone-prefix{
+  display:flex !important;
+  align-items:center !important;
+  padding:0 0.75rem !important;
+  background:rgba(121,164,233,0.14) !important;
+  border-right:1px solid var(--color-border) !important;
+  color:var(--color-secondary) !important;
+  font-weight:600 !important;
+  font-size:0.9rem !important;
+  white-space:nowrap !important;
+}
+.reg-phone input{
+  flex:1 1 auto !important;
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+.reg-phone input:focus{
+  border:0 !important;
+  box-shadow:none !important;
+}
+
 
 

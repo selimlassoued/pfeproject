@@ -59,18 +59,16 @@ export class UserService {
   }
 
   /**
-   * Creates a new user account (RECRUITER or ADMIN).
-   * Keycloak automatically sends an invite email for them to set their password.
+   * Creates a staff account (RECRUITER or ADMIN). The admin only provides
+   * email + role — the invited user fills their own name and phone on first
+   * sign-in (VERIFY_PROFILE). firstName/lastName are sent as empty strings
+   * because the gateway builds the Keycloak payload with Map.of(), which
+   * rejects null values.
    */
-  async createUser(
-    firstName: string,
-    lastName: string,
-    email: string,
-    role: string
-  ): Promise<AdminUserRow> {
+  async createUser(email: string, role: string): Promise<AdminUserRow> {
     const user = await firstValueFrom(
       this.http.post<AdminUserRow>(`${this.baseUrl}/users`, {
-        firstName, lastName, email, role,
+        firstName: '', lastName: '', email, role,
       })
     );
     return this.normalizeRow(user);

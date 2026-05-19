@@ -11,6 +11,7 @@ export interface ApplicationDto {
 
   jobTitle?: string;
   candidateName?: string;
+  candidateEmail?: string;
   jobFitScore?: number | null;
   requiredSkillsMatched?: string[];
   requiredSkillsMissing?: string[];
@@ -21,6 +22,8 @@ export interface ApplicationDto {
     skill: string;
     score: number;
     status: 'matched' | 'partial' | 'missing';
+    evidence?: string | null;
+    reason?: string | null;
   }[];
   requirementScores?: {
     category?: string | null;

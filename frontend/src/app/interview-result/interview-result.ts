@@ -62,10 +62,10 @@ export class InterviewResult implements OnInit, OnDestroy {
 
   get recommendationLabel(): string {
     const map: Record<string, string> = {
-      STRONG_YES: '✅ Strong Yes',
-      YES:        '👍 Yes',
-      MAYBE:      '🤔 Maybe',
-      NO:         '❌ No',
+      STRONG_YES: 'Strong Yes',
+      YES:        'Yes',
+      MAYBE:      'Maybe',
+      NO:         'No',
     };
     return map[this.result?.hiringRecommendation ?? ''] ?? '—';
   }

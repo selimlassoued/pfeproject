@@ -32,6 +32,8 @@ public class NotificationEventsListener {
             case "APPLICATION_STATUS_UPDATE" -> notificationService.handleApplicationStatusUpdate(evt);
             case "JOB_UPDATED"       -> notificationService.handleJobUpdated(evt);
             case "JOB_QUOTA_REACHED" -> notificationService.handleJobQuotaReached(evt);
+            case "INTERVIEW_INVITE"       -> notificationService.handleInterviewInvite(evt);
+            case "INTERVIEW_JOIN_REQUEST" -> notificationService.handleInterviewJoinRequest(evt);
             default -> { /* ignore */ }
         }
     }

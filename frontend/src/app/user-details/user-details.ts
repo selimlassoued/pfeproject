@@ -184,8 +184,8 @@ export class UserDetails implements OnInit {
   }
 
   moderationPill(): { text: string; cls: string } | null {
-    if (this.moderationStatus === 'FLAGGED') return { text: '⚑ Flagged', cls: 'pill-flagged' };
-    if (this.moderationStatus === 'BLOCKED') return { text: '⊘ Blocked', cls: 'pill-danger' };
+    if (this.moderationStatus === 'FLAGGED') return { text: 'Flagged', cls: 'pill-flagged' };
+    if (this.moderationStatus === 'BLOCKED') return { text: 'Blocked', cls: 'pill-danger' };
     return null;
   }
 
@@ -273,7 +273,7 @@ export class UserDetails implements OnInit {
     if (!this.user || !this.canSignal()) return;
 
     const result = await Swal.fire({
-      title: '⚑ Signal candidate?',
+      title: ' Signal candidate?',
       html: `<p style="color:rgba(255,255,255,0.7);font-size:.9rem">
         This will flag <strong>${this.user.firstName ?? this.user.username}</strong>'s
         applications and notify the admin for review.
@@ -282,7 +282,7 @@ export class UserDetails implements OnInit {
       inputPlaceholder: 'Describe the issue (e.g. Fake CV, spam applications…)',
       inputAttributes: { rows: '3' },
       showCancelButton: true,
-      confirmButtonText: '⚑ Confirm Signal',
+      confirmButtonText: 'Confirm Signal',
       cancelButtonText: 'Cancel',
       confirmButtonColor: '#f59e0b',
       inputValidator: (value) => {

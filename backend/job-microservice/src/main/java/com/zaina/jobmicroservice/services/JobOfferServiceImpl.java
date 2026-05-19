@@ -29,6 +29,10 @@ public class JobOfferServiceImpl implements JobOfferService {
     private final JobOfferRepo jobOfferRepo;
     private final com.zaina.jobmicroservice.clients.ApplicationClient applicationClient;
 
+    private boolean hasApplications(UUID jobId) {
+        return applicationClient.hasApplications(jobId);
+    }
+
     private static JobRequirementDto toDtoReq(JobRequirement r) {
         return new JobRequirementDto(
                 r.getId(),
@@ -177,6 +181,20 @@ public class JobOfferServiceImpl implements JobOfferService {
         JobOffer existing = jobOfferRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("JobOffer not found: " + id));
 
+        if (existing.getJobStatus() == JobStatus.CLOSED) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST,
+                "Closed jobs cannot be edited. Duplicate it as a new job instead."
+            );
+        }
+
+        if (existing.getJobStatus() == JobStatus.PUBLISHED && hasApplications(id)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST,
+                "This job already has applications. It can no longer be edited."
+            );
+        }
+
         String oldTitle          = existing.getTitle();
         String oldDescription    = existing.getDescription();
         String oldLocation       = existing.getLocation();
@@ -317,7 +335,7 @@ public class JobOfferServiceImpl implements JobOfferService {
     }
 
     @Override
-    public JobOfferDto closeJob(UUID jobId, String actorUserId) {
+    public JobOfferDto closeJob(UUID jobId, String actorUserId, String reason) {
         String actor = (actorUserId != null && !actorUserId.isBlank()) ? actorUserId : "SYSTEM";
         JobOffer job = jobOfferRepo.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("JobOffer not found: " + jobId));
@@ -340,17 +358,25 @@ public class JobOfferServiceImpl implements JobOfferService {
         target.setId(jobId.toString());
         evt.setTarget(target);
 
-        // Include reason: quota reached when closed automatically, manual otherwise
+        // Include reason in the audit trail:
+        //  - quota reached  → automatic system message
+        //  - manual close   → the reason the recruiter typed (required by the UI)
         boolean quotaReached = saved.getOpenings() != null && saved.getHiredCount() != null
                 && saved.getHiredCount() >= saved.getOpenings();
-        String reason = quotaReached
-                ? "Hiring quota reached (" + saved.getHiredCount() + "/" + saved.getOpenings() + ") — position filled automatically"
-                : "Closed manually";
-        evt.setReason(reason);
+        String auditReason;
+        if (quotaReached) {
+            auditReason = "Hiring quota reached (" + saved.getHiredCount() + "/" + saved.getOpenings()
+                    + ") — position filled automatically";
+        } else if (reason != null && !reason.isBlank()) {
+            auditReason = reason.trim();
+        } else {
+            auditReason = "Closed manually (no reason provided)";
+        }
+        evt.setReason(auditReason);
         evt.setPayload(Map.of(
                 "jobId",    jobId.toString(),
                 "jobTitle", saved.getTitle(),
-                "reason",   reason
+                "reason",   auditReason
         ));
         eventPublisher.publish("audit.job", evt);
         eventPublisher.publish("notify.job", evt);

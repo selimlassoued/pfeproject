@@ -2,42 +2,68 @@
 
   <div class="schedule-header">
     <h3 class="schedule-title">Schedule Interview</h3>
+    <p class="schedule-subtitle">Pick a day, then choose an available time slot.</p>
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="submit()" class="schedule-form">
+  <div class="schedule-form">
 
-    <!-- Date input -->
+    <!-- Day -->
     <div class="form-block">
-      <label class="form-label">Interview Date & Time</label>
+      <label class="form-label" for="si-date">Day</label>
+      <input id="si-date" type="date" class="form-input"
+             [min]="minDate"
+             [(ngModel)]="selectedDate"
+             (ngModelChange)="onDateChange()" />
+    </div>
 
-      <input
-        type="datetime-local"
-        formControlName="scheduledAt"
-        class="form-input"
-        [class.invalid]="form.get('scheduledAt')?.invalid && form.get('scheduledAt')?.touched"
-      />
+    <!-- Time slots -->
+    <div class="form-block">
+      <label class="form-label">Time slot</label>
 
-      <div class="form-error" *ngIf="form.get('scheduledAt')?.touched && form.get('scheduledAt')?.invalid">
-        Please select a date and time.
-      </div>
+      @if (busyLoading) {
+        <div class="si-slots-msg">Loading availability…</div>
+      } @else {
+        <div class="si-slots">
+          @for (slot of slots; track slot.time) {
+            <button type="button"
+                    class="si-slot"
+                    [class.si-slot--free]="slot.state === 'free'"
+                    [class.si-slot--past]="slot.state === 'past'"
+                    [class.si-slot--recruiter]="slot.state === 'recruiter'"
+                    [class.si-slot--candidate]="slot.state === 'candidate'"
+                    [class.si-slot--both]="slot.state === 'both'"
+                    [class.si-slot--on]="selectedSlot === slot.time"
+                    [disabled]="slot.state !== 'free'"
+                    [title]="slotTitle(slot)"
+                    (click)="pickSlot(slot)">
+              {{ slot.time }}
+            </button>
+          }
+        </div>
+
+        <div class="si-legend">
+          <span class="si-legend-item"><i class="si-dot si-dot--free"></i> Available</span>
+          <span class="si-legend-item"><i class="si-dot si-dot--recruiter"></i> You're busy</span>
+          <span class="si-legend-item"><i class="si-dot si-dot--candidate"></i> Candidate busy</span>
+          <span class="si-legend-item"><i class="si-dot si-dot--past"></i> Past</span>
+        </div>
+      }
     </div>
 
     <!-- Error -->
-    <div class="form-error-box" *ngIf="error">
-      {{ error }}
-    </div>
+    @if (error) {
+      <div class="form-error-box">{{ error }}</div>
+    }
 
     <!-- Actions -->
     <div class="form-actions">
-      <button
-        type="submit"
-        class="btn btn-primary schedule-btn"
-        [disabled]="form.invalid || loading"
-      >
-        <span *ngIf="loading">Scheduling...</span>
-        <span *ngIf="!loading">Schedule Interview</span>
+      <button type="button"
+              class="btn btn-primary schedule-btn"
+              [disabled]="!selectedSlot || loading"
+              (click)="submit()">
+        {{ loading ? 'Scheduling…' : 'Schedule Interview' }}
       </button>
     </div>
 
-  </form>
+  </div>
 </div>

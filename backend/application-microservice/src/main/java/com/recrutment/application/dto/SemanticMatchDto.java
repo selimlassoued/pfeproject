@@ -31,6 +31,8 @@ public class SemanticMatchDto {
         private String skill;
         private Integer score;
         private String status; // "matched" | "partial" | "missing"
+        private String evidence;
+        private String reason;
     }
 
     @Data

@@ -22,126 +22,45 @@ import { ActionHistory } from './action-history/action-history';
 import { CvAnalysisDrawer } from './cv-analysis-drawer/cv-analysis-drawer';
 import { homeGuard } from './guards/homeGuard';
 import { InterviewList } from './interview-list/interview-list';
+import { InterviewCalendar } from './interview-calendar/interview-calendar';
 import { InterviewRoomPage } from './interview-room-page/interview-room-page';
 import { InterviewResult } from './interview-result/interview-result';
+import { Preferences } from './preferences/preferences';
+import { Onboarding } from './onboarding/onboarding';
+import { GoogleCallback } from './google-callback/google-callback';
 
 export const routes: Routes = [
-  {
-    path: 'test',
-    component: Test,
-    canActivate: [canActivateAuthRole],
-    data: { role: 'ADMIN' },
-  },
-  { path: 'profile', component: Profile },
-  { path: 'forbidden', component: Forbidden },
-  { path: '', component: Hero, canActivate: [homeGuard] },
-  { path: 'hero', component: Hero },
-  { path: 'browse', component: BrowseJobsComponent },
-  { path: 'jobs/:id', component: JobDetails },
+  { path: '',             component: Hero,               canActivate: [homeGuard] },
+  { path: 'hero',         component: Hero },
+  { path: 'profile',      component: Profile },
+  { path: 'preferences',  component: Preferences,        canActivate: [canActivateAuthRole], data: { role: 'CANDIDATE' } },
+  { path: 'onboarding',  component: Onboarding,         canActivate: [canActivateAuthRole], data: { role: 'CANDIDATE' } },
+  { path: 'forbidden',    component: Forbidden },
+  { path: 'browse',       component: BrowseJobsComponent },
+  { path: 'jobs/:id',     component: JobDetails },
+  { path: 'notification-menu', component: NotificationsMenu },
+  { path: 'cv-analysis',  component: CvAnalysisDrawer },
+  { path: 'interviews',   component: InterviewList },
+  { path: 'interview/:id/room',   component: InterviewRoomPage },
+  { path: 'join/:id',             component: InterviewRoomPage },
+  { path: 'interview/:id/result', component: InterviewResult },
+  { path: 'test', component: Test, canActivate: [canActivateAuthRole], data: { role: 'ADMIN' } },
 
-  // ── ADMIN + SUPERADMIN + RECRUITER (filtered) ─────────────────────────────
-  {
-    path: 'listUsers',
-    component: ListUsers,
-    canActivate: [canActivateAuthRole],
-    data: { allowedRoles: ['ADMIN', 'SUPERADMIN', 'RECRUITER'] },
-  },
-
-  // ── SUPERADMIN + ADMIN + RECRUITER ────────────────────────────────────────
-  {
-    path: 'user/:id',
-    component: UserDetails,
-    canActivate: [canActivateAuthRole],
-    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
-  },
-  {
-    path: 'listApplications',
-    component: ListApplications,
-    canActivate: [canActivateAuthRole],
-    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
-  },
-  {
-    path: 'application/:id',
-    component: ApplicationDetail,
-    canActivate: [canActivateAuthRole],
-    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
-  },
-  {
-    path: 'add-job',
-    component: AddJob,
-    canActivate: [canActivateAuthRole],
-    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
-  },
-  {
-    path: 'edit-job/:id',
-    component: UpdateJob,
-    canActivate: [canActivateAuthRole],
-    data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] },
-  },
-  {
-    path: 'admin-dashboard',
-    component: AdminDashboard,
-    canActivate: [canActivateAuthRole],
-    data: { allowedRoles: ['ADMIN', 'SUPERADMIN', 'RECRUITER'] },
-  },
-  {
-    path: 'recruiter-activity',
-    component: RecruiterActivity,
-    canActivate: [canActivateAuthRole],
-    data: { allowedRoles: ['ADMIN', 'SUPERADMIN'] },
-  },
-  {
-    path: 'action-history',
-    component: ActionHistory,
-    canActivate: [canActivateAuthRole],
-    data: { allowedRoles: ['ADMIN', 'SUPERADMIN'] },
-  },
+  // ── ADMIN + SUPERADMIN + RECRUITER ────────────────────────────────────────
+  { path: 'listUsers',       component: ListUsers,       canActivate: [canActivateAuthRole], data: { allowedRoles: ['ADMIN', 'SUPERADMIN', 'RECRUITER'] } },
+  { path: 'user/:id',        component: UserDetails,     canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'listApplications',component: ListApplications,canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'application/:id', component: ApplicationDetail,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'add-job',         component: AddJob,          canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'edit-job/:id',    component: UpdateJob,       canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'admin-dashboard', component: AdminDashboard,  canActivate: [canActivateAuthRole], data: { allowedRoles: ['ADMIN', 'SUPERADMIN', 'RECRUITER'] } },
+  { path: 'calendar',        component: InterviewCalendar, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'google-callback', component: GoogleCallback },
+  { path: 'recruiter-activity', component: RecruiterActivity, canActivate: [canActivateAuthRole], data: { allowedRoles: ['ADMIN', 'SUPERADMIN'] } },
+  { path: 'action-history',  component: ActionHistory,   canActivate: [canActivateAuthRole], data: { allowedRoles: ['ADMIN', 'SUPERADMIN'] } },
 
   // ── CANDIDATE only ────────────────────────────────────────────────────────
-  {
-    path: 'apply/:jobId',
-    component: Application,
-    canActivate: [canActivateAuthRole],
-    data: { role: 'CANDIDATE' },
-  },
-  {
-    path: 'my-applications',
-    component: MyApplications,
-    canActivate: [canActivateAuthRole],
-    data: { role: 'CANDIDATE' },
-  },
-  {
-    path: 'my-application/:id',
-    component: MyApplicationDetail,
-    canActivate: [canActivateAuthRole],
-    data: { role: 'CANDIDATE' },
-  },
-
-  // ── Other ─────────────────────────────────────────────────────────────────
-  { path: 'notification-menu', component: NotificationsMenu },
-  { path: 'cv-analysis', component: CvAnalysisDrawer },
-  {path: 'profile', component: Profile },
-  {path: 'forbidden', component: Forbidden },
-  {path:'',component:Hero, canActivate: [homeGuard]  },
-  {path:'hero',component:Hero },
-  {path: 'browse', component: BrowseJobsComponent },
-  {path: 'jobs/:id', component: JobDetails },
-  {path:'listUsers',component:ListUsers,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
-  {path:'user/:id',component:UserDetails,canActivate: [canActivateAuthRole],data: { role: 'ADMIN' }},
-  {path: 'apply/:jobId', component: Application,canActivate: [canActivateAuthRole],data: { role: 'CANDIDATE' } },
-  {path:'listApplications',component:ListApplications,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
-  {path:'application/:id',component:ApplicationDetail,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
-  {path:'add-job', component:AddJob, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
-  {path:'edit-job/:id', component:UpdateJob, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN'] }},
-  {path: 'my-applications', component: MyApplications,canActivate: [canActivateAuthRole],data: { role: 'CANDIDATE' } },
-  {path:'my-application/:id',component:MyApplicationDetail,canActivate: [canActivateAuthRole],data: { role: 'CANDIDATE' }},
-  {path:'notification-menu',component:NotificationsMenu},
-  {path: 'admin-dashboard', component: AdminDashboard },
-  {path:'recruiter-activity',component:RecruiterActivity},
-  {path:'action-history',component:ActionHistory},
-  {path:'cv-analysis',component:CvAnalysisDrawer},
-  {path: 'interviews', component: InterviewList },
-  { path: 'interview/:id/room', component: InterviewRoomPage },
-  { path: 'join/:id', component: InterviewRoomPage },
-  {path: 'interview/:id/result', component: InterviewResult },
+  { path: 'apply/:jobId',     component: Application,       canActivate: [canActivateAuthRole], data: { role: 'CANDIDATE' } },
+  { path: 'my-applications',  component: MyApplications,    canActivate: [canActivateAuthRole], data: { role: 'CANDIDATE' } },
+  { path: 'my-application/:id', component: MyApplicationDetail, canActivate: [canActivateAuthRole], data: { role: 'CANDIDATE' } },
 ];

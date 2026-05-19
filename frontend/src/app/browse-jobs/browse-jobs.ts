@@ -8,6 +8,10 @@ import { Router } from "@angular/router";
 import { AuthService } from '../services/AuthService.service';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
+import { CandidateProfileService, CandidateProfile } from '../services/candidate-profile.service';
+import { HttpClient } from '@angular/common/http';
+import Swal from 'sweetalert2';
+import { firstValueFrom } from 'rxjs';
 import Keycloak from 'keycloak-js';
 import { inject } from '@angular/core';
 
@@ -41,15 +45,27 @@ export class BrowseJobsComponent implements OnInit {
 
   private myAppsByJobId = new Map<string, string>();
   checkingMyApps = false;
+  private candidatePrefs: CandidateProfile | null = null;
+  sortMode: 'date' | 'match' = 'date';
+  private jobScores = new Map<string, number>();
+  rankingLoading = false;
 
   private readonly keycloak = inject(Keycloak);
 
-  constructor(private jobService: JobService, private authService: AuthService, private applicationService: ApplicationService, private router: Router) {}
+  constructor(
+    private jobService: JobService,
+    private authService: AuthService,
+    private applicationService: ApplicationService,
+    private candidateProfileService: CandidateProfileService,
+    private http: HttpClient,
+    private router: Router,
+  ) {}
 
   ngOnInit(): void {
     this.fetchJobs();
-     if (this.isCandidate) {
+    if (this.isCandidate) {
       this.loadMyApplications();
+      this.loadCandidatePreferences();
     }
   }
 
@@ -118,6 +134,7 @@ export class BrowseJobsComponent implements OnInit {
   fetchJobs(): void {
     this.loading = true;
     this.error = null;
+    this.jobScores.clear();
 
     const [minSalary, maxSalary] = this.getSalaryRange();
 
@@ -285,23 +302,132 @@ export class BrowseJobsComponent implements OnInit {
     }
   }
 
-  getVisibleJobs(): JobOffer[] {
-    if (this.showAllJobs) return this.filteredJobs;
-    return this.filteredJobs.filter(job => job.jobStatus === 'PUBLISHED');
+  private async loadCandidatePreferences(): Promise<void> {
+    try {
+      this.candidatePrefs = await this.candidateProfileService.get();
+    } catch { /* ignore */ }
   }
 
-  deleteJob(id: string): void {
-    if (confirm('Are you sure you want to delete this job offer?')) {
-      this.jobService.deleteJob(id).subscribe({
-        next: () => {
-          this.fetchJobs(); // Refresh the list
-        },
-        error: (err) => {
-          console.error('Delete failed:', err);
-          alert('Failed to delete job offer.');
-        }
-      });
+  // ── Semantic ranking ──────────────────────────────────────────────────────
+
+  private buildCandidateText(): string {
+    const p = this.candidatePrefs;
+    if (!p) return '';
+    const domainLabels: Record<string, string> = {
+      SOFTWARE_ENGINEERING: 'Software Engineering and IT development',
+      FINANCE_BANKING:      'Finance and Banking',
+      INSURANCE:            'Insurance',
+      PROJECT_MANAGEMENT:   'Project Management',
+      QUALITY_ASSURANCE:    'Quality Assurance and Testing',
+      BUSINESS_ANALYSIS:    'Business Analysis',
+    };
+    const parts: string[] = [];
+    if (p.domain)          parts.push(`Domain: ${domainLabels[p.domain] ?? p.domain}`);
+    if (p.hardSkills?.length) parts.push(`Technical skills: ${p.hardSkills.join(', ')}`);
+    if (p.softSkills?.length) parts.push(`Soft skills: ${p.softSkills.join(', ')}`);
+    if (p.languages?.length)  parts.push(`Languages: ${p.languages.map(l => `${l.language} ${l.level}`).join(', ')}`);
+    if (p.yearsOfExperience)  parts.push(`Years of experience: ${p.yearsOfExperience}`);
+    if (p.educationLevel)     parts.push(`Education: ${p.educationLevel}`);
+    if (p.preferredJobType)   parts.push(`Looking for: ${p.preferredJobType}`);
+    return parts.join('\n');
+  }
+
+  private buildJobText(job: JobOffer): string {
+    const parts: string[] = [];
+    if (job.title)       parts.push(`Job title: ${job.title}`);
+    if (job.description) parts.push(`Description: ${job.description.slice(0, 400)}`);
+    if (job.requirements?.length) {
+      const reqs = job.requirements.map(r => `${r.category}: ${r.description}`).join('; ');
+      parts.push(`Requirements: ${reqs}`);
     }
+    if (job.employmentType)   parts.push(`Type: ${job.employmentType}`);
+    if (job.workArrangement)  parts.push(`Work arrangement: ${job.workArrangement}`);
+    return parts.join('\n');
+  }
+
+  async triggerRanking() {
+    if (!this.candidatePrefs || this.filteredJobs.length === 0) return;
+    const candidateText = this.buildCandidateText();
+    if (!candidateText) return;
+
+    this.rankingLoading = true;
+    try {
+      const body = {
+        candidate_text: candidateText,
+        jobs: this.filteredJobs.map(j => ({ id: j.id, text: this.buildJobText(j) })),
+      };
+      const resp = await firstValueFrom(
+        this.http.post<{ results: { id: string; score: number }[] }>(
+          'http://localhost:8085/api/cv-parser/rank-jobs', body
+        )
+      );
+      this.jobScores.clear();
+      for (const r of resp.results) this.jobScores.set(r.id, r.score);
+    } catch { /* silent — fall back to date order */ }
+    finally { this.rankingLoading = false; }
+  }
+
+  matchLabel(job: JobOffer): string | null {
+    if (this.sortMode !== 'match' || !this.isCandidate) return null;
+    if (this.rankingLoading) return null;
+    const s = this.jobScores.get(job.id) ?? 0;
+    if (s >= 0.72) return 'Strong match';
+    if (s >= 0.58) return 'Good match';
+    if (s >= 0.45) return 'Partial match';
+    return null;
+  }
+
+  matchStyle(job: JobOffer): string {
+    const s = this.jobScores.get(job.id) ?? 0;
+    if (s >= 0.72) return 'background:rgba(72,187,120,0.15);color:#68d391;border:1px solid rgba(72,187,120,0.3);';
+    if (s >= 0.58) return 'background:rgba(121,164,233,0.15);color:#79a4e9;border:1px solid rgba(121,164,233,0.3);';
+    return 'background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);';
+  }
+
+  setSortMode(mode: 'date' | 'match') {
+    this.sortMode = mode;
+    if (mode === 'match' && this.jobScores.size === 0) {
+      this.triggerRanking();
+    }
+  }
+
+  getVisibleJobs(): JobOffer[] {
+    const jobs = this.showAllJobs
+      ? this.filteredJobs
+      : this.filteredJobs.filter(job => job.jobStatus === 'PUBLISHED');
+    if (this.sortMode === 'match' && this.isCandidate && this.jobScores.size > 0) {
+      return [...jobs].sort((a, b) => (this.jobScores.get(b.id) ?? 0) - (this.jobScores.get(a.id) ?? 0));
+    }
+    return jobs;
+  }
+
+  async closeJob(id: string): Promise<void> {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Close this job offer?',
+      text: 'It will stop accepting new applications. Provide a reason — it is recorded in the audit trail.',
+      input: 'textarea',
+      inputPlaceholder: 'e.g. Position filled, budget cancelled, requirements changed…',
+      inputAttributes: { rows: '3' },
+      inputValidator: (value) =>
+        (!value || !value.trim()) ? 'A reason is required to close the job.' : null,
+      showCancelButton: true,
+      confirmButtonText: 'Close job',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#ed8936',
+    });
+    if (!result.isConfirmed) return;
+
+    this.jobService.closeJob(id, (result.value as string).trim()).subscribe({
+      next:  () => {
+        this.fetchJobs();   // refresh the list
+        Swal.fire({ icon: 'success', title: 'Job closed', timer: 1600, showConfirmButton: false });
+      },
+      error: (err) => {
+        console.error('Close failed:', err);
+        Swal.fire({ icon: 'error', title: 'Failed to close job offer.' });
+      }
+    });
   }
 
   /**

@@ -26,9 +26,29 @@
   flex-wrap: wrap;
 }
 select {
-  background-color: #1b2236;   /* dark control background */
-  color: #f5f7ff;              /* text color */
+  background-color: #1b2236;
+  color: #f5f7ff;
 }
+
+.sort-toggle {
+  display: flex;
+  border: 1px solid rgba(121,164,233,0.25);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sort-btn {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sort-btn:hover { color: #fff; background: rgba(121,164,233,0.1); }
+.sort-btn--active { background: rgba(121,164,233,0.2); color: #fff; }
 
 select option {
   background-color: #1b2236;   /* dropdown background */
