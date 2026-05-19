@@ -63,6 +63,11 @@
     <section class="interview-section">
   <div class="interview-section-header">
     <h3 class="interview-section-title">Interviews</h3>
+    @if (interviews.length > 0) {
+      <button class="btn btn-primary" type="button" (click)="viewSummary()">
+        View full candidate summary
+      </button>
+    }
   </div>
 
   <div *ngIf="interviewsLoading" class="interview-state-msg">Loading interviews…</div>
@@ -102,17 +107,17 @@
 
   <div class="interview-room-wrapper">
     <button *ngIf="activeInterview" class="btn btn-primary interview-join-btn" (click)="joinInterview()">
-      🎥 Join Interview
+      Join Interview
     </button>
   </div>
 
   <button *ngIf="!showScheduleForm && canSchedule" class="btn btn-primary interview-trigger-btn"
     type="button" (click)="showScheduleForm = true">
-    📅 Schedule Interview
+    Schedule Interview
   </button>
 
   <span class="interview-blocked-badge" *ngIf="!canSchedule && !showScheduleForm">
-    🔒 Interview already scheduled
+    Interview already scheduled
   </span>
 
   <div class="interview-form-panel" *ngIf="showScheduleForm">

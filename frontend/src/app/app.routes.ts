@@ -24,6 +24,8 @@ import { homeGuard } from './guards/homeGuard';
 import { InterviewList } from './interview-list/interview-list';
 import { InterviewRoomPage } from './interview-room-page/interview-room-page';
 import { InterviewResult } from './interview-result/interview-result';
+import { InterviewEvaluation } from './interview-evaluation/interview-evaluation';
+import { ApplicationSummary } from './application-summary/application-summary';
 
 export const routes: Routes = [
   {
@@ -140,8 +142,12 @@ export const routes: Routes = [
   {path:'recruiter-activity',component:RecruiterActivity},
   {path:'action-history',component:ActionHistory},
   {path:'cv-analysis',component:CvAnalysisDrawer},
-  {path: 'interviews', component: InterviewList },
+  { path: 'interviews', component: InterviewList,
+    canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'interview/:id/room', component: InterviewRoomPage },
   { path: 'join/:id', component: InterviewRoomPage },
   {path: 'interview/:id/result', component: InterviewResult },
+  {path: 'interview/:id/evaluation', component: InterviewEvaluation },
+  {path: 'application/:id/summary', component: ApplicationSummary,
+    canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN'] } },
 ];

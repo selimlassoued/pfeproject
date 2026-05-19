@@ -44,3 +44,19 @@ eureka:
 analysis:
   sidecar:
     url: ${ANALYSIS_SIDECAR_URL:http://analysis-service:8000}
+
+application:
+  service:
+    url: ${APPLICATION_SERVICE_URL:http://application-microservice:8081}
+
+job:
+  service:
+    url: ${JOB_SERVICE_URL:http://job-microservice:8080}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "mappings,health"
+user:
+  service:
+    url: http://gateway:8888   # or http://user-service:8083 if calling directly

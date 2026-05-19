@@ -15,6 +15,8 @@ public class InterviewResponse {
     private String jobTitle;
     private String candidateEmail;
     private String recruiterEmail;
+    private String candidateName;
+    private String recruiterName;
     private LocalDateTime scheduledAt;
     private String roomUrl;
     private Boolean recordingConsent;

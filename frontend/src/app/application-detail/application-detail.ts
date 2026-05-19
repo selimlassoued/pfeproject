@@ -8,6 +8,9 @@ import { CvAnalysisDrawer } from '../cv-analysis-drawer/cv-analysis-drawer';
 import { JobService } from '../services/job.service';
 import Keycloak from 'keycloak-js';
 import Swal from 'sweetalert2';
+import { InterviewResponse } from '../services/interview-service';
+import { ScheduleInterview } from '../schedule-interview/schedule-interview';
+import{ InterviewService } from '../services/interview-service';
 
 // Allowed status transitions — mirrors backend logic
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -22,11 +25,6 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   WITHDRAWN:        [],
 };
 
-import { InterviewResponse } from '../services/interview-service';
-import { ScheduleInterview } from '../schedule-interview/schedule-interview';
-import { inject } from '@angular/core';
-import{ InterviewService } from '../services/interview-service';
-import Keycloak from 'keycloak-js';
 @Component({
   selector: 'app-application-detail',
   imports: [CommonModule, FormsModule, CvAnalysisDrawer,ScheduleInterview],
@@ -34,7 +32,6 @@ import Keycloak from 'keycloak-js';
   styleUrl: './application-detail.css',
 })
 export class ApplicationDetail implements OnInit, OnDestroy {
-  private readonly keycloak = inject(Keycloak);
 
   newStatus = '';
   updatingStatus = false;
@@ -75,27 +72,27 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     private router: Router,
     private appService: ApplicationService,
     private interviewService: InterviewService,
-    private appService: ApplicationService,
     private jobService: JobService
   ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
-    if (!id) { this.error = 'Missing application id'; return; }
-    if (id) {
-      this.loadApplication(id);
-    }
     if (!id) {
       this.error = 'Missing application id';
       return;
     }
 
+    // Exactly one getOne() call. loadSemanticMatch enriches `this.app` with
+    // jobFitScore asynchronously — a second concurrent getOne() would resolve
+    // later and overwrite that enrichment (plain getOne carries no semantic
+    // match), silently blanking the score in the view.
     this.loading = true;
     this.appService.getOne(id).subscribe({
       next: (data) => {
         this.app = data;
         this.newStatus = this.allowedStatuses[0] ?? '';
         this.loading = false;
+        this.loadInterviews(data.applicationId);
         this.loadSemanticMatch(id);
         this.appService.getApplicationRank(id).subscribe({
           next: (r) => { this.rank = r.rank; this.rankTotal = r.total; },
@@ -377,22 +374,6 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     });
   }
 
-  loadApplication(id: string) {
-    this.loading = true;
-    this.appService.getOne(id).subscribe({
-      next: (app) => {
-        this.app = app;
-        this.loading = false;
-        this.loadInterviews(app.applicationId);
-      },
-      error: (err) => {
-        this.error = err?.error?.message || 'Failed to load application';
-        this.loading = false;
-      }
-    });
-  }
-
-
   loadInterviews(applicationId: string) {
     this.interviewsLoading = true;
     this.interviewService.getByApplication(applicationId).subscribe({
@@ -402,6 +383,11 @@ export class ApplicationDetail implements OnInit, OnDestroy {
       },
       error: () => { this.interviewsLoading = false; }
     });
+  }
+
+  viewSummary() {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) this.router.navigate(['/application', id, 'summary']);
   }
 
   // The most recent non-cancelled/completed interview

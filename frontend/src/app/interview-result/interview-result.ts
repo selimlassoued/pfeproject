@@ -38,7 +38,6 @@ export class InterviewResult implements OnInit, OnDestroy {
       next: (r) => {
         this.result = r;
         this.loading = false;
-        // Keep polling until done or failed
         if (r.processingStatus !== 'COMPLETED' && r.processingStatus !== 'FAILED') {
           this.pollTimer = setTimeout(() => this.load(), 5000);
         }
@@ -48,6 +47,33 @@ export class InterviewResult implements OnInit, OnDestroy {
         this.loading = false;
       }
     });
+  }
+
+  // ── Color helper — palette matches the rest of the app (cream / blue /
+  //    amber / muted-red on dark background) ──────────────────────────────
+  scoreColor(score: number | null | undefined): string {
+    if (score == null) return 'rgba(248,250,252,0.45)';
+    if (score >= 80) return '#fffce5';
+    if (score >= 65) return '#79a4e9';
+    if (score >= 50) return '#f5c674';
+    return '#e8889a';
+  }
+
+  // The headline score on this page is the unified final_score (0-100) when
+  // available, falling back to the legacy 1-10 candidateScore for any old
+  // results processed before the Phase-1 scoring pipeline.
+  get headlineScore(): number | null {
+    if (this.result?.finalScore != null) return this.result.finalScore;
+    if (this.result?.candidateScore != null) return this.result.candidateScore * 10;
+    return null;
+  }
+
+  get headlineDenom(): string {
+    return this.result?.finalScore != null ? '/ 100' : '/ 100';
+  }
+
+  get hasUnifiedScoring(): boolean {
+    return this.result?.finalScore != null;
   }
 
   get recommendationClass(): string {
@@ -62,22 +88,19 @@ export class InterviewResult implements OnInit, OnDestroy {
 
   get recommendationLabel(): string {
     const map: Record<string, string> = {
-      STRONG_YES: '✅ Strong Yes',
-      YES:        '👍 Yes',
-      MAYBE:      '🤔 Maybe',
-      NO:         '❌ No',
+      STRONG_YES: 'Strong yes',
+      YES:        'Yes',
+      MAYBE:      'Maybe',
+      NO:         'No',
     };
     return map[this.result?.hiringRecommendation ?? ''] ?? '—';
   }
 
-  get scoreColor(): string {
-    const s = this.result?.candidateScore ?? 0;
-    if (s >= 8) return '#22c55e';
-    if (s >= 5) return '#f59e0b';
-    return '#ef4444';
-  }
-
   back() {
     this.router.navigate(['/interviews']);
+  }
+
+  viewFullEvaluation() {
+    this.router.navigate(['/interview', this.interviewId, 'evaluation']);
   }
 }

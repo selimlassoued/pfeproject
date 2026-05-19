@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
 export interface ScheduleInterviewRequest {
   applicationId: string;
@@ -21,12 +22,27 @@ export interface InterviewResponse {
   jobTitle: string;
   candidateEmail: string;
   recruiterEmail: string;
+  candidateName?: string;
+  recruiterName?: string;
   scheduledAt: string;
   roomUrl: string;
   recordingConsent: boolean;
   status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   createdAt: string;
 }
+export interface DimensionalScore {
+  score: number;
+  evidence: string;
+}
+
+export type DimensionKey =
+  | 'technical_depth'
+  | 'problem_solving'
+  | 'requirements_coverage'
+  | 'claim_verification'
+  | 'communication'
+  | 'motivation_fit';
+
 export interface InterviewResultResponse {
   id: string;
   interviewId: string;
@@ -41,6 +57,30 @@ export interface InterviewResultResponse {
   errorMessage: string | null;
   createdAt: string;
   processedAt: string | null;
+
+  // ── Unified phase-by-phase scoring ───────────────────────────────────────
+  preInterviewScore: number | null;
+  interviewDelta: number | null;
+  finalScore: number | null;
+  finalGrade: 'A+' | 'A' | 'B' | 'C' | 'D' | null;
+  interviewVerdict: 'CONFIRMED' | 'RAISED' | 'LOWERED' | 'NEW' | null;
+  dimensionalScores: Record<DimensionKey, DimensionalScore> | null;
+
+  // ── Pre-interview snapshot (so the journey strip needs no extra fetch) ──
+  candidateName: string | null;
+  recruiterName: string | null;
+  jobTitle: string | null;
+  candidateSkills: string[] | null;
+  candidateSummary: string | null;
+  githubScore: 'STRONG' | 'MODERATE' | 'NO_PUBLIC_WORK' | 'INACTIVE' | 'RATE_LIMITED' | null;
+  githubFrameworks: string[] | null;
+  cvWeaknesses: string[] | null;
+  jobFitScore: number | null;
+  preInterviewRecommendation: 'STRONG_YES' | 'YES' | 'MAYBE' | 'NO' | null;
+  requiredSkillsMatched: string[] | null;
+  requiredSkillsMissing: string[] | null;
+  semanticStrengths: string[] | null;
+  semanticWeaknesses: string[] | null;
 }
 
 export interface InterviewQuestion {
@@ -120,6 +160,17 @@ notifyLeft(interviewId: string, role: string): Observable<any> {
 }
 getResult(interviewId: string): Observable<InterviewResultResponse> {
   return this.http.get<InterviewResultResponse>(`${this.base}/${interviewId}/result`);
+}
+
+/** All interview results for one application — used by the candidate summary
+ *  page. Fans out over the application's interviews and joins their results. */
+getResultsByApplication(applicationId: string): Observable<InterviewResultResponse[]> {
+  return this.getByApplication(applicationId).pipe(
+    switchMap(interviews => {
+      if (!interviews.length) return of([] as InterviewResultResponse[]);
+      return forkJoin(interviews.map(iv => this.getResult(iv.id)));
+    })
+  );
 }
 generateQuestions(interviewId: string): Observable<void> {
   return this.http.post<void>(`${this.base}/${interviewId}/questions/generate`, {});
