@@ -127,11 +127,7 @@ export class MyApplicationDetail implements OnInit {
     });
   }
 
-  // ── Edit (only while APPLIED) ─────────────────────────────────────────────
 
-  canEdit(): boolean {
-    return this.app?.status === 'APPLIED';
-  }
   loadInterviews(applicationId: string) {
     this.interviewsLoading = true;
     this.interviewService.getByApplication(applicationId).subscribe({

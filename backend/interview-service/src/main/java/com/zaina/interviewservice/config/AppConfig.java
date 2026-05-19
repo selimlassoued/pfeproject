@@ -1,4 +1,4 @@
-package com.zaina.interviewservice;
+package com.zaina.interviewservice.config;
 
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.springframework.context.annotation.Bean;

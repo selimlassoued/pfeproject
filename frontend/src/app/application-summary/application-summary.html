@@ -1,0 +1,246 @@
+<div class="as-page">
+
+  <div class="as-header">
+    <div class="as-breadcrumb-row">
+      <button class="as-back" type="button" (click)="back()">← Application</button>
+      <span class="as-breadcrumb-sep">·</span>
+      <span class="as-breadcrumb">Full candidate summary</span>
+    </div>
+    <h1 class="as-title">Candidate Evaluation Summary</h1>
+    <p class="as-subtitle">
+      The complete picture — CV, GitHub, semantic job match, and every interview
+      for this application combined into one verdict.
+    </p>
+  </div>
+
+  @if (loading) {
+    <div class="as-state">Loading candidate summary…</div>
+  }
+  @if (error) {
+    <div class="as-state as-state-error">{{ error }}</div>
+  }
+
+  @if (!loading && !error) {
+
+    @if (results.length === 0) {
+      <div class="as-card">
+        <div class="as-card-body as-state">
+          No interviews have been scheduled for this application yet.
+        </div>
+      </div>
+    }
+
+    @if (results.length > 0) {
+
+      <!-- ─── Hero: overall verdict ─── -->
+      <div class="as-card as-hero">
+        <div class="as-hero-left">
+          <div class="as-hero-eyebrow">Candidate</div>
+          <div class="as-hero-name">{{ profile?.candidateName || '—' }}</div>
+          <div class="as-hero-job">{{ profile?.jobTitle || 'Application' }}</div>
+          <div class="as-hero-note">
+            Overall score is the average of {{ completed.length }}
+            analysed interview{{ completed.length === 1 ? '' : 's' }}.
+          </div>
+        </div>
+        <div class="as-hero-right">
+          @if (hasCompleted) {
+            <div class="as-grade" [ngClass]="overallGradeClass">{{ overallGrade }}</div>
+            <div class="as-overall">
+              <span class="as-overall-num" [style.color]="scoreColor(overallScore)">{{ overallScore }}</span>
+              <span class="as-overall-denom">/ 100</span>
+            </div>
+            <div class="as-rec" [ngClass]="recommendationClass">{{ overallRecommendation }}</div>
+          } @else {
+            <div class="as-pending-badge">Interviews pending analysis</div>
+          }
+        </div>
+      </div>
+
+      <!-- ─── Evaluation pipeline ─── -->
+      <div class="as-card">
+        <div class="as-card-head">
+          <div class="as-card-title">Evaluation pipeline</div>
+          <div class="as-card-sub">
+            Each stage contributed to the verdict — the interviews are averaged into
+            the final standing.
+          </div>
+        </div>
+        <div class="as-card-body">
+          <div class="as-pipeline">
+            <div class="as-stage">
+              <div class="as-stage-bubble" [style.borderColor]="scoreColor(cvGithubScore)">
+                <span [style.color]="scoreColor(cvGithubScore)">
+                  {{ cvGithubScore != null ? cvGithubScore : '—' }}
+                </span>
+              </div>
+              <div class="as-stage-label">CV + GitHub</div>
+              <div class="as-stage-sub">{{ profile?.githubScore || 'No signal' }}</div>
+            </div>
+            <div class="as-arrow">→</div>
+            <div class="as-stage">
+              <div class="as-stage-bubble" [style.borderColor]="scoreColor(profile?.jobFitScore)">
+                <span [style.color]="scoreColor(profile?.jobFitScore)">
+                  {{ profile?.jobFitScore != null ? profile?.jobFitScore : '—' }}
+                </span>
+              </div>
+              <div class="as-stage-label">Semantic Match</div>
+              <div class="as-stage-sub">{{ profile?.preInterviewRecommendation || 'No match run' }}</div>
+            </div>
+            <div class="as-arrow">→</div>
+            <div class="as-stage">
+              <div class="as-stage-bubble" [style.borderColor]="scoreColor(overallScore)">
+                <span [style.color]="scoreColor(overallScore)">
+                  {{ hasCompleted ? overallScore : '—' }}
+                </span>
+              </div>
+              <div class="as-stage-label">Interviews</div>
+              <div class="as-stage-sub">{{ completed.length }} of {{ results.length }} analysed</div>
+            </div>
+            <div class="as-arrow">→</div>
+            <div class="as-stage is-final">
+              <div class="as-stage-bubble" [style.borderColor]="scoreColor(overallScore)">
+                <span [style.color]="scoreColor(overallScore)">
+                  {{ hasCompleted ? overallScore : '—' }}
+                </span>
+              </div>
+              <div class="as-stage-label">Overall</div>
+              <div class="as-stage-sub">{{ hasCompleted ? overallGrade : 'Pending' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Pre-interview context ─── -->
+      <div class="as-card">
+        <div class="as-card-head">
+          <div class="as-card-title">Pre-interview profile</div>
+          <div class="as-card-sub">What the CV, GitHub, and semantic match established before any interview.</div>
+        </div>
+        <div class="as-card-body">
+          <div class="as-stats">
+            @if (profile?.jobFitScore != null) {
+              <div class="as-stat">
+                <div class="as-stat-label">Job fit</div>
+                <div class="as-stat-value" [style.color]="scoreColor(profile?.jobFitScore)">{{ profile?.jobFitScore }} / 100</div>
+              </div>
+            }
+            @if (profile?.preInterviewRecommendation) {
+              <div class="as-stat">
+                <div class="as-stat-label">Semantic verdict</div>
+                <div class="as-stat-value">{{ profile?.preInterviewRecommendation }}</div>
+              </div>
+            }
+            @if (profile?.githubScore) {
+              <div class="as-stat">
+                <div class="as-stat-label">GitHub signal</div>
+                <div class="as-stat-value">{{ profile?.githubScore }}</div>
+              </div>
+            }
+          </div>
+
+          @if (profile?.requiredSkillsMatched && profile!.requiredSkillsMatched!.length) {
+            <div class="as-pill-row">
+              <div class="as-pill-title">Required skills covered by CV / GitHub</div>
+              <div class="as-pills">
+                @for (s of profile!.requiredSkillsMatched; track s) {
+                  <span class="as-pill as-pill-good">{{ s }}</span>
+                }
+              </div>
+            </div>
+          }
+          @if (profile?.requiredSkillsMissing && profile!.requiredSkillsMissing!.length) {
+            <div class="as-pill-row">
+              <div class="as-pill-title">Required skills not evidenced before the interview</div>
+              <div class="as-pills">
+                @for (s of profile!.requiredSkillsMissing; track s) {
+                  <span class="as-pill as-pill-warn">{{ s }}</span>
+                }
+              </div>
+            </div>
+          }
+          @if (profile?.githubFrameworks && profile!.githubFrameworks!.length) {
+            <div class="as-pill-row">
+              <div class="as-pill-title">GitHub-confirmed frameworks</div>
+              <div class="as-pills">
+                @for (f of profile!.githubFrameworks; track f) {
+                  <span class="as-pill as-pill-neutral">{{ f }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- ─── Interviews ─── -->
+      <div class="as-card">
+        <div class="as-card-head">
+          <div class="as-card-title">Interviews ({{ results.length }})</div>
+          <div class="as-card-sub">Every interview held for this application. Open one for its full breakdown.</div>
+        </div>
+        <div class="as-card-body">
+          <div class="as-interviews">
+            @for (iv of interviewRows; let i = $index; track iv.interviewId) {
+              <div class="as-interview" (click)="openInterview(iv.interviewId)">
+                <div class="as-iv-index">#{{ interviewRows.length - i }}</div>
+                <div class="as-iv-main">
+                  <div class="as-iv-status" [class.is-failed]="iv.status === 'FAILED'">
+                    {{ statusLabel(iv.status) }}
+                  </div>
+                  @if (iv.verdict && iv.status === 'COMPLETED') {
+                    <div class="as-iv-verdict">Interview {{ iv.verdict | lowercase }} the verdict</div>
+                  }
+                </div>
+                @if (iv.status === 'COMPLETED' && iv.finalScore != null) {
+                  <div class="as-iv-score-block">
+                    <div class="as-iv-rec">{{ recommendationLabel(iv.recommendation) }}</div>
+                    <div class="as-iv-score">
+                      <span [style.color]="scoreColor(iv.finalScore)">{{ iv.finalScore }}</span>
+                      <span class="as-iv-grade">{{ iv.finalGrade }}</span>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="as-iv-score-block">
+                    <div class="as-iv-pending">—</div>
+                  </div>
+                }
+                <div class="as-iv-open">View details →</div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Averaged dimensional breakdown ─── -->
+      @if (dimensionRows.length > 0) {
+        <div class="as-card">
+          <div class="as-card-head">
+            <div class="as-card-title">Dimensional breakdown — averaged</div>
+            <div class="as-card-sub">
+              Mean of each dimension across all analysed interviews.
+            </div>
+          </div>
+          <div class="as-card-body">
+            <div class="as-dims">
+              @for (d of dimensionRows; track d.key) {
+                <div class="as-dim">
+                  <div class="as-dim-head">
+                    <div class="as-dim-label">{{ d.label }}</div>
+                    <div class="as-dim-score" [style.color]="scoreColor(d.score)">{{ d.score }}</div>
+                  </div>
+                  <div class="as-dim-bar">
+                    <div class="as-dim-bar-fill"
+                         [style.width.%]="d.score"
+                         [style.background]="scoreColor(d.score)"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+    }
+  }
+
+</div>

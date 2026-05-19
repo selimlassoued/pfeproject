@@ -1,71 +1,142 @@
 <div class="interviews-page">
 
-    <!-- Header -->
-    <div class="interviews-head">
-        <div>
-            <h2 class="interviews-title">Interviews</h2>
-            <p class="interviews-subtitle">
-                Manage and join scheduled interviews.
-            </p>
-        </div>
+  <div class="interviews-head">
+    <div>
+      <h2 class="interviews-title">Interviews</h2>
+      <p class="interviews-subtitle">Manage and join your scheduled interviews.</p>
     </div>
 
-    <!-- States -->
-    <div *ngIf="loading" class="interviews-state">Loading interviews...</div>
-    <div *ngIf="error" class="interviews-error">{{ error }}</div>
-
-    <!-- Empty -->
-    <div *ngIf="!loading && interviews.length === 0 && !error" class="interviews-empty">
-        No interviews scheduled yet.
+    <div class="interviews-filters">
+      <input class="input" placeholder="Candidate name or email" [(ngModel)]="searchCandidate"
+             (keyup.enter)="search()" />
+      <input class="input" placeholder="Position" [(ngModel)]="searchPosition"
+             (keyup.enter)="search()" />
+      <select class="input" [(ngModel)]="statusFilter">
+        <option value="">All statuses</option>
+        <option value="SCHEDULED">Scheduled</option>
+        <option value="IN_PROGRESS">In progress</option>
+        <option value="COMPLETED">Completed</option>
+        <option value="CANCELLED">Cancelled</option>
+      </select>
+      <button class="btn btn-primary" type="button" (click)="search()">Search</button>
     </div>
+  </div>
 
-    <!-- Table -->
-    <div *ngIf="!loading && interviews.length > 0" class="interviews-tableWrap">
-        <table class="interviews-table">
-            <thead>
-                <tr>
-                    <th>Candidate</th>
-                    <th>Position</th>
-                    <th>Scheduled At</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr *ngFor="let interview of interviews">
-                    <td>{{ interview.candidateEmail }}</td>
-                    <td>{{ interview.jobTitle }}</td>
-                    <td>{{ interview.scheduledAt | date:'dd/MM/yyyy HH:mm' }}</td>
-                    <td>
-                        <span class="interview-status" [ngClass]="getStatusClass(interview.status)">
-                            {{ interview.status }}
-                        </span>
-                    </td>
-                    <td>
-                        <button *ngIf="canJoin(interview)" class="btn btn-primary" (click)="join(interview)">
-                            Join Room
-                        </button>
-                    </td>
-                    <td>
-                        <button *ngIf="canCancel(interview)" class="btn btn-danger" (click)="cancel(interview)"
+  @if (hasActiveFilters) {
+    <div class="active-filter-row">
+      <span class="active-filter-badge">
+        Filters applied
+        <button class="clear-filter-btn" type="button" (click)="clearFilters()">Clear</button>
+      </span>
+    </div>
+  }
+
+  @if (loading) {
+    <div class="interviews-state">Loading interviews…</div>
+  }
+  @if (error) {
+    <div class="interviews-error">{{ error }}</div>
+  }
+
+  @if (!loading && !error && filtered.length === 0) {
+    <div class="interviews-empty">
+      {{ allInterviews.length === 0
+          ? 'No interviews scheduled yet.'
+          : 'No interviews match your filters.' }}
+    </div>
+  }
+
+  @if (!loading && filtered.length > 0) {
+    <div class="interviews-tableWrap">
+      <table class="interviews-table">
+        <thead>
+          <tr>
+            <th>Candidate</th>
+            <th>Position</th>
+            <th>Scheduled</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (interview of pagedInterviews; track interview.id) {
+            <tr>
+              <td>{{ candidateLabel(interview) }}</td>
+              <td>{{ interview.jobTitle }}</td>
+              <td>{{ interview.scheduledAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>
+                <span class="interview-status" [ngClass]="getStatusClass(interview.status)">
+                  {{ statusLabel(interview.status) }}
+                </span>
+              </td>
+              <td>
+                <div class="interviews-actions">
+                  @if (canJoin(interview)) {
+                    <button class="btn btn-primary" (click)="join(interview)">Join room</button>
+                  }
+                  @if (canCancel(interview)) {
+                    <button class="btn btn-ghost" (click)="cancel(interview)"
                             [disabled]="cancellingId === interview.id">
-                            {{ cancellingId === interview.id ? 'Cancelling…' : 'Cancel' }}
-                        </button>
-                        <span *ngIf="interview.status === 'COMPLETED'" class="interview-status completed">
-                            Completed
-                        </span>
-                        <span *ngIf="interview.status === 'CANCELLED'" class="interview-status cancelled">
-                            Cancelled
-                        </span>
-                    </td>
-                    <td>
-                        <button *ngIf="interview.status === 'COMPLETED'" class="btn btn-ai"
-                            (click)="viewResult(interview.id)">
-                            🧠 View AI Result
-                        </button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+                      {{ cancellingId === interview.id ? 'Cancelling…' : 'Cancel' }}
+                    </button>
+                  }
+                  @if (interview.status === 'COMPLETED') {
+                    <button class="btn btn-primary" (click)="viewResult(interview.id)">
+                      View AI result
+                    </button>
+                  }
+                  @if (interview.status === 'CANCELLED') {
+                    <span class="interviews-dash">—</span>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <!-- Pagination -->
+      <div class="interviews-pager">
+        <div class="interviews-pager-left">
+          <span class="interviews-pager-label">Rows</span>
+          <select class="input interviews-pager-select"
+                  [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+            <option [ngValue]="10">10</option>
+            <option [ngValue]="20">20</option>
+            <option [ngValue]="50">50</option>
+          </select>
+        </div>
+
+        <div class="interviews-pager-mid">
+          Page <span class="mono">{{ pageIndex + 1 }}</span>
+          of <span class="mono">{{ totalPages }}</span>
+          • <span class="mono">{{ totalElements }}</span> total
+        </div>
+
+        <div class="interviews-pager-right">
+          <button class="btn btn-ghost" type="button"
+                  (click)="prev()" [disabled]="pageIndex === 0">← Prev</button>
+
+          @if (totalPages > 1) {
+            <div class="interviews-pageBtns">
+              @for (it of pageItems(); track $index) {
+                @if (isPageNumber(it)) {
+                  <button class="interviews-pageBtn" type="button"
+                          (click)="goToPage(it)" [class.active]="it === pageIndex">
+                    {{ it + 1 }}
+                  </button>
+                } @else {
+                  <span class="interviews-ellipsis">…</span>
+                }
+              }
+            </div>
+          }
+
+          <button class="btn btn-ghost" type="button"
+                  (click)="next()" [disabled]="pageIndex + 1 >= totalPages">Next →</button>
+        </div>
+      </div>
     </div>
+  }
+
 </div>

@@ -135,6 +135,10 @@ class GitHubProfile(BaseModel):
     cv_skills_confirmed: List[str] = Field(default_factory=list)
     cv_skills_likely: List[str] = Field(default_factory=list)
     cv_skills_no_evidence: List[str] = Field(default_factory=list)
+    # True when GitHub couldn't be verified (rate-limited / unreachable) — the
+    # evaluator and UI then suppress skill penalties instead of treating the
+    # missing data as "no evidence". nlp_parser sets this after enrichment.
+    verification_skipped: bool = False
 
     # ── New: commit consistency (profile-level summary across top 3 repos) ────
     consistent_repos: List[str] = Field(default_factory=list)

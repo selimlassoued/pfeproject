@@ -62,8 +62,8 @@ public class SecurityConfig {
                         .pathMatchers("/api/admin/roles").hasAnyRole("SUPERADMIN")
 
                         // ── Admin — ADMIN + SUPERADMIN: manage recruiters/candidates ──
+                        .pathMatchers(HttpMethod.GET, "/api/admin/users/*").authenticated()
                         .pathMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN", "RECRUITER")
-
                         // ── Jobs ──────────────────────────────────────────────
                         .pathMatchers(HttpMethod.GET,    "/api/jobs/**").permitAll()
                         .pathMatchers(HttpMethod.POST,   "/api/jobs/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
