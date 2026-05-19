@@ -88,15 +88,11 @@ export class ApplicationDetail implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
-    if (!id) { this.error = 'Missing application id'; return; }
-    if (id) {
-      this.loadApplication(id);
-    }
-    this.loadRecruiters();
     if (!id) {
       this.error = 'Missing application id';
       return;
     }
+    this.loadRecruiters();
 
     // Exactly one getOne() call. loadSemanticMatch enriches `this.app` with
     // jobFitScore asynchronously — a second concurrent getOne() would resolve

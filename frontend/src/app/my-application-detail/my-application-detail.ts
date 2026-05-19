@@ -173,6 +173,8 @@ export class MyApplicationDetail implements OnInit {
   }
 
 
+  canEdit(): boolean { return (this.app?.status || '') === 'APPLIED'; }
+
   toggleEdit() {
     if (!this.canEdit()) return;
     this.success.set(null);
