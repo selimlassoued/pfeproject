@@ -273,6 +273,7 @@ public class ApplicationController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "No CV analysis found for application " + applicationId));
 
+        SemanticMatchDto sm = cv.getSemanticMatch();
         CvSummaryDto dto = CvSummaryDto.builder()
                 .candidateName(cv.getCandidateName())
                 .skills(cv.getSkills())
@@ -283,6 +284,16 @@ public class ApplicationController {
                         ? cv.getGithubProfile().getAllRepoFrameworks() : List.of())
                 .cvSkillsNoEvidence(cv.getGithubProfile() != null
                         ? cv.getGithubProfile().getCvSkillsNoEvidence() : List.of())
+                .jobFitScore(sm != null ? sm.getJobFitScore() : null)
+                .preInterviewRecommendation(sm != null ? sm.getRecommendation() : null)
+                .requiredSkillsMatched(sm != null && sm.getRequiredSkillsMatched() != null
+                        ? sm.getRequiredSkillsMatched() : List.of())
+                .requiredSkillsMissing(sm != null && sm.getRequiredSkillsMissing() != null
+                        ? sm.getRequiredSkillsMissing() : List.of())
+                .semanticStrengths(sm != null && sm.getStrengths() != null
+                        ? sm.getStrengths() : List.of())
+                .semanticWeaknesses(sm != null && sm.getWeaknesses() != null
+                        ? sm.getWeaknesses() : List.of())
                 .build();
 
         return ResponseEntity.ok(dto);

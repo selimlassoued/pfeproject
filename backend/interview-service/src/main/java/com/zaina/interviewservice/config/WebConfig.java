@@ -1,4 +1,4 @@
-package com.zaina.interviewservice;
+package com.zaina.interviewservice.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;

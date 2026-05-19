@@ -10,16 +10,38 @@ WORKDIR /app
 RUN pip install --upgrade pip
 RUN pip install setuptools wheel
 
-COPY requirements.txt .
-RUN grep -v "openai-whisper" requirements.txt > requirements_no_whisper.txt && \
-    pip install --no-cache-dir -r requirements_no_whisper.txt
-RUN pip install --no-cache-dir --no-build-isolation openai-whisper==20240930
+# Install librosa
+RUN pip install --no-cache-dir librosa
 
-COPY main.py .
+# Install PyTorch CPU-only FIRST (much smaller, ~250MB vs 2GB+ with CUDA)
+# If you DO need GPU support, replace with the appropriate CUDA index URL
+RUN pip install --no-cache-dir --retries 10 --timeout 300 \
+    torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# Now install pyannote.audio — torch is already satisfied, so it won't re-download it
+RUN pip install --no-cache-dir --retries 10 --timeout 300 pyannote.audio
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Bake in the fallback model so the container is always usable even before
+# the runtime model (which may be larger, e.g. large-v3) finishes downloading.
+ARG WHISPER_FALLBACK_MODEL=medium
+ENV WHISPER_FALLBACK_MODEL=${WHISPER_FALLBACK_MODEL}
+RUN python -c "import whisper; whisper.load_model('${WHISPER_FALLBACK_MODEL}')"
+
+# Optionally pre-download the primary model at build time if it differs from
+# the fallback. Skipped (and downloaded lazily at startup) when unset.
+ARG WHISPER_MODEL=""
+ENV WHISPER_MODEL=${WHISPER_MODEL}
+RUN if [ -n "$WHISPER_MODEL" ] && [ "$WHISPER_MODEL" != "$WHISPER_FALLBACK_MODEL" ]; then \
+        python -c "import whisper; whisper.load_model('${WHISPER_MODEL}')" ; \
+    fi
+
+COPY . .
 
 EXPOSE 8000
 
-# Model is downloaded at startup into the mounted volume — not at build time
-ENV WHISPER_MODEL=small
-CMD python -c "import whisper; whisper.load_model('${WHISPER_MODEL}')" && \
-    uvicorn main:app --host 0.0.0.0 --port 8000
+# Single uvicorn worker — Whisper is loaded once per process. Adding workers
+# would multiply the model's memory footprint without parallelising inference.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

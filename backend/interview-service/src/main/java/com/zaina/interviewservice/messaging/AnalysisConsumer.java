@@ -1,6 +1,8 @@
 package com.zaina.interviewservice.messaging;
 
-import com.zaina.interviewservice.RabbitMQConfig;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zaina.interviewservice.config.RabbitMQConfig;
 import com.zaina.interviewservice.entities.InterviewResult;
 import com.zaina.interviewservice.entities.ProcessingStatus;
 import com.zaina.interviewservice.repos.InterviewResultRepo;
@@ -19,10 +21,13 @@ public class AnalysisConsumer {
 
     private final InterviewResultRepo interviewResultRepo;
     private final AnalysisClient      analysisClient;
+    private final ObjectMapper        objectMapper = new ObjectMapper();
 
     @RabbitListener(queues = RabbitMQConfig.ANALYSIS_QUEUE)
     public void onAnalysisRequest(AnalysisRequestMessage msg) {
-        log.info("Analysis job received for interview {}", msg.getInterviewId());
+        log.info("Analysis job received for interview {} (preFit={} preRec={})",
+                msg.getInterviewId(), msg.getJobFitScore(),
+                msg.getPreInterviewRecommendation());
 
         InterviewResult result = interviewResultRepo
                 .findByInterviewId(msg.getInterviewId())
@@ -37,17 +42,7 @@ public class AnalysisConsumer {
         interviewResultRepo.save(result);
 
         try {
-            AnalysisClient.AnalysisResponse resp =
-                    analysisClient.analyse(
-                            msg.getInterviewId().toString(),
-                            msg.getJobTitle(),
-                            msg.getCandidateName(),
-                            msg.getCandidateSkills(),
-                            msg.getCandidateSummary(),
-                            msg.getGithubScore(),
-                            msg.getRecruiterJoinedAt(),
-                            msg.getCandidateJoinedAt()
-                    );
+            AnalysisClient.AnalysisResponse resp = analysisClient.analyse(msg);
 
             result.setTranscript(resp.transcript());
             result.setSummary(resp.summary());
@@ -56,12 +51,30 @@ public class AnalysisConsumer {
             result.setCandidateWeaknesses(resp.candidateWeaknesses());
             result.setSuggestedQuestions(resp.suggestedQuestions());
             result.setHiringRecommendation(resp.hiringRecommendation());
+            // ── Unified scoring fields ────────────────────────────────────
+            result.setPreInterviewScore(resp.preInterviewScore());
+            result.setInterviewDelta(resp.interviewDelta());
+            result.setFinalScore(resp.finalScore());
+            result.setFinalGrade(resp.finalGrade());
+            result.setInterviewVerdict(resp.interviewVerdict());
+            if (resp.dimensionalScores() != null) {
+                try {
+                    result.setDimensionalScoresJson(
+                            objectMapper.writeValueAsString(resp.dimensionalScores()));
+                } catch (JsonProcessingException jpe) {
+                    log.warn("Could not serialize dimensional scores for {}: {}",
+                            msg.getInterviewId(), jpe.getMessage());
+                }
+            }
             result.setProcessingStatus(ProcessingStatus.COMPLETED);
             result.setProcessedAt(LocalDateTime.now());
             interviewResultRepo.save(result);
 
-            log.info("Analysis DONE for interview {} — score={} rec={}",
-                    msg.getInterviewId(), resp.candidateScore(), resp.hiringRecommendation());
+            log.info("Analysis DONE for interview {} — pre={} delta={} final={} grade={} rec={}",
+                    msg.getInterviewId(),
+                    resp.preInterviewScore(), resp.interviewDelta(),
+                    resp.finalScore(), resp.finalGrade(),
+                    resp.hiringRecommendation());
 
         } catch (Exception e) {
             log.error("Analysis FAILED for interview {}: {}", msg.getInterviewId(), e.getMessage(), e);

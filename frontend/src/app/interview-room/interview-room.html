@@ -24,10 +24,10 @@
          [class.skipped]="q.status === 'SKIPPED'">
       <p>{{ q.text }}</p>
       <div class="actions" *ngIf="!askedQuestions.has(q.id)">
-        <button (click)="markQuestion(q.id, 'ASKED')">✓ Asked</button>
-        <button (click)="markQuestion(q.id, 'SKIPPED')">✗ Skip</button>
+        <button (click)="markQuestion(q.id, 'ASKED')">Mark asked</button>
+        <button (click)="markQuestion(q.id, 'SKIPPED')">Skip</button>
       </div>
-      <span *ngIf="askedQuestions.has(q.id)" class="asked-badge">✓ Asked</span>
+      <span *ngIf="askedQuestions.has(q.id)" class="asked-badge">Asked</span>
     </div>
   </div>
 </div>
@@ -38,14 +38,14 @@
 
   <!-- Manual end button — always visible while recording -->
   <button *ngIf="isRecording" class="btn btn-stop" (click)="stopRecording()">
-    End & Save
+    End &amp; Save
   </button>
 
   <span *ngIf="uploadStatus === 'uploading'" class="upload-msg">Saving…</span>
   <span *ngIf="uploadStatus === 'done'" class="upload-msg success">Saved</span>
   <span *ngIf="uploadStatus === 'error'" class="upload-msg error">
     Save failed
-    <button class="btn btn-ghost btn-sm" (click)="stopRecording()">↺ Retry</button>
+    <button class="btn btn-ghost btn-sm" (click)="stopRecording()">Retry</button>
   </span>
 </div>
 

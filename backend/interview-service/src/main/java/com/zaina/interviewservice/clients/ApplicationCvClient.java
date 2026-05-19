@@ -20,6 +20,13 @@ public interface ApplicationCvClient {
             String summary,
             String githubScore,
             List<String> githubFrameworks,
-            List<String> cvSkillsNoEvidence
+            List<String> cvSkillsNoEvidence,
+            // ── Semantic match handoff (nullable when no match has run) ────────
+            Integer jobFitScore,
+            String preInterviewRecommendation,
+            List<String> requiredSkillsMatched,
+            List<String> requiredSkillsMissing,
+            List<String> semanticStrengths,
+            List<String> semanticWeaknesses
     ) {}
 }

@@ -22,6 +22,7 @@ public class JobMicroserviceApplication {
         return args -> {
         };
     }
+
     @Bean
     RestTemplate restTemplate() {
         return new RestTemplate();

@@ -113,39 +113,131 @@ label,
 
 .pf-c-form__group:last-child{margin-bottom:0 !important;}
 
-#kc-form-login,
-#kc-register-form,
-form#kc-form-login,
-form#kc-register-form,
-#kc-content-wrapper form{
-  position:relative !important;
-  padding-top:3.25rem !important;
-}
-
-#input-error{
-  position:absolute !important;
-  top:0 !important;
-  left:0 !important;
-  right:0 !important;
-  display:block !important;
-  width:100% !important;
-  background:rgba(220,38,38,0.12) !important;
-  border:1px solid rgba(220,38,38,0.35) !important;
-  color:#fca5a5 !important;
+/* ── Consolidated validation banner (built by register-enhance.js) ──────── */
+.hireai-error-banner{
+  background:linear-gradient(180deg,rgba(220,38,38,0.22),rgba(220,38,38,0.10)) !important;
+  border:1px solid rgba(248,113,113,0.50) !important;
   border-radius:12px !important;
-  padding:0.75rem 1rem !important;
-  margin:0 !important;
-  z-index:10 !important;
-  line-height:1.25rem !important;
+  padding:0.9rem 1rem !important;
+  margin-bottom:1.5rem !important;
+  box-shadow:0 8px 24px rgba(220,38,38,0.22) !important;
 }
 
+.hireai-error-title{
+  display:flex !important;
+  align-items:center !important;
+  gap:0.5rem !important;
+  color:#fecaca !important;
+  font-weight:700 !important;
+  font-size:0.92rem !important;
+  line-height:1.3 !important;
+}
+
+.hireai-error-title::before{
+  content:"!" !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:20px !important;
+  height:20px !important;
+  flex:none !important;
+  border-radius:50% !important;
+  background:#dc2626 !important;
+  color:#fff !important;
+  font-weight:800 !important;
+  font-size:0.8rem !important;
+}
+
+.hireai-error-text,
+.hireai-error-list{
+  color:#fca5a5 !important;
+  font-size:0.85rem !important;
+  line-height:1.5 !important;
+}
+
+.hireai-error-text{ margin-top:0.4rem !important; }
+
+.hireai-error-list{
+  margin:0.4rem 0 0 !important;
+  padding-left:1.5rem !important;
+}
+
+.hireai-error-list li{ margin:0.15rem 0 !important; }
+
+/* Inline per-field errors stay as a secondary, field-level cue. */
+[id^="input-error"],
+.pf-c-form__helper-text.pf-m-error,
+.input-error{
+  color:#fca5a5 !important;
+  font-size:0.82rem !important;
+}
+
+/* Fallback styling if the JS banner doesn't run — Keycloak's native alert. */
 .alert,
 .pf-c-alert{
-  background:rgba(220,38,38,0.12) !important;
-  border:1px solid rgba(220,38,38,0.35) !important;
+  background:rgba(220,38,38,0.14) !important;
+  border:1px solid rgba(248,113,113,0.45) !important;
   color:#fca5a5 !important;
   border-radius:12px !important;
   padding:0.75rem 1rem !important;
+  margin-bottom:1.25rem !important;
+}
+
+/* ── Phone field: fixed +216 country prefix ─────────────────────────────── */
+.hireai-phone-group{
+  display:flex !important;
+  align-items:stretch !important;
+  background:rgba(255,255,255,0.05) !important;
+  border:1px solid var(--color-border) !important;
+  border-radius:12px !important;
+  overflow:hidden !important;
+}
+
+.hireai-phone-group:focus-within{
+  border-color:var(--color-secondary) !important;
+  box-shadow:0 0 0 3px rgba(121,164,233,0.35) !important;
+}
+
+.hireai-phone-prefix{
+  display:flex !important;
+  align-items:center !important;
+  padding:0 0.85rem !important;
+  background:rgba(121,164,233,0.14) !important;
+  color:var(--color-secondary) !important;
+  font-weight:700 !important;
+  font-size:0.95rem !important;
+  letter-spacing:0.02em !important;
+  border-right:1px solid var(--color-border) !important;
+  white-space:nowrap !important;
+  user-select:none !important;
+}
+
+.hireai-phone-group input,
+.hireai-phone-group input[type="tel"],
+.hireai-phone-group input[type="text"]{
+  flex:1 1 auto !important;
+  width:auto !important;
+  min-width:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  letter-spacing:0.07em !important;
+}
+
+.hireai-phone-group input:focus{
+  border:0 !important;
+  box-shadow:none !important;
+}
+
+/* ── Page subtitle under the title ──────────────────────────────────────── */
+.hireai-subtitle{
+  text-align:center !important;
+  color:var(--color-text-muted) !important;
+  font-size:0.9rem !important;
+  margin:0.55rem auto 0.25rem !important;
+  max-width:34ch !important;
+  line-height:1.45 !important;
 }
 
 input,

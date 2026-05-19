@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -81,36 +82,75 @@ public class Interview {
 
     // ── CV context — populated at scheduling time from application service ──
     private String candidateName;
+    private String recruiterName;
 
     @ElementCollection
     @CollectionTable(name = "interview_candidate_skills",
             joinColumns = @JoinColumn(name = "interview_id"))
     @Column(name = "skill")
-    private List<String> candidateSkills;
+    @Builder.Default
+    private List<String> candidateSkills = new ArrayList<>();
 
     @Column(columnDefinition = "TEXT")
     private String candidateSummary;
 
     private String githubScore;
 
+    @Column(columnDefinition = "TEXT")
+    private String jobDescription;
+
     @ElementCollection
     @CollectionTable(name = "interview_github_frameworks",
             joinColumns = @JoinColumn(name = "interview_id"))
     @Column(name = "framework")
-    private List<String> githubFrameworks;
+    @Builder.Default
+    private List<String> githubFrameworks = new ArrayList<>();
 
     @ElementCollection
     @CollectionTable(name = "interview_cv_weaknesses",
             joinColumns = @JoinColumn(name = "interview_id"))
     @Column(name = "weakness")
-    private List<String> cvWeaknesses;
-
-    @Column(columnDefinition = "TEXT")
-    private String jobDescription;
+    @Builder.Default
+    private List<String> cvWeaknesses = new ArrayList<>();
 
     @ElementCollection
     @CollectionTable(name = "interview_job_requirements",
             joinColumns = @JoinColumn(name = "interview_id"))
     @Column(name = "requirement", columnDefinition = "TEXT")
-    private List<String> jobRequirements;
+    @Builder.Default
+    private List<String> jobRequirements = new ArrayList<>();
+
+    // ── Semantic match handoff (carried from CV/GitHub stage) ──────────────
+    // The interview analysis is framed as a continuation of this verdict —
+    // confirm, raise, or lower it based on what the candidate demonstrated.
+    private Integer jobFitScore;                 // 0-100 from semantic matcher
+    private String  preInterviewRecommendation;  // STRONG_YES / YES / MAYBE / NO
+
+    @ElementCollection
+    @CollectionTable(name = "interview_skills_matched",
+            joinColumns = @JoinColumn(name = "interview_id"))
+    @Column(name = "skill")
+    @Builder.Default
+    private List<String> requiredSkillsMatched = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "interview_skills_missing",
+            joinColumns = @JoinColumn(name = "interview_id"))
+    @Column(name = "skill")
+    @Builder.Default
+    private List<String> requiredSkillsMissing = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "interview_semantic_strengths",
+            joinColumns = @JoinColumn(name = "interview_id"))
+    @Column(name = "strength", columnDefinition = "TEXT")
+    @Builder.Default
+    private List<String> semanticStrengths = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "interview_semantic_weaknesses",
+            joinColumns = @JoinColumn(name = "interview_id"))
+    @Column(name = "weakness", columnDefinition = "TEXT")
+    @Builder.Default
+    private List<String> semanticWeaknesses = new ArrayList<>();
 }

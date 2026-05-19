@@ -1,0 +1,212 @@
+<div class="ie-page">
+
+  <div class="ie-header">
+    <div class="ie-head-left">
+      <div class="ie-breadcrumb-row">
+        <button class="ie-back" type="button" (click)="backToResult()">← Interview result</button>
+        <span class="ie-breadcrumb-sep">·</span>
+        <span class="ie-breadcrumb">Full evaluation journey</span>
+      </div>
+      <h1 class="ie-title">Candidate Evaluation</h1>
+      <p class="ie-subtitle">
+        How the CV, GitHub footprint, semantic job match, and interview combined into the final ranking.
+      </p>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="ie-state">Loading evaluation…</div>
+  }
+  @if (error) {
+    <div class="ie-state ie-state-error">{{ error }}</div>
+  }
+
+  @if (result && !loading) {
+
+    @if (result.processingStatus !== 'COMPLETED') {
+      <div class="ie-card">
+        <div class="ie-card-body ie-state">
+          The interview analysis is still running. This page will refresh automatically.
+        </div>
+      </div>
+    }
+
+    @if (result.processingStatus === 'COMPLETED') {
+
+      <!-- ─── Hero: candidate identity + final ranking ─── -->
+      <div class="ie-card ie-hero">
+        <div class="ie-hero-left">
+          <div class="ie-hero-eyebrow">Candidate</div>
+          <div class="ie-hero-name">{{ result.candidateName || '—' }}</div>
+          <div class="ie-hero-job">{{ result.jobTitle || 'Interview' }}</div>
+          @if (verdictLabel) {
+            <div class="ie-verdict" [ngClass]="verdictClass">{{ verdictLabel }}</div>
+          }
+        </div>
+        <div class="ie-hero-right">
+          @if (result.finalGrade) {
+            <div class="ie-grade" [ngClass]="gradeClass">{{ result.finalGrade }}</div>
+          }
+          @if (result.finalScore != null) {
+            <div class="ie-final">
+              <span class="ie-final-num" [style.color]="scoreColor(result.finalScore)">{{ result.finalScore }}</span>
+              <span class="ie-final-denom">/ 100</span>
+            </div>
+            <div class="ie-final-caption">Final ranking score</div>
+          }
+        </div>
+      </div>
+
+      <!-- ─── Journey strip ─── -->
+      <div class="ie-card">
+        <div class="ie-card-head">
+          <div class="ie-card-title">Evaluation journey</div>
+          <div class="ie-card-sub">
+            Each phase carried its own signal forward. The interview produced a delta against the
+            CV + GitHub + semantic-match baseline; the final score is the calibrated result.
+          </div>
+        </div>
+        <div class="ie-card-body">
+          <div class="ie-journey">
+            @for (step of journeySteps; let i = $index; track step.key) {
+              <div class="ie-step"
+                   [class.is-missing]="step.status === 'missing'"
+                   [class.is-final]="step.status === 'final'">
+                <div class="ie-bubble" [style.borderColor]="step.color">
+                  <span class="ie-bubble-num" [style.color]="step.color">{{ step.display }}</span>
+                </div>
+                <div class="ie-step-label">{{ step.label }}</div>
+                <div class="ie-step-sub">{{ step.sublabel }}</div>
+              </div>
+              @if (i < journeySteps.length - 1) {
+                <div class="ie-arrow" aria-hidden="true">→</div>
+              }
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Dimensional breakdown ─── -->
+      @if (dimensionRows.length > 0) {
+        <div class="ie-card">
+          <div class="ie-card-head">
+            <div class="ie-card-title">Dimensional breakdown</div>
+            <div class="ie-card-sub">
+              Each dimension is scored independently; together they explain why the interview moved the
+              verdict by
+              <strong>{{ result.interviewDelta && result.interviewDelta > 0 ? '+' : '' }}{{ result.interviewDelta }}</strong>
+              points.
+            </div>
+          </div>
+          <div class="ie-card-body">
+            <div class="ie-dims">
+              @for (d of dimensionRows; track d.key) {
+                <div class="ie-dim">
+                  <div class="ie-dim-head">
+                    <div class="ie-dim-label">{{ d.label }}</div>
+                    <div class="ie-dim-score" [style.color]="scoreColor(d.score)">
+                      {{ d.score }}<span class="ie-dim-denom"> / 100</span>
+                    </div>
+                  </div>
+                  <div class="ie-dim-bar">
+                    <div class="ie-dim-bar-fill"
+                         [style.width.%]="d.score"
+                         [style.background]="scoreColor(d.score)"></div>
+                  </div>
+                  <div class="ie-dim-meta">Tied to: {{ d.prePhase }}</div>
+                  @if (d.evidence) {
+                    <div class="ie-dim-evidence">
+                      <div class="ie-dim-evidence-label">Assessment</div>
+                      <p class="ie-dim-evidence-text">{{ d.evidence }}</p>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ─── Pre-interview context ─── -->
+      @if (hasPreInterviewContext()) {
+        <div class="ie-card">
+          <div class="ie-card-head">
+            <div class="ie-card-title">Pre-interview context</div>
+            <div class="ie-card-sub">
+              What the CV + GitHub + semantic match already established before the interview started.
+            </div>
+          </div>
+          <div class="ie-card-body">
+
+            <div class="ie-stats">
+              @if (result.jobFitScore != null) {
+                <div class="ie-stat">
+                  <div class="ie-stat-label">Job fit</div>
+                  <div class="ie-stat-value" [style.color]="scoreColor(result.jobFitScore)">{{ result.jobFitScore }} / 100</div>
+                </div>
+              }
+              @if (result.preInterviewRecommendation) {
+                <div class="ie-stat">
+                  <div class="ie-stat-label">Pre-interview verdict</div>
+                  <div class="ie-stat-value">{{ result.preInterviewRecommendation }}</div>
+                </div>
+              }
+              @if (result.githubScore) {
+                <div class="ie-stat">
+                  <div class="ie-stat-label">GitHub signal</div>
+                  <div class="ie-stat-value">{{ result.githubScore }}</div>
+                </div>
+              }
+            </div>
+
+            @if (result.requiredSkillsMatched && result.requiredSkillsMatched.length) {
+              <div class="ie-pill-row">
+                <div class="ie-pill-title">Required skills already covered</div>
+                <div class="ie-pills">
+                  @for (s of result.requiredSkillsMatched; track s) {
+                    <span class="ie-pill ie-pill-good">{{ s }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (result.requiredSkillsMissing && result.requiredSkillsMissing.length) {
+              <div class="ie-pill-row">
+                <div class="ie-pill-title">Required skills the interview had to probe</div>
+                <div class="ie-pills">
+                  @for (s of result.requiredSkillsMissing; track s) {
+                    <span class="ie-pill ie-pill-warn">{{ s }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (result.githubFrameworks && result.githubFrameworks.length) {
+              <div class="ie-pill-row">
+                <div class="ie-pill-title">GitHub-confirmed frameworks</div>
+                <div class="ie-pills">
+                  @for (f of result.githubFrameworks; track f) {
+                    <span class="ie-pill ie-pill-neutral">{{ f }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (result.cvWeaknesses && result.cvWeaknesses.length) {
+              <div class="ie-pill-row">
+                <div class="ie-pill-title">Unverified CV claims the interview had to verify</div>
+                <div class="ie-pills">
+                  @for (w of result.cvWeaknesses; track w) {
+                    <span class="ie-pill ie-pill-muted">{{ w }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+    }
+  }
+
+</div>

@@ -1,11 +1,13 @@
 package com.zaina.interviewservice.controllers;
 
+import com.zaina.interviewservice.clients.UserClient;
 import com.zaina.interviewservice.dto.ConsentUpdateRequest;
 import com.zaina.interviewservice.dto.InterviewResponse;
 import com.zaina.interviewservice.dto.ScheduleInterviewRequest;
 import com.zaina.interviewservice.services.InterviewQuestionService;
 import com.zaina.interviewservice.services.InterviewService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -16,23 +18,70 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
+
 
 @RestController
 @RequestMapping("/api/interviews")
 @RequiredArgsConstructor
+@Slf4j
 public class InterviewController {
 
     private final InterviewService         interviewService;
     private final InterviewQuestionService questionService;
+    private final UserClient userClient;
 
     @PostMapping
     public ResponseEntity<InterviewResponse> schedule(
-            @RequestBody ScheduleInterviewRequest request) {
+            @RequestBody ScheduleInterviewRequest request,
+            HttpServletRequest httpRequest) {
+
+        // ── Recruiter name from JWT (already logged-in user) ──────────────────
+        String auth = httpRequest.getHeader("Authorization");
+        if (auth != null && auth.startsWith("Bearer ")) {
+            try {
+                String token = auth.substring(7);
+                String payload = token.split("\\.")[1];
+                String decoded = new String(java.util.Base64.getUrlDecoder().decode(payload));
+                ObjectMapper mapper = new ObjectMapper();
+                Map<String, Object> claims = mapper.readValue(decoded, Map.class);
+
+                if (claims.get("name") != null)
+                    request.setRecruiterName(claims.get("name").toString());
+
+                if (claims.get("email") != null)
+                    request.setRecruiterEmail(claims.get("email").toString());
+
+                // Also grab recruiterId from token if not already set
+                if (claims.get("sub") != null && request.getRecruiterId() == null)
+                    request.setRecruiterId(UUID.fromString(claims.get("sub").toString()));
+
+            } catch (Exception e) {
+                log.warn("Could not extract recruiter info from JWT: {}", e.getMessage());
+            }
+        }
+
+        try {
+            UserClient.UserProfile profile = userClient.getUserProfile(request.getCandidateId());
+            String fullName = profile.fullName();
+            log.info("Fetched candidate profile: id={} name={} email={}",
+                    request.getCandidateId(), fullName, profile.email());
+            if (!fullName.isBlank())
+                request.setCandidateName(fullName);
+            // Also fix the email if it's wrong
+            if (profile.email() != null && !profile.email().isBlank())
+                request.setCandidateEmail(profile.email());
+        } catch (Exception e) {
+            log.warn("Could not fetch candidate profile for {}: {}",
+                    request.getCandidateId(), e.getMessage());}
+
         return ResponseEntity.ok(interviewService.scheduleInterview(request));
     }
 
@@ -177,5 +226,12 @@ public class InterviewController {
             @RequestBody Map<String, String> body) {
         questionService.markQuestion(questionId, body.get("status"));
         return ResponseEntity.ok().build();
+    }
+    // InterviewController.java
+    @PostMapping("/{interviewId}/retrigger-analysis")
+    public ResponseEntity<InterviewResponse> retriggerAnalysis(
+            @PathVariable UUID interviewId) {
+        return ResponseEntity.accepted()
+                .body(interviewService.retriggerAnalysis(interviewId));
     }
 }

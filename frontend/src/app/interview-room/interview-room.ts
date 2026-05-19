@@ -45,9 +45,6 @@ export class InterviewRoom implements OnInit, OnDestroy {
   private countdownTimer: any = null;
   private joinedAt: number = 0;
 
-  private remoteRecorder: MediaRecorder | null = null;
-  private remoteChunks: Blob[] = [];
-
   constructor(
     private interviewService: InterviewService,
     private ngZone: NgZone
@@ -59,43 +56,30 @@ export class InterviewRoom implements OnInit, OnDestroy {
     window.addEventListener('beforeunload', this.onBeforeUnload);
   }
 
-  private onBeforeUnload = () => {
-    if (!this.isRecording) return;
+private onBeforeUnload = () => {
+  if (!this.isRecording) return;
 
-    // Flush any buffered data
-    if (this.mediaRecorder?.state === 'recording') this.mediaRecorder.requestData();
-    if (this.remoteRecorder?.state === 'recording') this.remoteRecorder.requestData();
-    this.micStream?.getTracks().forEach(t => t.stop());
+  if (this.mediaRecorder?.state === 'recording') this.mediaRecorder.requestData();
+  this.micStream?.getTracks().forEach(t => t.stop());
 
-    const joinedAt = new Date(this.joinedAt).toISOString();
-    const leftAt   = new Date().toISOString();
+  const role = this.isRecruiter ? 'recruiter' : 'candidate';
+  const joinedAt = new Date(this.joinedAt).toISOString();
+  const leftAt = new Date().toISOString();
 
-    // Beacon recruiter's own mic
-    if (this.chunks.length > 0) {
-      const form = new FormData();
-      form.append('file', new Blob(this.chunks, { type: 'audio/webm' }), 'recruiter-recording.webm');
-      form.append('role', 'recruiter');
-      form.append('joinedAt', joinedAt);
-      form.append('leftAt', leftAt);
-      navigator.sendBeacon(`/api/interviews/${this.interviewId}/recording`, form);
-    }
+  if (this.chunks.length > 0) {
+    const form = new FormData();
+    form.append('file', new Blob(this.chunks, { type: 'audio/webm' }), `${role}-recording.webm`); // ✅ fixed filename
+    form.append('role', role);
+    form.append('joinedAt', joinedAt);
+    form.append('leftAt', leftAt);
+    navigator.sendBeacon(`/api/interviews/${this.interviewId}/recording`, form);
+  }
 
-    // Beacon candidate's remote stream (only set when isRecruiter)
-    if (this.remoteChunks.length > 0) {
-      const form = new FormData();
-      form.append('file', new Blob(this.remoteChunks, { type: 'audio/webm' }), 'candidate-recording.webm');
-      form.append('role', 'candidate');
-      form.append('joinedAt', joinedAt);
-      form.append('leftAt', leftAt);
-      navigator.sendBeacon(`/api/interviews/${this.interviewId}/recording`, form);
-    }
-
-    const role = this.isRecruiter ? 'recruiter' : 'candidate';
-    navigator.sendBeacon(
-      `/api/interviews/${this.interviewId}/left`,
-      new Blob([JSON.stringify({ role })], { type: 'application/json' })
-    );
-  };
+  navigator.sendBeacon(
+    `/api/interviews/${this.interviewId}/left`,
+    new Blob([JSON.stringify({ role })], { type: 'application/json' })
+  );
+};
 
   ngOnDestroy() {
     window.removeEventListener('beforeunload', this.onBeforeUnload);
@@ -196,57 +180,26 @@ export class InterviewRoom implements OnInit, OnDestroy {
   // ── Recording ─────────────────────────────────────────────────────────────
 
   async startRecording() {
-    try {
-      this.micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-        video: false
-      });
+  try {
+    this.micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    });
 
-      if (this.isRecruiter) {
-        await this.startDualTrackRecording();
-      } else {
-        this.startSingleTrackRecording(this.micStream, 'candidate');
-      }
-    } catch (err) {
-      console.error('Recording setup failed', err);
-      this.ngZone.run(() => this.state = 'error');
-    }
+    // Both roles now record only their own mic
+    const role = this.isRecruiter ? 'recruiter' : 'candidate';
+    this.startSingleTrackRecording(this.micStream, role);
+
+  } catch (err) {
+    console.error('Recording setup failed', err);
+    this.ngZone.run(() => this.state = 'error');
   }
+}
 
-  /** Recruiter: records own mic AND the candidate's incoming WebRTC stream. */
-  private async startDualTrackRecording() {
-    const remoteStream = await this.getRemoteAudioStream();
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus' : 'audio/webm';
-
-    // Own mic → recruiter.webm
-    this.chunks = [];
-    this.mediaRecorder = new MediaRecorder(this.micStream!, { mimeType });
-    this.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) this.chunks.push(e.data); };
-    this.mediaRecorder.onstop = () => this.uploadBlob(this.chunks, 'recruiter');
-    this.mediaRecorder.start(3000);
-
-    // Remote stream → candidate.webm
-    if (remoteStream) {
-      this.remoteChunks = [];
-      this.remoteRecorder = new MediaRecorder(remoteStream, { mimeType });
-      this.remoteRecorder.ondataavailable = e => { if (e.data.size > 0) this.remoteChunks.push(e.data); };
-      this.remoteRecorder.onstop = () => this.uploadBlob(this.remoteChunks, 'candidate');
-      this.remoteRecorder.start(3000);
-      console.log('Dual-track recording started');
-    } else {
-      console.warn('Could not get remote stream — candidate audio will be missing');
-    }
-
-    this.ngZone.run(() => this.isRecording = true);
-    this.stopTimer = setTimeout(() => this.ngZone.run(() => this.stopRecording()), MAX_RECORDING_MS);
-  }
-
-  /** Candidate: records only their own mic. */
   private startSingleTrackRecording(stream: MediaStream, role: string) {
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
       ? 'audio/webm;codecs=opus' : 'audio/webm';
@@ -262,52 +215,12 @@ export class InterviewRoom implements OnInit, OnDestroy {
     console.log(`Single-track recording started for ${role}`);
   }
 
-  /**
-   * Poll Jitsi's internal conference object for the remote participant's
-   * audio track. Returns null if the participant hasn't joined within 5 s.
-   */
-  private getRemoteAudioStream(): Promise<MediaStream | null> {
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        console.warn('Timed out waiting for remote audio stream');
-        resolve(null);
-      }, 5000);
-
-      const tryGetStream = () => {
-        try {
-          const conference = this.jitsiApi._conference;
-          if (!conference) { setTimeout(tryGetStream, 500); return; }
-
-          const participants = conference.getParticipants();
-          for (const participant of participants) {
-            const tracks = participant.getTracks();
-            const audioTrack = tracks.find((t: any) => t.getType() === 'audio');
-            if (audioTrack?.track) {
-              clearTimeout(timeout);
-              resolve(new MediaStream([audioTrack.track as MediaStreamTrack]));
-              return;
-            }
-          }
-          // Candidate not yet in the room — retry
-          setTimeout(tryGetStream, 500);
-        } catch (e) {
-          console.warn('getRemoteAudioStream error:', e);
-          clearTimeout(timeout);
-          resolve(null);
-        }
-      };
-
-      tryGetStream();
-    });
-  }
-
   stopRecording() {
-    clearTimeout(this.stopTimer);
-    if (this.mediaRecorder?.state !== 'inactive')  this.mediaRecorder?.stop();
-    if (this.remoteRecorder?.state !== 'inactive') this.remoteRecorder?.stop();
-    this.micStream?.getTracks().forEach(t => t.stop());
-    this.ngZone.run(() => this.isRecording = false);
-  }
+  clearTimeout(this.stopTimer);
+  if (this.mediaRecorder?.state !== 'inactive') this.mediaRecorder?.stop();
+  this.micStream?.getTracks().forEach(t => t.stop());
+  this.ngZone.run(() => this.isRecording = false);
+}
 
   private uploadBlob(chunks: Blob[], role: string) {
     if (chunks.length === 0) { console.warn(`No chunks for ${role} — skipping upload`); return; }
@@ -324,7 +237,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
       next: () => {
         console.log(`Upload success: ${role}`);
         this.ngZone.run(() => this.uploadStatus = 'done');
-       this.notifyLeft();
+        this.notifyLeft();
       },
       error: (err) => {
         console.error(`Upload failed for ${role}:`, err);

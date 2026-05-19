@@ -1,94 +1,167 @@
 <div class="ir-page">
 
   <div class="ir-header">
-    <button class="btn btn-ghost" (click)="back()">← Back</button>
-    <h2 class="ir-title">Interview Analysis</h2>
+    <div class="ir-head-left">
+      <div class="ir-breadcrumb-row">
+        <button class="ir-back" type="button" (click)="back()">← Interviews</button>
+        <span class="ir-breadcrumb-sep">·</span>
+        <span class="ir-breadcrumb">Interview insights</span>
+      </div>
+      <h1 class="ir-title">Interview Analysis</h1>
+      <p class="ir-subtitle">
+        What the candidate actually demonstrated during the live interview.
+      </p>
+    </div>
+    @if (result?.processingStatus === 'COMPLETED') {
+      <div class="ir-head-actions">
+        <button class="btn btn-primary ir-eval-btn" type="button" (click)="viewFullEvaluation()">
+          View full evaluation
+        </button>
+      </div>
+    }
   </div>
 
-  <div *ngIf="loading" class="ir-state">Loading…</div>
-  <div *ngIf="error" class="ir-state ir-error">{{ error }}</div>
+  @if (loading) {
+    <div class="ir-state">Loading interview result…</div>
+  }
+  @if (error) {
+    <div class="ir-state ir-state-error">{{ error }}</div>
+  }
 
-  <ng-container *ngIf="result && !loading">
+  @if (result && !loading) {
 
-    <!-- Processing states -->
-    <div *ngIf="result.processingStatus !== 'COMPLETED' && result.processingStatus !== 'FAILED'"
-         class="ir-processing">
-      <div class="ir-spinner"></div>
-      <div class="ir-processing-label">
-        <span *ngIf="result.processingStatus === 'PENDING'">Waiting for recordings…</span>
-        <span *ngIf="result.processingStatus === 'TRANSCRIBING'">Transcribing audio…</span>
-        <span *ngIf="result.processingStatus === 'ANALYSING'">Analysing with AI…</span>
+    @if (result.processingStatus !== 'COMPLETED' && result.processingStatus !== 'FAILED') {
+      <div class="ir-card">
+        <div class="ir-card-body ir-processing">
+          <div class="ir-spinner"></div>
+          <div class="ir-processing-label">
+            @if (result.processingStatus === 'PENDING') {
+              <span>Waiting for recordings…</span>
+            } @else if (result.processingStatus === 'TRANSCRIBING') {
+              <span>Transcribing audio…</span>
+            } @else if (result.processingStatus === 'ANALYSING') {
+              <span>Analysing with AI…</span>
+            }
+          </div>
+          <p class="ir-processing-sub">This page refreshes automatically every 5 seconds.</p>
+        </div>
       </div>
-      <p class="ir-processing-sub">This page refreshes automatically every 5 seconds.</p>
-    </div>
+    }
 
-    <div *ngIf="result.processingStatus === 'FAILED'" class="ir-failed">
-      Analysis failed: {{ result.errorMessage || 'Unknown error' }}
-    </div>
+    @if (result.processingStatus === 'FAILED') {
+      <div class="ir-card">
+        <div class="ir-card-body ir-failed">
+          Analysis failed: {{ result.errorMessage || 'Unknown error' }}
+        </div>
+      </div>
+    }
 
-    <!-- Results -->
-    <ng-container *ngIf="result.processingStatus === 'COMPLETED'">
+    @if (result.processingStatus === 'COMPLETED') {
 
-      <!-- Score + Recommendation row -->
-      <div class="ir-top-row">
+      <!-- ─── Hero: score + recommendation ───────────────────────────── -->
+      <div class="ir-card ir-hero">
+        <div class="ir-hero-left">
+          <div class="ir-hero-eyebrow">{{ result.candidateName || 'Candidate' }}</div>
+          <div class="ir-hero-job">{{ result.jobTitle || 'Interview result' }}</div>
+        </div>
+        <div class="ir-hero-right">
+          @if (headlineScore != null) {
+            <div class="ir-score">
+              <span class="ir-score-num" [style.color]="scoreColor(headlineScore)">{{ headlineScore }}</span>
+              <span class="ir-score-denom">{{ headlineDenom }}</span>
+            </div>
+            <div class="ir-score-caption">
+              {{ hasUnifiedScoring ? 'Final ranking' : 'Candidate score' }}
+            </div>
+          }
+          <div class="ir-rec" [ngClass]="recommendationClass">{{ recommendationLabel }}</div>
+        </div>
+      </div>
 
-        <div class="ir-score-card">
-          <div class="ir-score-label">Candidate Score</div>
-          <div class="ir-score-value" [style.color]="scoreColor">
-            {{ result.candidateScore }}<span class="ir-score-denom">/10</span>
+      <!-- ─── Summary ────────────────────────────────────────────────── -->
+      @if (result.summary) {
+        <div class="ir-card">
+          <div class="ir-card-head">
+            <div class="ir-card-title">Summary</div>
+            <div class="ir-card-sub">What the interviewer should take away from this conversation.</div>
+          </div>
+          <div class="ir-card-body">
+            <p class="ir-summary-text">{{ result.summary }}</p>
           </div>
         </div>
+      }
 
-        <div class="ir-rec-card" [ngClass]="recommendationClass">
-          <div class="ir-rec-label">Hiring Recommendation</div>
-          <div class="ir-rec-value">{{ recommendationLabel }}</div>
+      <!-- ─── Strengths & weaknesses ─────────────────────────────────── -->
+      @if ((result.candidateStrengths && result.candidateStrengths.length) ||
+           (result.candidateWeaknesses && result.candidateWeaknesses.length)) {
+        <div class="ir-two-col">
+          @if (result.candidateStrengths && result.candidateStrengths.length) {
+            <div class="ir-card">
+              <div class="ir-card-head">
+                <div class="ir-card-title">Strengths shown</div>
+              </div>
+              <div class="ir-card-body">
+                <ul class="ir-list ir-list-strengths">
+                  @for (s of result.candidateStrengths; track s) {
+                    <li>{{ s }}</li>
+                  }
+                </ul>
+              </div>
+            </div>
+          }
+          @if (result.candidateWeaknesses && result.candidateWeaknesses.length) {
+            <div class="ir-card">
+              <div class="ir-card-head">
+                <div class="ir-card-title">Gaps observed</div>
+              </div>
+              <div class="ir-card-body">
+                <ul class="ir-list ir-list-weaknesses">
+                  @for (w of result.candidateWeaknesses; track w) {
+                    <li>{{ w }}</li>
+                  }
+                </ul>
+              </div>
+            </div>
+          }
         </div>
+      }
 
-      </div>
-
-      <!-- Summary -->
-      <div class="ir-card">
-        <div class="ir-card-title">Summary</div>
-        <p class="ir-summary-text">{{ result.summary }}</p>
-      </div>
-
-      <!-- Strengths & Weaknesses -->
-      <div class="ir-two-col">
-
+      <!-- ─── Suggested follow-up questions ──────────────────────────── -->
+      @if (result.suggestedQuestions && result.suggestedQuestions.length) {
         <div class="ir-card">
-          <div class="ir-card-title">Strengths</div>
-          <ul class="ir-list ir-list-strengths">
-            <li *ngFor="let s of result.candidateStrengths">{{ s }}</li>
-          </ul>
+          <div class="ir-card-head">
+            <div class="ir-card-title">Suggested follow-up questions</div>
+            <div class="ir-card-sub">Topics the interview left underexplored.</div>
+          </div>
+          <div class="ir-card-body">
+            <ol class="ir-list ir-list-questions">
+              @for (q of result.suggestedQuestions; track q) {
+                <li>{{ q }}</li>
+              }
+            </ol>
+          </div>
         </div>
+      }
 
+      <!-- ─── Transcript ─────────────────────────────────────────────── -->
+      @if (result.transcript) {
         <div class="ir-card">
-          <div class="ir-card-title">Weaknesses</div>
-          <ul class="ir-list ir-list-weaknesses">
-            <li *ngFor="let w of result.candidateWeaknesses">{{ w }}</li>
-          </ul>
+          <div class="ir-card-head ir-transcript-toggle" (click)="showTranscript = !showTranscript">
+            <div>
+              <div class="ir-card-title">Transcript</div>
+              <div class="ir-card-sub">Full speaker-labelled conversation captured from both microphones.</div>
+            </div>
+            <span class="ir-toggle-icon">{{ showTranscript ? '−' : '+' }}</span>
+          </div>
+          @if (showTranscript) {
+            <div class="ir-card-body ir-transcript-body">
+              <pre class="ir-transcript">{{ result.transcript }}</pre>
+            </div>
+          }
         </div>
+      }
 
-      </div>
-
-      <!-- Suggested Questions -->
-      <div class="ir-card">
-        <div class="ir-card-title">Suggested Follow-up Questions</div>
-        <ol class="ir-list ir-list-questions">
-          <li *ngFor="let q of result.suggestedQuestions">{{ q }}</li>
-        </ol>
-      </div>
-
-      <!-- Transcript (collapsible) -->
-      <div class="ir-card">
-        <div class="ir-card-title ir-transcript-toggle" (click)="showTranscript = !showTranscript">
-          Transcript
-          <span class="ir-toggle-icon">{{ showTranscript ? '▲' : '▼' }}</span>
-        </div>
-        <pre *ngIf="showTranscript" class="ir-transcript">{{ result.transcript }}</pre>
-      </div>
-
-    </ng-container>
-  </ng-container>
+    }
+  }
 
 </div>

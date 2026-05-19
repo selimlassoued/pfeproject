@@ -34,7 +34,8 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   styleUrl: './application-detail.css',
 })
 export class ApplicationDetail implements OnInit, OnDestroy {
-  private readonly keycloak = inject(Keycloak);
+
+  private keycloak = inject(Keycloak);
 
   newStatus = '';
   updatingStatus = false;
@@ -97,12 +98,17 @@ export class ApplicationDetail implements OnInit, OnDestroy {
       return;
     }
 
+    // Exactly one getOne() call. loadSemanticMatch enriches `this.app` with
+    // jobFitScore asynchronously — a second concurrent getOne() would resolve
+    // later and overwrite that enrichment (plain getOne carries no semantic
+    // match), silently blanking the score in the view.
     this.loading = true;
     this.appService.getOne(id).subscribe({
       next: (data) => {
         this.app = data;
         this.newStatus = this.allowedStatuses[0] ?? '';
         this.loading = false;
+        this.loadInterviews(data.applicationId);
         this.loadSemanticMatch(id);
         this.appService.getApplicationRank(id).subscribe({
           next: (r) => { this.rank = r.rank; this.rankTotal = r.total; },
@@ -385,22 +391,6 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     });
   }
 
-  loadApplication(id: string) {
-    this.loading = true;
-    this.appService.getOne(id).subscribe({
-      next: (app) => {
-        this.app = app;
-        this.loading = false;
-        this.loadInterviews(app.applicationId);
-      },
-      error: (err) => {
-        this.error = err?.error?.message || 'Failed to load application';
-        this.loading = false;
-      }
-    });
-  }
-
-
   loadInterviews(applicationId: string) {
     this.interviewsLoading = true;
     this.interviewService.getByApplication(applicationId).subscribe({
@@ -410,6 +400,11 @@ export class ApplicationDetail implements OnInit, OnDestroy {
       },
       error: () => { this.interviewsLoading = false; }
     });
+  }
+
+  viewSummary() {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) this.router.navigate(['/application', id, 'summary']);
   }
 
   // The most recent non-cancelled/completed interview

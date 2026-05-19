@@ -3,6 +3,7 @@ package com.zaina.interviewservice.services;
 import com.zaina.interviewservice.clients.ApplicationClient;
 import com.zaina.interviewservice.clients.ApplicationCvClient;
 import com.zaina.interviewservice.clients.JobClient;
+import com.zaina.interviewservice.clients.UserClient;
 import com.zaina.interviewservice.dto.*;
 import com.zaina.interviewservice.entities.*;
 import com.zaina.interviewservice.exceptions.ConflictException;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-import com.zaina.interviewservice.RabbitMQConfig;
+import com.zaina.interviewservice.config.RabbitMQConfig;
 import com.zaina.interviewservice.messaging.AnalysisRequestMessage;
 import com.zaina.interviewservice.messaging.AppEventMessage;
 import com.zaina.interviewservice.messaging.InterviewEventPublisher;
@@ -49,6 +50,7 @@ public class InterviewService {
     private final JobClient jobClient;
     private final GoogleCalendarService googleCalendarService;
     private final InterviewEventPublisher eventPublisher;
+    private final UserClient userClient;
 
     @Value("${recordings.dir:recordings}")
     private String recordingsDir;
@@ -104,6 +106,8 @@ public class InterviewService {
                 .roomName(roomName)
                 .recordingConsent(Boolean.TRUE.equals(request.getRecordingConsent()))
                 .status(InterviewStatus.SCHEDULED)
+                .recruiterName(request.getRecruiterName())
+                .candidateName(request.getCandidateName())
                 .build();
 
         Interview saved = interviewRepo.save(interview);
@@ -112,17 +116,17 @@ public class InterviewService {
         try {
             ApplicationCvClient.CvSummary cv =
                     applicationCvClient.getCvSummary(request.getApplicationId());
-            saved.setCandidateName(cv.candidateName());
-            saved.setCandidateSkills(cv.skills());
-            saved.setCandidateSummary(cv.summary());
-            saved.setGithubScore(cv.githubScore());
-            saved.setGithubFrameworks(cv.githubFrameworks());
-            saved.setCvWeaknesses(cv.cvSkillsNoEvidence());
+            applyCvContext(saved, cv);
             interviewRepo.save(saved);
-            log.info("CV context loaded for application {}", request.getApplicationId());
+            log.info("CV context loaded for application {} — candidate={} skills={} github={} jobFit={}",
+                    request.getApplicationId(),
+                    cv.candidateName(),
+                    cv.skills() != null ? cv.skills().size() : 0,
+                    cv.githubScore(),
+                    cv.jobFitScore());
         } catch (Exception e) {
-            log.warn("Could not fetch CV context for application {} — questions will be generic: {}",
-                    request.getApplicationId(), e.getMessage());
+            log.error("CV context fetch FAILED for application {} — cause: {} | class: {}",
+                    request.getApplicationId(), e.getMessage(), e.getClass().getName(), e);
         }
 
         interviewResultRepo.save(
@@ -137,8 +141,7 @@ public class InterviewService {
             saved.setJobRequirements(
                     job.requirements().stream()
                             .map(JobClient.RequirementSummary::description)
-                            .toList()
-            );
+                            .collect(Collectors.toCollection(ArrayList::new))            );
             interviewRepo.save(saved);
             log.info("Job context loaded for job {}", request.getJobId());
         } catch (Exception e) {
@@ -276,17 +279,17 @@ public class InterviewService {
 
     public List<InterviewResponse> getByApplication(UUID applicationId) {
         return interviewRepo.findByApplicationId(applicationId)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+                .stream().map(this::toResponse).collect(Collectors.toCollection(ArrayList::new));
     }
 
     public List<InterviewResponse> getByCandidate(UUID candidateId) {
         return interviewRepo.findByCandidateId(candidateId)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+                .stream().map(this::toResponse).collect(Collectors.toCollection(ArrayList::new));
     }
 
     public List<InterviewResponse> getByRecruiter(UUID recruiterId) {
         return interviewRepo.findByRecruiterId(recruiterId)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+                .stream().map(this::toResponse).collect(Collectors.toCollection(ArrayList::new));
     }
 
     /** Every interview across the team — drives the shared calendar. */
@@ -319,6 +322,8 @@ public class InterviewService {
                 .candidateEmail(i.getCandidateEmail())
                 .recruiterEmail(i.getRecruiterEmail())
                 .recruiterId(i.getRecruiterId())
+                .candidateName(i.getCandidateName())
+                .recruiterName(i.getRecruiterName())
                 .scheduledAt(i.getScheduledAt())
                 .roomUrl(i.getRoomUrl())
                 .recordingConsent(i.getRecordingConsent())
@@ -371,25 +376,58 @@ public class InterviewService {
         if (bothExist) {
             result.setProcessingStatus(ProcessingStatus.TRANSCRIBING);
             interviewResultRepo.save(result);
+            Interview freshInterview = findById(interviewId);
+            // ── If context is still missing, attempt a live re-fetch ──────────
+            boolean contextMissing = freshInterview.getCandidateName() == null
+                    || freshInterview.getCandidateName().isBlank();
+
+            if (contextMissing) {
+                log.warn("CV context missing on interview {} — attempting re-fetch", interviewId);
+                try {
+                    ApplicationCvClient.CvSummary cv =
+                            applicationCvClient.getCvSummary(freshInterview.getApplicationId());
+                    applyCvContext(freshInterview, cv);
+                    interviewRepo.save(freshInterview);
+                    log.info("CV context recovered for interview {}", interviewId);
+                } catch (Exception e) {
+                    log.warn("CV context re-fetch failed — analysis will run without it: {}",
+                            e.getMessage());
+                }
+            }
+
+            boolean jobMissing = freshInterview.getJobDescription() == null
+                    || freshInterview.getJobDescription().isBlank();
+
+            if (jobMissing) {
+                log.warn("Job context missing on interview {} — attempting re-fetch", interviewId);
+                try {
+                    JobClient.JobSummary job = jobClient.getJob(freshInterview.getJobId());
+                    freshInterview.setJobDescription(job.description());
+                    freshInterview.setJobRequirements(
+                            job.requirements().stream()
+                                    .map(JobClient.RequirementSummary::description)
+                                    .collect(Collectors.toCollection(ArrayList::new))
+                    );
+                    interviewRepo.save(freshInterview);
+                    log.info("Job context recovered for interview {}", interviewId);
+                } catch (Exception e) {
+                    log.warn("Job context re-fetch failed: {}", e.getMessage());
+                }
+            }
             log.info("Both recordings present for {} — publishing analysis job", interviewId);
             String recruiterJoinedAt = readMetaField(dir, "recruiter", "joinedAt");
             String candidateJoinedAt = readMetaField(dir, "candidate", "joinedAt");
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.ANALYSIS_EXCHANGE,
                     RabbitMQConfig.ANALYSIS_ROUTING,
-                    new AnalysisRequestMessage(
-                            interviewId,
-                            interview.getJobTitle(),
-                            interview.getJobDescription(),
-                            interview.getJobRequirements(),
-                            interview.getCandidateName(),
-                            interview.getCandidateSkills(),
-                            interview.getCandidateSummary(),
-                            interview.getGithubScore(),
-                            recruiterJoinedAt,
-                            candidateJoinedAt
-                    )
+                    buildAnalysisRequest(freshInterview, interviewId,
+                            recruiterJoinedAt, candidateJoinedAt)
             );
+            log.info("Analysis job published for interview {} with candidate={} job_desc_len={}",
+                    interviewId,
+                    freshInterview.getCandidateName(),
+                    freshInterview.getJobDescription() != null
+                            ? freshInterview.getJobDescription().length() : 0);
         }
 
         return toResponse(interviewRepo.save(interview));
@@ -426,6 +464,66 @@ public class InterviewService {
         return jitsiTokenService.generateToken(
                 interview.getRoomName(), userId, displayName, email, moderator);
     }
+    /**
+     * Single source of truth for the AnalysisRequest payload — keeps the
+     * initial-recording and retrigger paths from drifting apart.
+     */
+    private AnalysisRequestMessage buildAnalysisRequest(
+            Interview interview,
+            UUID interviewId,
+            String recruiterJoinedAt,
+            String candidateJoinedAt) {
+        return new AnalysisRequestMessage(
+                interviewId,
+                interview.getJobTitle(),
+                interview.getJobDescription(),
+                interview.getJobRequirements(),
+                interview.getCandidateName(),
+                interview.getRecruiterName(),
+                interview.getCandidateSkills(),
+                interview.getCandidateSummary(),
+                interview.getGithubScore(),
+                interview.getGithubFrameworks(),
+                interview.getCvWeaknesses(),
+                recruiterJoinedAt,
+                candidateJoinedAt,
+                interview.getJobFitScore(),
+                interview.getPreInterviewRecommendation(),
+                interview.getRequiredSkillsMatched(),
+                interview.getRequiredSkillsMissing(),
+                interview.getSemanticStrengths(),
+                interview.getSemanticWeaknesses()
+        );
+    }
+
+    /**
+     * Copy CV + semantic match fields from the application-service summary
+     * onto the Interview entity. Centralised so scheduling, late re-fetch,
+     * and retrigger all stay in sync as the summary shape evolves.
+     */
+    private void applyCvContext(Interview target, ApplicationCvClient.CvSummary cv) {
+        target.setCandidateSkills(cv.skills() != null
+                ? new ArrayList<>(cv.skills()) : new ArrayList<>());
+        target.setCandidateSummary(cv.summary());
+        target.setGithubScore(cv.githubScore());
+        target.setGithubFrameworks(cv.githubFrameworks() != null
+                ? new ArrayList<>(cv.githubFrameworks()) : new ArrayList<>());
+        target.setCvWeaknesses(cv.cvSkillsNoEvidence() != null
+                ? new ArrayList<>(cv.cvSkillsNoEvidence()) : new ArrayList<>());
+        // Semantic match handoff — nullable, may be absent if matching hasn't
+        // run yet. Empty lists are safe defaults so JPA doesn't NPE on save.
+        target.setJobFitScore(cv.jobFitScore());
+        target.setPreInterviewRecommendation(cv.preInterviewRecommendation());
+        target.setRequiredSkillsMatched(cv.requiredSkillsMatched() != null
+                ? new ArrayList<>(cv.requiredSkillsMatched()) : new ArrayList<>());
+        target.setRequiredSkillsMissing(cv.requiredSkillsMissing() != null
+                ? new ArrayList<>(cv.requiredSkillsMissing()) : new ArrayList<>());
+        target.setSemanticStrengths(cv.semanticStrengths() != null
+                ? new ArrayList<>(cv.semanticStrengths()) : new ArrayList<>());
+        target.setSemanticWeaknesses(cv.semanticWeaknesses() != null
+                ? new ArrayList<>(cv.semanticWeaknesses()) : new ArrayList<>());
+    }
+
     private String readMetaField(Path dir, String role, String field) {
         try {
             Path meta = dir.resolve(role + "-meta.json");
@@ -442,5 +540,106 @@ public class InterviewService {
             log.warn("Could not read {}-meta.json field {}: {}", role, field, e.getMessage());
             return null;
         }
+    }
+    @Transactional
+    public InterviewResponse retriggerAnalysis(UUID interviewId) {
+        Interview interview = findById(interviewId);
+
+        if (interview.getStatus() != InterviewStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Can only retrigger analysis for COMPLETED interviews");
+        }
+
+        Path dir           = Path.of(recordingsDir).resolve(interviewId.toString());
+        Path recruiterFile = dir.resolve("recruiter.webm");
+        Path candidateFile = dir.resolve("candidate.webm");
+
+        if (!Files.exists(recruiterFile) || !Files.exists(candidateFile)) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Recording files missing — cannot retrigger analysis");
+        }
+
+        // ── Re-fetch CV context (was empty at scheduling time, or schema
+        //    was upgraded since the interview was scheduled — always refresh
+        //    semantic match handoff here so re-runs pick up newer data). ───
+        try {
+            ApplicationCvClient.CvSummary cv =
+                    applicationCvClient.getCvSummary(interview.getApplicationId());
+            applyCvContext(interview, cv);
+            log.info("[Retrigger] CV context refreshed for application {} (jobFit={})",
+                    interview.getApplicationId(), cv.jobFitScore());
+        } catch (Exception e) {
+            log.warn("[Retrigger] CV context fetch failed — proceeding without it: {}",
+                    e.getMessage());
+        }
+
+        // ── Re-fetch job context ──────────────────────────────────────────────
+        if (interview.getJobDescription() == null || interview.getJobDescription().isBlank()) {
+            try {
+                JobClient.JobSummary job = jobClient.getJob(interview.getJobId());
+                interview.setJobDescription(job.description());
+                interview.setJobRequirements(
+                        job.requirements().stream()
+                                .map(JobClient.RequirementSummary::description)
+                                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new))
+                );
+                log.info("[Retrigger] Job context refreshed for job {}", interview.getJobId());
+            } catch (Exception e) {
+                log.warn("[Retrigger] Job context fetch failed — proceeding without it: {}",
+                        e.getMessage());
+            }
+        }
+        try {
+            UserClient.UserProfile candidate = userClient.getUserProfile(interview.getCandidateId());
+            interview.setCandidateName(candidate.fullName());
+            interview.setCandidateEmail(candidate.email());
+            log.info("[Retrigger] Candidate name refreshed: {}", candidate.fullName());
+        } catch (Exception e) {
+            log.warn("[Retrigger] Could not refresh candidate name: {}", e.getMessage());
+        }
+
+        try {
+            UserClient.UserProfile recruiter = userClient.getUserProfile(interview.getRecruiterId());
+            interview.setRecruiterName(recruiter.fullName());
+            interview.setRecruiterEmail(recruiter.email());
+            log.info("[Retrigger] Recruiter name refreshed: {}", recruiter.fullName());
+        } catch (Exception e) {
+            log.warn("[Retrigger] Could not refresh recruiter name: {}", e.getMessage());
+        }
+
+        interviewRepo.save(interview);
+
+        // ── Reset the result row ──────────────────────────────────────────────
+        InterviewResult result = interviewResultRepo
+                .findByInterviewId(interviewId)
+                .orElseGet(() -> InterviewResult.builder()
+                        .interview(interview)
+                        .build());
+        result.setProcessingStatus(ProcessingStatus.TRANSCRIBING);
+        result.setTranscript(null);
+        result.setSummary(null);
+        result.setCandidateScore(null);
+        result.setCandidateStrengths(null);
+        result.setCandidateWeaknesses(null);
+        result.setSuggestedQuestions(null);
+        result.setHiringRecommendation(null);
+        result.setProcessingError(null);
+        result.setProcessedAt(null);
+        interviewResultRepo.save(result);
+
+        // ── Read join timestamps from saved metadata ──────────────────────────
+        String recruiterJoinedAt = readMetaField(dir, "recruiter", "joinedAt");
+        String candidateJoinedAt = readMetaField(dir, "candidate",  "joinedAt");
+
+        // ── Publish analysis job ──────────────────────────────────────────────
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.ANALYSIS_EXCHANGE,
+                RabbitMQConfig.ANALYSIS_ROUTING,
+                buildAnalysisRequest(interview, interviewId,
+                        recruiterJoinedAt, candidateJoinedAt)
+        );
+
+        log.info("[Retrigger] Analysis job published for interview {}", interviewId);
+        return toResponse(interview);
     }
 }

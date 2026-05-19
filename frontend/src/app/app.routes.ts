@@ -28,6 +28,8 @@ import { InterviewResult } from './interview-result/interview-result';
 import { Preferences } from './preferences/preferences';
 import { Onboarding } from './onboarding/onboarding';
 import { GoogleCallback } from './google-callback/google-callback';
+import { InterviewEvaluation } from './interview-evaluation/interview-evaluation';
+import { ApplicationSummary } from './application-summary/application-summary';
 
 export const routes: Routes = [
   { path: '',             component: Hero,               canActivate: [homeGuard] },
@@ -44,6 +46,7 @@ export const routes: Routes = [
   { path: 'interview/:id/room',   component: InterviewRoomPage },
   { path: 'join/:id',             component: InterviewRoomPage },
   { path: 'interview/:id/result', component: InterviewResult },
+  { path: 'interview/:id/evaluation', component: InterviewEvaluation },
   { path: 'test', component: Test, canActivate: [canActivateAuthRole], data: { role: 'ADMIN' } },
 
   // ── ADMIN + SUPERADMIN + RECRUITER ────────────────────────────────────────
@@ -51,6 +54,7 @@ export const routes: Routes = [
   { path: 'user/:id',        component: UserDetails,     canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'listApplications',component: ListApplications,canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'application/:id', component: ApplicationDetail,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'application/:id/summary', component: ApplicationSummary, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'add-job',         component: AddJob,          canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'edit-job/:id',    component: UpdateJob,       canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'admin-dashboard', component: AdminDashboard,  canActivate: [canActivateAuthRole], data: { allowedRoles: ['ADMIN', 'SUPERADMIN', 'RECRUITER'] } },

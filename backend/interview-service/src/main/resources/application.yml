@@ -55,3 +55,19 @@ google:
 app:
   messaging:
     exchange: ${APP_MESSAGING_EXCHANGE:app.events}
+
+application:
+  service:
+    url: ${APPLICATION_SERVICE_URL:http://application-microservice:8081}
+
+job:
+  service:
+    url: ${JOB_SERVICE_URL:http://job-microservice:8080}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "mappings,health"
+user:
+  service:
+    url: http://gateway:8888   # or http://user-service:8083 if calling directly
