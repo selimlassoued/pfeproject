@@ -212,7 +212,7 @@
   font-size:.85rem; font-weight:700;
   padding:.35rem .7rem; border-radius:999px;
 }
-.ad-status-moderated:has(){ color:#ffa500; border:1px solid rgba(255,180,0,0.25); background:rgba(255,180,0,0.08); }
+.ad-status-moderated{ color:#ffa500; border:1px solid rgba(255,180,0,0.25); background:rgba(255,180,0,0.08); }
 
 .ad-state{ color:var(--color-text-muted); padding:1rem 0; }
 .ad-error{

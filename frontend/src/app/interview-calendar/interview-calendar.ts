@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import Keycloak from 'keycloak-js';
@@ -21,7 +21,7 @@ interface CalDay {
   templateUrl: './interview-calendar.html',
   styleUrl: './interview-calendar.css',
 })
-export class InterviewCalendar implements OnInit {
+export class InterviewCalendar implements OnInit, OnDestroy {
   private readonly keycloak = inject(Keycloak);
   private readonly interviewService = inject(InterviewService);
   private readonly google = inject(GoogleCalendarService);
@@ -43,6 +43,10 @@ export class InterviewCalendar implements OnInit {
   /** Whether this recruiter has linked their Google Calendar. */
   googleConnected = false;
 
+  /** Current time, refreshed every 30s so the live countdowns tick. */
+  now = Date.now();
+  private ticker?: ReturnType<typeof setInterval>;
+
   viewDate = new Date();
   weeks: CalDay[][] = [];
   selectedDay: CalDay | null = null;
@@ -55,6 +59,7 @@ export class InterviewCalendar implements OnInit {
     const recruiterId = this.keycloak.subject ?? '';
     if (!recruiterId) { this.error = 'Not authenticated.'; this.loading = false; return; }
     this.myId = recruiterId;
+    this.ticker = setInterval(() => { this.now = Date.now(); }, 30_000);
 
     this.interviewService.getAll().subscribe({
       next: list => {
@@ -69,6 +74,10 @@ export class InterviewCalendar implements OnInit {
       next: r => this.googleConnected = r.connected,
       error: () => { /* sync status is non-critical — leave it disconnected */ },
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.ticker) clearInterval(this.ticker);
   }
 
   /** Switch between the whole team's interviews and just this recruiter's. */
@@ -234,6 +243,37 @@ export class InterviewCalendar implements OnInit {
       || this.keycloak.hasRealmRole('SUPERADMIN')
       || iv.recruiterId === this.myId
       || (iv.invitedRecruiterIds ?? []).includes(this.myId);
+  }
+
+  /** Live countdown label — "" when the interview is too far off or finished. */
+  countdownLabel(iv: InterviewResponse): string {
+    if (iv.status === 'IN_PROGRESS') return 'Live now';
+    if (iv.status !== 'SCHEDULED') return '';
+    const diff = new Date(iv.scheduledAt).getTime() - this.now;
+    if (diff <= 60_000) return 'Starting now';
+    if (diff > 24 * 3_600_000) return '';          // the date label is enough
+    const mins = Math.floor(diff / 60_000);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0
+      ? 'in ' + h + 'h' + (m > 0 ? ' ' + m + 'm' : '')
+      : 'in ' + m + ' min';
+  }
+
+  /** Urgency class for the countdown chip — drives its colour. */
+  countdownClass(iv: InterviewResponse): string {
+    if (iv.status === 'IN_PROGRESS') return 'cd-live';
+    if (iv.status !== 'SCHEDULED') return '';
+    const diff = new Date(iv.scheduledAt).getTime() - this.now;
+    if (diff <= 60_000) return 'cd-live';
+    if (diff > 24 * 3_600_000) return '';
+    if (diff <= 60 * 60_000) return 'cd-imminent';
+    return 'cd-soon';
+  }
+
+  /** Click anywhere on an interview card (except its buttons) → open the application. */
+  openApplication(iv: InterviewResponse): void {
+    this.router.navigate(['/application', iv.applicationId]);
   }
 
   join(iv: InterviewResponse): void {

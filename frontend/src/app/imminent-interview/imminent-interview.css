@@ -1,0 +1,57 @@
+.imm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.14s, filter 0.14s;
+}
+.imm:hover { transform: translateY(-1px); filter: brightness(1.12); }
+
+.imm-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Tier colours ── */
+.imm--soon {
+  color: #79a4e9;
+  background: rgba(121, 164, 233, 0.12);
+  border-color: rgba(121, 164, 233, 0.35);
+}
+.imm--near {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.13);
+  border-color: rgba(251, 191, 36, 0.38);
+}
+.imm--alert {
+  color: #fca5a5;
+  background: rgba(220, 38, 38, 0.18);
+  border-color: rgba(248, 113, 113, 0.55);
+}
+
+/* Near + alert pulse to draw the eye; alert pulses harder. */
+.imm--near .imm-dot { animation: immPulse 1.6s ease-in-out infinite; }
+.imm--alert {
+  animation: immAlert 1.3s ease-in-out infinite;
+}
+.imm--alert .imm-dot { animation: immPulse 0.9s ease-in-out infinite; }
+
+@keyframes immPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.2; }
+}
+@keyframes immAlert {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.0); }
+  50%      { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.22); }
+}

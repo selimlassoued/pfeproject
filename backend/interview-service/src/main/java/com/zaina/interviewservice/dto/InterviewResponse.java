@@ -25,4 +25,5 @@ public class InterviewResponse {
     private InterviewStatus status;
     private LocalDateTime createdAt;
     private List<UUID> invitedRecruiterIds;
+    private Boolean candidateAdmitted;
 }

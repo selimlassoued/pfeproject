@@ -83,6 +83,13 @@
 
       <ul class="navbar-nav ms-auto m-2">
 
+        <!-- Imminent-interview countdown — appears within 2h of an interview -->
+        @if (authenticated) {
+          <li class="nav-item d-flex align-items-center">
+            <app-imminent-interview></app-imminent-interview>
+          </li>
+        }
+
         <!-- Interview calendar — staff only -->
         @if (authenticated && !isCandidate()) {
           <li class="nav-item">

@@ -151,6 +151,15 @@ public class InterviewController {
         return ResponseEntity.ok(interviewService.uninviteRecruiter(id, recruiterId));
     }
 
+    /** The organiser admits the waiting candidate — they can then enter the Jitsi room. */
+    @PatchMapping("/{id}/admit")
+    public ResponseEntity<InterviewResponse> admitCandidate(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID requesterId,
+            @RequestParam(defaultValue = "false") boolean admin) {
+        return ResponseEntity.ok(interviewService.admitCandidate(id, requesterId, admin));
+    }
+
     /** A recruiter asks the organizer to be invited to this interview. */
     @PostMapping("/{id}/request-join")
     public ResponseEntity<Void> requestJoin(

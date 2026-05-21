@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 RUN pip install --upgrade pip
-RUN pip install setuptools wheel
+# Pin setuptools <70 because openai-whisper's build script imports
+# `pkg_resources`, which newer setuptools versions ship as a separate package.
+RUN pip install "setuptools<70" wheel
 
 # Install librosa
 RUN pip install --no-cache-dir librosa
@@ -22,7 +24,9 @@ RUN pip install --no-cache-dir --retries 10 --timeout 300 \
 RUN pip install --no-cache-dir --retries 10 --timeout 300 pyannote.audio
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# --no-build-isolation makes pip reuse the setuptools<70 installed above
+# (instead of pulling the latest setuptools into a one-off build env).
+RUN pip install --no-cache-dir --no-build-isolation -r requirements.txt
 
 # Bake in the fallback model so the container is always usable even before
 # the runtime model (which may be larger, e.g. large-v3) finishes downloading.

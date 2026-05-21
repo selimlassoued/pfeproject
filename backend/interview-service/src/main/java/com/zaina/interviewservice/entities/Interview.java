@@ -73,6 +73,11 @@ public class Interview {
     @Builder.Default
     private Boolean candidateLeft = false;
 
+    /** The candidate may only enter the Jitsi room once the organiser admits them. */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean candidateAdmitted = false;
+
     /** Recruiters the organizer invited to also join this interview. */
     @ElementCollection
     @CollectionTable(name = "interview_invited_recruiters",

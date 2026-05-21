@@ -131,11 +131,18 @@
             </div>
           } @else {
             @for (iv of sideList; track iv.id) {
-              <div class="cal-iv" [ngClass]="statusClass(iv.status)">
+              <div class="cal-iv cal-iv--clickable" [ngClass]="statusClass(iv.status)"
+                   (click)="openApplication(iv)"
+                   title="Open the application">
                 <div class="cal-iv-top">
                   <span class="cal-iv-when">{{ relativeDay(iv.scheduledAt) }} · {{ time(iv.scheduledAt) }}</span>
                   <span class="cal-iv-status" [ngClass]="statusClass(iv.status)">{{ iv.status }}</span>
                 </div>
+                @if (countdownLabel(iv)) {
+                  <div class="cal-iv-countdown" [ngClass]="countdownClass(iv)">
+                    <span class="cal-iv-cd-dot"></span>{{ countdownLabel(iv) }}
+                  </div>
+                }
                 <div class="cal-iv-job">{{ iv.jobTitle }}</div>
                 <div class="cal-iv-cand">with {{ candidateName(iv) }}</div>
                 <div class="cal-iv-by" [class.cal-iv-by--me]="isMine(iv)">
@@ -143,7 +150,8 @@
                 </div>
                 @if ((iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS') && canJoin(iv)) {
                   <div class="cal-iv-actions">
-                    <button class="btn btn-primary" type="button" (click)="join(iv)">Join room</button>
+                    <button class="btn btn-primary" type="button"
+                            (click)="$event.stopPropagation(); join(iv)">Join room</button>
                   </div>
                 } @else if ((iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS') && !canJoin(iv)) {
                   <div class="cal-iv-actions">
@@ -151,7 +159,8 @@
                   </div>
                 } @else if (iv.status === 'COMPLETED') {
                   <div class="cal-iv-actions">
-                    <button class="btn btn-ghost" type="button" (click)="viewResult(iv)">View result</button>
+                    <button class="btn btn-ghost" type="button"
+                            (click)="$event.stopPropagation(); viewResult(iv)">View result</button>
                   </div>
                 }
               </div>

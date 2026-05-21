@@ -9,12 +9,13 @@ import {
 } from 'keycloak-angular';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { NotificationsMenu } from './notification-menu/notification-menu';
+import { ImminentInterview } from './imminent-interview/imminent-interview';
 import { CandidateProfileService } from './services/candidate-profile.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, NotificationsMenu],
+  imports: [RouterOutlet, RouterLink, NotificationsMenu, ImminentInterview],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

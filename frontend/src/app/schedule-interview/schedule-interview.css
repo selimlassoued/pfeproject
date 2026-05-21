@@ -41,6 +41,24 @@
   color: var(--color-cream);
 }
 
+/* Dev/test escape hatch — toned down so nobody mistakes it for a primary control. */
+.si-testmode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: var(--space-2);
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: rgba(251, 191, 36, 0.95);
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px dashed rgba(251, 191, 36, 0.35);
+  width: fit-content;
+  cursor: pointer;
+  user-select: none;
+}
+.si-testmode input { accent-color: rgba(251, 191, 36, 0.95); }
+
 /* ===== FORM ===== */
 .schedule-form {
   display: flex;
@@ -113,6 +131,43 @@
   grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
   gap: 8px;
 }
+
+/* ── Grouped grid: each row is one hour with its 4 quarter buttons ── */
+.si-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.si-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.si-row-label {
+  flex-shrink: 0;
+  width: 2.8rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+}
+.si-row-quarters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  flex: 1;
+}
+/* Invisible placeholder so the kept quarters stay aligned with the columns above. */
+.si-slot-empty { display: block; }
+
+.si-date-error {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-xl);
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: rgba(255, 235, 180, 0.95);
+  font-size: 0.88rem;
+}
 .si-slot {
   padding: 0.6rem 0.3rem;
   border-radius: 10px;
@@ -179,6 +234,89 @@
 .si-dot--recruiter { background: rgba(233, 121, 121, 0.6); }
 .si-dot--candidate { background: rgba(251, 191, 36, 0.6); }
 .si-dot--past      { background: rgba(255, 255, 255, 0.15); }
+
+/* Custom off-the-hour time */
+.si-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid rgba(121, 164, 233, 0.12);
+}
+.si-custom-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.si-custom-input {
+  padding: 0.4rem 0.55rem;
+  border-radius: 9px;
+  border: 1px solid rgba(121, 164, 233, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  color-scheme: dark;     /* makes the native time-picker readable on dark bg */
+}
+.si-custom-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+}
+.si-custom-pick {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(121, 164, 233, 0.14);
+}
+/* Off-the-hour quarter buttons (:15 / :30 / :45) */
+.si-quarters {
+  display: inline-flex;
+  gap: 6px;
+}
+.si-quarter {
+  padding: 0.4rem 0.7rem;
+  border-radius: 9px;
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.14s, background 0.14s, transform 0.14s;
+}
+.si-quarter:not(:disabled):hover {
+  border-color: rgba(121, 164, 233, 0.6);
+  background: rgba(121, 164, 233, 0.12);
+  transform: translateY(-1px);
+}
+.si-quarter--on,
+.si-quarter--on:hover {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  border-color: transparent;
+  color: #fff;
+}
+.si-quarter:disabled { cursor: not-allowed; }
+.si-quarter--past {
+  opacity: 0.4;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.02);
+  text-decoration: line-through;
+}
+.si-quarter--recruiter,
+.si-quarter--both {
+  background: rgba(233, 121, 121, 0.1);
+  border-color: rgba(233, 121, 121, 0.35);
+  color: rgba(248, 180, 180, 0.9);
+}
+.si-quarter--candidate {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.35);
+  color: rgba(251, 210, 130, 0.95);
+}
 
 /* ===== ACTIONS ===== */
 .form-actions {

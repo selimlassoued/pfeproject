@@ -7,12 +7,33 @@
       <div *ngIf="loading" class="room-page-state">Loading room…</div>
       <div *ngIf="error" class="room-page-state error">{{ error }}</div>
 
-      <app-interview-room
-        *ngIf="interview && !loading"
-        [interviewId]="interview.id"
-        [participantName]="displayName"
-        [isRecruiter]="isRecruiter"
-        [roomUrl]="interview.roomUrl"
-        [scheduledAt]="interview.scheduledAt">
-      </app-interview-room>
+      @if (interview && !loading) {
+        @if (role === 'candidate' && !interview.candidateAdmitted) {
+          <!-- Candidate lobby — waits until the recruiter clicks "Admit". -->
+          <div class="lobby-wait">
+            <div class="lobby-spinner"></div>
+            <h3 class="lobby-title">{{ interview.jobTitle }}</h3>
+            @if (interview.status !== 'IN_PROGRESS') {
+              <p class="lobby-msg">Waiting for the recruiter to open the interview room…</p>
+              <p class="lobby-sub">The page will continue on its own once they're ready.</p>
+            } @else {
+              <p class="lobby-msg">The recruiter is here — waiting to be admitted…</p>
+              <p class="lobby-sub">You'll enter the room automatically.</p>
+            }
+          </div>
+        } @else {
+          <app-interview-room
+            [interviewId]="interview.id"
+            [participantName]="displayName"
+            [role]="role"
+            [roomUrl]="interview.roomUrl"
+            [scheduledAt]="interview.scheduledAt"
+            [jobTitle]="interview.jobTitle || ''"
+            [candidateAdmitted]="!!interview.candidateAdmitted"
+            [admitting]="admitting"
+            (admitCandidate)="onAdmitCandidate()"
+            (interviewEnded)="onInterviewEnded()">
+          </app-interview-room>
+        }
+      }
     </div>

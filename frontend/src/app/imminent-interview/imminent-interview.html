@@ -1,0 +1,7 @@
+@if (visible) {
+  <button class="imm" [ngClass]="'imm--' + tier" type="button"
+          (click)="open()" [title]="jobTitle + ' — click to join'">
+    <span class="imm-dot"></span>
+    <span class="imm-label">{{ label }}</span>
+  </button>
+}

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, forkJoin, of } from 'rxjs';
+import { Observable, Subject, forkJoin, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 export interface ScheduleInterviewRequest {
@@ -31,6 +31,7 @@ export interface InterviewResponse {
   status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   createdAt: string;
   invitedRecruiterIds?: string[];
+  candidateAdmitted?: boolean;
 }
 export interface DimensionalScore {
   score: number;
@@ -97,7 +98,14 @@ export interface InterviewQuestion {
 export class InterviewService {
 
   private base = 'http://localhost:8888/api/interviews';
-  
+
+  /** Broadcast that the interview set has changed (scheduled, started, completed, cancelled, …)
+   *  so widgets like the navbar "Interview live now" badge can re-fetch immediately
+   *  instead of waiting for their own poll interval. */
+  private readonly changedSubject = new Subject<void>();
+  readonly changed$ = this.changedSubject.asObservable();
+  notifyChanged(): void { this.changedSubject.next(); }
+
   constructor(private http: HttpClient) {}
 
   schedule(request: ScheduleInterviewRequest): Observable<InterviewResponse> {
@@ -145,6 +153,12 @@ export class InterviewService {
   uninvite(id: string, recruiterId: string): Observable<InterviewResponse> {
     return this.http.patch<InterviewResponse>(
       `${this.base}/${id}/uninvite?recruiterId=${recruiterId}`, {});
+  }
+
+  /** The organiser admits the waiting candidate — they can then enter the room. */
+  admitCandidate(id: string, requesterId: string, admin: boolean): Observable<InterviewResponse> {
+    return this.http.patch<InterviewResponse>(
+      `${this.base}/${id}/admit?requesterId=${requesterId}&admin=${admin}`, {});
   }
 
   /** Ask the organizer of an interview to invite you. */

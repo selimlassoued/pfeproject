@@ -45,6 +45,8 @@ public class NotificationService {
         n.setType(NotificationType.USER_BLOCK);
         n.setTitle("Your account has been blocked");
         n.setBody(reason != null ? reason : "Your account was blocked by an administrator.");
+        n.setRelatedEntityType("USER");
+        n.setRelatedEntityId(userId);
         repo.save(n);
 
         // Push to a per-user topic so it works without WS authentication (dev-friendly)
@@ -64,6 +66,8 @@ public class NotificationService {
         n.setType(NotificationType.USER_UNBLOCK);
         n.setTitle("Your account has been unblocked");
         n.setBody(reason != null ? reason : "Your account was unblocked by an administrator.");
+        n.setRelatedEntityType("USER");
+        n.setRelatedEntityId(userId);
         repo.save(n);
 
         messagingTemplate.convertAndSend("/topic/notifications." + n.getUserId(), n);
@@ -85,6 +89,8 @@ public class NotificationService {
         n.setType(NotificationType.ROLE_UPDATE);
         n.setTitle("Your roles were updated");
         n.setBody(body);
+        n.setRelatedEntityType("USER");
+        n.setRelatedEntityId(userId);
         repo.save(n);
 
         messagingTemplate.convertAndSend("/topic/notifications." + n.getUserId(), n);
@@ -107,6 +113,8 @@ public class NotificationService {
         n.setType(NotificationType.APPLICATION_STATUS_UPDATE);
         n.setTitle("Application status updated");
         n.setBody(body);
+        n.setRelatedEntityType("APPLICATION");
+        n.setRelatedEntityId((String) payload.get("applicationId"));
         repo.save(n);
 
         messagingTemplate.convertAndSend("/topic/notifications." + n.getUserId(), n);
@@ -144,6 +152,8 @@ public class NotificationService {
         n.setType(NotificationType.JOB_QUOTA_REACHED);
         n.setTitle("Position filled — " + jobTitle);
         n.setBody(body);
+        n.setRelatedEntityType("JOB");
+        n.setRelatedEntityId(jobId);
         repo.save(n);
 
         messagingTemplate.convertAndSend("/topic/notifications." + recruiterUserId, n);
@@ -237,6 +247,8 @@ public class NotificationService {
             n.setType(NotificationType.JOB_UPDATED);
             n.setTitle("Job you applied to was updated");
             n.setBody(body);
+            n.setRelatedEntityType("JOB");
+            n.setRelatedEntityId(jobId.toString());
             repo.save(n);
 
             messagingTemplate.convertAndSend("/topic/notifications." + n.getUserId(), n);

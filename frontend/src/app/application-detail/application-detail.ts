@@ -278,14 +278,14 @@ export class ApplicationDetail implements OnInit, OnDestroy {
   get contextualActions(): { label: string; status: string; style: 'primary' | 'secondary' | 'danger' }[] {
     switch (this.app?.status) {
       case 'APPLIED':
+        // No "Move to Interview" — scheduling an interview moves the
+        // application to INTERVIEW_PHASE on its own.
         return [
-          { label: '→ Move to Interview',  status: 'INTERVIEW_PHASE', style: 'primary' },
-          { label: 'Still deciding',     status: 'UNDER_REVIEW',    style: 'secondary' },
+          { label: 'Still deciding',     status: 'UNDER_REVIEW',    style: 'primary' },
           { label: '✗ Reject',             status: 'REJECTED',         style: 'danger' },
         ];
       case 'UNDER_REVIEW':
         return [
-          { label: '→ Move to Interview',  status: 'INTERVIEW_PHASE', style: 'primary' },
           { label: '✗ Reject',             status: 'REJECTED',         style: 'danger' },
         ];
       case 'INTERVIEW_PHASE':
@@ -304,6 +304,29 @@ export class ApplicationDetail implements OnInit, OnDestroy {
   }
 
   moveTo(status: string) {
+    if (!this.app?.applicationId) return;
+    // Rejecting is destructive and notifies the candidate — confirm first.
+    if (status === 'REJECTED') {
+      Swal.fire({
+        title: 'Reject this application?',
+        text: 'The candidate will be notified. This action cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, reject',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#374151',
+        background: '#141c3c',
+        color: '#e8f0fe',
+      }).then((result) => {
+        if (result.isConfirmed) this.applyStatus(status);
+      });
+      return;
+    }
+    this.applyStatus(status);
+  }
+
+  private applyStatus(status: string) {
     if (!this.app?.applicationId) return;
     this.updatingStatus = true;
     this.appService.updateApplicationStatus(this.app.applicationId, status).subscribe({
@@ -416,20 +439,38 @@ export class ApplicationDetail implements OnInit, OnDestroy {
   }
 
   cancelInterview(interview: InterviewResponse) {
-  if (!confirm('Are you sure you want to cancel this interview?')) return;
-  this.cancellingId = interview.id;
-  const admin = this.isAdmin() || this.isSuperAdmin();
-  this.interviewService.cancelInterview(interview.id, this.recruiterId, admin).subscribe({
-    next: (updated) => {
-      const idx = this.interviews.findIndex(i => i.id === updated.id);
-      if (idx !== -1) this.interviews[idx] = updated;
-      this.cancellingId = null;
-    },
-    error: () => { this.cancellingId = null; }
-  });
-}
+    Swal.fire({
+      title: 'Cancel this interview?',
+      text: 'The interview will be marked as cancelled and the room closed. This cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, cancel it',
+      cancelButtonText: 'Keep it',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#374151',
+      background: '#141c3c',
+      color: '#e8f0fe',
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.cancellingId = interview.id;
+      const admin = this.isAdmin() || this.isSuperAdmin();
+      this.interviewService.cancelInterview(interview.id, this.recruiterId, admin).subscribe({
+        next: (updated) => {
+          const idx = this.interviews.findIndex(i => i.id === updated.id);
+          if (idx !== -1) this.interviews[idx] = updated;
+          this.cancellingId = null;
+        },
+        error: () => { this.cancellingId = null; },
+      });
+    });
+  }
   get canSchedule(): boolean {
-    return this.app?.status === 'INTERVIEW_PHASE' && this.activeInterview === null;
+    // Scheduling the first interview is itself the decision to interview —
+    // it's allowed straight from APPLIED or UNDER_REVIEW, and the backend
+    // moves the application to INTERVIEW_PHASE automatically.
+    const s = this.app?.status;
+    return (s === 'APPLIED' || s === 'UNDER_REVIEW' || s === 'INTERVIEW_PHASE')
+      && this.activeInterview === null;
   }
   get recruiterEmail(): string {
   return this.keycloak.tokenParsed?.['email'] ?? '';
@@ -446,6 +487,12 @@ get isKeycloakReady(): boolean {
   this.showScheduleForm = false;
   if (this.app!.applicationId) {
     this.loadInterviews(this.app!.applicationId);
+    // Scheduling moved the application to INTERVIEW_PHASE backend-side —
+    // refresh it so the status badge reflects that without a manual reload.
+    this.appService.getOne(this.app!.applicationId).subscribe({
+      next: (data) => { this.app = data; },
+      error: () => {},
+    });
   }
     this.scheduledInterview = null;
 }

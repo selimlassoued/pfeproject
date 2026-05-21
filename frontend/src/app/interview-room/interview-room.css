@@ -1,17 +1,33 @@
+/* Make the component fill the page area its parent gave it. */
+:host {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 0.75rem 1rem 1rem;
+  box-sizing: border-box;
+}
+
 .room-shell {
   position: relative;
   width: 100%;
-  height: 120%;
-  min-height: 220px;
-  background: #0a0a0f;
+  flex: 1;
+  min-height: 0;
+  background:
+    radial-gradient(ellipse at top, rgba(121,164,233,0.07), transparent 60%),
+    radial-gradient(ellipse at bottom, rgba(30,64,188,0.05), transparent 60%),
+    #0a0a0f;
   border-radius: 12px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .overlay-state {
-    height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -20,12 +36,138 @@
   color: #e2e8f0;
   padding: 32px;
   text-align: center;
+  z-index: 2;
 }
 .overlay-state.error { color: #fc8181; }
 .overlay-state.ready { color: #90cdf4; }
+/* The connecting overlay is purely a visual hint while Jitsi loads — it must
+   never intercept clicks, otherwise the user can't reach Jitsi's "Je suis
+   l'hôte" sign-in button or the mic / camera toggles behind it. */
+.overlay-state.connecting {
+  color: #cbd5f5;
+  pointer-events: none;
+}
+
+/* Small spinner shown while we hand off from the wait card to Jitsi. */
+.connect-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(121, 164, 233, 0.25);
+  border-top-color: #79a4e9;
+  animation: connectSpin 0.9s linear infinite;
+}
+@keyframes connectSpin { to { transform: rotate(360deg); } }
 
 .state-label { font-size: 1rem; font-weight: 600; margin: 0; }
 .state-sub   { font-size: 0.85rem; color: #718096; margin: 0; }
+
+/* ── Pre-interview waiting card ──────────────────────────────────────── */
+.wait-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 2.4rem 2.4rem 2rem;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(20,28,60,0.96), rgba(13,19,45,0.96));
+  border: 1px solid rgba(121,164,233,0.28);
+  box-shadow:
+    0 24px 72px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(121,164,233,0.06) inset;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  position: relative;
+}
+/* Decorative top accent line */
+.wait-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #79a4e9, transparent);
+  border-radius: 2px;
+}
+.wait-pill {
+  display: inline-block;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(121,164,233,0.12);
+  border: 1px solid rgba(121,164,233,0.32);
+  color: #79a4e9;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.wait-title {
+  margin: 0.4rem 0 0;
+  font-family: var(--font-display, inherit);
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+  color: #fffce5;
+  line-height: 1.2;
+}
+.wait-when {
+  margin: 0 0 1.2rem;
+  font-size: 0.85rem;
+  color: rgba(248,250,252,0.55);
+}
+.wait-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.3rem 2.4rem;
+  margin: 0.6rem 0 1.1rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at center, rgba(121,164,233,0.10), transparent 70%),
+    rgba(255,255,255,0.03);
+  border: 1px solid rgba(121,164,233,0.22);
+  box-shadow:
+    0 0 40px rgba(121,164,233,0.08),
+    0 0 0 1px rgba(121,164,233,0.04) inset;
+}
+.wait-countdown-time {
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fffce5;
+  line-height: 1;
+  text-shadow: 0 0 24px rgba(121,164,233,0.25);
+  animation: waitPulse 2s ease-in-out infinite;
+}
+.wait-countdown-label {
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: rgba(248,250,252,0.4);
+}
+.wait-role {
+  font-size: 0.82rem;
+  color: rgba(248,250,252,0.72);
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.wait-role strong { color: #79a4e9; font-weight: 700; }
+.wait-hint {
+  margin: 0.9rem 0 0;
+  font-size: 0.78rem;
+  color: rgba(248,250,252,0.45);
+  line-height: 1.55;
+  max-width: 36ch;
+}
+@keyframes waitPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.78; }
+}
 
 .room-link-hint {
   font-size: 0.75rem;
@@ -47,11 +189,18 @@
   transition: background 0.2s;
 }
 .jitsi-frame {
-  padding-top: 120px;
+  flex: 1;
   width: 100%;
-  height: 300%;
-  border-radius: 8px;
+  min-height: 0;
+  border-radius: 12px;
   overflow: hidden;
+}
+/* Jitsi injects its iframe as a direct child — make sure it stretches. */
+.jitsi-frame > iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  display: block;
 }
 
 .recording-bar {
@@ -97,3 +246,41 @@
 .upload-msg.success { color: #38a169; }
 .upload-msg.error   { color: #e53e3e; }
 .join-btn:hover { background: #5a6fd6; }
+
+/* ── Admit-candidate banner (recruiter only) — floats above the iframe ── */
+.admit-banner {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  background: rgba(20, 28, 60, 0.88);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  color: #fde68a;
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  animation: admitPulse 2s ease-in-out infinite;
+}
+.admit-msg { display: inline-flex; align-items: center; gap: 0.5rem; }
+.admit-msg::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%;
+  background: #fbbf24;
+  animation: admitDot 1.2s ease-in-out infinite;
+}
+.admit-btn { flex-shrink: 0; padding: 0.45rem 1.1rem; font-size: 0.85rem; }
+@keyframes admitPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+  50%      { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.18); }
+}
+@keyframes admitDot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.25; }
+}

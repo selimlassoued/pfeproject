@@ -1,7 +1,42 @@
 <div class="room-shell">
 
+  <!-- Recruiter sees this until they let the candidate in. -->
+  <div *ngIf="role === 'recruiter' && state === 'joined' && !candidateAdmitted"
+       class="admit-banner">
+    <span class="admit-msg">Candidate is waiting to be admitted.</span>
+    <button class="btn btn-primary admit-btn" type="button"
+            [disabled]="admitting" (click)="admitCandidate.emit()">
+      {{ admitting ? 'Admitting…' : 'Admit candidate' }}
+    </button>
+  </div>
+
   <div *ngIf="state === 'waiting'" class="overlay-state waiting">
-    <p class="state-label">{{ countdown }}</p>
+    <div class="wait-card">
+      <span class="wait-pill">⏳ Interview starts soon</span>
+
+      <h2 class="wait-title">{{ jobTitle || 'Interview' }}</h2>
+      <p class="wait-when">Scheduled for {{ scheduledTimeLabel }}</p>
+
+      <div class="wait-countdown">
+        <div class="wait-countdown-time">{{ countdown }}</div>
+        <div class="wait-countdown-label">until we start</div>
+      </div>
+
+      <div class="wait-role">
+        You'll join as <strong>{{ roleLabel }}</strong>
+      </div>
+
+      <p class="wait-hint">
+        The room opens automatically when it's time. Check your microphone and
+        camera while you wait.
+      </p>
+    </div>
+  </div>
+
+  <div *ngIf="state === 'connecting'" class="overlay-state connecting">
+    <div class="connect-spinner"></div>
+    <p class="state-label">Connecting to the room…</p>
+    <p class="state-sub">If you see a Jitsi sign-in prompt, click <strong>“Je suis l'hôte”</strong> to enter.</p>
   </div>
 
   <div *ngIf="state === 'error'" class="overlay-state error">
@@ -34,7 +69,11 @@
 
   <div *ngIf="state === 'joined'" class="recording-bar">
   <span *ngIf="isRecording" class="rec-dot">● Recording</span>
-  <span class="rec-role">{{ isRecruiter ? 'Recruiter' : 'Candidate' }}</span>
+  <span class="rec-role">
+    {{ role === 'recruiter' ? 'Recruiter'
+       : role === 'candidate' ? 'Candidate'
+       : 'Observer — watch only' }}
+  </span>
 
   <!-- Manual end button — always visible while recording -->
   <button *ngIf="isRecording" class="btn btn-stop" (click)="stopRecording()">

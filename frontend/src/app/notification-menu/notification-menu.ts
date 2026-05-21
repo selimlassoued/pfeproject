@@ -87,22 +87,52 @@ export class NotificationsMenu implements OnInit, OnDestroy {
     });
   }
 
-  /** Whether the notification points at a page we can open. */
-  hasTarget(n: Notification): boolean {
-    return n.relatedEntityType === 'APPLICATION' && !!n.relatedEntityId;
+  /** Every notification type maps to a page, so the action button always shows. */
+  hasTarget(_n: Notification): boolean {
+    return true;
   }
 
+  /** Button label, tailored to what the notification is about. */
   ctaLabel(n: Notification): string {
-    return (n.type === 'INTERVIEW_INVITE' || n.type === 'INTERVIEW_JOIN_REQUEST')
-      ? 'Go to the interview'
-      : 'Open';
+    switch (n.type) {
+      case 'INTERVIEW_INVITE':
+      case 'INTERVIEW_JOIN_REQUEST':    return 'Go to the interview';
+      case 'APPLICATION_STATUS_UPDATE': return 'View my application';
+      case 'JOB_UPDATED':
+      case 'JOB_QUOTA_REACHED':         return 'View the job';
+      case 'USER_BLOCK':
+      case 'USER_UNBLOCK':
+      case 'ROLE_UPDATE':               return 'Go to my profile';
+      default:                          return 'Open';
+    }
   }
 
-  /** Navigate to the related page and close the menu. */
+  /** Navigate to the page the notification is about, then close the menu. */
   openTarget(n: Notification): void {
-    if (!this.hasTarget(n)) return;
+    const id = n.relatedEntityId;
+    let path: unknown[];
+    switch (n.type) {
+      case 'INTERVIEW_INVITE':
+      case 'INTERVIEW_JOIN_REQUEST':
+        path = id ? ['/application', id] : ['/calendar'];
+        break;
+      case 'APPLICATION_STATUS_UPDATE':
+        path = id ? ['/my-application', id] : ['/my-applications'];
+        break;
+      case 'JOB_UPDATED':
+      case 'JOB_QUOTA_REACHED':
+        path = id ? ['/jobs', id] : ['/browse'];
+        break;
+      case 'USER_BLOCK':
+      case 'USER_UNBLOCK':
+      case 'ROLE_UPDATE':
+        path = ['/profile'];
+        break;
+      default:
+        path = ['/'];
+    }
     this.close();
-    this.router.navigate(['/application', n.relatedEntityId]);
+    this.router.navigate(path);
   }
 
   /* ── helpers ── */

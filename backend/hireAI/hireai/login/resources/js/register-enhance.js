@@ -14,48 +14,10 @@
 (function () {
   "use strict";
 
-  // ── Phone: +216 prefix ────────────────────────────────────────────────
-  function enhancePhone() {
-    var phone = document.querySelector(
-      'input[name="phoneNumber"], #phoneNumber, input[name="user.attributes.phoneNumber"]'
-    );
-    if (!phone || phone.dataset.hireaiPhone) return;
-    phone.dataset.hireaiPhone = "1";
-
-    // The stored value is +216XXXXXXXX. Show only the 8 local digits in the
-    // field — the prefix is rendered separately. This strip also handles the
-    // form re-rendering after a validation error (value comes back as +216…).
-    phone.value = phone.value.replace(/^\+?216/, "").replace(/\D/g, "").slice(0, 8);
-    phone.type = "tel";
-    phone.setAttribute("maxlength", "8");
-    phone.setAttribute("inputmode", "numeric");
-    phone.setAttribute("autocomplete", "tel-national");
-    phone.placeholder = "20 123 456";
-
-    var group = document.createElement("div");
-    group.className = "hireai-phone-group";
-    var prefix = document.createElement("span");
-    prefix.className = "hireai-phone-prefix";
-    prefix.textContent = "+216";
-    phone.parentNode.insertBefore(group, phone);
-    group.appendChild(prefix);
-    group.appendChild(phone);
-
-    // Keep the field digits-only, max 8.
-    phone.addEventListener("input", function () {
-      var clean = phone.value.replace(/\D/g, "").slice(0, 8);
-      if (clean !== phone.value) phone.value = clean;
-    });
-
-    // On submit, prepend +216 so the value matches the realm's ^\+216\d{8}$.
-    // If the user left it incomplete, submit as-is and let the server reject it.
-    if (phone.form) {
-      phone.form.addEventListener("submit", function () {
-        var digits = phone.value.replace(/\D/g, "");
-        if (digits.length === 8) phone.value = "+216" + digits;
-      });
-    }
-  }
+  // NOTE: the "+216" phone prefix is handled per-page by the inline script in
+  // each FTL (register / login-update-profile / idp-review-user-profile).
+  // It is intentionally NOT done here — running both produced a duplicated
+  // "+216" box on the profile pages.
 
   // ── Errors: one consolidated red banner at the top of the form ────────
   function collectErrors() {
@@ -138,7 +100,6 @@
 
   function run() {
     var isRegister = !!document.getElementById("kc-register-form");
-    try { enhancePhone(); }      catch (e) {}
     try { addSubtitle(isRegister); } catch (e) {}
     try { enhanceErrors(); }     catch (e) {}
   }

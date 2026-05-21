@@ -223,6 +223,7 @@
   transition: border-color 0.14s, transform 0.14s;
 }
 .cal-iv:last-child { margin-bottom: 0; }
+.cal-iv--clickable { cursor: pointer; }
 .cal-iv:hover {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--st) 45%, var(--color-border));
@@ -239,6 +240,25 @@
   border: 1px solid color-mix(in srgb, var(--st) 45%, transparent);
   background: color-mix(in srgb, var(--st) 13%, transparent);
 }
+/* Live countdown chip */
+.cal-iv-countdown {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  margin: 7px 0 3px;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: 0.7rem; font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.cal-iv-cd-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+.cd-soon     { color: #79a4e9; background: rgba(121,164,233,0.13); }
+.cd-imminent { color: #fbbf24; background: rgba(251,191,36,0.14); }
+.cd-live     { color: #4ade80; background: rgba(74,222,128,0.15); }
+.cd-imminent .cal-iv-cd-dot,
+.cd-live .cal-iv-cd-dot { animation: cdPulse 1.4s ease-in-out infinite; }
+@keyframes cdPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
 .cal-iv-job { font-weight: 600; color: var(--color-text); font-size: 0.92rem; line-height: 1.35; }
 .cal-iv-cand { color: var(--color-text-muted); font-size: 0.8rem; margin-top: 2px; }
 .cal-iv-by {

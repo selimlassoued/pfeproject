@@ -3,6 +3,13 @@
   <div class="schedule-header">
     <h3 class="schedule-title">Schedule Interview</h3>
     <p class="schedule-subtitle">Pick a day, then choose an available time slot.</p>
+
+    <!-- Test escape hatch — bypasses weekend/past restrictions so a demo
+         interview can be created at any time. Keep OFF for real use. -->
+    <label class="si-testmode">
+      <input type="checkbox" [(ngModel)]="testMode" />
+      <span>Test mode (allow past times &amp; weekends)</span>
+    </label>
   </div>
 
   <div class="schedule-form">
@@ -22,22 +29,33 @@
 
       @if (busyLoading) {
         <div class="si-slots-msg">Loading availability…</div>
+      } @else if (dateError) {
+        <div class="si-date-error">{{ dateError }}</div>
       } @else {
-        <div class="si-slots">
-          @for (slot of slots; track slot.time) {
-            <button type="button"
-                    class="si-slot"
-                    [class.si-slot--free]="slot.state === 'free'"
-                    [class.si-slot--past]="slot.state === 'past'"
-                    [class.si-slot--recruiter]="slot.state === 'recruiter'"
-                    [class.si-slot--candidate]="slot.state === 'candidate'"
-                    [class.si-slot--both]="slot.state === 'both'"
-                    [class.si-slot--on]="selectedSlot === slot.time"
-                    [disabled]="slot.state !== 'free'"
-                    [title]="slotTitle(slot)"
-                    (click)="pickSlot(slot)">
-              {{ slot.time }}
-            </button>
+        <div class="si-grid">
+          @for (row of slotsByHour; track row.hour) {
+            <div class="si-row">
+              <span class="si-row-label">{{ row.hour }}h</span>
+              <div class="si-row-quarters">
+                @for (slot of row.quarters; track slot.time) {
+                  @if (slot.state === 'past') {
+                    <span class="si-slot-empty" aria-hidden="true"></span>
+                  } @else {
+                    <button type="button" class="si-slot"
+                            [class.si-slot--free]="slot.state === 'free'"
+                            [class.si-slot--recruiter]="slot.state === 'recruiter'"
+                            [class.si-slot--candidate]="slot.state === 'candidate'"
+                            [class.si-slot--both]="slot.state === 'both'"
+                            [class.si-slot--on]="selectedSlot === slot.time"
+                            [disabled]="slot.state !== 'free'"
+                            [title]="slotTitle(slot)"
+                            (click)="pickSlot(slot)">
+                      :{{ slot.time.substring(3) }}
+                    </button>
+                  }
+                }
+              </div>
+            </div>
           }
         </div>
 
@@ -45,7 +63,6 @@
           <span class="si-legend-item"><i class="si-dot si-dot--free"></i> Available</span>
           <span class="si-legend-item"><i class="si-dot si-dot--recruiter"></i> You're busy</span>
           <span class="si-legend-item"><i class="si-dot si-dot--candidate"></i> Candidate busy</span>
-          <span class="si-legend-item"><i class="si-dot si-dot--past"></i> Past</span>
         </div>
       }
     </div>
@@ -57,6 +74,15 @@
 
     <!-- Actions -->
     <div class="form-actions">
+      @if (testMode) {
+        <button type="button"
+                class="btn btn-ghost schedule-btn"
+                [disabled]="loading"
+                (click)="scheduleNow()"
+                title="Schedule an interview 30 seconds from now (test mode).">
+          {{ loading ? 'Scheduling…' : 'Schedule now (30 s)' }}
+        </button>
+      }
       <button type="button"
               class="btn btn-primary schedule-btn"
               [disabled]="!selectedSlot || loading"

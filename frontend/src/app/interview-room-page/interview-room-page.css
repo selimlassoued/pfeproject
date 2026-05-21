@@ -28,3 +28,44 @@
 .room-page-state.error {
     color: var(--color-text-danger);
 }
+
+/* ── Candidate lobby — waiting to be admitted ─────────────────────────── */
+.lobby-wait {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+.lobby-spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 4px solid rgba(121, 164, 233, 0.25);
+  border-top-color: #79a4e9;
+  animation: lobbySpin 0.9s linear infinite;
+  margin-bottom: 0.5rem;
+}
+@keyframes lobbySpin { to { transform: rotate(360deg); } }
+.lobby-title {
+  margin: 0;
+  font-family: var(--font-display, inherit);
+  font-size: 1.3rem;
+  color: #fffce5;
+  letter-spacing: -0.01em;
+}
+.lobby-msg {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(248, 250, 252, 0.85);
+  max-width: 32rem;
+  line-height: 1.5;
+}
+.lobby-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(248, 250, 252, 0.45);
+}

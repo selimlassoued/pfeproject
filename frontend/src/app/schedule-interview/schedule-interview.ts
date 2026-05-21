@@ -45,6 +45,15 @@ export class ScheduleInterview implements OnInit {
   minDate = '';
   selectedDate = '';
   selectedSlot: string | null = null;
+  /** Quarter-hours within an hour — interviews start at :00 / :15 / :30 / :45 only. */
+  private readonly minutesInHour = [0, 15, 30, 45];
+
+  /**
+   * Dev/test escape hatch: when on, the scheduler ignores the weekend block and
+   * the "past slot" filter so you can pick anything — including a time that has
+   * already passed (the room then opens immediately). Keep OFF for real users.
+   */
+  testMode = false;
 
   ngOnInit(): void {
     const today = new Date();
@@ -75,24 +84,85 @@ export class ScheduleInterview implements OnInit {
     return `${d.getFullYear()}-${m}-${day}`;
   }
 
-  /** The hour grid for the selected day, each tagged with its availability. */
-  get slots(): Slot[] {
+  /** All bookable quarter-hour slots for the selected day, grouped by hour. */
+  get slotsByHour(): { hour: number; quarters: Slot[] }[] {
+    // testMode bypasses the weekend block (otherwise the grid is empty on Sat/Sun).
     if (!this.selectedDate) return [];
+    if (this.isWeekend && !this.testMode) return [];
     const now = Date.now();
-    return this.hours.map(h => {
-      const hh = `${h}`.padStart(2, '0');
-      const dt = new Date(`${this.selectedDate}T${hh}:00:00`).getTime();
-      let state: Slot['state'] = 'free';
-      if (dt < now) {
-        state = 'past';
-      } else {
-        const r = this.busyRecruiter.some(t => Math.abs(t - dt) < ScheduleInterview.GAP_MS);
-        const c = this.busyCandidate.some(t => Math.abs(t - dt) < ScheduleInterview.GAP_MS);
-        if (r && c) state = 'both';
-        else if (r) state = 'recruiter';
-        else if (c) state = 'candidate';
-      }
-      return { time: `${hh}:00`, state };
+    const rows = this.hours.map(h => {
+      const quarters: Slot[] = this.minutesInHour.map(m => {
+        const hh = String(h).padStart(2, '0');
+        const mm = String(m).padStart(2, '0');
+        const dt = new Date(`${this.selectedDate}T${hh}:${mm}:00`).getTime();
+        let state: Slot['state'] = 'free';
+        // In test mode, past slots stay 'free' so they can be picked — picking
+        // a past time means the interview room opens immediately on entry.
+        if (dt < now && !this.testMode) {
+          state = 'past';
+        } else {
+          const r = this.busyRecruiter.some(t => Math.abs(t - dt) < ScheduleInterview.GAP_MS);
+          const c = this.busyCandidate.some(t => Math.abs(t - dt) < ScheduleInterview.GAP_MS);
+          if (r && c) state = 'both';
+          else if (r) state = 'recruiter';
+          else if (c) state = 'candidate';
+        }
+        return { time: `${hh}:${mm}`, state };
+      });
+      return { hour: h, quarters };
+    });
+    // Drop hours where every quarter has already passed — keeps the grid compact.
+    // In test mode we leave them, since past slots are now legitimately pickable.
+    return this.testMode
+      ? rows
+      : rows.filter(r => r.quarters.some(q => q.state !== 'past'));
+  }
+
+  /** Interviews are weekdays only — Saturday and Sunday are off-limits. */
+  get isWeekend(): boolean {
+    if (!this.selectedDate) return false;
+    const day = new Date(this.selectedDate).getDay();
+    return day === 0 || day === 6;
+  }
+
+  get dateError(): string {
+    if (!this.selectedDate) return '';
+    if (this.isWeekend && !this.testMode) return "Interviews can't be scheduled on weekends — pick a weekday.";
+    return '';
+  }
+
+  /**
+   * Test-mode shortcut — schedule an interview 30 s from now. The auto-start
+   * countdown then runs out almost immediately, dropping straight into Jitsi
+   * without having to pick a date / slot manually.
+   */
+  scheduleNow(): void {
+    if (this.loading) return;
+    this.loading = true;
+    this.error = '';
+    const at = new Date(Date.now() + 30_000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const scheduledAt =
+      `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}` +
+      `T${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}`;
+    this.interviewService.schedule({
+      applicationId: this.applicationId,
+      jobId: this.jobId,
+      jobTitle: this.jobTitle,
+      recruiterId: this.recruiterId,
+      candidateId: this.candidateId,
+      candidateEmail: this.candidateEmail,
+      recruiterEmail: this.recruiterEmail,
+      scheduledAt,
+      recordingConsent: false,
+    }).subscribe({
+      next: (interview) => { this.loading = false; this.scheduled.emit(interview); },
+      error: (err) => {
+        this.loading = false;
+        this.error = err?.error?.message
+          || 'Failed to schedule interview. Please try again.';
+        console.error(err);
+      },
     });
   }
 

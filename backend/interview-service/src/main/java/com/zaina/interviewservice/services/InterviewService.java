@@ -266,6 +266,22 @@ public class InterviewService {
         eventPublisher.publish("notify.interview", evt);
     }
 
+    /**
+     * The organiser (or an admin) admits the waiting candidate — the candidate's
+     * waiting page polls this flag and forwards them into the Jitsi room.
+     */
+    @Transactional
+    public InterviewResponse admitCandidate(UUID interviewId, UUID requesterId, boolean admin) {
+        Interview interview = findById(interviewId);
+        if (!admin && (requesterId == null
+                || !requesterId.equals(interview.getRecruiterId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Only the recruiter who scheduled this interview can admit the candidate.");
+        }
+        interview.setCandidateAdmitted(true);
+        return toResponse(interviewRepo.save(interview));
+    }
+
     /** Revoke a previously invited recruiter. */
     @Transactional
     public InterviewResponse uninviteRecruiter(UUID interviewId, UUID recruiterId) {
@@ -330,6 +346,7 @@ public class InterviewService {
                 .status(i.getStatus())
                 .createdAt(i.getCreatedAt())
                 .invitedRecruiterIds(i.getInvitedRecruiterIds())
+                .candidateAdmitted(i.getCandidateAdmitted())
                 .build();
     }
 
