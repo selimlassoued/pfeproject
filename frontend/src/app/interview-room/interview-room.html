@@ -75,6 +75,21 @@
        : 'Observer — watch only' }}
   </span>
 
+  <!--
+    Our own mute button. We removed Jitsi's microphone toolbar button
+    because its click handler was unreliable (clicks frequently failed
+    to register). This button calls toggleMute() which atomically flips
+    the MediaRecorder track AND mirrors the state to Jitsi.
+  -->
+  <button *ngIf="isRecording && role !== 'observer'"
+          type="button"
+          class="btn mic-toggle"
+          [class.muted]="jitsiMuted"
+          (click)="toggleMute()">
+    <span class="mic-icon">{{ jitsiMuted ? '🔇' : '🎙️' }}</span>
+    {{ jitsiMuted ? 'Unmute mic' : 'Mute mic' }}
+  </button>
+
   <!-- Manual end button — always visible while recording -->
   <button *ngIf="isRecording" class="btn btn-stop" (click)="stopRecording()">
     End &amp; Save

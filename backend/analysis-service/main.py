@@ -285,6 +285,20 @@ def _is_hallucination(text: str) -> bool:
         most_common = max(set(words), key=words.count)
         if words.count(most_common) / len(words) >= 0.8:
             return True
+    # Phrase-level loop. Whisper sometimes locks onto a multi-word phrase
+    # ("In Java, the difference between equals and double equals operator is
+    # called a double") and repeats it three or more times in a row on quiet
+    # audio. The single-word checks above miss this because vocabulary is
+    # diverse — but the *phrase* is identical each time. Detect by scanning
+    # n-grams of length 4..8 and flagging if the same n-gram appears ≥ 3 times.
+    if len(words) >= 16:
+        for n in (4, 5, 6, 7, 8):
+            seen: dict[tuple, int] = {}
+            for i in range(len(words) - n + 1):
+                gram = tuple(words[i:i + n])
+                seen[gram] = seen.get(gram, 0) + 1
+                if seen[gram] >= 3:
+                    return True
     return False
 
 
@@ -541,6 +555,29 @@ _PRONOUN_RE = re.compile(
 )
 
 
+# Discourse markers that almost always signal the START of a new answer
+# (the candidate replying to the recruiter, or vice-versa). When the very
+# next segment after a speaker switch begins with one of these, it is NOT a
+# continuation of the previous utterance — it is a fresh turn, even if
+# Whisper omitted terminal punctuation on the previous segment.
+_ANSWER_OPENERS_RE = re.compile(
+    r"^\s*(sure|yes|yeah|yep|nope|no|ok|okay|right|well|so|great|exactly|"
+    r"absolutely|definitely|of course|sure thing|good question|let me)"
+    r"[\s,.:;!?-]",
+    re.IGNORECASE,
+)
+
+# Phrases that almost only appear as the START of an interview question.
+# A segment beginning with one of these is the recruiter opening a new
+# question, not a fragment continuing the candidate's previous sentence.
+_QUESTION_OPENERS_RE = re.compile(
+    r"^\s*(quick technical question|tell me|what is|what's|how do you|"
+    r"how would you|how did you|can you|could you|would you|why did you|"
+    r"why do you|do you|describe|explain)\b",
+    re.IGNORECASE,
+)
+
+
 def _absorb_continuation_fragments(segs: list[dict]) -> int:
     """Re-attribute mid-sentence continuation fragments to the previous speaker.
 
@@ -562,7 +599,13 @@ def _absorb_continuation_fragments(segs: list[dict]) -> int:
         if seg.get("speaker") == prev.get("speaker"):
             continue
         gap = seg["start"] - prev["end"]
-        if gap > 2.0:
+        # Overlapping segments (gap < 0) are CONCURRENT, not consecutive.
+        # Two speakers talking at the same time are not a single utterance
+        # split across segments — they are two different people. Absorbing
+        # across an overlap is exactly the mistake that put the candidate's
+        # "Sure, the double equals operator..." answer onto the recruiter
+        # line in solo-test recordings.
+        if gap < 0 or gap > 2.0:
             continue
         prev_text = prev["text"].rstrip()
         # Previous must end mid-sentence — terminal punctuation blocks absorption.
@@ -577,6 +620,13 @@ def _absorb_continuation_fragments(segs: list[dict]) -> int:
             continue
         # First/second person pronouns are strong speaker signals — skip.
         if _PRONOUN_RE.search(text):
+            continue
+        # Answer-opening discourse markers ("Sure", "Yes", "Well", …) signal
+        # a fresh turn from the OTHER speaker, not a continuation.
+        if _ANSWER_OPENERS_RE.match(text):
+            continue
+        # Phrases that open a new interview question — also a fresh turn.
+        if _QUESTION_OPENERS_RE.match(text):
             continue
         old_spk = seg["speaker"]
         seg["speaker"] = prev["speaker"]
@@ -695,6 +745,48 @@ def _merge_segments(
             merged[-1]["end"]   = seg["end"]
         else:
             merged.append(dict(seg))
+
+    # Second-pass merge: collapse A → B → A patterns where Whisper's
+    # predicted timestamps interleaved one speaker's continuous turn with
+    # the other speaker's segment. We only merge when:
+    #   - The first A segment ends WITHOUT terminal punctuation (it's an
+    #     incomplete sentence — strong evidence Whisper split a continuous
+    #     utterance, not that the speaker stopped).
+    #   - The two A segments are within INTERLEAVED_MERGE_GAP seconds of
+    #     each other (ignoring B's duration in between).
+    # The B segment stays in its original position; we just stop displaying
+    # the same speaker as two separate lines around it.
+    INTERLEAVED_MERGE_GAP = 15.0
+    collapsed: list[dict] = []
+    i = 0
+    while i < len(merged):
+        if (i + 2 < len(merged)
+                and merged[i]["speaker"] == merged[i + 2]["speaker"]
+                and merged[i + 1]["speaker"] != merged[i]["speaker"]
+                and merged[i + 2]["start"] - merged[i]["end"] < INTERLEAVED_MERGE_GAP
+                and not merged[i]["text"].rstrip().endswith((".", "?", "!"))):
+            a_merged = dict(merged[i])
+            trimmed = _trim_boundary_overlap(
+                merged[i]["text"], merged[i + 2]["text"],
+            )
+            a_merged["text"] = (
+                (trimmed + " " + merged[i + 2]["text"]).strip()
+                if trimmed else merged[i + 2]["text"]
+            )
+            a_merged["end"] = merged[i + 2]["end"]
+            log.info(
+                "Interleaved merge: same-speaker %s [@%.1fs] + [@%.1fs] "
+                "(B=%s between) → one line",
+                merged[i]["speaker"], merged[i]["start"], merged[i + 2]["start"],
+                merged[i + 1]["speaker"],
+            )
+            collapsed.append(a_merged)
+            collapsed.append(merged[i + 1])
+            i += 3
+        else:
+            collapsed.append(merged[i])
+            i += 1
+    merged = collapsed
 
     # Post-process: fix Whisper's misspellings of technical proper nouns.
     corrections = correct_segments(merged)

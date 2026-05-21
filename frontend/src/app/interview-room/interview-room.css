@@ -231,6 +231,27 @@
   font-weight: 600;
 }
 
+/* Our own reliable mute toggle — replaces Jitsi's flaky toolbar button.
+   Two clearly distinct colors so the user can verify at a glance that
+   their click registered. */
+.mic-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #2f855a;          /* green = mic is live, capturing */
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 120ms ease;
+}
+.mic-toggle:hover       { background: #276749; }
+.mic-toggle.muted       { background: #c53030; }  /* red = mic is silenced */
+.mic-toggle.muted:hover { background: #9b2c2c; }
+.mic-toggle .mic-icon   { font-size: 16px; }
+
 .rec-dot {
   color: #e53e3e;
   font-weight: 700;

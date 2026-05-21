@@ -36,6 +36,7 @@ WHY THE HYBRID SCORING
 
 from __future__ import annotations
 import logging
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -43,6 +44,19 @@ from pathlib import Path
 import numpy as np
 
 log = logging.getLogger("analysis")
+
+# Confidence below which an attribution decision is too uncertain to flip a
+# segment across speakers. Empirically, conf is capped at 5.0 in `_attribute()`
+# when one mic is fully silent (RMS = 0) — and only that case is reliably
+# correct in solo-test recordings. Any conf in 1.0–4.x is essentially a
+# coin-flip when both mics share the same physical input, and a wrong re-label
+# can drag legitimate speech onto the other speaker where dedup deletes it
+# (observed at conf=3.33 in testing: a recruiter intro was moved to candidate
+# and then erased). Setting the floor at 5.0 means re-labels happen only when
+# one side is truly silent — which is when they are actually safe.
+# In a real two-mic interview, true bleed scores well above 5.0 on the strong
+# mic, so legitimate cross-mic moves still pass.
+RELABEL_CONF_MIN = float(os.getenv("RELABEL_CONF_MIN", "5.0"))
 
 try:
     import librosa
@@ -288,6 +302,35 @@ def _dedupe(segments: list[dict], speaker: str, min_overlap: float = 0.5) -> lis
     return other + out
 
 
+def _word_jaccard(a: str, b: str) -> float:
+    """Jaccard similarity over lowercased word sets — cheap, no extra deps.
+    Used to confirm two segments actually share words before treating them
+    as cross-speaker duplicates (Whisper segment timestamps drift, so time
+    overlap alone is not proof of duplication)."""
+    wa = {w.strip(".,!?;:'\"").lower() for w in a.split() if len(w) > 1}
+    wb = {w.strip(".,!?;:'\"").lower() for w in b.split() if len(w) > 1}
+    if not (wa and wb):
+        return 0.0
+    return len(wa & wb) / len(wa | wb)
+
+
+def _time_gap(a: dict, b: dict) -> float:
+    """Seconds between two segments. 0 if they overlap."""
+    if a["end"] < b["start"]:
+        return b["start"] - a["end"]
+    if b["end"] < a["start"]:
+        return a["start"] - b["end"]
+    return 0.0
+
+
+# When mute-toggle lag puts the same utterance on both files at slightly
+# different timestamps (common in solo-test recordings), time overlap is zero
+# but content is duplicated. This window lets cross-dedup catch those cases
+# while staying conservative on words that just happen to repeat far apart.
+_CROSS_NEAR_DUP_TIME_WINDOW = 15.0
+_CROSS_NEAR_DUP_SIM_THRESHOLD = 0.6
+
+
 def _cross_dedup(pool: list[dict], min_overlap: float = 1.0) -> list[dict]:
     """Remove cross-speaker echoes.
 
@@ -303,7 +346,31 @@ def _cross_dedup(pool: list[dict], min_overlap: float = 1.0) -> list[dict]:
 
     for r in recruiters:
         for c in candidates:
-            if _overlap_seconds(r, c) < min_overlap:
+            # Two paths to "this is the same utterance":
+            #
+            #  (a) time-overlap path: their Whisper segment timestamps overlap
+            #      by >= min_overlap seconds AND the words agree. Catches the
+            #      classic two-mic echo case (both mics heard the same voice
+            #      at the same instant).
+            #
+            #  (b) near-duplicate text path: they don't overlap in time, but
+            #      they happen within _CROSS_NEAR_DUP_TIME_WINDOW seconds of
+            #      each other AND the words agree. Catches the solo-test
+            #      mute-lag case where the same utterance lands on both files
+            #      at slightly different timestamps because the user toggled
+            #      mute a couple seconds late.
+            #
+            # The text-similarity check is the safety net that prevents
+            # consecutive but different turns (recruiter question @17s vs
+            # candidate answer @18s) from being mistaken for duplicates.
+            sim = _word_jaccard(r.get("text", ""), c.get("text", ""))
+            time_dup = _overlap_seconds(r, c) >= min_overlap and sim >= 0.6
+            text_dup = (
+                not time_dup
+                and _time_gap(r, c) <= _CROSS_NEAR_DUP_TIME_WINDOW
+                and sim >= _CROSS_NEAR_DUP_SIM_THRESHOLD
+            )
+            if not (time_dup or text_dup):
                 continue
             r_cs = _content_score(r)
             c_cs = _content_score(c)
@@ -410,7 +477,7 @@ def arbitrate_by_energy(
         new["_source_file"] = "recruiter"
         if own_is:
             new["speaker"] = "recruiter"
-        else:
+        elif conf >= RELABEL_CONF_MIN:
             new["speaker"] = "candidate"
             relabel_r_to_c += 1
             log.info(
@@ -418,6 +485,18 @@ def arbitrate_by_energy(
                 "rms=%.2f sr=%.2f conf=%.2f",
                 seg["start"], seg["end"], seg["text"][:50],
                 info.get("rms_ratio", 0), info.get("sr_ratio", 0), conf,
+            )
+        else:
+            # Attribution leans toward bleed but confidence is too weak to
+            # flip a speaker label. Trust the source track — downstream
+            # cross-dedup will still collapse genuine duplicates.
+            new["speaker"] = "recruiter"
+            log.info(
+                "Low-conf attribution — keep on recruiter [@%.1f–%.1fs] %r  "
+                "rms=%.2f sr=%.2f conf=%.2f (< %.2f)",
+                seg["start"], seg["end"], seg["text"][:50],
+                info.get("rms_ratio", 0), info.get("sr_ratio", 0),
+                conf, RELABEL_CONF_MIN,
             )
         pool.append(new)
 
@@ -435,7 +514,7 @@ def arbitrate_by_energy(
         new["_source_file"] = "candidate"
         if own_is:
             new["speaker"] = "candidate"
-        else:
+        elif conf >= RELABEL_CONF_MIN:
             new["speaker"] = "recruiter"
             relabel_c_to_r += 1
             log.info(
@@ -443,6 +522,16 @@ def arbitrate_by_energy(
                 "rms=%.2f sr=%.2f conf=%.2f",
                 seg["start"], seg["end"], seg["text"][:50],
                 info.get("rms_ratio", 0), info.get("sr_ratio", 0), conf,
+            )
+        else:
+            # Symmetric to recruiter side — trust source on uncertain calls.
+            new["speaker"] = "candidate"
+            log.info(
+                "Low-conf attribution — keep on candidate [@%.1f–%.1fs] %r  "
+                "rms=%.2f sr=%.2f conf=%.2f (< %.2f)",
+                seg["start"], seg["end"], seg["text"][:50],
+                info.get("rms_ratio", 0), info.get("sr_ratio", 0),
+                conf, RELABEL_CONF_MIN,
             )
         pool.append(new)
 

@@ -56,11 +56,16 @@ export class InterviewRoom implements OnInit, OnDestroy {
   private stopTimer: any = null;
   private countdownTimer: any = null;
   private joinedAt: number = 0;
-  // Authoritative state of the Jitsi mic. The recorded .webm follows this
-  // directly: muted in the toolbar → silence in the file, unmuted → captured.
-  // This matches the user's mental model from Zoom/Teams/Meet — the mic
-  // button is the visible control of "is my audio being captured."
-  private jitsiMuted = false;
+  // Cached mute state. Updated on the audioMuteStatusChanged event AND polled
+  // periodically — the event fires reliably only on the FIRST click that
+  // actually flips the toolbar; subsequent rapid clicks (which users do when
+  // the button "doesn't respond") can miss the event entirely. Public so the
+  // template can bind the mic-toggle button label/icon to it.
+  //
+  // Initialised in ngOnInit once the @Input() role is bound — the candidate
+  // and observer join MUTED, the recruiter joins UNMUTED to greet.
+  jitsiMuted = false;
+  private muteSyncTimer: any = null;
 
   constructor(
     private interviewService: InterviewService,
@@ -69,16 +74,80 @@ export class InterviewRoom implements OnInit, OnDestroy {
 
   ngOnInit() {
     if (!this.roomUrl || !this.interviewId) { this.state = 'error'; return; }
+    // Initialise mute state per role: candidate and observer start muted so
+    // the candidate's mic does NOT capture the recruiter's opening greeting
+    // before the candidate takes their first turn. This eliminates the
+    // "both tabs unmuted at start of call" leak that caused cross-mixing in
+    // the very first transcript line.
+    this.jitsiMuted = this.role !== 'recruiter';
     this.scheduleAutoStart();
     window.addEventListener('beforeunload', this.onBeforeUnload);
   }
 
 /**
- * Single point of truth for whether the MediaRecorder's audio track is live.
- * The recording follows the Jitsi mic button: when the participant mutes
- * themselves in the toolbar, the .webm receives digital silence; when they
- * unmute, capture resumes. This matches the universal video-call mental
- * model (Zoom/Teams/Meet) and is what a jury or a real interviewer expects.
+ * User-facing mic toggle. Driven by our own button in the recording bar
+ * (we removed Jitsi's microphone toolbar button because its click handler
+ * was unreliable). One click does three things atomically:
+ *
+ *   1. Flip our cached state — UI updates instantly
+ *   2. Apply the new state to the MediaRecorder track — .webm starts
+ *      capturing or going silent on the very next encoded frame
+ *   3. Tell Jitsi to mirror the same state — other call participants
+ *      hear or stop hearing us in line with the recording
+ *
+ * The 500ms polling below is now a passive safety-net that resyncs if
+ * something else changes Jitsi's state out-of-band.
+ */
+async toggleMute() {
+  // Diagnostic logging: every click should produce a paired BEFORE/AFTER
+  // entry in the browser console with timestamps. If a click appears to
+  // "do nothing", the entries will reveal whether (a) toggleMute was even
+  // invoked, (b) the track state actually flipped, or (c) Jitsi's mirror
+  // failed.
+  const role = this.role;
+  const t0 = performance.now().toFixed(0);
+  if (!this.micStream) {
+    console.warn(`[MUTE/${role}/${t0}] toggleMute: NO micStream — click ignored`);
+    return;
+  }
+  const tracksBefore = this.micStream.getAudioTracks().map(t => t.enabled);
+  const newMuted = !this.jitsiMuted;
+  console.log(
+    `[MUTE/${role}/${t0}] toggleMute click. wasMuted=${this.jitsiMuted} ` +
+    `→ newMuted=${newMuted}. tracks.enabled before=${JSON.stringify(tracksBefore)}`,
+  );
+  this.jitsiMuted = newMuted;
+  this.micStream.getAudioTracks().forEach(t => { t.enabled = !newMuted; });
+  const tracksAfter = this.micStream.getAudioTracks().map(t => t.enabled);
+  console.log(
+    `[MUTE/${role}/${t0}] tracks.enabled after=${JSON.stringify(tracksAfter)} ` +
+    `(expected ${!newMuted})`,
+  );
+  // Mirror to Jitsi so other participants' incoming audio matches what
+  // the recording is doing. executeCommand is more reliable than the
+  // toolbar button click — it does not depend on iframe focus or DOM
+  // event delivery.
+  try {
+    const jitsiMuted = await this.jitsiApi?.isAudioMuted();
+    console.log(
+      `[MUTE/${role}/${t0}] jitsi reports muted=${jitsiMuted}. ` +
+      `${jitsiMuted !== newMuted ? 'CALLING toggleAudio to sync' : 'already in sync'}`,
+    );
+    if (jitsiMuted !== newMuted) {
+      this.jitsiApi?.executeCommand('toggleAudio');
+    }
+  } catch (e) {
+    console.warn(`[MUTE/${role}/${t0}] jitsi mirror failed:`, e);
+    // If Jitsi mirror fails the recording still respects newMuted —
+    // the call audio just won't follow, which is the lesser problem.
+  }
+}
+
+/**
+ * Apply our cached mute state to the MediaRecorder track. Called once at
+ * recording start to enforce the initial role-based mute state. The user-
+ * facing path (toggleMute() above) updates the track directly without
+ * going through here — so there is NO async Jitsi query that could race.
  */
 private applyMicGating() {
   if (!this.micStream) return;
@@ -114,6 +183,7 @@ private onBeforeUnload = () => {
   ngOnDestroy() {
     window.removeEventListener('beforeunload', this.onBeforeUnload);
     clearInterval(this.countdownTimer);
+    clearInterval(this.muteSyncTimer);
     clearTimeout(this.stopTimer);
     if (this.isRecording) this.stopRecording();
     this.jitsiApi?.dispose();
@@ -209,7 +279,12 @@ private onBeforeUnload = () => {
         // Cleaner meeting title than the room slug.
         subject: this.jobTitle || 'Interview',
         // Observers join muted; the missing toolbar buttons mean they can't unmute.
-        startWithAudioMuted: observer,
+        // The recruiter greets first, so they join unmuted. The candidate
+        // (and observers) join MUTED so the candidate's mic doesn't capture
+        // any of the recruiter's opening greeting before the candidate
+        // takes their first turn — that "dual-unmute window at start of
+        // call" was the source of cross-mixing in the opening turn.
+        startWithAudioMuted: this.role !== 'recruiter',
         // Camera on for recruiter & candidate, off for observers.
         startWithVideoMuted: observer,
         disableDeepLinking: true,
@@ -228,9 +303,15 @@ private onBeforeUnload = () => {
         MOBILE_APP_PROMO: false,
         DISPLAY_WELCOME_PAGE_CONTENT: false,
         DISPLAY_WELCOME_FOOTER: false,
+        // The 'microphone' button is intentionally removed — the Jitsi
+        // iframe's mute button is unreliable (clicks frequently fail to
+        // register, leaving us unable to detect the true state). We
+        // replace it with our own toggleMute() button below the iframe
+        // that drives both the call audio (via executeCommand toggleAudio)
+        // and our MediaRecorder track in lockstep.
         TOOLBAR_BUTTONS: observer
           ? ['hangup', 'chat']
-          : ['microphone', 'camera', 'hangup', 'chat', 'desktop'],
+          : ['camera', 'hangup', 'chat', 'desktop'],
       },
     });
 
@@ -256,6 +337,11 @@ private onBeforeUnload = () => {
     // the .webm uploaded to the analysis service), so clicking the toolbar
     // mute would only silence the call audio without this bridge.
     this.jitsiApi.on('audioMuteStatusChanged', (e: { muted: boolean }) => {
+      const ts = performance.now().toFixed(0);
+      console.log(
+        `[MUTE/${this.role}/${ts}] jitsi event audioMuteStatusChanged ` +
+        `muted=${e?.muted}. (cached jitsiMuted before=${this.jitsiMuted})`,
+      );
       this.jitsiMuted = !!e?.muted;
       this.applyMicGating();
     });
@@ -287,10 +373,13 @@ private onBeforeUnload = () => {
       video: false,
     });
 
-    // Enforce the initial gating: tracks default to enabled after
-    // getUserMedia, but if the window isn't focused or Jitsi was started
-    // muted, we want the .webm to be silent until the user explicitly
-    // takes focus / unmutes.
+    // Apply the initial mute state — we don't poll continuously anymore
+    // because our toggleMute() button is the SOLE control of the mic now
+    // (Jitsi's flaky button was removed from the toolbar). A periodic
+    // poll racing with our own click handler caused a ~100ms window where
+    // the click was registered locally but Jitsi hadn't finished
+    // processing the matching executeCommand, so polling read a stale
+    // "not muted" value and undid the mute, leaking audio.
     this.applyMicGating();
 
     // Each side records only its own mic, under its own role.

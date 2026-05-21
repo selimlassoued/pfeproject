@@ -379,7 +379,7 @@ services:
       # Set WHISPER_MODEL=large-v3 for best technical-term accuracy (slower on
       # CPU, larger memory footprint). Falls back to medium if the primary
       # fails to load.
-      - WHISPER_MODEL=${WHISPER_MODEL:-medium}
+      - WHISPER_MODEL=${WHISPER_MODEL:-large-v3}
       - WHISPER_FALLBACK_MODEL=medium
       - WHISPER_LANGUAGE=en
       - OLLAMA_BASE=http://ollama:11434
