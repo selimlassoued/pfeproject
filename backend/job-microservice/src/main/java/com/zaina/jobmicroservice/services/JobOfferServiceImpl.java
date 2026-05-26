@@ -52,6 +52,7 @@ public class JobOfferServiceImpl implements JobOfferService {
                 j.getDescription(),
                 j.getLocation(),
                 j.getWorkArrangement(),
+                j.getDomain(),
                 j.getMinSalary(),
                 j.getMaxSalary(),
                 j.getOpenings(),
@@ -64,7 +65,8 @@ public class JobOfferServiceImpl implements JobOfferService {
                 j.getSeniorityWeight(),
                 j.getRequirements() == null
                         ? List.of()
-                        : j.getRequirements().stream().map(JobOfferServiceImpl::toDtoReq).toList()
+                        : j.getRequirements().stream().map(JobOfferServiceImpl::toDtoReq).toList(),
+                j.getCreatedAt()
         );
     }
 
@@ -125,6 +127,7 @@ public class JobOfferServiceImpl implements JobOfferService {
                 .description(dto.getDescription())
                 .location(dto.getLocation())
                 .workArrangement(dto.getWorkArrangement())
+                .domain(dto.getDomain())
                 .minSalary(dto.getMinSalary())
                 .maxSalary(dto.getMaxSalary())
                 .openings(dto.getOpenings() == null || dto.getOpenings() < 1 ? 1 : dto.getOpenings())
@@ -209,6 +212,7 @@ public class JobOfferServiceImpl implements JobOfferService {
         existing.setDescription(dto.getDescription());
         existing.setLocation(dto.getLocation());
         existing.setWorkArrangement(dto.getWorkArrangement());
+        existing.setDomain(dto.getDomain());
         existing.setMinSalary(dto.getMinSalary());
         existing.setMaxSalary(dto.getMaxSalary());
         // A closed job cannot be reopened — create a new job instead

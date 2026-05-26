@@ -285,6 +285,20 @@
                     <div class="ad-rank-badge">#{{ rank }} of {{ rankTotal }} applicants</div>
                   }
                 </div>
+
+                <!-- Non-scoring advisory banners (distance, identity mismatch).
+                     These never affect the job_fit_score; they tell the recruiter
+                     something they should clarify before the interview. -->
+                @if (app.warnings?.length) {
+                  <div class="ad-warnings">
+                    @for (w of app.warnings; track w.kind + w.message) {
+                      <div class="ad-warning" [class.ad-warning-info]="w.severity === 'info'">
+                        <span class="ad-warning-icon">⚠</span>
+                        <span class="ad-warning-msg">{{ w.message }}</span>
+                      </div>
+                    }
+                  </div>
+                }
                 @if (app.scoreExplanation) {
                   <div class="ad-score-explanation">{{ app.scoreExplanation }}</div>
                 }

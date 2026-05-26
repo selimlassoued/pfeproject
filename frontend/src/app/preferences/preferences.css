@@ -9,6 +9,52 @@
   flex-wrap: wrap;
 }
 
+/* Subtle auto-save status indicator — replaces the old "Save preferences"
+   button. Only renders when there's something to say (saving in progress or
+   an error). Idle state is invisible, keeps the header clean. */
+.pref-save-indicator {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.6rem;
+}
+.pref-save-indicator--saving {
+  color: rgba(121, 164, 233, 0.9);
+}
+.pref-save-indicator--saving::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(121, 164, 233, 0.3);
+  border-top-color: rgba(121, 164, 233, 0.9);
+  animation: pref-spin 0.8s linear infinite;
+}
+.pref-save-indicator--error {
+  color: rgba(255, 130, 130, 0.95);
+}
+.pref-save-indicator--error::before {
+  content: '!';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.8);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.7rem;
+}
+@keyframes pref-spin {
+  to { transform: rotate(360deg); }
+}
+
 .pref-title {
   margin-top: var(--space-3);
   font-size: clamp(1.8rem, 2.2vw, 2.2rem);
@@ -83,6 +129,45 @@
 .skill-chip:hover { border-color: rgba(121,164,233,0.45); color: #fff; }
 .skill-chip--selected { background: rgba(121,164,233,0.18); border-color: var(--color-secondary); color: #fff; }
 
+/* Catalog overlays on top of the base chip:
+   • --in-demand → currently mentioned by ≥1 PUBLISHED job. Subtle orange
+                   border + hover tooltip carry the signal. No badge text —
+                   the recruiter cares more about the count, candidates just
+                   need to see "this is currently sought after".
+   • --new       → first appeared since the candidate's last visit. Has
+                   a small "NEW" text badge in the corner of the chip.
+   Both can coexist; selected chips still show the blue background. */
+.skill-chip--in-demand {
+  border-color: rgba(220, 140, 70, 0.55);
+}
+.skill-chip--in-demand:hover {
+  border-color: rgba(220, 140, 70, 0.85);
+}
+.skill-chip--new {
+  border-color: rgba(228, 184, 60, 0.75);
+  box-shadow: 0 0 0 1px rgba(228, 184, 60, 0.18);
+  padding-right: 0.6rem;  /* room for the badge */
+}
+.skill-chip--in-demand.skill-chip--new {
+  border-color: rgba(228, 184, 60, 0.85);
+}
+
+/* Small text badge for NEW items — sits inline at the end of the chip
+   label, gold-toned but muted enough to feel professional. */
+.chip-new-tag {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  margin-left: 0.35rem;
+  border-radius: 4px;
+  background: rgba(228, 184, 60, 0.22);
+  color: rgba(255, 220, 140, 0.96);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
 .skill-rank {
   display: inline-flex;
   align-items: center;
@@ -148,6 +233,18 @@
 }
 
 .form-group label { display: block; margin-bottom: 0.55rem; font-weight: 700; color: rgba(255,255,255,0.92); }
+
+/* Inline helper text under a form field — used for guidance like
+   "pick the most recent degree". Visually subordinate to the label and
+   never as loud as an error/status message. */
+.field-hint {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
 .input { height: 44px; }
 .input:focus { border-color: var(--color-secondary); box-shadow: 0 0 0 3px rgba(121,164,233,0.30); }
 
@@ -159,6 +256,8 @@ select.input {
   padding-right: 36px;
   cursor: pointer;
 }
+/* color-scheme + option theming live in global styles.css — applies to every
+   <select> in the app, no per-page duplication needed. */
 
 .status { border-radius: 14px; padding: 0.95rem 1rem; border: 1px solid var(--color-border); background: rgba(255,255,255,0.05); margin-bottom: var(--space-6); }
 .status--info    { background: rgba(121,164,233,0.10); }

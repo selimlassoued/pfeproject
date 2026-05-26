@@ -1,0 +1,268 @@
+<section class="container catalog-page">
+
+  <!-- ── Header banner ─────────────────────────────────────────────────── -->
+  <header class="catalog-hero">
+    <div class="catalog-hero__left">
+      <div class="catalog-hero__kicker">
+        <span class="pill">Recruiter</span>
+        <span class="text-muted">Skill catalog management</span>
+      </div>
+      <h2 class="catalog-hero__title">Skills Catalog</h2>
+      <p class="catalog-hero__sub">
+        The universe of skills candidates can declare on their Preferences page.
+        Auto-populated from your job postings — you can pre-add skills, fix typos,
+        or re-classify domains. Removing a skill never touches candidate profiles
+        that already declared it.
+      </p>
+    </div>
+
+    <!-- Stat cards — small KPI strip on the right of the hero. Each card is
+         a single number with a label below. Updates live as the catalog
+         changes (no separate fetch). -->
+    @if (!loading) {
+      <div class="catalog-stats">
+        <div class="catalog-stat">
+          <div class="catalog-stat__value">{{ totalSkillsCount }}</div>
+          <div class="catalog-stat__label">Total skills</div>
+        </div>
+        <div class="catalog-stat catalog-stat--demand">
+          <div class="catalog-stat__value">{{ inDemandCount }}</div>
+          <div class="catalog-stat__label">In demand</div>
+        </div>
+        <div class="catalog-stat catalog-stat--universal">
+          <div class="catalog-stat__value">{{ universalCount }}</div>
+          <div class="catalog-stat__label">Universal</div>
+        </div>
+        <div class="catalog-stat catalog-stat--manual">
+          <div class="catalog-stat__value">{{ manualCount }}</div>
+          <div class="catalog-stat__label">Manually added</div>
+        </div>
+      </div>
+    }
+  </header>
+
+  <!-- ── Add / search bar ──────────────────────────────────────────────── -->
+  <div class="catalog-add">
+    <div class="catalog-add__search">
+      <svg class="catalog-add__icon" viewBox="0 0 24 24" width="20" height="20"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"></circle>
+        <line x1="21" y1="21" x2="16.5" y2="16.5"></line>
+      </svg>
+      <input class="catalog-add__input" type="text"
+             placeholder="Search the catalog or type a new skill (e.g. Kafka, Confluence)…"
+             [(ngModel)]="newSkillInput"
+             (ngModelChange)="onInputChange()"
+             (keyup.enter)="addSkill()"
+             [disabled]="saving" />
+      <button class="catalog-add__btn"
+              (click)="addSkill()"
+              [disabled]="saving || !newSkillInput.trim()">
+        {{ saving ? 'Adding…' : 'Add to catalog' }}
+      </button>
+    </div>
+
+    <!-- Live status under the input — tells the recruiter exactly what
+         happens if they hit Enter right now. -->
+    @if (newSkillInput.trim()) {
+      @if (isDuplicate) {
+        <p class="catalog-status catalog-status--duplicate">
+          "{{ newSkillInput.trim() }}" already exists in the catalog — see the table below.
+        </p>
+      } @else {
+        <p class="catalog-status catalog-status--new">
+          "{{ newSkillInput.trim() }}" is new — pressing Enter will add it to the catalog.
+        </p>
+      }
+    }
+
+    <!-- Domain filter pills — clicking toggles. Same checked-set is used to
+         (a) filter the table and (b) tag a new skill on Add. Visually pill-
+         shaped now so they read as filters, not form controls. -->
+    <div class="catalog-domain-filter">
+      <span class="catalog-domain-filter__label">Domain:</span>
+      <button type="button"
+              class="domain-pill"
+              [class.domain-pill--active]="newSkillDomains.length === 0"
+              (click)="newSkillDomains = []; onInputChange()">
+        All
+      </button>
+      @for (d of domainOptions; track d.value) {
+        <button type="button"
+                class="domain-pill"
+                [class.domain-pill--active]="isNewDomainSelected(d.value)"
+                [style.--accent]="accentFor(d.value)"
+                (click)="toggleNewDomain(d.value)">
+          {{ d.label }}
+        </button>
+      }
+    </div>
+
+    @if (newSkillDomains.length === 0 && !newSkillInput.trim()) {
+      <p class="catalog-add__hint">
+        Pick one or more domains to filter the table below. Domains you select
+        here also tag any new skill you add.
+      </p>
+    }
+    @if (newSkillDomains.length > 0 && !newSkillInput.trim()) {
+      <p class="catalog-add__hint">
+        Showing skills tagged with the selected domain(s), plus universal skills.
+      </p>
+    }
+  </div>
+
+  <!-- ── Catalog table ─────────────────────────────────────────────────── -->
+  @if (loading) {
+    <div class="catalog-empty">Loading catalog…</div>
+  } @else if (error) {
+    <div class="status status--error">{{ error }}</div>
+  } @else {
+    <div class="catalog-table-card">
+      <div class="catalog-table-card__head">
+        <h3>
+          {{ filteredSkills.length }} of {{ totalSkillsCount }} skill{{ totalSkillsCount === 1 ? '' : 's' }}
+          @if (newSkillInput.trim() || newSkillDomains.length > 0) {
+            <span class="catalog-table-card__filter-tag">
+              filtered
+              @if (newSkillInput.trim()) { · "{{ newSkillInput.trim() }}" }
+              @if (newSkillDomains.length > 0) {
+                · {{ newSkillDomains.length === 1 ? domainLabel(newSkillDomains[0]) : newSkillDomains.length + ' domains' }}
+              }
+            </span>
+          }
+        </h3>
+      </div>
+
+      @if (activeSkills.length === 0) {
+        <div class="catalog-empty">
+          <div class="catalog-empty__icon">∅</div>
+          <p class="catalog-empty__title">The catalog is empty</p>
+          <p class="catalog-empty__sub">
+            Post a job with skill requirements, or type a skill name above to pre-add one.
+          </p>
+        </div>
+      } @else if (filteredSkills.length === 0) {
+        <div class="catalog-empty">
+          <p class="catalog-empty__title">No match</p>
+          <p class="catalog-empty__sub">
+            @if (newSkillInput.trim()) {
+              No catalog skills match "{{ newSkillInput.trim() }}"@if (newSkillDomains.length > 0){ in the selected domain(s)}.
+              Press Enter to add it as a new entry.
+            } @else {
+              No catalog skills in the selected domain(s) yet.
+            }
+          </p>
+        </div>
+      } @else {
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th>Skill</th>
+              <th>Domains</th>
+              <th>Source</th>
+              <th>Demand</th>
+              <th>Added</th>
+              <th class="catalog-table__col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of pagedSkills; track item.name) {
+              <tr class="catalog-row" [class.catalog-row--in-demand]="item.currentDemandCount > 0">
+                <td>
+                  <span class="skill-name">{{ item.displayName }}</span>
+                </td>
+                <td>
+                  @if (item.domains.length === 0) {
+                    <span class="domain-chip domain-chip--universal" title="Shown to candidates in every domain">
+                      Universal
+                    </span>
+                  } @else {
+                    @for (d of item.domains; track d) {
+                      <span class="domain-chip" [style.--accent]="accentFor(d)">
+                        {{ domainLabel(d) }}
+                      </span>
+                    }
+                  }
+                </td>
+                <td>
+                  @if (item.source === 'MANUAL') {
+                    <span class="source-tag source-tag--manual" title="Added manually via this page">Manual</span>
+                  } @else {
+                    <span class="source-tag source-tag--extracted" title="Extracted from a job posting">From job</span>
+                  }
+                </td>
+                <td>
+                  @if (item.currentDemandCount > 0) {
+                    <span class="demand-badge">
+                      <span class="demand-dot"></span>
+                      {{ item.currentDemandCount }} job{{ item.currentDemandCount > 1 ? 's' : '' }}
+                    </span>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td class="mono text-muted">{{ formatDate(item.firstSeenAt) }}</td>
+                <td>
+                  <div class="catalog-row-actions">
+                    <button class="icon-btn icon-btn--edit" (click)="editSkill(item)" title="Edit domains">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                      </svg>
+                      Edit
+                    </button>
+                    <button class="icon-btn icon-btn--remove" (click)="removeSkill(item)" title="Remove from catalog">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"></path>
+                        <path d="M10 11v6M14 11v6"></path>
+                      </svg>
+                      Remove
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (totalPages > 1) {
+          <div class="catalog-pagination">
+            <button class="btn btn-ghost" type="button"
+                    (click)="previousPage()" [disabled]="currentPage === 0">
+              ← Previous
+            </button>
+            <span class="text-muted">
+              Page {{ currentPage + 1 }} of {{ totalPages }}
+            </span>
+            <button class="btn btn-ghost" type="button"
+                    (click)="nextPage()" [disabled]="currentPage >= totalPages - 1">
+              Next →
+            </button>
+          </div>
+        }
+      }
+    </div>
+
+    @if (removedNames.length > 0) {
+      <details class="catalog-removed-card">
+        <summary>
+          <span>Removed skills</span>
+          <span class="catalog-removed-card__count">{{ removedNames.length }}</span>
+        </summary>
+        <ul class="catalog-removed-list">
+          @for (name of removedNames; track name) {
+            <li>
+              <span class="catalog-removed-name">{{ name }}</span>
+              <button class="btn btn-ghost btn-sm" (click)="restoreSkill(name)">
+                Restore
+              </button>
+            </li>
+          }
+        </ul>
+      </details>
+    }
+  }
+</section>

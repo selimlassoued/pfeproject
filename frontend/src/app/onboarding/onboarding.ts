@@ -5,6 +5,9 @@ import { Router } from '@angular/router';
 import Keycloak from 'keycloak-js';
 import { KeycloakAccountService } from '../services/keycloak-account-service';
 import { CandidateProfileService, CandidateLanguage } from '../services/candidate-profile.service';
+import { LanguageOptionsService, ALWAYS_SHOWN_LANGUAGES } from '../services/language-options.service';
+import { CatalogService, CatalogItem } from '../services/catalog.service';
+import { SOFT_SKILLS } from '../services/soft-skills';
 
 const DOMAIN_SKILLS: Record<string, string[]> = {
   SOFTWARE_ENGINEERING: ['Java','Spring Boot','Angular','React','Vue.js','Python','Node.js','TypeScript','JavaScript','Docker','Kubernetes','PostgreSQL','MongoDB','SQL','Git','REST API','GraphQL','Microservices','CI/CD','Jenkins','AWS','Azure','Linux','C++','C#','.NET','Hibernate','Redis'],
@@ -15,7 +18,9 @@ const DOMAIN_SKILLS: Record<string, string[]> = {
   BUSINESS_ANALYSIS: ['Requirements Analysis','UML','BPMN','Use Cases','Wireframing','SQL','Stakeholder Management','Process Modeling','Agile','JIRA','Confluence','Power BI'],
 };
 
-const SOFT_SKILLS = ['Communication','Leadership','Teamwork','Problem Solving','Time Management','Adaptability','Critical Thinking','Creativity','Attention to Detail','Conflict Resolution','Negotiation','Presentation Skills','Emotional Intelligence','Decision Making','Autonomy'];
+// SOFT_SKILLS canonical list lives in services/soft-skills.ts — shared with
+// preferences.ts and catalog.service.ts (used both as the chip grid AND as
+// a denylist for hard-skills extraction). Imported at top of file.
 
 @Component({
   selector: 'app-onboarding',
@@ -50,11 +55,35 @@ export class Onboarding implements OnInit {
   selectedHardSkills: string[] = [];
   selectedSoftSkills: string[] = [];
 
+  // Step 5 — job preferences (multi-select chips)
+  selectedArrangements: string[] = [];
+  selectedJobTypes:    string[] = [];
+
+  // ── Catalog (Phase 3) ──────────────────────────────────────────────────
+  // Same source of truth as the Preferences page — auto-extracted from
+  // jobs + manual recruiter additions. ⭐NEW badges never fire on Onboarding
+  // (new candidates have no lastAcknowledgedAt yet) which is correct: every
+  // item in the catalog is new to them, marking each individually is noise.
+  catalogSkills: CatalogItem[] = [];
+  catalogLanguages: CatalogItem[] = [];
+
   // Step 4 — languages
   languages: CandidateLanguage[] = [];
   readonly cefrLevels = ['A1','A2','B1','B2','C1','C2'];
-  readonly commonLanguages = ['Arabic','French','English','German','Spanish','Italian','Mandarin'];
+
+  // Resolved at runtime by LanguageOptionsService: always-shown trio
+  // (Arabic/French/English) plus any language mentioned in a current
+  // PUBLISHED job's LANGUAGE requirement. Same logic as the Preferences
+  // page so the two flows stay consistent.
+  commonLanguages: readonly string[] = ALWAYS_SHOWN_LANGUAGES;
   newLanguage = '';
+
+  /** Languages the candidate hasn't already added — drives the Add-language
+   *  dropdown so duplicates can't be selected. */
+  get availableLanguagesToAdd(): string[] {
+    const already = new Set(this.languages.map(l => l.language.toLowerCase()));
+    return this.commonLanguages.filter(l => !already.has(l.toLowerCase()));
+  }
   newLevel = 'B1';
 
   firstName = '';
@@ -64,20 +93,37 @@ export class Onboarding implements OnInit {
     private accountService: KeycloakAccountService,
     private profileService: CandidateProfileService,
     private router: Router,
+    private languageOptions: LanguageOptionsService,
+    private catalogService: CatalogService,
   ) {
     this.form = this.fb.group({
-      status:                   ['', Validators.required],
-      yearsOfExperience:        ['', Validators.required],
-      educationLevel:           ['', Validators.required],
-      domain:                   [''],
-      preferredWorkArrangement: [''],
-      preferredJobType:         [''],
+      status:            ['', Validators.required],
+      yearsOfExperience: ['', Validators.required],
+      educationLevel:    ['', Validators.required],
+      domain:            [''],
+      // Multi-select prefs live in selectedArrangements / selectedJobTypes —
+      // see Step 5 panel below.
     });
   }
 
   async ngOnInit() {
     const profile = this.keycloak.tokenParsed;
     this.firstName = profile?.['given_name'] ?? profile?.['preferred_username'] ?? 'there';
+    // Fetch language options in the background so Step 4 has the full list
+    // by the time the candidate reaches it. Service degrades to the
+    // ALWAYS_SHOWN trio if the jobs request fails — we never break the flow.
+    this.languageOptions.getAvailableLanguages()
+      .then(list => { this.commonLanguages = list; })
+      .catch(() => { /* service has its own fallback */ });
+    // Same catalog the Preferences page uses — fire and forget; the chip grid
+    // re-renders when the data arrives. Onboarding doesn't show ⭐NEW badges
+    // since brand-new candidates haven't acknowledged anything yet.
+    this.catalogService.getSnapshot()
+      .then(snap => {
+        this.catalogSkills    = snap.skills;
+        this.catalogLanguages = snap.languages;
+      })
+      .catch(() => { /* CatalogService has its own fallback */ });
   }
 
   // ── Step helpers ──────────────────────────────────────────────────────────
@@ -145,8 +191,23 @@ export class Onboarding implements OnInit {
 
   // ── Finish ────────────────────────────────────────────────────────────────
 
-  setWorkArrangement(v: string) { this.form.get('preferredWorkArrangement')?.setValue(v); }
-  setJobType(v: string)         { this.form.get('preferredJobType')?.setValue(v); }
+  // Multi-select toggles (click to add, click again to remove). Mirrors
+  // the same behavior on the Preferences page so users can change their
+  // mind later without surprise.
+  toggleArrangement(v: string) {
+    const i = this.selectedArrangements.indexOf(v);
+    this.selectedArrangements = i === -1
+      ? [...this.selectedArrangements, v]
+      : this.selectedArrangements.filter(x => x !== v);
+  }
+  toggleJobType(v: string) {
+    const i = this.selectedJobTypes.indexOf(v);
+    this.selectedJobTypes = i === -1
+      ? [...this.selectedJobTypes, v]
+      : this.selectedJobTypes.filter(x => x !== v);
+  }
+  isArrangementSelected(v: string): boolean { return this.selectedArrangements.includes(v); }
+  isJobTypeSelected(v: string):    boolean { return this.selectedJobTypes.includes(v); }
 
   async finish() {
     this.saving = true;
@@ -161,8 +222,8 @@ export class Onboarding implements OnInit {
         hardSkills:               this.selectedHardSkills,
         softSkills:               this.selectedSoftSkills,
         languages:                this.languages,
-        preferredWorkArrangement: raw.preferredWorkArrangement || undefined,
-        preferredJobType:         raw.preferredJobType         || undefined,
+        preferredWorkArrangement: this.selectedArrangements,
+        preferredJobType:         this.selectedJobTypes,
       });
       this.router.navigate(['/browse']);
     } catch {

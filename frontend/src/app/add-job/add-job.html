@@ -76,15 +76,6 @@
 
       <div class="addjob-row2">
         <div class="field">
-          <label class="toolbar-label">City / Location <span style="color:var(--color-secondary)">*</span></label>
-          <input class="input" type="text" placeholder="e.g. Tunis, Sfax, Nabeul…"
-            formControlName="location" />
-          @if (form.get('location')?.touched && form.get('location')?.invalid) {
-            <div class="text-muted" style="margin-top:.35rem;">Location is required.</div>
-          }
-        </div>
-
-        <div class="field">
           <label class="toolbar-label">Work arrangement <span style="color:var(--color-secondary)">*</span></label>
           <select class="input" formControlName="workArrangement">
             <option value="" disabled>Select arrangement</option>
@@ -108,6 +99,22 @@
             </select>
             @if (form.get('employmentType')?.touched && form.get('employmentType')?.invalid) {
               <div class="text-muted" style="margin-top:.35rem;">Employment type is required.</div>
+            }
+          </div>
+
+          <!-- Business domain — determines which candidates see this job's
+               skills in their Preferences chip grid. Same dropdown the
+               candidate fills in on /preferences. -->
+          <div class="field">
+            <label class="toolbar-label">Domain <span style="color:var(--color-secondary)">*</span></label>
+            <select class="input" formControlName="domain">
+              <option value="" disabled>Select domain</option>
+              @for (d of domainOptions; track d.value) {
+                <option [value]="d.value">{{ d.label }}</option>
+              }
+            </select>
+            @if (form.get('domain')?.touched && form.get('domain')?.invalid) {
+              <div class="text-muted" style="margin-top:.35rem;">Domain is required.</div>
             }
           </div>
         </div>
@@ -284,11 +291,26 @@
               </select>
             </div>
 
-            <!-- Description -->
+            <!-- Description: free-text for most categories, strict dropdown
+                 for LANGUAGE so the value stored is always one of the canonical
+                 names. Keeps the candidate matcher's life simple — no "Italien"
+                 vs "Italian" reconciliation needed at scoring time. -->
             <div class="field req-desc">
-              <label class="toolbar-label">Description <span style="color:var(--color-secondary)">*</span></label>
-              <input class="input" type="text" formControlName="description"
-                placeholder="e.g. Java, Bachelor in CS, English B2…" />
+              <label class="toolbar-label">
+                {{ r.get('category')?.value === 'LANGUAGE' ? 'Language' : 'Description' }}
+                <span style="color:var(--color-secondary)">*</span>
+              </label>
+              @if (r.get('category')?.value === 'LANGUAGE') {
+                <select class="input" formControlName="description">
+                  <option value="">Select a language</option>
+                  @for (l of canonicalLanguages; track l) {
+                    <option [value]="l">{{ l }}</option>
+                  }
+                </select>
+              } @else {
+                <input class="input" type="text" formControlName="description"
+                  placeholder="e.g. Java, Bachelor in CS, …" />
+              }
             </div>
 
             <!-- SKILL level dropdown -->
@@ -300,6 +322,7 @@
                   <option value="BASIC">Basic</option>
                   <option value="INTERMEDIATE">Intermediate</option>
                   <option value="ADVANCED">Advanced</option>
+                  <option value="EXPERT">Expert</option>
                 </select>
               </div>
             }

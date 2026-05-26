@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,6 +20,11 @@ public class JobOfferDto {
     private String description;
     private String location;
     private String workArrangement;
+    // Business domain — SOFTWARE_ENGINEERING / FINANCE_BANKING / INSURANCE /
+    // PROJECT_MANAGEMENT / QUALITY_ASSURANCE / BUSINESS_ANALYSIS. Drives the
+    // candidate-side chip-grid filtering so each domain's candidates only
+    // see relevant skills.
+    private String domain;
     private Integer minSalary;
     private Integer maxSalary;
     private Integer openings;
@@ -30,4 +36,8 @@ public class JobOfferDto {
     private Double experienceWeight;
     private Double seniorityWeight;
     private List<JobRequirementDto> requirements;
+    // ISO-8601 timestamp from Hibernate's @CreationTimestamp on the entity.
+    // Sent to the frontend so the catalog extraction can stamp each skill
+    // with the earliest job that mentioned it (drives the "First seen" UI).
+    private Instant createdAt;
 }

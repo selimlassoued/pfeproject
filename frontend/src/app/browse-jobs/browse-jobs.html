@@ -7,8 +7,15 @@
     </div>
     @if (isCandidate) {
       <a class="btn btn-primary" [routerLink]="['/preferences']"
-        style="display:flex;align-items:center;gap:.5rem;white-space:nowrap;">
+        style="display:flex;align-items:center;gap:.5rem;white-space:nowrap;position:relative;">
         My Preferences
+        @if (newCatalogCount > 0) {
+          <!-- Counter badge: number of skills + languages added since the
+               candidate's last Preferences visit. Clears on next visit. -->
+          <span class="pref-new-badge" title="{{ newCatalogCount }} new since your last visit">
+            {{ newCatalogCount }}
+          </span>
+        }
       </a>
     }
   </header>
@@ -200,11 +207,14 @@
       </div>
       <button class="btn btn-ghost" type="button" (click)="nextPage()"
         [disabled]="!(pageResponse?.hasNext ?? false)">Next →</button>
+      <!-- Option values must match the labels (and the component's default
+           pageSize) — otherwise the select renders empty because none of the
+           options match the bound value. -->
       <select class="input" [value]="pageSize" (change)="changePageSize($event)" style="width: auto; padding: 0.5rem;">
-        <option value="6">5 per page</option>
-        <option value="11">10 per page</option>
-        <option value="21">20 per page</option>
-        <option value="51">50 per page</option>
+        <option value="5">5 per page</option>
+        <option value="10">10 per page</option>
+        <option value="20">20 per page</option>
+        <option value="50">50 per page</option>
       </select>
     </div>
   }

@@ -25,6 +25,9 @@ public class JobRequirement {
     @Enumerated(EnumType.STRING)
     private RequirementCategory category;
 
+    // Free-form requirement text — TEXT so recruiters can write long
+    // OR/AND skill chains without tripping varchar(255).
+    @Column(columnDefinition = "TEXT")
     private String description;
     private Double weight;
     private Integer minYears;

@@ -5,16 +5,22 @@
       <div>
         <button class="btn btn-ghost btn-sm" type="button" (click)="goBack()">← Back to profile</button>
         <h2 class="pref-title">Job Preferences</h2>
-        <p class="text-muted">Help us match you with the right opportunities.</p>
+        <p class="text-muted">
+          Help us match you with the right opportunities. Changes are saved
+          automatically as you make them.
+        </p>
       </div>
-      <button class="btn btn-primary" (click)="save()" [disabled]="saving">
-        @if (saving) { Saving… } @else { Save preferences }
-      </button>
+      <!-- Subtle auto-save indicator — replaces the old "Save preferences"
+           button. Reads "Saving…" while the debounced PUT is in flight,
+           "Failed to save" on error, and is hidden otherwise (idle state).
+           Keeps the page calmer while still giving the candidate feedback. -->
+      <div class="pref-save-indicator" aria-live="polite">
+        @if (saving)      { <span class="pref-save-indicator--saving">Saving…</span> }
+        @else if (error)  { <span class="pref-save-indicator--error">Save failed — try again</span> }
+      </div>
     </header>
 
     @if (loading) { <div class="status status--info">Loading…</div> }
-    @if (error)   { <div class="status status--error">{{ error }}</div> }
-    @if (success) { <div class="status status--success">{{ success }}</div> }
 
     @if (!loading) {
 
@@ -60,6 +66,10 @@
               <option value="ENGINEERING">Engineering (BAC+5)</option>
               <option value="PHD">PhD</option>
             </select>
+            <small class="field-hint">
+              If you hold more than one degree, choose the most recent — that's
+              the one recruiters filter on.
+            </small>
           </div>
         </div>
       </div>
@@ -92,16 +102,30 @@
           <div class="pref-section">
             <h4 class="pref-section-title">
               Hard skills
-              <span class="pref-hint">Click to select · click again to remove</span>
+              <span class="pref-hint">
+                Click to select · orange ring = currently hiring · "NEW" tag = added since your last visit
+              </span>
             </h4>
             <div class="skills-grid">
-              @for (skill of availableHardSkills; track skill) {
+              @for (item of visibleHardSkills; track item.name) {
                 <button type="button"
                   class="skill-chip"
-                  [class.skill-chip--selected]="hardSkillRank(skill) !== null"
-                  (click)="toggleHardSkill(skill)">
-                  {{ skill }}
+                  [class.skill-chip--selected]="hardSkillRank(item.displayName) !== null"
+                  [class.skill-chip--new]="isNew(item)"
+                  [class.skill-chip--in-demand]="item.currentDemandCount > 0"
+                  [title]="item.currentDemandCount > 0 ? item.currentDemandCount + ' active job(s)' : null"
+                  (click)="toggleHardSkill(item.displayName)">
+                  <span class="chip-label">{{ item.displayName }}</span>
+                  @if (isNew(item)) {
+                    <span class="chip-new-tag">NEW</span>
+                  }
                 </button>
+              }
+              @if (visibleHardSkills.length === 0) {
+                <p class="text-muted" style="font-size:0.85rem;">
+                  No hard skills in the catalog yet for this domain.
+                  Recruiters can add them on the Skills Catalog page.
+                </p>
               }
             </div>
           </div>
@@ -110,15 +134,21 @@
         <div class="pref-section">
           <h4 class="pref-section-title">
             Soft skills
-            <span class="pref-hint">Click to select · click again to remove</span>
+            <span class="pref-hint">
+              Click to select · "NEW" tag = added by a recruiter since your last visit
+            </span>
           </h4>
           <div class="skills-grid">
-            @for (skill of softSkills; track skill) {
+            @for (item of visibleSoftSkills; track item.displayName) {
               <button type="button"
                 class="skill-chip"
-                [class.skill-chip--selected]="softSkillRank(skill) !== null"
-                (click)="toggleSoftSkill(skill)">
-                {{ skill }}
+                [class.skill-chip--selected]="softSkillRank(item.displayName) !== null"
+                [class.skill-chip--new]="item.isNew"
+                (click)="toggleSoftSkill(item.displayName)">
+                <span class="chip-label">{{ item.displayName }}</span>
+                @if (item.isNew) {
+                  <span class="chip-new-tag">NEW</span>
+                }
               </button>
             }
           </div>
@@ -135,15 +165,25 @@
           <div class="card-badge">Step 3.5</div>
         </div>
 
-        <!-- Add language row -->
+        <!-- Add language row — strict dropdown (no free text) so spellings stay
+             canonical and the matcher can compare candidates to job LANGUAGE
+             requirements without dealing with "anglais" vs "English" etc.
+             Options come from the catalog and carry the same 🔥 / ⭐ badges
+             as the hard-skill chips. -->
         <div class="lang-add-row">
           <div class="form-group" style="flex:1">
-            <label>Language</label>
-            <input class="input" [(ngModel)]="newLanguage" [ngModelOptions]="{standalone:true}"
-              placeholder="e.g. French, English…" list="lang-suggestions" />
-            <datalist id="lang-suggestions">
-              @for (l of commonLanguages; track l) { <option [value]="l"></option> }
-            </datalist>
+            <label>
+              Language
+              <span class="pref-hint">"Hiring" = currently in demand · "NEW" = added since last visit</span>
+            </label>
+            <select class="input" [(ngModel)]="newLanguage" [ngModelOptions]="{standalone:true}">
+              <option value="">Select a language</option>
+              @for (l of availableLanguagesToAddCatalog; track l.name) {
+                <option [value]="l.displayName">
+                  {{ l.displayName }}{{ l.currentDemandCount > 0 ? '  (Hiring)' : '' }}{{ isNew(l) ? '  (NEW)' : '' }}
+                </option>
+              }
+            </select>
           </div>
           <div class="form-group">
             <label>Level (CEFR)</label>
@@ -151,7 +191,9 @@
               @for (lvl of cefrLevels; track lvl) { <option [value]="lvl">{{ lvl }}</option> }
             </select>
           </div>
-          <button type="button" class="btn btn-primary lang-add-btn" (click)="addLanguage()">Add</button>
+          <button type="button" class="btn btn-primary lang-add-btn"
+                  [disabled]="!newLanguage"
+                  (click)="addLanguage()">Add</button>
         </div>
 
         <!-- Language list -->
@@ -185,13 +227,16 @@
         </div>
 
         <div class="pref-section">
-          <h4 class="pref-section-title">Work arrangement</h4>
+          <h4 class="pref-section-title">
+            Work arrangement
+            <span class="pref-hint">Pick all that work for you · leave empty if you don't mind</span>
+          </h4>
           <div class="pref-chips">
             @for (opt of [['ON_SITE','On-site'],['HYBRID','Hybrid'],['REMOTE','Remote']]; track opt[0]) {
               <button type="button"
                 class="pref-chip"
-                [class.pref-chip--active]="form.get('preferredWorkArrangement')?.value === opt[0]"
-                (click)="setWorkArrangement(opt[0])">
+                [class.pref-chip--active]="isArrangementSelected(opt[0])"
+                (click)="toggleArrangement(opt[0])">
                 {{ opt[1] }}
               </button>
             }
@@ -199,13 +244,16 @@
         </div>
 
         <div class="pref-section">
-          <h4 class="pref-section-title">Job type</h4>
+          <h4 class="pref-section-title">
+            Job type
+            <span class="pref-hint">Pick all that work for you · leave empty if you don't mind</span>
+          </h4>
           <div class="pref-chips">
             @for (opt of [['FULL_TIME','Full-time'],['INTERNSHIP','Internship'],['ALTERNANCE','Alternance']]; track opt[0]) {
               <button type="button"
                 class="pref-chip"
-                [class.pref-chip--active]="form.get('preferredJobType')?.value === opt[0]"
-                (click)="setJobType(opt[0])">
+                [class.pref-chip--active]="isJobTypeSelected(opt[0])"
+                (click)="toggleJobType(opt[0])">
                 {{ opt[1] }}
               </button>
             }
@@ -214,9 +262,17 @@
 
         <div class="card-footer">
           <div class="text-muted">Preferences are used to rank job offers for you.</div>
-          <button class="btn btn-primary" (click)="save()" [disabled]="saving">
-            @if (saving) { Saving… } @else { Save preferences }
-          </button>
+          <!-- Show a contextual "back" button ONLY when the candidate was
+               bounced here from /browse trying to use Recommendation with an
+               empty profile. Auto-save means their picks are already
+               persisted; this button just navigates back and re-triggers
+               the match-sort. For normal flow, no button is needed — the
+               candidate uses the nav menu to go elsewhere. -->
+          @if (cameFromBrowse) {
+            <button class="btn btn-primary" type="button" (click)="returnToBrowse()">
+              Back to recommendations →
+            </button>
+          }
         </div>
       </div>
 

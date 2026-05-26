@@ -9,6 +9,8 @@ import { ApplicationService } from '../services/application.service';
 import { JobOffer } from '../model/jobOffer.model';
 import { RequirementCategory } from '../model/jobRequirement.model';
 import { JobRequirement } from '../model/jobRequirement.model';
+import { getCanonicalLanguages, canonicalizeLanguage } from '../services/language-options.service';
+import { DOMAIN_OPTIONS } from '../services/domains';
 
 @Component({
   selector: 'app-update-job',
@@ -36,12 +38,24 @@ private readonly fb = inject(FormBuilder);
     'LANGUAGE',
   ];
 
+  // Canonical language names — drives the strict dropdown for LANGUAGE-
+  // category requirements. Same list used on add-job and on the candidate
+  // side so values stay consistent across the app.
+  readonly canonicalLanguages: string[] = getCanonicalLanguages();
+
+  // Business-domain dropdown — same canonical list used by add-job and
+  // the candidate Preferences page.
+  readonly domainOptions = DOMAIN_OPTIONS;
+
   readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.minLength(3)]],
     description: ['', [Validators.required, Validators.minLength(10)]],
-    location: ['', [Validators.required]],
+    // Location is fixed — VERMEG sits at Les Berges du Lac 1, Tunis. The
+    // input was removed from the form; the value is injected at submit time
+    // (or carried over from the existing job on edit).
     workArrangement: ['', [Validators.required]],
     employmentType: ['', [Validators.required]],
+    domain: ['', [Validators.required]],
     jobStatus: ['DRAFT', [Validators.required]],
     openings: [null as number | null, [Validators.min(1)]],
     minSalary: [null as number | null, [Validators.min(0)]],
@@ -125,8 +139,8 @@ private readonly fb = inject(FormBuilder);
     this.form.patchValue({
       title: job.title,
       description: job.description,
-      location: job.location,
       workArrangement: (job as any).workArrangement ?? '',
+      domain: (job as any).domain ?? '',
       employmentType: job.employmentType,
       jobStatus: job.jobStatus,
       openings: job.openings ?? null,
@@ -144,8 +158,17 @@ private readonly fb = inject(FormBuilder);
 
     if (job.requirements && job.requirements.length > 0) {
       for (const req of job.requirements) {
+        // For LANGUAGE requirements, try to map any legacy non-canonical
+        // description (e.g. "Italien", "Anglais B2") to the canonical name
+        // so the strict dropdown shows a sensible pre-selection. Falls back
+        // to the raw value if no alias matches — caller picks manually.
+        let description = req.description;
+        if ((req.category || '').toUpperCase() === 'LANGUAGE') {
+          description = canonicalizeLanguage(req.description) ?? req.description;
+        }
         this.addRequirement({
         ...req,
+        description,
         skillLevel:     (req as any).skillLevel     ?? null,
         degreeLevel:    (req as any).degreeLevel    ?? null,
         enrollmentType: (req as any).enrollmentType ?? null,
@@ -295,8 +318,9 @@ private readonly fb = inject(FormBuilder);
     return {
       title: (v.title ?? '').trim(),
       description: (v.description ?? '').trim(),
-      location: (v.location ?? '').trim(),
+      location: 'Lac 1, Tunis',                     // VERMEG HQ — fixed value
       workArrangement: v.workArrangement || null,
+      domain: v.domain || null,
       openings: (v.openings ?? null) as number,
       minSalary: (v.minSalary ?? null) as number,
       maxSalary: (v.maxSalary ?? null) as number,
@@ -405,7 +429,6 @@ private readonly fb = inject(FormBuilder);
         duplicate: {
           title:            v.title,
           description:      v.description,
-          location:         v.location,
           employmentType:   v.employmentType,
           minSalary:        v.minSalary,
           maxSalary:        v.maxSalary,

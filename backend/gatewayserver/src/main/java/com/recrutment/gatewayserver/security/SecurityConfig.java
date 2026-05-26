@@ -94,6 +94,18 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.POST,   "/api/applications/signal/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
                         .pathMatchers(HttpMethod.DELETE, "/api/applications/signal/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
 
+                        // ── Skill catalog ─────────────────────────────────────
+                        // GET is open to everyone authenticated — candidates
+                        // read it for their Preferences chip grid, recruiters
+                        // also read it on the admin page. Mutations stay
+                        // recruiter-only (add / patch / delete / restore).
+                        .pathMatchers(HttpMethod.GET,    "/api/applications/skill-catalog/**").authenticated()
+                        .pathMatchers(HttpMethod.GET,    "/api/applications/skill-catalog").authenticated()
+                        .pathMatchers(HttpMethod.POST,   "/api/applications/skill-catalog/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.POST,   "/api/applications/skill-catalog").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.PATCH,  "/api/applications/skill-catalog/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.DELETE, "/api/applications/skill-catalog/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+
                         // ── Applications — apply (candidate only) ─────────────
                         .pathMatchers(HttpMethod.POST, "/api/applications/**").hasRole("CANDIDATE")
 

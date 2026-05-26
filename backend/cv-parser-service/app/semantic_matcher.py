@@ -223,19 +223,243 @@ _STOPWORDS = {
 _QUALIFIERS: dict[str, str] = {
     "basic": "basic", "elementary": "basic", "beginner": "basic", "fundamental": "basic",
     "intermediate": "intermediate", "proficient": "intermediate", "moderate": "intermediate",
-    "advanced": "advanced", "expert": "advanced",
+    "advanced": "advanced",
+    "expert": "expert", "guru": "expert", "mastery": "expert",
 }
 
 # Words that follow a qualifier and must also be stripped ("basic knowledge of …")
 _QUALIFIER_CONTEXT = {"knowledge", "level", "understanding", "familiarity", "proficiency", "of"}
 
-# Minimum cosine similarity to count as "matched" per qualifier level
+# Minimum effective-score (post-curve) to count as "matched" per qualifier level.
+# Aligned 1:1 with _QUALIFIER_BARS below so the matched / partial / missing
+# status the UI shows can never contradict the meets_qualifier signal.
 _QUALIFIER_THRESHOLDS: dict[str, float] = {
-    "basic":        SKILL_SEM_PARTIAL_THRESHOLD,  # 0.43 — any mention is enough
-    "intermediate": 0.65,                          # needs real evidence
-    "advanced":     0.85,                          # needs strong multi-source evidence
+    "basic":        0.45,                          # bar / 100
+    "intermediate": 0.65,
+    "advanced":     0.80,
+    "expert":       0.90,
     "any":          SKILL_SEM_THRESHOLD,           # 0.80 — default (no qualifier)
 }
+
+# Qualifier-aware scoring tables — calibrated so each level expresses a real
+# bar the candidate must clear, and so higher levels dominate the weighted mix.
+#
+# Bars (0-100): the raw skill score we expect from a candidate who genuinely
+# operates at that level. Scores at or above the bar earn full credit; scores
+# below the bar are penalised with a quadratic curve (small gaps shave a little,
+# wide gaps shave a lot). See _apply_qualifier_curve below.
+_QUALIFIER_BARS: dict[str, int] = {
+    "basic":        45,   # any credible mention — easy to clear
+    "intermediate": 65,   # declared + some real usage
+    "advanced":     80,   # declared + sustained, recent experience
+    "expert":       90,   # declared + multi-year primary experience
+    "any":          0,    # no bar — raw score is used as-is
+}
+
+# Weight each qualifier carries in the requirement-level average. An EXPERT
+# requirement is worth ~4 INTERMEDIATE ones, so a "must have expert Java" miss
+# moves the final job_fit_score far more than a "basic Git" miss.
+_QUALIFIER_WEIGHTS: dict[str, float] = {
+    "basic":        1.0,
+    "intermediate": 1.5,
+    "advanced":     2.5,
+    "expert":       4.0,
+    "any":          1.0,
+}
+
+# Below this raw score, an ADVANCED or EXPERT requirement is flagged as a
+# critical gap — the candidate cannot plausibly perform the role at that level.
+_CRITICAL_GAP_FLOOR = 50
+
+
+def _apply_qualifier_curve(raw_score: int, qualifier: str) -> int:
+    """Translate a raw skill score (0-100) into the effective score actually
+    consumed by the weighted average, based on the required qualifier level.
+
+      • raw_score ≥ bar  → effective = raw_score  (full credit, no inflation)
+      • raw_score < bar  → effective = bar × (raw/bar)²
+        ‑ small gap (raw close to bar) ≈ a few points off
+        ‑ wide gap (raw ≪ bar)        ≈ collapses fast (quadratic)
+
+    The squared curve is what makes "BASIC Git at 60" and "EXPERT Java at 60"
+    score very differently: the former is above its bar (45) so it gets 60
+    intact; the latter is far below 90 so it drops to ~27.
+    """
+    if raw_score <= 0:
+        return 0
+    bar = _QUALIFIER_BARS.get(qualifier, 0)
+    if bar <= 0 or raw_score >= bar:
+        return raw_score
+    ratio = raw_score / bar
+    return round(bar * ratio * ratio)
+
+
+def _qualifier_signal(raw_score: int, qualifier: str) -> str:
+    """Human-readable signal label for one skill given the required level.
+
+    Returned values feed the UI so the recruiter can see, at a glance, whether
+    a candidate clears each bar — not just whether the overall job_fit_score
+    is high.
+    """
+    bar = _QUALIFIER_BARS.get(qualifier, 0)
+    if bar <= 0:
+        return ""  # "any" qualifier — no signal worth reporting
+    if raw_score >= bar:
+        if qualifier in ("advanced", "expert"):
+            return "strength"
+        return "meets"
+    if qualifier in ("advanced", "expert") and raw_score < _CRITICAL_GAP_FLOOR:
+        return "critical_gap"
+    return "gap"
+
+# ── Advisory warnings (non-scoring signals shown to the recruiter) ────────────
+#
+# Two checks run on every match and surface into SemanticMatchResult.warnings:
+#   • distance_far  — ON_SITE job and candidate lives outside daily-commute range
+#   • name_mismatch — CV / GitHub / LinkedIn display names don't agree
+#
+# These never affect the score. They show up as banners on the recruiter side
+# so they can probe the discrepancy in the interview.
+
+# Cities/governorates close enough for a daily commute to VERMEG HQ (Lac 1).
+# Greater Tunis spans 4 governorates that share urban transport with the capital:
+# Tunis, Ariana, Ben Arous, Manouba. Everything else (Sousse, Sfax, Bizerte,
+# Nabeul, Hammamet, …) sits 1-3 hours away and breaks daily on-site work.
+_TUNIS_AREA_LOCATIONS = {
+    # Tunis governorate
+    "tunis", "la marsa", "marsa", "carthage", "sidi bou said", "le bardo", "bardo",
+    "le kram", "kram", "goulette", "la goulette", "el menzah", "menzah",
+    "el manar", "manar", "centre urbain nord", "berges du lac", "lac",
+    "lac 1", "lac 2", "lac1", "lac2", "el omrane", "omrane", "bab souika",
+    "bab bhar", "medina", "hrairia", "sijoumi", "sidi hassine",
+    # Ariana governorate
+    "ariana", "raoued", "la soukra", "soukra", "borj louzir", "ettadhamen",
+    "mnihla", "kalaat el andalous", "sidi thabet",
+    # Ben Arous governorate
+    "ben arous", "rades", "el mourouj", "mourouj", "hammam lif", "hammam-lif",
+    "megrine", "mohamedia", "mohammedia", "fouchana", "ezzahra", "bou mhel",
+    # Manouba governorate
+    "manouba", "la manouba", "den den", "douar hicher", "oued ellil",
+    "tebourba", "borj el amri",
+}
+
+def _normalize_location_tokens(text: Optional[str]) -> set[str]:
+    """Lowercase, strip accents, and split a free-form location into tokens
+    plus 2-3 word phrases. Lets us match 'Lac 1, Tunis' against the whitelist."""
+    if not text:
+        return set()
+    s = text.lower()
+    # Strip accents (é→e, à→a, …) so 'Tūnis' / 'Tunis' both normalize
+    s = ''.join(c for c in __import__('unicodedata').normalize('NFKD', s)
+                if not __import__('unicodedata').combining(c))
+    s = re.sub(r"[^a-z0-9\s]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    words = s.split()
+    tokens: set[str] = set(words)
+    # Multi-word phrases ("la marsa", "ben arous") — try 2- and 3-word sliding windows
+    for n in (2, 3):
+        for i in range(len(words) - n + 1):
+            tokens.add(" ".join(words[i:i+n]))
+    return tokens
+
+def _check_distance_warning(cv_location: Optional[str], work_arrangement: Optional[str]) -> Optional[dict]:
+    """Emit a warning when the job is ON_SITE and the candidate lives far from
+    VERMEG HQ. Silent for HYBRID/REMOTE (commute doesn't matter there). Silent
+    when the CV location is missing — absence isn't evidence of distance."""
+    if (work_arrangement or "").upper() != "ON_SITE":
+        return None
+    if not cv_location:
+        return None
+    tokens = _normalize_location_tokens(cv_location)
+    if not tokens:
+        return None
+    if tokens & _TUNIS_AREA_LOCATIONS:
+        return None  # candidate sits inside Greater Tunis — no warning
+    return {
+        "kind":     "distance_far",
+        "severity": "warning",
+        "message":  f"Candidate location ({cv_location.strip()}) is outside the Greater Tunis area — "
+                    f"daily on-site commute to VERMEG HQ (Lac 1) may not be feasible.",
+        "details":  {"cv_location": cv_location.strip(), "work_arrangement": "ON_SITE"},
+    }
+
+def _normalize_person_name(name: Optional[str]) -> set[str]:
+    """Lowercase, strip accents, drop short tokens (initials, particles).
+    Returns the set of significant name tokens for comparison."""
+    if not name:
+        return set()
+    import unicodedata
+    s = ''.join(c for c in unicodedata.normalize('NFKD', name.lower())
+                if not unicodedata.combining(c))
+    s = re.sub(r"[^a-z\s-]+", " ", s)
+    # Drop name particles that carry no identifying signal
+    drop = {"de", "la", "le", "el", "al", "ben", "bin", "ibn", "du", "da", "van", "von"}
+    return {t for t in s.replace("-", " ").split() if len(t) >= 3 and t not in drop}
+
+def _names_disagree(a: set[str], b: set[str]) -> bool:
+    """Two name token sets disagree when they share NO significant tokens."""
+    if not a or not b:
+        return False  # missing data is not a mismatch
+    return len(a & b) == 0
+
+def _extract_linkedin_handle(url: Optional[str]) -> Optional[str]:
+    """Pull the username slug from a linkedin.com/in/<slug>/ URL."""
+    if not url:
+        return None
+    m = re.search(r"linkedin\.com/in/([^/?#]+)", url, re.IGNORECASE)
+    if not m:
+        return None
+    # Slugs usually look like 'selim-lassoued-abc123' — turn dashes into spaces
+    return m.group(1).replace("-", " ").replace("_", " ").strip()
+
+def _check_name_warnings(cv) -> list[dict]:
+    """Compare CV display name vs GitHub display name vs LinkedIn handle/name.
+    Only fires when both sides of a comparison are populated and share no
+    significant tokens. Missing data is silently skipped."""
+    cv_name     = (cv.candidate_name or "").strip() or None
+    gh          = getattr(cv, "github_profile", None)
+    gh_name     = (gh.name if gh and gh.name else None)
+    gh_username = (gh.username if gh and gh.username else None)
+    li_url      = None
+    if getattr(cv, "social_links", None):
+        li_url = cv.social_links.linkedin
+    if not li_url and getattr(cv, "linkedin_enrichment", None):
+        li_url = cv.linkedin_enrichment.profile_url
+    li_handle   = _extract_linkedin_handle(li_url)
+
+    cv_tokens = _normalize_person_name(cv_name)
+    gh_tokens = _normalize_person_name(gh_name) or _normalize_person_name(gh_username)
+    li_tokens = _normalize_person_name(li_handle)
+
+    warnings: list[dict] = []
+    if _names_disagree(cv_tokens, gh_tokens):
+        warnings.append({
+            "kind":     "name_mismatch",
+            "severity": "warning",
+            "message":  f"Name on CV ('{cv_name}') doesn't match GitHub profile name "
+                        f"('{gh_name or gh_username}'). Verify identity before interview.",
+            "details":  {"source": "github", "cv_name": cv_name,
+                         "other": gh_name or gh_username},
+        })
+    if _names_disagree(cv_tokens, li_tokens):
+        warnings.append({
+            "kind":     "name_mismatch",
+            "severity": "warning",
+            "message":  f"Name on CV ('{cv_name}') doesn't match LinkedIn handle "
+                        f"('{li_handle}'). Verify identity before interview.",
+            "details":  {"source": "linkedin", "cv_name": cv_name, "other": li_handle},
+        })
+    if _names_disagree(gh_tokens, li_tokens):
+        warnings.append({
+            "kind":     "name_mismatch",
+            "severity": "warning",
+            "message":  f"GitHub profile ('{gh_name or gh_username}') and LinkedIn handle "
+                        f"('{li_handle}') disagree on the candidate's name.",
+            "details":  {"source": "github_vs_linkedin",
+                         "github": gh_name or gh_username, "linkedin": li_handle},
+        })
+    return warnings
+
 
 _OR_SPLIT_RE  = re.compile(r"\s+or\s+",  re.IGNORECASE)
 _AND_SPLIT_RE = re.compile(r"\s+and\s+", re.IGNORECASE)
@@ -250,7 +474,10 @@ _EDUCATION_KEYWORDS = {
     "university", "school", "engineering", "certification",
 }
 
-# Known multi-word technical skills that must stay together
+# Known multi-word technical skills that must stay together.
+# Without this list, "Linux command line" splits into ["linux", "command"],
+# and "command" alone gets scored as if it were a real skill — producing
+# meaningless 15-20% bars on the candidate breakdown.
 _MULTI_WORD_SKILLS = {
     "spring boot", "machine learning", "deep learning", "natural language",
     "computer vision", "data science", "big data", "node.js", "react.js",
@@ -260,6 +487,13 @@ _MULTI_WORD_SKILLS = {
     "ui/ux", "power bi", "sql server", "pl/sql", "stored procedures",
     "unit testing", "integration testing", "test automation",
     "clean code", "clean architecture", "domain driven", "event driven",
+    # OS / infra phrases recruiters write but that don't survive tokenization:
+    "linux command line", "command line", "shell scripting", "bash scripting",
+    "version control", "source control", "system design", "system architecture",
+    "software architecture", "cloud computing", "distributed systems",
+    "object oriented programming", "functional programming",
+    "ci cd pipelines", "ci/cd pipelines", "rest api design",
+    "api design", "microservices architecture",
 }
 
 # Tokens that look like version numbers or qualifiers — never a skill name
@@ -727,6 +961,47 @@ def _build_skill_sources(cv: CvAnalysisResult) -> SkillSources:
             years     = float(stats.get("years") or 0.0)
             for tok in _expand_tokens(tech):
                 sources.merge_github_floor(tok, last_used or None, years)
+
+        # ── Implicit "uses git" credit ─────────────────────────────────────────
+        # Owning a public, currently-active GitHub profile IS a declaration of
+        # git usage — you literally cannot publish code to GitHub without it.
+        # We credit `git` at BOTH the primary tier (base 70, since the GitHub
+        # link in the CV is a declared signal) AND the experience tier (so the
+        # primary+experience corroboration bonus +15 fires too). Combined with
+        # the +5 GitHub bonus this lands the score around 85-90% — appropriate
+        # for someone visibly using git in production.
+        gh = cv.github_profile
+        has_real_activity = (
+            (gh.own_repos_count or 0) > 0
+            or (gh.real_repos_count or 0) > 0
+            or bool(gh.username)
+        )
+        if has_real_activity and "git" not in sources.experience:
+            # Primary tier: GitHub presence acts as an implicit declaration.
+            # We do NOT add to declared_literal (it wasn't literally typed in
+            # the Skills section) — but `implied_primary` correctly tags it as
+            # "implied by GitHub, not directly written by the candidate".
+            sources.primary.add("git")
+            sources.implied_primary.add("git")
+
+            # Experience tier: keeps the +15 corroboration bonus + duration/recency.
+            sources.experience.add("git")
+            sources.implied_by.setdefault("git", "github")
+            # Estimate years from account age (capped) so recency stays sensible.
+            years_on_gh = max(0.5, min(float((gh.account_age_days or 0) / 365.0), 10.0))
+            sources.exp_duration["git"] = max(sources.exp_duration.get("git", 0.0), years_on_gh)
+            # Recency: if last_active is parseable, take its year; else use the
+            # current year (any activity at all proves they're still git-active).
+            last_year = _CURRENT_YEAR
+            if gh.last_active:
+                try:
+                    last_year = int(gh.last_active[:4])
+                except (ValueError, TypeError):
+                    pass
+            sources.exp_year["git"] = max(sources.exp_year.get("git", 0), last_year)
+            # Also mark it as github-confirmed so the +5 bonus and the
+            # "GitHub Verified" evidence tag flow naturally.
+            sources.github_confirmed.add("git")
 
     return sources
 
@@ -1473,6 +1748,22 @@ def _build_skill_reason(
     elif mode == "PROXY":
         display = (proxy or "related skill").replace("-", " ").title()
         if proxy_in_primary:
+            # Distinguish a proxy that's literally on the CV from one that's
+            # itself only implied by another skill. The latter is a two-hop
+            # inference (e.g. Docker declared → Linux implied → "linux command
+            # line" proxy-matched). Be honest with the recruiter so they know
+            # what to probe in the interview.
+            proxy_norm = _normalize(proxy or "")
+            implied_only = (proxy_norm in sources.implied_primary
+                            and proxy_norm not in sources.declared_literal)
+            if implied_only:
+                # Find the skill that implied this proxy so the chain is
+                # readable: "inferred from X → Y" instead of just "implied by Y".
+                source_fw = sources.implied_by.get(proxy_norm)
+                source_fw_display = (source_fw.replace("-", " ").title()
+                                     if source_fw else "a declared skill")
+                return (f"Not listed directly — inferred via {source_fw_display} → {display} "
+                        f"(two-step inference, discounted; verify in interview)")
             return f"Not listed directly — implied by {display} (declared in CV Skills)"
         else:
             return f"Not listed directly — inferred from {display} in experience · {display} not in CV Skills (partial credit)"
@@ -1538,7 +1829,11 @@ def _compute_skill_score(
     if req_vec:
         best_sim = 0.0
         for cv_skill in cv_skills:
-            if sources.experience_only_credit(cv_skill) == 0:
+            # Was: `experience_only_credit == 0` — that skipped skills declared
+            # only in the primary CV Skills section, silently hiding
+            # transferable-knowledge proxies like "MySQL declared → some Postgres
+            # credit". Use `confidence > 0` so primary-tier proxies count too.
+            if sources.confidence(cv_skill) == 0:
                 continue
             sim = _cosine(req_vec, _embed_cached(cv_skill, embed_cache))
             if sim > best_sim:
@@ -1547,8 +1842,24 @@ def _compute_skill_score(
 
         if best_proxy and best_sim >= PROXY_SIM_THRESHOLD:
             proxy_in_primary = best_proxy in sources.primary
+            # Two-hop inference detector: the proxy is in primary tier ONLY
+            # because some other declared skill implies it (e.g. Docker → Linux,
+            # Spring Boot → Java). It was never literally typed into CV Skills.
+            # That's weaker evidence than a literal declaration — discount it
+            # so a requirement like "linux command line" doesn't borrow the
+            # full 70-point primary base from a skill the candidate never
+            # actually wrote down.
+            proxy_implied_only = (
+                proxy_in_primary
+                and best_proxy in sources.implied_primary
+                and best_proxy not in sources.declared_literal
+            )
             proxy_score1 = (sources.confidence(best_proxy) if proxy_in_primary
                             else sources.experience_only_credit(best_proxy))
+            if proxy_implied_only:
+                # 35% off — keeps a meaningful signal but caps the
+                # double-implication generosity.
+                proxy_score1 = round(proxy_score1 * 0.65)
 
             best_desc_sim = 0.0
             for exp in (cv.work_experience or []):
@@ -1565,7 +1876,16 @@ def _compute_skill_score(
                         best_desc_sim = sim
 
             score2_proxy = _normalize_cosine(best_desc_sim) * 100
-            proxy_final  = round(0.10 * proxy_score1 + 0.90 * score2_proxy)
+            # Blend depends on where the proxy came from:
+            #   • Primary-tier proxy (e.g. MySQL declared in CV Skills) is
+            #     strong evidence of transferable knowledge — give the declared
+            #     skill 40% of the weight, descriptions 60%.
+            #   • Experience/project-only proxy is weaker (used but not declared) —
+            #     keep the original 10/90 blend so descriptions dominate.
+            if proxy_in_primary:
+                proxy_final = round(0.40 * proxy_score1 + 0.60 * score2_proxy)
+            else:
+                proxy_final = round(0.10 * proxy_score1 + 0.90 * score2_proxy)
 
     # ── Take the best available score and build reason ─────────────────────────
     if direct_final is not None and proxy_final is not None:
@@ -1632,6 +1952,35 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
     missing: list[str] = []
     skill_scores: list[dict] = []
 
+    def _score_one_skill(skill: str, qualifier: str, threshold: float, prefix: str) -> tuple[int, int, str, dict]:
+        """Score one skill, apply the qualifier curve, and build the UI row.
+        Returns (raw_score, effective_score, status, row_dict)."""
+        raw, _, reason = _compute_skill_score(
+            skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, threshold
+        )
+        effective = _apply_qualifier_curve(raw, qualifier)
+        bar       = _QUALIFIER_BARS.get(qualifier, 0)
+        signal    = _qualifier_signal(raw, qualifier)
+        # Status is judged against the EFFECTIVE score so a candidate who clears
+        # the BASIC bar at 50 still counts as matched, while one stuck at 60
+        # for an EXPERT requirement drops to ~27 effective and reads as missing.
+        status    = _skill_status(effective, threshold)
+        evidence  = _extract_source_tags(skill, cv)
+        row = {
+            "skill":           f"{prefix}{skill}",
+            "score":           effective,         # what the UI / aggregation use
+            "raw_score":       raw,               # pre-curve, kept for debugging
+            "status":          status,
+            "qualifier":       qualifier,
+            "qualifier_bar":   bar,
+            "meets_qualifier": bar <= 0 or raw >= bar,
+            "gap_from_qualifier": max(0, bar - raw) if bar > 0 else 0,
+            "signal":          signal,
+            "evidence":        evidence,
+            "reason":          reason,
+        }
+        return raw, effective, status, row
+
     for group in required_skill_groups:
         threshold = _QUALIFIER_THRESHOLDS.get(group["qualifier"], SKILL_SEM_THRESHOLD)
         logic     = group["logic"]
@@ -1639,25 +1988,40 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         prefix    = f"[{qualifier.upper()}] " if qualifier != "any" else ""
 
         if logic == "OR":
-            label = " or ".join(group["skills"])
-            final_score, final_status, reason = _compute_skill_score(
-                label, cv, cv_skills, skill_sources, embed_cache, cv_vec, threshold
-            )
-            evidence = _extract_source_tags(label, cv)
-            skill_scores.append({"skill": f"{prefix}{label}", "score": final_score, "status": final_status, "evidence": evidence, "reason": reason})
-            (matched if final_status == "matched" else missing).append(label)
+            # Score every alternative independently and keep the one whose
+            # EFFECTIVE score is highest (post-curve). Joining alternatives
+            # into "java or javascript" before scoring used to collapse to a
+            # weak ~50% semantic match even when the candidate had both.
+            best_row:  dict | None = None
+            best_eff:  int        = -1
+            for skill in group["skills"]:
+                _raw, eff, _status, row = _score_one_skill(skill, qualifier, threshold, prefix)
+                if eff > best_eff:
+                    best_eff = eff
+                    best_row = row
+            if best_row is not None:
+                label = " or ".join(group["skills"])
+                best_row["skill"] = f"{prefix}{label}"  # show the OR set, not just the winner
+                skill_scores.append(best_row)
+                (matched if best_row["status"] == "matched" else missing).append(label)
         else:
             for skill in group["skills"]:
-                final_score, final_status, reason = _compute_skill_score(
-                    skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, threshold
-                )
-                evidence = _extract_source_tags(skill, cv)
-                skill_scores.append({"skill": f"{prefix}{skill}", "score": final_score, "status": final_status, "evidence": evidence, "reason": reason})
-                (matched if final_status == "matched" else missing).append(skill)
+                _raw, _eff, status, row = _score_one_skill(skill, qualifier, threshold, prefix)
+                skill_scores.append(row)
+                (matched if status == "matched" else missing).append(skill)
 
-    # Skills component: average score across all required skills (not binary ratio)
+    # Skills component: weighted average of effective scores, where each skill
+    # is weighted by its qualifier's importance (EXPERT 4× > BASIC 1×). This is
+    # what lets "missing one EXPERT skill" matter more than "missing one BASIC
+    # skill" in the final job_fit_score.
     if skill_scores:
-        skills_ratio = sum(s["score"] for s in skill_scores) / (100 * len(skill_scores))
+        weighted_total = 0.0
+        weight_total   = 0.0
+        for s in skill_scores:
+            w = _QUALIFIER_WEIGHTS.get(s.get("qualifier", "any"), 1.0)
+            weighted_total += s["score"] * w
+            weight_total   += w
+        skills_ratio = (weighted_total / weight_total) / 100 if weight_total > 0 else 0.0
     else:
         skills_ratio = 1.0
 
@@ -1712,31 +2076,63 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
             )
             req_score = score_val / 100.0
         elif cat in ("SKILL", "TECHNICAL", "TECHNOLOGY", "COMPÉTENCE"):
+            # Score this requirement using the qualifier-aware curve + per-skill
+            # qualifier weighting (BASIC 1× → EXPERT 4×). The recruiter's
+            # requirement-level `weight` (req.weight) is applied on top, lower
+            # in this function, so both knobs compose.
+            qualifier_for_req = (req.skill_level or "any").lower() if req.skill_level else None
             groups = _parse_description_to_groups(req.description or "")
-            scores: list[int] = []
+            weighted_total   = 0.0
+            weight_total     = 0.0
+            any_critical_gap = False
             for g in groups:
-                thresh = _QUALIFIER_THRESHOLDS.get(g["qualifier"], SKILL_SEM_THRESHOLD)
+                qualifier = qualifier_for_req or g["qualifier"]
+                thresh    = _QUALIFIER_THRESHOLDS.get(qualifier, SKILL_SEM_THRESHOLD)
+                q_w       = _QUALIFIER_WEIGHTS.get(qualifier, 1.0)
                 if g["logic"] == "OR":
-                    label = " or ".join(g["skills"])
-                    s, _, _r = _compute_skill_score(label, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh)
-                    scores.append(s)
+                    # Score each alternative independently and keep the best
+                    # effective score. The joined-string approach was scoring
+                    # "java or javascript" as one token and collapsing to weak
+                    # semantic similarity (~50%) even when the candidate had
+                    # both via framework implications (Spring Boot → Java,
+                    # Angular → JavaScript).
+                    best_eff = 0
+                    best_raw = 0
+                    for skill in g["skills"]:
+                        raw, _, _r = _compute_skill_score(skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh)
+                        eff = _apply_qualifier_curve(raw, qualifier)
+                        if eff > best_eff:
+                            best_eff = eff
+                            best_raw = raw
+                    weighted_total += best_eff * q_w
+                    weight_total   += q_w
+                    if _qualifier_signal(best_raw, qualifier) == "critical_gap":
+                        any_critical_gap = True
                 else:
                     for skill in g["skills"]:
-                        s, _, _r = _compute_skill_score(skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh)
-                        scores.append(s)
-            req_score = (sum(scores) / len(scores)) / 100 if scores else 0.0
+                        raw, _, _r = _compute_skill_score(skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh)
+                        eff = _apply_qualifier_curve(raw, qualifier)
+                        weighted_total += eff * q_w
+                        weight_total   += q_w
+                        if _qualifier_signal(raw, qualifier) == "critical_gap":
+                            any_critical_gap = True
+            req_score = (weighted_total / weight_total) / 100 if weight_total > 0 else 0.0
         else:
             # EXPERIENCE / other — embedding similarity
             req_sim   = _cosine(_embed_cached(req_text, embed_cache), cv_vec)
             req_score = _normalize_cosine(req_sim)
 
-        requirement_scores.append({
+        req_row: dict = {
             "category":    cat or "REQUIREMENT",
             "description": req.description or "",
             "score":       round(req_score * 100),
             "weight":      weight,
             "evidence":    evidence,
-        })
+        }
+        if cat in ("SKILL", "TECHNICAL", "TECHNOLOGY", "COMPÉTENCE") and req.skill_level:
+            req_row["skill_level"]  = req.skill_level
+            req_row["critical_gap"] = any_critical_gap
+        requirement_scores.append(req_row)
         weighted_sum  += req_score * weight
         total_weight  += weight
 
@@ -1772,6 +2168,15 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         seniority_score  * w_seniority
     )
     job_fit_score = max(0, min(round(blended * 100), 100))
+
+    # ── Advisory warnings (non-scoring) ───────────────────────────────────────
+    # Distance: ON_SITE job + candidate located far from VERMEG HQ.
+    # Name mismatch: CV vs GitHub vs LinkedIn names disagree.
+    warnings: list[dict] = []
+    distance_w = _check_distance_warning(cv.location, request.work_arrangement)
+    if distance_w:
+        warnings.append(distance_w)
+    warnings.extend(_check_name_warnings(cv))
 
     # ── Score explanation (deterministic — no LLM) ───────────────────────────
     score_explanation = _build_score_explanation(
@@ -1813,4 +2218,5 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         recommendation          = recommendation,
         interview_questions     = interview_questions,
         score_explanation       = score_explanation,
+        warnings                = warnings,
     )

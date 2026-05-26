@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.ArrayList;
 
 @RestController
@@ -27,14 +28,38 @@ public class CandidateProfileController {
                 .orElse(ResponseEntity.ok(new CandidateProfileDto()));
     }
 
+    /**
+     * Records that the candidate just consulted their Preferences page. After
+     * this call, "NEW" badges clear on the frontend because every item
+     * currently in the catalog now has firstSeenAt ≤ lastPreferencesAcknowledgedAt.
+     * Idempotent — calling it twice in a row just bumps the timestamp.
+     */
+    @PostMapping("/me/acknowledge")
+    public ResponseEntity<Void> acknowledgePreferences(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt.getSubject();
+        CandidateProfile profile = repo.findByUserId(userId)
+                .orElse(CandidateProfile.builder().userId(userId).build());
+        profile.setLastPreferencesAcknowledgedAt(Instant.now());
+        repo.save(profile);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/me")
     public ResponseEntity<CandidateProfileDto> saveMyProfile(
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody CandidateProfileDto dto) {
 
         String userId = jwt.getSubject();
+        boolean creating = repo.findByUserId(userId).isEmpty();
         CandidateProfile profile = repo.findByUserId(userId)
                 .orElse(CandidateProfile.builder().userId(userId).build());
+
+        // First-time profile creation: seed the acknowledgment timestamp so the
+        // candidate's very first Preferences visit doesn't light up every chip
+        // as "NEW". Existing catalog items all have firstSeenAt ≤ this stamp.
+        if (creating && profile.getLastPreferencesAcknowledgedAt() == null) {
+            profile.setLastPreferencesAcknowledgedAt(Instant.now());
+        }
 
         profile.setStatus(dto.status());
         profile.setYearsOfExperience(dto.yearsOfExperience());
@@ -43,8 +68,10 @@ public class CandidateProfileController {
         profile.setHardSkills(dto.hardSkills() != null ? dto.hardSkills() : new ArrayList<>());
         profile.setSoftSkills(dto.softSkills() != null ? dto.softSkills() : new ArrayList<>());
         profile.setLanguages(dto.languages() != null ? dto.languages() : new ArrayList<>());
-        profile.setPreferredWorkArrangement(dto.preferredWorkArrangement());
-        profile.setPreferredJobType(dto.preferredJobType());
+        profile.setPreferredWorkArrangement(
+                dto.preferredWorkArrangement() != null ? dto.preferredWorkArrangement() : new ArrayList<>());
+        profile.setPreferredJobType(
+                dto.preferredJobType() != null ? dto.preferredJobType() : new ArrayList<>());
 
         return ResponseEntity.ok(toDto(repo.save(profile)));
     }
@@ -60,7 +87,8 @@ public class CandidateProfileController {
                 p.getSoftSkills(),
                 p.getLanguages(),
                 p.getPreferredWorkArrangement(),
-                p.getPreferredJobType()
+                p.getPreferredJobType(),
+                p.getLastPreferencesAcknowledgedAt()
         );
     }
 }

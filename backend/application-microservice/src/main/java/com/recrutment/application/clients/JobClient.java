@@ -85,6 +85,15 @@ public class JobClient {
         @JsonAlias({"workArrangement"})
         private String workArrangement;
 
+        @JsonAlias({"location"})
+        private String location;
+
+        @JsonAlias({"domain"})
+        private String domain;
+
+        @JsonAlias({"createdAt"})
+        private String createdAt;
+
         @JsonAlias({"description", "jobDescription"})
         private String description;
 

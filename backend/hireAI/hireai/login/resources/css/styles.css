@@ -1060,4 +1060,55 @@ form#kc-register-form{
 }
 
 
-
+/* ─── First-broker-login "Account already exists" page ───────────────────────
+   Custom layout for idp-confirm-link.ftl. The default Keycloak page slams a
+   loud red error banner on candidates whose only "mistake" is signing in with
+   a different provider on an email they already use here. We replace that
+   with a calm informational layout: a lead paragraph, an email "callout", and
+   two visually distinct action buttons (primary = link account, secondary =
+   review profile) each with explanatory helper text underneath. */
+.hireai-idp-link{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:1.25rem !important;
+}
+.hireai-idp-link__lead{
+  margin:0 !important;
+  font-size:0.92rem !important;
+  line-height:1.55 !important;
+  color:rgba(248,250,252,0.82) !important;
+}
+/* Note: the email is shown via Keycloak's native alert ("User with email X
+   already exists. How do you want to continue?") rendered above the form by
+   the layout — we don't render our own email callout because `existingUser`
+   is not a variable in this template's scope. */
+/* Stack of action buttons, each followed by a hint. The primary button is
+   the framework's default Keycloak primary blue; we override the secondary so
+   it reads as a calmer "alternate path" rather than a competing CTA. */
+.hireai-idp-link__options{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:0.45rem !important;
+  margin-top:0.4rem !important;
+}
+.hireai-idp-link__hint{
+  margin:-0.2rem 0 0.85rem !important;
+  font-size:0.82rem !important;
+  line-height:1.5 !important;
+  color:rgba(248,250,252,0.55) !important;
+  font-style:italic !important;
+}
+.hireai-idp-link__hint:last-child{ margin-bottom:0 !important; }
+/* Secondary button — transparent + bordered, so it visually steps back from
+   the primary blue. */
+.hireai-idp-link__secondary{
+  background:rgba(255,255,255,0.04) !important;
+  color:rgba(248,250,252,0.9) !important;
+  border:1px solid rgba(255,255,255,0.18) !important;
+  background-image:none !important;
+  box-shadow:none !important;
+}
+.hireai-idp-link__secondary:hover{
+  background:rgba(255,255,255,0.08) !important;
+  border-color:rgba(121,164,233,0.5) !important;
+}

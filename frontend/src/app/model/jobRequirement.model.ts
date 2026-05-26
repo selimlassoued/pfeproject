@@ -5,7 +5,7 @@ export type RequirementCategory =
   | 'CERTIFICATION'
   | 'LANGUAGE';
 
-export type SkillLevel = 'BASIC' | 'INTERMEDIATE' | 'ADVANCED';
+export type SkillLevel = 'BASIC' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 // A single selectable degree value. ENGINEER (ingénieur, bac+5) ranks with MASTER.
 export type DegreeLevel = 'BAC' | 'BTS_DUT' | 'LICENCE_BACHELOR' | 'ENGINEER' | 'MASTER' | 'PHD';
 export type EnrollmentType = 'STUDENT' | 'GRADUATE' | 'BOTH';

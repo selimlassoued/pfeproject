@@ -14,6 +14,23 @@ declare const JitsiMeetExternalAPI: any;
 
 const MAX_RECORDING_MS = 2 * 60 * 60 * 1000;
 
+/**
+ * Display-name patterns of known third-party AI notetaker bots that auto-join
+ * Jitsi calls from a participant's Google Calendar. We kick them on sight
+ * because:
+ *   • The recording goes to a third-party SaaS (Fireflies, Otter, etc.)
+ *     without VERMEG's consent — a GDPR data-processor relationship that
+ *     was never set up.
+ *   • HireAI already records the call via the analysis-service for the
+ *     transcript pipeline. Bot-side transcription is redundant.
+ *   • Recruiters wouldn't notice the bot until reviewing the participant
+ *     list, by which point sensitive content is already on the bot's cloud.
+ *
+ * Match is case-insensitive substring. Add a token whenever a new notetaker
+ * shows up — keeping this current is cheaper than auditing each one.
+ */
+const BOT_NAME_PATTERN = /\b(fireflies|otter\.ai|otter ai|read\.ai|read ai|fathom|noty\.ai|noty ai|tactiq|krisp|sembly|notetaker|note taker|transcribe bot|tldv|t\.l\.d\.v|meetgeek|grain\.com|chorus\.ai|jamie ai)\b/i;
+
 @Component({
   selector: 'app-interview-room',
   imports: [CommonModule],
@@ -40,8 +57,15 @@ export class InterviewRoom implements OnInit, OnDestroy {
 
   @ViewChild('jitsiContainer', { static: true }) containerRef!: ElementRef;
 
-  /** 'connecting' covers the gap between the countdown ending and Jitsi firing 'videoConferenceJoined'. */
-  state: 'idle' | 'waiting' | 'connecting' | 'joined' | 'error' = 'idle';
+  /**
+   * 'connecting' covers the gap between the countdown ending and Jitsi
+   * firing 'videoConferenceJoined'.
+   * 'ending' covers the brief window between the user clicking
+   * End interview and the parent navigating away — without this, Jitsi
+   * flashes its "Build your video experience" promo page while we wait
+   * for the upload + navigation, which looks unprofessional.
+   */
+  state: 'idle' | 'waiting' | 'connecting' | 'joined' | 'ending' | 'error' = 'idle';
   isRecording = false;
   uploadStatus: 'idle' | 'uploading' | 'done' | 'error' = 'idle';
   countdown = '';
@@ -303,15 +327,18 @@ private onBeforeUnload = () => {
         MOBILE_APP_PROMO: false,
         DISPLAY_WELCOME_PAGE_CONTENT: false,
         DISPLAY_WELCOME_FOOTER: false,
-        // The 'microphone' button is intentionally removed — the Jitsi
-        // iframe's mute button is unreliable (clicks frequently fail to
-        // register, leaving us unable to detect the true state). We
-        // replace it with our own toggleMute() button below the iframe
-        // that drives both the call audio (via executeCommand toggleAudio)
-        // and our MediaRecorder track in lockstep.
+        // We remove both 'microphone' and 'hangup' for participants:
+        //   - microphone: the Jitsi iframe's mute button is unreliable
+        //     (clicks frequently fail to register). Our own toggleMute()
+        //     below the iframe drives the MediaRecorder track AND mirrors
+        //     to Jitsi via executeCommand in lockstep.
+        //   - hangup: having two end-call buttons (Jitsi's red phone AND
+        //     our "End & Save") was confusing. Our button now ends the
+        //     call too, via executeCommand('hangup') after the upload.
+        // Observers keep 'hangup' because they don't have End & Save.
         TOOLBAR_BUTTONS: observer
           ? ['hangup', 'chat']
-          : ['camera', 'hangup', 'chat', 'desktop'],
+          : ['camera', 'chat', 'desktop'],
       },
     });
 
@@ -344,6 +371,37 @@ private onBeforeUnload = () => {
       );
       this.jitsiMuted = !!e?.muted;
       this.applyMicGating();
+    });
+
+    // ── Bot auto-kick ─────────────────────────────────────────────────────
+    // Third-party AI notetakers (Fireflies, Otter, Read.ai, etc.) auto-join
+    // Jitsi calls whenever they detect a meeting link on a connected Google
+    // calendar. They record + transcribe the conversation onto their cloud
+    // without anyone in the room consenting. For a hiring platform that's
+    // an immediate privacy + GDPR problem (the candidate didn't sign a DPA
+    // with Fireflies, and neither did VERMEG).
+    //
+    // The recruiter is the moderator (first to join → gets moderator rights
+    // automatically on public Jitsi). We listen for any participant whose
+    // display name matches a known bot regex and kick them on sight. The
+    // candidate-side runs this code too but their kick attempts no-op
+    // silently (they aren't the moderator), so it's safe to leave on for
+    // every role.
+    this.jitsiApi.on('participantJoined', (e: { id: string; displayName?: string }) => {
+      if (!e?.id) return;
+      const name = (e.displayName || '').toLowerCase();
+      if (BOT_NAME_PATTERN.test(name)) {
+        // Tiny delay so Jitsi has fully registered the participant before we
+        // try to remove them — kicking inside the same tick sometimes 404s.
+        setTimeout(() => {
+          try {
+            this.jitsiApi?.executeCommand('kickParticipant', e.id);
+            console.warn(`[interview-room] Auto-kicked notetaker bot "${e.displayName}" (id=${e.id})`);
+          } catch (err) {
+            console.warn('[interview-room] Failed to kick bot:', err);
+          }
+        }, 250);
+      }
     });
 
     this.jitsiApi.on('videoConferenceLeft', () => {
@@ -406,12 +464,36 @@ private onBeforeUnload = () => {
     console.log(`Single-track recording started for ${role}`);
   }
 
+  /**
+   * End the interview. Single user-facing action that replaces the old
+   * "click End & Save then also click Jitsi's hangup" two-step:
+   *   1. Stop and upload the recording.
+   *   2. Tell Jitsi to leave the room. Jitsi's `readyToClose` listener
+   *      then fires interviewEnded so the page navigates away.
+   * Safe to call from the recording timeout, the manual button, the
+   * Jitsi hangup event handler — all converge to one path.
+   */
   stopRecording() {
-  clearTimeout(this.stopTimer);
-  if (this.mediaRecorder?.state !== 'inactive') this.mediaRecorder?.stop();
-  this.micStream?.getTracks().forEach(t => t.stop());
-  this.ngZone.run(() => this.isRecording = false);
-}
+    clearTimeout(this.stopTimer);
+    if (this.mediaRecorder?.state !== 'inactive') this.mediaRecorder?.stop();
+    this.micStream?.getTracks().forEach(t => t.stop());
+    this.ngZone.run(() => {
+      this.isRecording = false;
+      // Flip to 'ending' so the template hides the Jitsi iframe and shows
+      // our own "Wrapping up" card. Without this, Jitsi flashes a 8x8
+      // promo page during the ~800ms window before navigation.
+      this.state = 'ending';
+    });
+    // Leave the Jitsi call.
+    try { this.jitsiApi?.executeCommand('hangup'); } catch { /* no-op */ }
+    // Tell the parent the interview is over. We do NOT rely on Jitsi's
+    // `readyToClose` event for this — Jitsi only fires it consistently
+    // when the user clicks its toolbar hangup button, NOT when hangup is
+    // invoked via executeCommand. Skipping this emit was the bug where
+    // "End interview" appeared to do nothing — the recording stopped but
+    // the page never navigated away.
+    this.interviewEnded.emit();
+  }
 
   private uploadBlob(chunks: Blob[], role: string) {
     if (chunks.length === 0) { console.warn(`No chunks for ${role} — skipping upload`); return; }

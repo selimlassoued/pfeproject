@@ -23,26 +23,50 @@ public class SemanticMatchDto {
     private String recommendation;
     private List<String> interviewQuestions;
     private String scoreExplanation;
+    // Non-scoring advisory signals (distance_far, name_mismatch, …) the
+    // recruiter should see as banners on the application detail page.
+    private List<WarningDto> warnings;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class WarningDto {
+        private String kind;       // distance_far | name_mismatch | …
+        private String severity;   // warning | info
+        private String message;    // human-readable banner text
+        private java.util.Map<String, Object> details;
+    }
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class SkillScoreDto {
         private String skill;
-        private Integer score;
-        private String status; // "matched" | "partial" | "missing"
+        private Integer score;             // effective score (post-qualifier-curve)
+        private String status;             // "matched" | "partial" | "missing"
         private String evidence;
         private String reason;
+        // Qualifier-aware fields surfaced by the Python matcher so the UI
+        // can show "clears BASIC bar" / "below ADVANCED bar by 18 points" etc.
+        private Integer rawScore;          // pre-curve raw score (0-100)
+        private String  qualifier;         // basic / intermediate / advanced / expert / any
+        private Integer qualifierBar;      // 45 / 65 / 80 / 90 (0 for 'any')
+        private Boolean meetsQualifier;    // raw >= bar
+        private Integer gapFromQualifier;  // max(0, bar - raw)
+        private String  signal;            // strength / meets / gap / critical_gap / ""
     }
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RequirementScoreDto {
-        private String category;
-        private String description;
+        private String  category;
+        private String  description;
         private Integer score;
-        private Float weight;
-        private String evidence;
+        private Float   weight;
+        private String  evidence;
+        // Set on SKILL requirements when the recruiter picked an explicit level:
+        private String  skillLevel;        // BASIC / INTERMEDIATE / ADVANCED / EXPERT
+        private Boolean criticalGap;       // true when any skill in this req hit critical_gap
     }
 }

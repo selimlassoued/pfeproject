@@ -115,14 +115,15 @@
     <!-- ── Step 4: Languages ─────────────────────────────────────────────── -->
     @if (step === 4) {
       <div class="ob-body">
+        <!-- Strict dropdown (no free text) keeps language names canonical so
+             the matcher and recruiter view both stay consistent. -->
         <div class="lang-add-row">
           <div class="form-group" style="flex:1">
             <label>Language</label>
-            <input class="input" [(ngModel)]="newLanguage" [ngModelOptions]="{standalone:true}"
-              placeholder="e.g. French, English…" list="ob-lang-list" />
-            <datalist id="ob-lang-list">
-              @for (l of commonLanguages; track l) { <option [value]="l"></option> }
-            </datalist>
+            <select class="input" [(ngModel)]="newLanguage" [ngModelOptions]="{standalone:true}">
+              <option value="">Select a language</option>
+              @for (l of availableLanguagesToAdd; track l) { <option [value]="l">{{ l }}</option> }
+            </select>
           </div>
           <div class="form-group">
             <label>Level</label>
@@ -130,7 +131,9 @@
               @for (lvl of cefrLevels; track lvl) { <option [value]="lvl">{{ lvl }}</option> }
             </select>
           </div>
-          <button type="button" class="btn btn-primary lang-add-btn" (click)="addLanguage()">Add</button>
+          <button type="button" class="btn btn-primary lang-add-btn"
+                  [disabled]="!newLanguage"
+                  (click)="addLanguage()">Add</button>
         </div>
 
         @if (languages.length > 0) {
@@ -157,24 +160,30 @@
     @if (step === 5) {
       <div class="ob-body" [formGroup]="form">
         <div class="ob-section">
-          <h4 class="ob-section-title">Work arrangement</h4>
+          <h4 class="ob-section-title">
+            Work arrangement
+            <span class="ob-section-hint">Pick all that work for you · leave empty if you don't mind</span>
+          </h4>
           <div class="pref-chips">
             @for (opt of [['ON_SITE','On-site'],['HYBRID','Hybrid'],['REMOTE','Remote']]; track opt[0]) {
               <button type="button" class="pref-chip"
-                [class.pref-chip--active]="form.get('preferredWorkArrangement')?.value === opt[0]"
-                (click)="setWorkArrangement(opt[0])">
+                [class.pref-chip--active]="isArrangementSelected(opt[0])"
+                (click)="toggleArrangement(opt[0])">
                 {{ opt[1] }}
               </button>
             }
           </div>
         </div>
         <div class="ob-section">
-          <h4 class="ob-section-title">Job type</h4>
+          <h4 class="ob-section-title">
+            Job type
+            <span class="ob-section-hint">Pick all that work for you · leave empty if you don't mind</span>
+          </h4>
           <div class="pref-chips">
             @for (opt of [['FULL_TIME','Full-time'],['INTERNSHIP','Internship'],['ALTERNANCE','Alternance']]; track opt[0]) {
               <button type="button" class="pref-chip"
-                [class.pref-chip--active]="form.get('preferredJobType')?.value === opt[0]"
-                (click)="setJobType(opt[0])">
+                [class.pref-chip--active]="isJobTypeSelected(opt[0])"
+                (click)="toggleJobType(opt[0])">
                 {{ opt[1] }}
               </button>
             }

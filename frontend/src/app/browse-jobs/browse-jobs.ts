@@ -4,11 +4,12 @@ import { JobService } from '../services/job.service';
 import { JobOffer } from '../model/jobOffer.model';
 import { PageResponse } from '../model/page-response';
 import { RouterLink } from "@angular/router";
-import { Router } from "@angular/router";
+import { Router, ActivatedRoute } from "@angular/router";
 import { AuthService } from '../services/AuthService.service';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
 import { CandidateProfileService, CandidateProfile } from '../services/candidate-profile.service';
+import { CatalogService } from '../services/catalog.service';
 import { HttpClient } from '@angular/common/http';
 import Swal from 'sweetalert2';
 import { firstValueFrom } from 'rxjs';
@@ -52,20 +53,60 @@ export class BrowseJobsComponent implements OnInit {
 
   private readonly keycloak = inject(Keycloak);
 
+  /** Count of catalog items (skills + languages) that have been added since
+   *  the candidate's last Preferences visit. Drives the small badge next to
+   *  the "My Preferences" button. Zero hides the badge entirely. */
+  newCatalogCount = 0;
+
   constructor(
     private jobService: JobService,
     private authService: AuthService,
     private applicationService: ApplicationService,
     private candidateProfileService: CandidateProfileService,
+    private catalogService: CatalogService,
     private http: HttpClient,
     private router: Router,
+    private route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
     this.fetchJobs();
     if (this.isCandidate) {
+      // Load preferences first, then check whether we should auto-resume the
+      // Recommendation sort. The user lands here from /preferences with
+      // ?resume=match after we redirected them away from an empty profile.
       this.loadMyApplications();
-      this.loadCandidatePreferences();
+      this.loadCandidatePreferences().then(() => {
+        this.maybeResumeRecommendation();
+        this.computeNewCatalogCount();
+      });
+    }
+  }
+
+  private async maybeResumeRecommendation(): Promise<void> {
+    const resume = this.route.snapshot.queryParamMap.get('resume');
+    if (resume === 'match' && this.hasUsefulProfileData()) {
+      this.sortMode = 'match';
+      await this.triggerRanking();
+    }
+  }
+
+  /** Counts skills + languages added to the catalog since the candidate's
+   *  last Preferences visit. The CatalogService is cached, so this is cheap
+   *  even when called on every browse-page load. */
+  private async computeNewCatalogCount(): Promise<void> {
+    const lastAck = this.candidatePrefs?.lastPreferencesAcknowledgedAt;
+    if (!lastAck) { this.newCatalogCount = 0; return; }
+    const lastMs = new Date(lastAck).getTime();
+    try {
+      const snap = await this.catalogService.getSnapshot();
+      const isNew = (firstSeenAt: string | null) =>
+        !!firstSeenAt && new Date(firstSeenAt).getTime() > lastMs;
+      this.newCatalogCount =
+        snap.skills.filter(s => isNew(s.firstSeenAt)).length +
+        snap.languages.filter(l => isNew(l.firstSeenAt)).length;
+    } catch {
+      this.newCatalogCount = 0;
     }
   }
 
@@ -305,7 +346,7 @@ export class BrowseJobsComponent implements OnInit {
   private async loadCandidatePreferences(): Promise<void> {
     try {
       this.candidatePrefs = await this.candidateProfileService.get();
-    } catch { /* ignore */ }
+    } catch { /* ignore — leave candidatePrefs null */ }
   }
 
   // ── Semantic ranking ──────────────────────────────────────────────────────
@@ -352,9 +393,24 @@ export class BrowseJobsComponent implements OnInit {
 
     this.rankingLoading = true;
     try {
+      const p = this.candidatePrefs;
       const body = {
         candidate_text: candidateText,
-        jobs: this.filteredJobs.map(j => ({ id: j.id, text: this.buildJobText(j) })),
+        // Structured signals so the backend can do skill overlap + preference
+        // fit on top of the embedding similarity. Both arrangement and job
+        // type are multi-select now — empty array (or all options selected)
+        // means "no preference" and every job stays at pref_fit = 1.0.
+        candidate_hard_skills:                  p.hardSkills ?? [],
+        candidate_preferred_work_arrangements:  p.preferredWorkArrangement ?? [],
+        candidate_preferred_job_types:          p.preferredJobType ?? [],
+        jobs: this.filteredJobs.map(j => ({
+          id:               j.id,
+          text:             this.buildJobText(j),
+          work_arrangement: (j as any).workArrangement ?? null,
+          employment_type:  j.employmentType ?? null,
+          requirement_text: (j.requirements ?? [])
+            .map(r => `${r.category}: ${r.description}`).join('; '),
+        })),
       };
       const resp = await firstValueFrom(
         this.http.post<{ results: { id: string; score: number }[] }>(
@@ -367,24 +423,69 @@ export class BrowseJobsComponent implements OnInit {
     finally { this.rankingLoading = false; }
   }
 
+  // Thresholds are calibrated for the new score distribution produced by the
+  // backend: semantic uses _normalize_cosine (0-1 over the document window)
+  // blended 55/45 with skill_overlap, then multiplied by preference fit.
+  // Real scores typically land in:
+  //   • Strong match  — ≥ 0.65 (both signals high + preferences match)
+  //   • Good match    — ≥ 0.45
+  //   • Partial match — ≥ 0.25
   matchLabel(job: JobOffer): string | null {
     if (this.sortMode !== 'match' || !this.isCandidate) return null;
     if (this.rankingLoading) return null;
     const s = this.jobScores.get(job.id) ?? 0;
-    if (s >= 0.72) return 'Strong match';
-    if (s >= 0.58) return 'Good match';
-    if (s >= 0.45) return 'Partial match';
+    if (s >= 0.65) return 'Strong match';
+    if (s >= 0.45) return 'Good match';
+    if (s >= 0.25) return 'Partial match';
     return null;
   }
 
   matchStyle(job: JobOffer): string {
     const s = this.jobScores.get(job.id) ?? 0;
-    if (s >= 0.72) return 'background:rgba(72,187,120,0.15);color:#68d391;border:1px solid rgba(72,187,120,0.3);';
-    if (s >= 0.58) return 'background:rgba(121,164,233,0.15);color:#79a4e9;border:1px solid rgba(121,164,233,0.3);';
+    if (s >= 0.65) return 'background:rgba(72,187,120,0.15);color:#68d391;border:1px solid rgba(72,187,120,0.3);';
+    if (s >= 0.45) return 'background:rgba(121,164,233,0.15);color:#79a4e9;border:1px solid rgba(121,164,233,0.3);';
     return 'background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);';
   }
 
+  /**
+   * Returns true when the candidate profile has at least one signal the ranker
+   * actually consumes. Without any of these, the recommendation collapses to
+   * plain text-embedding similarity and produces near-identical scores for
+   * every job — better to send the user to set their preferences first.
+   */
+  private hasUsefulProfileData(): boolean {
+    const p = this.candidatePrefs;
+    if (!p) return false;
+    return !!(
+      (p.domain && p.domain.trim()) ||
+      (p.hardSkills && p.hardSkills.length > 0) ||
+      (p.preferredJobType && p.preferredJobType.length > 0) ||
+      (p.preferredWorkArrangement && p.preferredWorkArrangement.length > 0)
+    );
+  }
+
   setSortMode(mode: 'date' | 'match') {
+    // Block the Recommendation sort when the candidate has nothing the ranker
+    // can use. Show a toast explaining why and redirect to /preferences after
+    // a beat — keeps the user in flow instead of silently failing.
+    if (mode === 'match' && this.isCandidate && !this.hasUsefulProfileData()) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Set your preferences first',
+        text: 'We need to know what you’re looking for before we can recommend jobs. Taking you there now…',
+        timer: 1800,
+        showConfirmButton: false,
+        timerProgressBar: true,
+      }).then(() => {
+        // Remember that the user wanted recommendations so we can re-enter
+        // this sort mode automatically after they save their preferences.
+        this.router.navigate(['/preferences'], {
+          queryParams: { returnTo: '/browse', resume: 'match' },
+        });
+      });
+      return;  // do NOT flip sortMode — leave Newest selected
+    }
+
     this.sortMode = mode;
     if (mode === 'match' && this.jobScores.size === 0) {
       this.triggerRanking();

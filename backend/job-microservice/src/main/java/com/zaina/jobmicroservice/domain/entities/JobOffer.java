@@ -8,8 +8,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,9 +33,32 @@ public class JobOffer {
     private String refNumber;   // set once after first save — never changed after that
 
     private String title;
+
+    // Free-form job description — TEXT instead of default varchar(255) so
+    // recruiters can write proper multi-paragraph postings without hitting
+    // the column-length limit at insert time.
+    @Column(columnDefinition = "TEXT")
     private String description;
+
     private String location;
     private String workArrangement; // REMOTE / HYBRID / ON_SITE
+
+    // Business domain the job belongs to — feeds the candidate-side chip-grid
+    // filter so an Insurance candidate doesn't have to scroll through Kafka
+    // and Spring Boot to find Risk-Analysis skills. One of the same values
+    // candidates pick on their Preferences page (SOFTWARE_ENGINEERING,
+    // FINANCE_BANKING, INSURANCE, PROJECT_MANAGEMENT, QUALITY_ASSURANCE,
+    // BUSINESS_ANALYSIS). Nullable so legacy jobs created before this field
+    // existed still load.
+    private String domain;
+
+    // When the job was first persisted. Drives the "First seen" timestamp on
+    // every skill the catalog extracts from this job — which in turn drives
+    // the candidate-side NEW chip badge ("added since your last visit").
+    // Auto-set by Hibernate on insert, never updated afterwards.
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
     private Integer minSalary;
     private Integer maxSalary;
 

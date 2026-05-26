@@ -173,7 +173,8 @@ public class ApplicationService {
                 semanticMatch != null ? semanticMatch.getWeaknesses() : List.of(),
                 semanticMatch != null ? semanticMatch.getRecommendation() : null,
                 semanticMatch != null ? semanticMatch.getInterviewQuestions() : List.of(),
-                semanticMatch != null ? semanticMatch.getScoreExplanation() : null
+                semanticMatch != null ? semanticMatch.getScoreExplanation() : null,
+                semanticMatch != null ? semanticMatch.getWarnings() : List.of()
         );
     }
 

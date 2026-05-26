@@ -129,6 +129,29 @@
   border:1px solid rgba(255,200,80,0.28); background:rgba(255,200,80,0.10);
   color:#ffd97d; letter-spacing:.02em;
 }
+
+/* Non-scoring advisory banners (distance, identity mismatch). Amber by default;
+   info severity flips to a calmer blue so distance vs name mismatch can share
+   the surface without screaming the same color. */
+.ad-warnings{
+  display:flex; flex-direction:column; gap:.45rem; margin:.85rem 0 0;
+}
+.ad-warning{
+  display:flex; align-items:flex-start; gap:.6rem;
+  padding:.6rem .8rem; border-radius:10px;
+  border:1px solid rgba(255,180,80,0.35);
+  background:rgba(255,180,80,0.08);
+  color:#fde3a7; font-size:.86rem; line-height:1.4;
+}
+.ad-warning-info{
+  border-color:rgba(121,164,233,0.35);
+  background:rgba(121,164,233,0.08);
+  color:#cfe0ff;
+}
+.ad-warning-icon{
+  flex-shrink:0; font-size:1rem; line-height:1.2; font-weight:800;
+}
+.ad-warning-msg{ flex:1; }
 .ad-match-section{ display:grid; gap:.55rem; }
 .ad-tags{ display:flex; flex-wrap:wrap; gap:.55rem; }
 .ad-tag{

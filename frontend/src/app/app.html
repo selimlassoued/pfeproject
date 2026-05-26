@@ -135,6 +135,15 @@
               <li class="nav-item">
                 <a class="nav-link hireai-link" routerLink="/profile">My Profile</a>
               </li>
+              <!-- Skill catalog management — only recruiters/admins curate
+                   the universe of selectable skills. Candidates never see
+                   this link (they consume the catalog passively via their
+                   Preferences page). -->
+              @if (isRecruiter() || isAdmin() || isSuperAdmin()) {
+                <li class="nav-item">
+                  <a class="nav-link hireai-link" routerLink="/admin/skills-catalog">Skills Catalog</a>
+                </li>
+              }
               <li>
                 <button class="dropdown-item hireai-dd-btn" type="button" (click)="logout()">
                   Sign out

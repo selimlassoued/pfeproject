@@ -86,6 +86,8 @@ public class CvParserClient {
             request.put("application_id", applicationId.toString());
             request.put("job_title", job != null ? job.getTitle() : null);
             request.put("job_description", job != null ? job.getDescription() : null);
+            request.put("job_location", job != null ? job.getLocation() : null);
+            request.put("work_arrangement", job != null ? job.getWorkArrangement() : null);
             request.put("requirements", mapRequirements(job != null ? job.getRequirements() : List.of()));
             request.put("cv_analysis", mapCvAnalysis(analysis));
             if (job != null) {
@@ -105,7 +107,8 @@ public class CvParserClient {
             return new SemanticMatchDto(null, List.of(), List.of(),
                     List.<SemanticMatchDto.SkillScoreDto>of(), null, null,
                     null, List.<SemanticMatchDto.RequirementScoreDto>of(),
-                    List.of(), List.of(), "REVIEW", List.of(), null);
+                    List.of(), List.of(), "REVIEW", List.of(), null,
+                    List.<SemanticMatchDto.WarningDto>of());
         }
     }
 
@@ -284,7 +287,8 @@ public class CvParserClient {
             return new SemanticMatchDto(null, List.of(), List.of(),
                     List.<SemanticMatchDto.SkillScoreDto>of(), null, null,
                     null, List.<SemanticMatchDto.RequirementScoreDto>of(),
-                    List.of(), List.of(), "REVIEW", List.of(), null);
+                    List.of(), List.of(), "REVIEW", List.of(), null,
+                    List.<SemanticMatchDto.WarningDto>of());
         }
 
         Integer score = toInt(data.get("job_fit_score"));
@@ -307,8 +311,33 @@ public class CvParserClient {
                 castList(data.get("weaknesses")),                                           // weaknesses
                 data.get("recommendation") instanceof String s ? s : "REVIEW",             // recommendation
                 castList(data.get("interview_questions")),                                  // interviewQuestions
-                data.get("score_explanation") instanceof String s ? s : null               // scoreExplanation
+                data.get("score_explanation") instanceof String s ? s : null,              // scoreExplanation
+                mapWarnings(data.get("warnings"))                                           // warnings
         );
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<SemanticMatchDto.WarningDto> mapWarnings(Object raw) {
+        if (!(raw instanceof List<?> list)) return List.of();
+        return list.stream()
+                .filter(item -> item instanceof Map<?, ?>)
+                .map(item -> {
+                    Map<?, ?> m = (Map<?, ?>) item;
+                    Map<String, Object> details = null;
+                    if (m.get("details") instanceof Map<?, ?> dm) {
+                        details = new HashMap<>();
+                        for (Map.Entry<?, ?> e : dm.entrySet()) {
+                            if (e.getKey() instanceof String k) details.put(k, e.getValue());
+                        }
+                    }
+                    return new SemanticMatchDto.WarningDto(
+                            m.get("kind")     instanceof String s ? s : null,
+                            m.get("severity") instanceof String s ? s : "warning",
+                            m.get("message")  instanceof String s ? s : null,
+                            details
+                    );
+                })
+                .toList();
     }
 
     @SuppressWarnings("unchecked")
@@ -318,12 +347,19 @@ public class CvParserClient {
                 .filter(item -> item instanceof Map<?, ?>)
                 .map(item -> {
                     Map<?, ?> m = (Map<?, ?>) item;
+                    Boolean meets = m.get("meets_qualifier") instanceof Boolean b ? b : null;
                     return new SemanticMatchDto.SkillScoreDto(
                             m.get("skill")    instanceof String s ? s : null,
                             toInt(m.get("score")),
                             m.get("status")   instanceof String s ? s : "missing",
                             m.get("evidence") instanceof String e ? e : null,
-                            m.get("reason")   instanceof String r ? r : null
+                            m.get("reason")   instanceof String r ? r : null,
+                            toInt(m.get("raw_score")),
+                            m.get("qualifier") instanceof String s ? s : null,
+                            toInt(m.get("qualifier_bar")),
+                            meets,
+                            toInt(m.get("gap_from_qualifier")),
+                            m.get("signal") instanceof String s ? s : null
                     );
                 })
                 .toList();
@@ -339,12 +375,15 @@ public class CvParserClient {
                     Float weight = null;
                     Object w = m.get("weight");
                     if (w instanceof Number n) weight = n.floatValue();
+                    Boolean criticalGap = m.get("critical_gap") instanceof Boolean b ? b : null;
                     return new SemanticMatchDto.RequirementScoreDto(
                             m.get("category") instanceof String s ? s : null,
                             m.get("description") instanceof String s ? s : null,
                             toInt(m.get("score")),
                             weight,
-                            m.get("evidence") instanceof String s ? s : null
+                            m.get("evidence") instanceof String s ? s : null,
+                            m.get("skill_level") instanceof String s ? s : null,
+                            criticalGap
                     );
                 })
                 .toList();
@@ -480,17 +519,30 @@ public class CvParserClient {
 
     private Map<String, Object> mapGithubProfile(CvAnalysis analysis) {
         if (analysis.getGithubProfile() == null) return null;
+        var gh = analysis.getGithubProfile();
         Map<String, Object> mapped = new HashMap<>();
-        mapped.put("all_technologies", analysis.getGithubProfile().getAllTechnologies() != null
-                ? analysis.getGithubProfile().getAllTechnologies() : List.of());
-        mapped.put("all_repo_frameworks", analysis.getGithubProfile().getAllRepoFrameworks() != null
-                ? analysis.getGithubProfile().getAllRepoFrameworks() : List.of());
-        mapped.put("cv_skills_confirmed", analysis.getGithubProfile().getCvSkillsConfirmed() != null
-                ? analysis.getGithubProfile().getCvSkillsConfirmed() : List.of());
-        mapped.put("cv_skills_likely", analysis.getGithubProfile().getCvSkillsLikely() != null
-                ? analysis.getGithubProfile().getCvSkillsLikely() : List.of());
-        mapped.put("cv_skills_no_evidence", analysis.getGithubProfile().getCvSkillsNoEvidence() != null
-                ? analysis.getGithubProfile().getCvSkillsNoEvidence() : List.of());
+        // Skill-evidence buckets the Python matcher already consumed:
+        mapped.put("all_technologies", gh.getAllTechnologies() != null
+                ? gh.getAllTechnologies() : List.of());
+        mapped.put("all_repo_frameworks", gh.getAllRepoFrameworks() != null
+                ? gh.getAllRepoFrameworks() : List.of());
+        mapped.put("cv_skills_confirmed", gh.getCvSkillsConfirmed() != null
+                ? gh.getCvSkillsConfirmed() : List.of());
+        mapped.put("cv_skills_likely", gh.getCvSkillsLikely() != null
+                ? gh.getCvSkillsLikely() : List.of());
+        mapped.put("cv_skills_no_evidence", gh.getCvSkillsNoEvidence() != null
+                ? gh.getCvSkillsNoEvidence() : List.of());
+        // Activity signals the matcher needs to credit `git` automatically
+        // when the candidate has a real GitHub profile (own_repos_count > 0
+        // is the strongest "this person uses git daily" signal).
+        mapped.put("username",          gh.getUsername());
+        mapped.put("account_url",       gh.getAccountUrl());
+        mapped.put("public_repos_count",gh.getPublicReposCount());
+        mapped.put("own_repos_count",   gh.getOwnReposCount());
+        mapped.put("forked_repos_count",gh.getForkedReposCount());
+        mapped.put("real_repos_count",  gh.getRealReposCount());
+        mapped.put("account_age_days",  gh.getAccountAgeDays());
+        mapped.put("last_active",       gh.getLastActive());
         return mapped;
     }
 

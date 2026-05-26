@@ -27,6 +27,7 @@ import { InterviewRoomPage } from './interview-room-page/interview-room-page';
 import { InterviewResult } from './interview-result/interview-result';
 import { Preferences } from './preferences/preferences';
 import { Onboarding } from './onboarding/onboarding';
+import { SkillsCatalog } from './skills-catalog/skills-catalog';
 import { GoogleCallback } from './google-callback/google-callback';
 import { InterviewEvaluation } from './interview-evaluation/interview-evaluation';
 import { ApplicationSummary } from './application-summary/application-summary';
@@ -58,6 +59,7 @@ export const routes: Routes = [
   { path: 'add-job',         component: AddJob,          canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'edit-job/:id',    component: UpdateJob,       canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'admin-dashboard', component: AdminDashboard,  canActivate: [canActivateAuthRole], data: { allowedRoles: ['ADMIN', 'SUPERADMIN', 'RECRUITER'] } },
+  { path: 'admin/skills-catalog', component: SkillsCatalog, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'calendar',        component: InterviewCalendar, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'google-callback', component: GoogleCallback },
   { path: 'recruiter-activity', component: RecruiterActivity, canActivate: [canActivateAuthRole], data: { allowedRoles: ['ADMIN', 'SUPERADMIN'] } },

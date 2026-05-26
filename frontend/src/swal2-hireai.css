@@ -285,3 +285,30 @@
   margin-top: 0.5rem !important;
 }
 .swal-hireai-validation::before { display: none !important; }
+
+/* Domain checkboxes inside the "Edit domains" SweetAlert (Skills Catalog
+   admin page). Mirror the look of the inline domain checkboxes on the add
+   form so the dialog feels native. */
+.hireai-edit-domain {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.hireai-edit-domain:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(121, 164, 233, 0.45);
+}
+.hireai-edit-domain input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-secondary, #79a4e9);
+  margin: 0;
+}

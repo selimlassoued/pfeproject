@@ -310,6 +310,8 @@ class SemanticMatchRequest(BaseModel):
     application_id: str
     job_title: Optional[str] = None
     job_description: Optional[str] = None
+    job_location: Optional[str] = None        # e.g. "Lac 1, Tunis"
+    work_arrangement: Optional[str] = None    # ON_SITE / HYBRID / REMOTE
     requirements: List[JobRequirementInput] = Field(default_factory=list)
     cv_analysis: CvAnalysisResult
     scoring_weights: Optional[ScoringWeights] = None
@@ -330,3 +332,6 @@ class SemanticMatchResult(BaseModel):
     recommendation: str = "REVIEW"
     interview_questions: List[str] = Field(default_factory=list)
     score_explanation: Optional[str] = None
+    # Non-scoring advisory signals surfaced to the recruiter. Each item has
+    # {kind, severity, message, details?}. Examples: distance_far, name_mismatch.
+    warnings: List[Dict[str, Any]] = Field(default_factory=list)

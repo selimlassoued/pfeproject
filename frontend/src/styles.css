@@ -265,6 +265,33 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px rgba(121,164,233,0.35);
 }
 
+/* ── Global <select> popup theming ────────────────────────────────────────
+   Without `color-scheme: dark`, Chrome/Edge on Windows render the native
+   <select> popup with the OS light theme — so option text disappears against
+   our dark background. Setting color-scheme tells the browser to pick a dark
+   popup chrome that matches the page. The explicit option styling below is a
+   defensive fallback for browsers that don't honor color-scheme on options
+   (Firefox, some Safari versions). Applies to every <select> in the app so
+   page-level files don't have to repeat this fix. */
+select {
+  color-scheme: dark;
+}
+select option {
+  background: #0e1530;
+  color: rgba(255, 255, 255, 0.94);
+  padding: 6px 10px;
+}
+select option:checked,
+select option:hover {
+  background: var(--color-secondary, #79a4e9);
+  color: #0a0f24;
+  font-weight: 700;
+}
+select option[value=""] {
+  color: rgba(255, 255, 255, 0.45);
+  font-style: italic;
+}
+
 /* --- Invalid field styling (Angular) --- */
 input.ng-invalid.ng-touched,
 textarea.ng-invalid.ng-touched,

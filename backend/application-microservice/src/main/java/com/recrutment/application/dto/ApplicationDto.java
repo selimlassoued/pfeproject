@@ -38,4 +38,5 @@ public class ApplicationDto {
     private String recommendation;
     private java.util.List<String> interviewQuestions;
     private String scoreExplanation;
+    private java.util.List<SemanticMatchDto.WarningDto> warnings;
 }

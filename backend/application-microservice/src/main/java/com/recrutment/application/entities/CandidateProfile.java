@@ -5,6 +5,7 @@ import com.recrutment.application.converters.StringListConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,24 @@ public class CandidateProfile {
     @Builder.Default
     private List<Map<String, String>> languages = new ArrayList<>();
 
-    // Step 4 — Job Preferences
-    private String preferredWorkArrangement;
-    private String preferredJobType;
+    // Step 4 — Job Preferences. Both are multi-select: a candidate may accept
+    // any of {ON_SITE, HYBRID, REMOTE} and any of {FULL_TIME, INTERNSHIP,
+    // ALTERNANCE}. The ranker treats an empty list (or all options selected)
+    // as "no preference" — every job stays at pref_fit = 1.0.
+    @Convert(converter = StringListConverter.class)
+    @Column(columnDefinition = "text")
+    @Builder.Default
+    private List<String> preferredWorkArrangement = new ArrayList<>();
+
+    @Convert(converter = StringListConverter.class)
+    @Column(columnDefinition = "text")
+    @Builder.Default
+    private List<String> preferredJobType = new ArrayList<>();
+
+    // When the candidate last opened their Preferences page. Drives the "NEW"
+    // badges on skill/language chips — anything in the catalog with
+    // firstSeenAt > this timestamp is shown as new. Set to "now" on candidate
+    // creation so a brand-new account doesn't see every existing item as new.
+    @Column(name = "last_preferences_acknowledged_at")
+    private Instant lastPreferencesAcknowledgedAt;
 }

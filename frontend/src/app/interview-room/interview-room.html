@@ -48,8 +48,62 @@
     <p class="state-label">Room unavailable or microphone access denied.</p>
   </div>
 
-  <!-- Jitsi frame — always in DOM -->
-  <div #jitsiContainer class="jitsi-frame"></div>
+  <!--
+    Shown after the user clicks End interview. Covers the Jitsi iframe so
+    its "Build your video experience" promo never reaches the user. The
+    parent component navigates away within a second once the recording
+    upload request has gone out.
+  -->
+  <div *ngIf="state === 'ending'" class="overlay-state ending">
+    <div class="connect-spinner"></div>
+    <p class="state-label">Wrapping up the interview…</p>
+    <p class="state-sub">Saving the recording and closing the room.</p>
+  </div>
+
+  <!-- Jitsi frame — always in DOM (hidden via CSS during 'ending'). -->
+  <div #jitsiContainer class="jitsi-frame" [class.hidden]="state === 'ending'"></div>
+
+  <!--
+    Interview control bar — lives at the bottom of the room shell so it
+    reads as part of the video panel (Zoom / Teams pattern). Replaces
+    the separate floating bar that previously sat outside the room.
+    The Jitsi hangup button is removed from the iframe toolbar; the
+    "End interview" button below is the single user-facing end action.
+  -->
+  <div *ngIf="state === 'joined'" class="interview-controls">
+    <div class="controls-status">
+      <span *ngIf="isRecording" class="rec-dot">● Recording</span>
+      <span class="rec-role">
+        {{ role === 'recruiter' ? 'Recruiter'
+           : role === 'candidate' ? 'Candidate'
+           : 'Observer — watch only' }}
+      </span>
+    </div>
+
+    <div class="controls-actions">
+      <button *ngIf="isRecording && role !== 'observer'"
+              type="button"
+              class="btn mic-toggle"
+              [class.muted]="jitsiMuted"
+              (click)="toggleMute()">
+        <span class="mic-icon">{{ jitsiMuted ? '🔇' : '🎙️' }}</span>
+        {{ jitsiMuted ? 'Unmute mic' : 'Mute mic' }}
+      </button>
+
+      <button *ngIf="isRecording" class="btn btn-end" (click)="stopRecording()">
+        End interview
+      </button>
+    </div>
+
+    <div class="controls-upload">
+      <span *ngIf="uploadStatus === 'uploading'" class="upload-msg">Saving…</span>
+      <span *ngIf="uploadStatus === 'done'" class="upload-msg success">Saved</span>
+      <span *ngIf="uploadStatus === 'error'" class="upload-msg error">
+        Save failed
+        <button class="btn btn-ghost btn-sm" (click)="stopRecording()">Retry</button>
+      </span>
+    </div>
+  </div>
 
   <div class="question-group" *ngFor="let group of groupedQuestions">
     <h4>{{ group.category }}</h4>
@@ -65,41 +119,5 @@
       <span *ngIf="askedQuestions.has(q.id)" class="asked-badge">Asked</span>
     </div>
   </div>
-</div>
-
-  <div *ngIf="state === 'joined'" class="recording-bar">
-  <span *ngIf="isRecording" class="rec-dot">● Recording</span>
-  <span class="rec-role">
-    {{ role === 'recruiter' ? 'Recruiter'
-       : role === 'candidate' ? 'Candidate'
-       : 'Observer — watch only' }}
-  </span>
-
-  <!--
-    Our own mute button. We removed Jitsi's microphone toolbar button
-    because its click handler was unreliable (clicks frequently failed
-    to register). This button calls toggleMute() which atomically flips
-    the MediaRecorder track AND mirrors the state to Jitsi.
-  -->
-  <button *ngIf="isRecording && role !== 'observer'"
-          type="button"
-          class="btn mic-toggle"
-          [class.muted]="jitsiMuted"
-          (click)="toggleMute()">
-    <span class="mic-icon">{{ jitsiMuted ? '🔇' : '🎙️' }}</span>
-    {{ jitsiMuted ? 'Unmute mic' : 'Mute mic' }}
-  </button>
-
-  <!-- Manual end button — always visible while recording -->
-  <button *ngIf="isRecording" class="btn btn-stop" (click)="stopRecording()">
-    End &amp; Save
-  </button>
-
-  <span *ngIf="uploadStatus === 'uploading'" class="upload-msg">Saving…</span>
-  <span *ngIf="uploadStatus === 'done'" class="upload-msg success">Saved</span>
-  <span *ngIf="uploadStatus === 'error'" class="upload-msg error">
-    Save failed
-    <button class="btn btn-ghost btn-sm" (click)="stopRecording()">Retry</button>
-  </span>
 </div>
 
