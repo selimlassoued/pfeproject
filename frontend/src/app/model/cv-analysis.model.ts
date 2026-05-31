@@ -71,7 +71,7 @@ export interface GitHubRepo {
   language?: string | null;
   allLanguages: string[];
   frameworks: string[];
-  technologies: string[];   // frameworks + non-implied languages — use this for display
+  technologies: string[];   // frameworks + non-implied languages - use this for display
   stars: number;
   url?: string | null;
   isFork: boolean;
@@ -85,9 +85,9 @@ export interface GitHubRepo {
   isReal: boolean;
   scoreReasons: string[];
   // New fields
-  ownershipRatio?: number | null;       // 0.0–1.0, candidate's share of commits
+  ownershipRatio?: number | null;       // 0.0-1.0, candidate's share of commits
   commitActivity?: CommitActivity | null;
-  complexityScore?: number | null;      // 0–10
+  complexityScore?: number | null;      // 0-10
   complexityLabel?: string | null;      // HIGH / MEDIUM / LOW
   complexityReasons: string[];
 }
@@ -104,7 +104,7 @@ export interface GitHubProfile {
   accountAgeDays: number;
   followers: number;
   lastActive?: string | null;
-  // topLanguages removed — no longer in response
+  // topLanguages removed - no longer in response
   allTechnologies: string[];            // frameworks + non-implied languages (clean)
   allRepoFrameworks: string[];          // all frameworks found across ALL repos (sorted)
   totalStars: number;

@@ -11,12 +11,12 @@ import type { JobOffer } from '../model/jobOffer.model';
  *
  * The catalog has TWO sources merged together:
  *
- *   1. Auto-extracted from current jobs — cv-parser-service runs the existing
+ *   1. Auto-extracted from current jobs - cv-parser-service runs the existing
  *      Python skill parser over every PUBLISHED + CLOSED job's requirements
  *      and returns the distinct skills + languages along with first-seen and
  *      current-demand metadata.
  *
- *   2. Manual entries — application-microservice owns a small table
+ *   2. Manual entries - application-microservice owns a small table
  *      `skill_catalog_entry` where recruiters can pre-add skills they
  *      anticipate needing, or tombstone skills they want to remove (typos,
  *      retired tech). Tombstones override extracted entries so cleanup sticks.
@@ -28,7 +28,7 @@ import type { JobOffer } from '../model/jobOffer.model';
  *   - everything else
  *
  * Within each tier, sort alphabetically. Tombstoned entries are filtered out
- * entirely — candidates never see them.
+ * entirely - candidates never see them.
  */
 export interface CatalogItem {
   name: string;                       // canonical lowercase key
@@ -102,11 +102,11 @@ export class CatalogService {
     return promise;
   }
 
-  /** Force a re-fetch — recruiter just added/removed a manual entry, for
+  /** Force a re-fetch - recruiter just added/removed a manual entry, for
    *  example, or the candidate just opened /preferences and we want the
    *  freshest catalog state. Clears BOTH the resolved cache and any
    *  in-flight promise (the latter matters when another component already
-   *  triggered a fetch this session — that promise's result is now stale
+   *  triggered a fetch this session - that promise's result is now stale
    *  and the next getSnapshot must start a brand-new fetch). */
   invalidate(): void {
     this.snapshotCache = null;
@@ -115,7 +115,7 @@ export class CatalogService {
 
   private async computeSnapshot(): Promise<CatalogSnapshot> {
     // Three parallel calls: jobs (to feed the extractor), manual catalog,
-    // and the candidate profile (for the acknowledged timestamp — but that
+    // and the candidate profile (for the acknowledged timestamp - but that
     // belongs to the consumer, not this service).
     const [jobs, manualEntries] = await Promise.all([
       firstValueFrom(this.jobService.getAllJobs()),
@@ -137,11 +137,11 @@ export class CatalogService {
     // "Tracking", "Data", "KPI") inside SKILL-category requirements.
     // The Python parser extracts them without classifying, so we strip them
     // here on the way into the HARD-skill chip grid. They're shown in the
-    // separate Soft Skills section, so we never lose them — we just stop them
+    // separate Soft Skills section, so we never lose them - we just stop them
     // from polluting hard skills.
     const HARD_SKILL_DENYLIST = new Set<string>([
       ...SOFT_SKILLS_NORMALIZED,
-      // Generic tokens that aren't real skills on their own — they show up
+      // Generic tokens that aren't real skills on their own - they show up
       // when recruiters write things like "Strong analysis skills" or "Track
       // KPIs" inside a SKILL requirement.
       'analysis', 'methodology', 'tracking', 'data', 'kpi', 'kpis',
@@ -169,7 +169,7 @@ export class CatalogService {
       const existing = skillMap.get(key);
       if (existing) {
         // Both extracted AND manual rows exist. The manual row is the
-        // recruiter's curated source of truth — its domain list REPLACES the
+        // recruiter's curated source of truth - its domain list REPLACES the
         // extracted union (so a recruiter can actually REMOVE a domain tag
         // without it being added back by the next extraction). We keep the
         // EXTRACTED source label so the recruiter still knows the skill came
@@ -194,7 +194,7 @@ export class CatalogService {
 
     // ── Languages: extracted only (no manual layer for languages) plus
     //    the always-shown trio guaranteed by the LANGUAGE_WHITELIST. The
-    //    trio gets firstSeenAt=null so they never show ⭐NEW (correct —
+    //    trio gets firstSeenAt=null so they never show ⭐NEW (correct -
     //    they've always been there).
     const langMap = new Map<string, CatalogItem>();
     for (const l of ALWAYS_SHOWN_LANGUAGES) {
@@ -269,7 +269,7 @@ export class CatalogService {
       return await firstValueFrom(this.http.get<ManualEntry[]>(`${this.catalogUrl}?includeRemoved=true`));
     } catch (err) {
       // Log the error so silent failures become visible. We still return []
-      // as a graceful fallback so the candidate UI keeps rendering — the
+      // as a graceful fallback so the candidate UI keeps rendering - the
       // recruiter's manual entries are absent until the issue is fixed.
       console.error('[CatalogService] Manual catalog fetch failed:', err);
       return [];
@@ -299,7 +299,7 @@ export class CatalogService {
   /**
    * Replace the domain tags on an existing skill. Use this when the recruiter
    * wants to change the classification of a skill that's already in the
-   * catalog — empty `domains` makes it Universal again, a populated list
+   * catalog - empty `domains` makes it Universal again, a populated list
    * narrows it to those domains. Persists across catalog refreshes because
    * the manual row in `skill_catalog_entry` overrides extracted domains.
    */
@@ -311,7 +311,7 @@ export class CatalogService {
     this.invalidate();
   }
 
-  /** Returns just the display names of tombstoned skills — used by the
+  /** Returns just the display names of tombstoned skills - used by the
    *  recruiter admin page to show a "Removed skills" section with Restore
    *  buttons. Skipped on candidate flows. */
   async getRemovedDisplayNames(): Promise<string[]> {

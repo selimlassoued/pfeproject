@@ -10,13 +10,13 @@
       <h2 class="catalog-hero__title">Skills Catalog</h2>
       <p class="catalog-hero__sub">
         The universe of skills candidates can declare on their Preferences page.
-        Auto-populated from your job postings — you can pre-add skills, fix typos,
+        Auto-populated from your job postings - you can pre-add skills, fix typos,
         or re-classify domains. Removing a skill never touches candidate profiles
         that already declared it.
       </p>
     </div>
 
-    <!-- Stat cards — small KPI strip on the right of the hero. Each card is
+    <!-- Stat cards - small KPI strip on the right of the hero. Each card is
          a single number with a label below. Updates live as the catalog
          changes (no separate fetch). -->
     @if (!loading) {
@@ -62,21 +62,21 @@
       </button>
     </div>
 
-    <!-- Live status under the input — tells the recruiter exactly what
+    <!-- Live status under the input - tells the recruiter exactly what
          happens if they hit Enter right now. -->
     @if (newSkillInput.trim()) {
       @if (isDuplicate) {
         <p class="catalog-status catalog-status--duplicate">
-          "{{ newSkillInput.trim() }}" already exists in the catalog — see the table below.
+          "{{ newSkillInput.trim() }}" already exists in the catalog - see the table below.
         </p>
       } @else {
         <p class="catalog-status catalog-status--new">
-          "{{ newSkillInput.trim() }}" is new — pressing Enter will add it to the catalog.
+          "{{ newSkillInput.trim() }}" is new - pressing Enter will add it to the catalog.
         </p>
       }
     }
 
-    <!-- Domain filter pills — clicking toggles. Same checked-set is used to
+    <!-- Domain filter pills - clicking toggles. Same checked-set is used to
          (a) filter the table and (b) tag a new skill on Add. Visually pill-
          shaped now so they read as filters, not form controls. -->
     <div class="catalog-domain-filter">
@@ -198,7 +198,7 @@
                       {{ item.currentDemandCount }} job{{ item.currentDemandCount > 1 ? 's' : '' }}
                     </span>
                   } @else {
-                    <span class="text-muted">—</span>
+                    <span class="text-muted">-</span>
                   }
                 </td>
                 <td class="mono text-muted">{{ formatDate(item.firstSeenAt) }}</td>
@@ -212,7 +212,12 @@
                       </svg>
                       Edit
                     </button>
-                    <button class="icon-btn icon-btn--remove" (click)="removeSkill(item)" title="Remove from catalog">
+                    <button class="icon-btn icon-btn--remove"
+                            [disabled]="item.currentDemandCount > 0"
+                            [title]="item.currentDemandCount > 0
+                              ? 'Required by ' + item.currentDemandCount + ' active job(s) - can\'t be removed while in use'
+                              : 'Remove from catalog'"
+                            (click)="removeSkill(item)">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>

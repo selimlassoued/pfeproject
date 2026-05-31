@@ -66,7 +66,7 @@ export class JobDetails implements OnInit {
   shortlisting       = signal(false);
   shortlistResult    = signal<{ shortlisted: number; skipped: number } | null>(null);
 
-  // ── Role helpers — strict hierarchy ──────────────────────────────────────
+  // ── Role helpers - strict hierarchy ──────────────────────────────────────
 
   get isSuperAdmin(): boolean { return this.authService.isSuperAdmin(); }
   get isAdmin():      boolean { return this.authService.isAdmin(); }
@@ -192,13 +192,13 @@ export class JobDetails implements OnInit {
   }
   salaryText(): string {
     const job = this.job();
-    if (!job) return '—';
+    if (!job) return '-';
     const min = job.minSalary ?? null;
     const max = job.maxSalary ?? null;
     if (min == null && max == null) return 'Not specified';
     if (min != null && max == null) return `From ${min} TND`;
     if (min == null && max != null) return `Up to ${max} TND`;
-    return `${min}–${max} TND`;
+    return `${min}-${max} TND`;
   }
 
   // ── Edit / Close eligibility ────────────────────────────────────────────────
@@ -227,7 +227,7 @@ export class JobDetails implements OnInit {
     const result = await Swal.fire({
       icon: 'warning',
       title: 'Close this job offer?',
-      text: 'It will stop accepting new applications. Provide a reason — it is recorded in the audit trail.',
+      text: 'It will stop accepting new applications. Provide a reason - it is recorded in the audit trail.',
       input: 'textarea',
       inputPlaceholder: 'e.g. Position filled, budget cancelled, requirements changed…',
       inputAttributes: { rows: '3' },
@@ -283,12 +283,12 @@ export class JobDetails implements OnInit {
       ON_SITE: 'On-site', HYBRID: 'Hybrid', REMOTE: 'Remote',
     };
     const v = (this.job() as any)?.workArrangement;
-    return v ? (map[v] ?? v) : '—';
+    return v ? (map[v] ?? v) : '-';
   }
 
   spotsText(): string {
     const job = this.job();
-    if (!job || job.openings == null) return '—';
+    if (!job || job.openings == null) return '-';
     const left = Math.max(0, job.openings - (job.hiredCount ?? 0));
     if (left === 0) return 'Filled';
     if (left === 1) return '1 spot left';

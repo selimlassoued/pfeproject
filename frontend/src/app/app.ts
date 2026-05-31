@@ -45,7 +45,7 @@ export class App {
             this.displayName = `${first} ${last}`.trim() || profile.username || 'Account';
           });
 
-          // Prompt new candidates to onboard — but only ONCE per browser
+          // Prompt new candidates to onboard - but only ONCE per browser
           // session (not on every page reload), and never again if they
           // chose "Don't ask again".
           if (this.isCandidate()
@@ -73,7 +73,7 @@ export class App {
   login()  { this.keycloak.login();  }
   logout() { this.keycloak.logout(); }
 
-  // ── Role helpers — strict hierarchy ──────────────────────────────────────
+  // ── Role helpers - strict hierarchy ──────────────────────────────────────
   isSuperAdmin(): boolean { return this.keycloak.hasRealmRole('SUPERADMIN'); }
   isAdmin():      boolean { return this.keycloak.hasRealmRole('ADMIN') && !this.isSuperAdmin(); }
   isRecruiter():  boolean { return this.keycloak.hasRealmRole('RECRUITER') && !this.isAdmin() && !this.isSuperAdmin(); }

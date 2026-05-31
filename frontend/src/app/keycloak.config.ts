@@ -29,7 +29,7 @@ export const provideKeycloakAngular = () =>
       onLoad: 'check-sso',
       silentCheckSsoRedirectUri: 'http://localhost:4200/silent-check-sso.html',
       redirectUri: 'http://localhost:4200/',
-      // PKCE (Proof Key for Code Exchange) — required for a public SPA client.
+      // PKCE (Proof Key for Code Exchange) - required for a public SPA client.
       // The app generates a random verifier and sends only its SHA-256 hash;
       // a stolen authorization code is useless without the original verifier.
       pkceMethod: 'S256'

@@ -35,10 +35,10 @@ export class InterviewRoomPage implements OnInit, OnDestroy {
 
   /**
    * Who this user is in THIS interview:
-   *  - 'recruiter' — the organiser; records the recruiter track, runs the script
-   *  - 'candidate' — the interviewee; records the candidate track
-   *  - 'observer'  — an invited recruiter / admin / superadmin: watch-only,
-   *                  mic & camera disabled, records nothing — keeps the
+   *  - 'recruiter' - the organiser; records the recruiter track, runs the script
+   *  - 'candidate' - the interviewee; records the candidate track
+   *  - 'observer'  - an invited recruiter / admin / superadmin: watch-only,
+   *                  mic & camera disabled, records nothing - keeps the
    *                  2-speaker transcript clean.
    */
   get role(): 'recruiter' | 'candidate' | 'observer' {
@@ -86,7 +86,7 @@ export class InterviewRoomPage implements OnInit, OnDestroy {
     });
   }
 
-  /** The recruiter clicked "Admit" — let the candidate in. */
+  /** The recruiter clicked "Admit" - let the candidate in. */
   onAdmitCandidate(): void {
     if (!this.interview || this.admitting) return;
     this.admitting = true;
@@ -105,7 +105,7 @@ export class InterviewRoomPage implements OnInit, OnDestroy {
 
   /**
    * The Jitsi conference closed (hang-up or "End & Save"). Recruiter marks it complete,
-   * the navbar badge is told to refresh, then we send the user back to a sensible page —
+   * the navbar badge is told to refresh, then we send the user back to a sensible page -
    * the application detail for staff, the interviews list for the candidate.
    */
   onInterviewEnded(): void {
@@ -127,7 +127,7 @@ export class InterviewRoomPage implements OnInit, OnDestroy {
       }, 800);
     };
 
-    // Only the organiser marks completion — observers/candidates just navigate.
+    // Only the organiser marks completion - observers/candidates just navigate.
     if (role === 'recruiter' && iv.status !== 'COMPLETED') {
       this.interviewService.complete(iv.id).subscribe({
         next: () => goNext(),

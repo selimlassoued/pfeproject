@@ -107,7 +107,7 @@ export class ActionHistory implements OnInit {
     ).pipe(catchError(() => of(null)))
      .subscribe(data => {
        const all = data?.content || [];
-       // ADMIN + RECRUITER only — no candidates
+       // ADMIN + RECRUITER only - no candidates
        this.admins = all.filter(u => {
          const roles = (u.roles ?? []).map(r => String(r).toUpperCase());
          const role  = (u.role  ?? '').toUpperCase();
@@ -193,7 +193,7 @@ export class ActionHistory implements OnInit {
     const eventType = (log.eventType || '').toUpperCase();
     const producer  = (log.producer  || '').toLowerCase();
 
-    // Candidate-level moderation events — resolve as user
+    // Candidate-level moderation events - resolve as user
     if (
       eventType === 'CANDIDATE_FLAGGED' ||
       eventType === 'CANDIDATE_UNFLAGGED' ||
@@ -222,7 +222,7 @@ export class ActionHistory implements OnInit {
           if (j) this.targetNameCache[log.targetId!] = j.title;
         });
     } else {
-      // Default — resolve as user (USER_BLOCK, USER_UNBLOCK, ROLE_UPDATE)
+      // Default - resolve as user (USER_BLOCK, USER_UNBLOCK, ROLE_UPDATE)
       this.http.get<{ email: string; firstName: string; lastName: string }>(
         `${this.API}/api/admin/internal/users/${log.targetId}/email`, { headers: this.headers }
       ).pipe(catchError(() => of(null))).subscribe(u => {
@@ -280,7 +280,7 @@ export class ActionHistory implements OnInit {
     const roles = (u.roles ?? []).map(r => String(r).toUpperCase());
     if (roles.includes('ADMIN'))     return 'ADMIN';
     if (roles.includes('RECRUITER')) return 'RECRUITER';
-    return (u.role ?? '—').toUpperCase();
+    return (u.role ?? '-').toUpperCase();
   }
   getUserInitials(u: KcUser): string {
     return (((u.firstName ?? '')[0] ?? '') + ((u.lastName ?? '')[0] ?? '')).toUpperCase() || '?';

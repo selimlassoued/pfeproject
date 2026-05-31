@@ -2,13 +2,23 @@ import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
-import { InterviewService, InterviewResponse } from '../services/interview-service';
+import { InterviewService, InterviewResponse, ProposalResponse } from '../services/interview-service';
 
 /** A bookable hour, plus why it might not be bookable. */
 interface Slot {
   time: string;   // "14:00"
   state: 'free' | 'past' | 'recruiter' | 'candidate' | 'both';
 }
+
+/** Selected slot accumulated during proposal building (date + HH:mm). */
+interface PickedSlot {
+  date: string;     // "2026-05-28"
+  time: string;     // "14:30"
+  iso: string;      // "2026-05-28T14:30:00" - what the backend stores
+  label: string;    // user-facing
+}
+
+type SchedulerMode = 'propose' | 'direct';
 
 @Component({
   selector: 'app-schedule-interview',
@@ -25,42 +35,55 @@ export class ScheduleInterview implements OnInit {
   @Input() recruiterId!: string;
   @Input() recruiterEmail!: string;
 
+  /** Emitted when a real interview is scheduled directly (skipping the proposal flow). */
   @Output() scheduled = new EventEmitter<InterviewResponse>();
+  /** Emitted when a proposal has been sent (candidate will pick a slot). */
+  @Output() proposed = new EventEmitter<ProposalResponse>();
 
   private readonly interviewService = inject(InterviewService);
 
-  /** Two interviews must be at least this far apart — matches the backend rule. */
+  /** Two interviews must be at least this far apart - matches the backend rule. */
   private static readonly GAP_MS = 60 * 60 * 1000;
   /** Bookable hours of the day. */
   readonly hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+  /** Quarter-hours within an hour - interviews start at :00 / :15 / :30 / :45 only. */
+  private readonly minutesInHour = [0, 15, 30, 45];
+
+  /** Default mode is propose - candidate picks from 2-4 offered slots. Direct
+   *  schedule stays available for when both sides already agreed on a time. */
+  mode: SchedulerMode = 'propose';
 
   loading = false;
   busyLoading = true;
   error = '';
 
-  /** Start times (epoch ms) of the recruiter's / candidate's active interviews. */
   private busyRecruiter: number[] = [];
   private busyCandidate: number[] = [];
 
   minDate = '';
   selectedDate = '';
-  selectedSlot: string | null = null;
-  /** Quarter-hours within an hour — interviews start at :00 / :15 / :30 / :45 only. */
-  private readonly minutesInHour = [0, 15, 30, 45];
 
-  /**
-   * Dev/test escape hatch: when on, the scheduler ignores the weekend block and
-   * the "past slot" filter so you can pick anything — including a time that has
-   * already passed (the room then opens immediately). Keep OFF for real users.
-   */
+  /** Direct-mode: single picked slot. */
+  selectedSlot: string | null = null;
+
+  /** Proposal-mode: accumulating list of picked slots (across days). Capped at 4. */
+  proposedSlots: PickedSlot[] = [];
+  static readonly MIN_PROPOSED = 1;
+  static readonly MAX_PROPOSED = 4;
+
+  /** Proposal-mode: deadline by when the candidate must pick. Default: 48h. */
+  deadline = '';
+  /** Proposal-mode: optional note shown to the candidate. */
+  message = '';
+
   testMode = false;
 
   ngOnInit(): void {
     const today = new Date();
     this.minDate = this.toDateStr(today);
     this.selectedDate = this.minDate;
+    this.deadline = this.defaultDeadline();
 
-    // Load both parties' agendas so taken slots can be greyed out up front.
     forkJoin({
       recruiter: this.interviewService.getByRecruiter(this.recruiterId),
       candidate: this.interviewService.getByCandidate(this.candidateId),
@@ -74,19 +97,29 @@ export class ScheduleInterview implements OnInit {
           .map(iv => new Date(iv.scheduledAt).getTime());
         this.busyLoading = false;
       },
-      error: () => { this.busyLoading = false; },   // backend still enforces it
+      error: () => { this.busyLoading = false; },
     });
   }
 
+  // ── Helpers ─────────────────────────────────────────────────────────────
   private toDateStr(d: Date): string {
     const m = `${d.getMonth() + 1}`.padStart(2, '0');
     const day = `${d.getDate()}`.padStart(2, '0');
     return `${d.getFullYear()}-${m}-${day}`;
   }
 
+  private defaultDeadline(): string {
+    // 48 h from now, rounded down to the start of the hour - matches the
+    // <input type="datetime-local"> format (no seconds, no Z).
+    const d = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    d.setMinutes(0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+           `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   /** All bookable quarter-hour slots for the selected day, grouped by hour. */
   get slotsByHour(): { hour: number; quarters: Slot[] }[] {
-    // testMode bypasses the weekend block (otherwise the grid is empty on Sat/Sun).
     if (!this.selectedDate) return [];
     if (this.isWeekend && !this.testMode) return [];
     const now = Date.now();
@@ -96,8 +129,6 @@ export class ScheduleInterview implements OnInit {
         const mm = String(m).padStart(2, '0');
         const dt = new Date(`${this.selectedDate}T${hh}:${mm}:00`).getTime();
         let state: Slot['state'] = 'free';
-        // In test mode, past slots stay 'free' so they can be picked — picking
-        // a past time means the interview room opens immediately on entry.
         if (dt < now && !this.testMode) {
           state = 'past';
         } else {
@@ -111,14 +142,11 @@ export class ScheduleInterview implements OnInit {
       });
       return { hour: h, quarters };
     });
-    // Drop hours where every quarter has already passed — keeps the grid compact.
-    // In test mode we leave them, since past slots are now legitimately pickable.
     return this.testMode
       ? rows
       : rows.filter(r => r.quarters.some(q => q.state !== 'past'));
   }
 
-  /** Interviews are weekdays only — Saturday and Sunday are off-limits. */
   get isWeekend(): boolean {
     if (!this.selectedDate) return false;
     const day = new Date(this.selectedDate).getDay();
@@ -127,15 +155,152 @@ export class ScheduleInterview implements OnInit {
 
   get dateError(): string {
     if (!this.selectedDate) return '';
-    if (this.isWeekend && !this.testMode) return "Interviews can't be scheduled on weekends — pick a weekday.";
+    if (this.isWeekend && !this.testMode) return "Interviews can't be scheduled on weekends - pick a weekday.";
     return '';
   }
 
-  /**
-   * Test-mode shortcut — schedule an interview 30 s from now. The auto-start
-   * countdown then runs out almost immediately, dropping straight into Jitsi
-   * without having to pick a date / slot manually.
-   */
+  // ── Mode toggle ─────────────────────────────────────────────────────────
+  setMode(m: SchedulerMode): void {
+    this.mode = m;
+    this.error = '';
+    // Don't drop the user's picks just because they peeked at the other mode -
+    // proposedSlots and selectedSlot are kept independently.
+  }
+
+  // ── Slot picking ────────────────────────────────────────────────────────
+  pickSlot(slot: Slot): void {
+    if (slot.state !== 'free') return;
+    if (this.mode === 'direct') {
+      this.selectedSlot = slot.time;
+      return;
+    }
+    // Propose mode - toggle in/out of proposedSlots
+    const iso = `${this.selectedDate}T${slot.time}:00`;
+    const existing = this.proposedSlots.findIndex(p => p.iso === iso);
+    if (existing >= 0) {
+      this.proposedSlots.splice(existing, 1);
+      return;
+    }
+    if (this.proposedSlots.length >= ScheduleInterview.MAX_PROPOSED) {
+      this.error = `You can offer at most ${ScheduleInterview.MAX_PROPOSED} slots.`;
+      setTimeout(() => { this.error = ''; }, 3000);
+      return;
+    }
+    this.proposedSlots.push({
+      date: this.selectedDate,
+      time: slot.time,
+      iso,
+      label: this.formatSlotLabel(this.selectedDate, slot.time),
+    });
+    // Keep them chronologically ordered so the candidate sees them in order.
+    this.proposedSlots.sort((a, b) => a.iso.localeCompare(b.iso));
+  }
+
+  removeProposedSlot(iso: string): void {
+    this.proposedSlots = this.proposedSlots.filter(s => s.iso !== iso);
+  }
+
+  isSlotPicked(time: string): boolean {
+    if (this.mode === 'direct') return this.selectedSlot === time;
+    const iso = `${this.selectedDate}T${time}:00`;
+    return this.proposedSlots.some(p => p.iso === iso);
+  }
+
+  private formatSlotLabel(date: string, time: string): string {
+    const d = new Date(`${date}T${time}:00`);
+    const day = d.toLocaleDateString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+    });
+    return `${day} · ${time}`;
+  }
+
+  onDateChange(): void {
+    // In direct mode, switching day invalidates the single-slot selection.
+    // In propose mode, accumulated picks across days stay intact.
+    if (this.mode === 'direct') this.selectedSlot = null;
+  }
+
+  slotTitle(slot: Slot): string {
+    switch (slot.state) {
+      case 'past':      return 'This time has already passed';
+      case 'recruiter': return 'You already have an interview around this time';
+      case 'candidate': return 'The candidate is busy around this time';
+      case 'both':      return 'You and the candidate are both busy around this time';
+      default:          return 'Available';
+    }
+  }
+
+  // ── Submit (direct) ─────────────────────────────────────────────────────
+  submit(): void {
+    if (!this.selectedDate || !this.selectedSlot || this.loading) return;
+    this.loading = true;
+    this.error = '';
+
+    this.interviewService.schedule({
+      applicationId: this.applicationId,
+      jobId: this.jobId,
+      jobTitle: this.jobTitle,
+      recruiterId: this.recruiterId,
+      candidateId: this.candidateId,
+      candidateEmail: this.candidateEmail,
+      recruiterEmail: this.recruiterEmail,
+      scheduledAt: `${this.selectedDate}T${this.selectedSlot}:00`,
+      recordingConsent: false,
+    }).subscribe({
+      next: (interview) => {
+        this.loading = false;
+        this.scheduled.emit(interview);
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = err?.error?.message
+          || 'Failed to schedule interview. Please try again.';
+        console.error(err);
+      },
+    });
+  }
+
+  // ── Submit (proposal) ───────────────────────────────────────────────────
+  get canSendProposal(): boolean {
+    return this.proposedSlots.length >= ScheduleInterview.MIN_PROPOSED
+      && this.proposedSlots.length <= ScheduleInterview.MAX_PROPOSED
+      && !!this.deadline
+      && !this.loading;
+  }
+
+  sendProposal(): void {
+    if (!this.canSendProposal) return;
+    this.loading = true;
+    this.error = '';
+
+    this.interviewService.createProposal({
+      applicationId: this.applicationId,
+      jobId: this.jobId,
+      jobTitle: this.jobTitle,
+      recruiterId: this.recruiterId,
+      candidateId: this.candidateId,
+      candidateEmail: this.candidateEmail,
+      recruiterEmail: this.recruiterEmail,
+      proposedSlots: this.proposedSlots.map(s => s.iso),
+      // datetime-local input gives us "YYYY-MM-DDTHH:mm" - add :00 so the
+      // backend's LocalDateTime parser accepts it.
+      deadline: this.deadline.length === 16 ? `${this.deadline}:00` : this.deadline,
+      message: this.message?.trim() || undefined,
+    }).subscribe({
+      next: (proposal) => {
+        this.loading = false;
+        this.proposed.emit(proposal);
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = err?.error?.message
+          || 'Failed to send proposal. Please try again.';
+        console.error(err);
+      },
+    });
+  }
+
+  // ── Test-mode shortcut (direct only) ────────────────────────────────────
   scheduleNow(): void {
     if (this.loading) return;
     this.loading = true;
@@ -159,56 +324,6 @@ export class ScheduleInterview implements OnInit {
       next: (interview) => { this.loading = false; this.scheduled.emit(interview); },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message
-          || 'Failed to schedule interview. Please try again.';
-        console.error(err);
-      },
-    });
-  }
-
-  pickSlot(slot: Slot): void {
-    if (slot.state !== 'free') return;
-    this.selectedSlot = slot.time;
-  }
-
-  /** A new day invalidates the slot chosen on the previous one. */
-  onDateChange(): void {
-    this.selectedSlot = null;
-  }
-
-  slotTitle(slot: Slot): string {
-    switch (slot.state) {
-      case 'past':      return 'This time has already passed';
-      case 'recruiter': return 'You already have an interview around this time';
-      case 'candidate': return 'The candidate is busy around this time';
-      case 'both':      return 'You and the candidate are both busy around this time';
-      default:          return 'Available';
-    }
-  }
-
-  submit(): void {
-    if (!this.selectedDate || !this.selectedSlot || this.loading) return;
-    this.loading = true;
-    this.error = '';
-
-    this.interviewService.schedule({
-      applicationId: this.applicationId,
-      jobId: this.jobId,
-      jobTitle: this.jobTitle,
-      recruiterId: this.recruiterId,
-      candidateId: this.candidateId,
-      candidateEmail: this.candidateEmail,
-      recruiterEmail: this.recruiterEmail,
-      scheduledAt: `${this.selectedDate}T${this.selectedSlot}:00`,
-      recordingConsent: false,
-    }).subscribe({
-      next: (interview) => {
-        this.loading = false;
-        this.scheduled.emit(interview);
-      },
-      error: (err) => {
-        this.loading = false;
-        // Surface the backend's reason (e.g. a scheduling clash) when there is one.
         this.error = err?.error?.message
           || 'Failed to schedule interview. Please try again.';
         console.error(err);

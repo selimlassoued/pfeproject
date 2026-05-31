@@ -19,12 +19,12 @@
 
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-        <!-- Browse jobs — visible to all -->
+        <!-- Browse jobs - visible to all -->
         <li class="nav-item">
           <a class="nav-link hireai-link" routerLink="/browse">Open Positions</a>
         </li>
 
-        <!-- SUPERADMIN — dashboard + users + applications -->
+        <!-- SUPERADMIN - dashboard + users + applications -->
         @if (authenticated && isSuperAdmin()) {
           <li class="nav-item">
             <a class="nav-link hireai-link" routerLink="/admin-dashboard">Dashboard</a>
@@ -40,7 +40,7 @@
           </li>
         }
 
-        <!-- ADMIN — dashboard + users + applications -->
+        <!-- ADMIN - dashboard + users + applications -->
         @if (authenticated && isAdmin() && !isSuperAdmin()) {
           <li class="nav-item">
             <a class="nav-link hireai-link" routerLink="/admin-dashboard">Dashboard</a>
@@ -56,7 +56,7 @@
           </li>
         }
 
-        <!-- RECRUITER — dashboard + candidates + applications -->
+        <!-- RECRUITER - dashboard + candidates + applications -->
         @if (authenticated && isRecruiter() && !isAdmin() && !isSuperAdmin()) {
           <li class="nav-item">
             <a class="nav-link hireai-link" routerLink="/admin-dashboard">Dashboard</a>
@@ -72,7 +72,7 @@
           </li>
         }
 
-        <!-- CANDIDATE — my applications -->
+        <!-- CANDIDATE - my applications -->
         @if (authenticated && isCandidate()) {
           <li class="nav-item">
             <a class="nav-link hireai-link" routerLink="/my-applications">My Applications</a>
@@ -83,14 +83,14 @@
 
       <ul class="navbar-nav ms-auto m-2">
 
-        <!-- Imminent-interview countdown — appears within 2h of an interview -->
+        <!-- Imminent-interview countdown - appears within 2h of an interview -->
         @if (authenticated) {
           <li class="nav-item d-flex align-items-center">
             <app-imminent-interview></app-imminent-interview>
           </li>
         }
 
-        <!-- Interview calendar — staff only -->
+        <!-- Interview calendar - staff only -->
         @if (authenticated && !isCandidate()) {
           <li class="nav-item">
             <a class="nav-link hireai-link nav-icon-link" routerLink="/calendar"
@@ -111,7 +111,7 @@
           </li>
         }
 
-        <!-- Notifications — all signed-in users -->
+        <!-- Notifications - all signed-in users -->
         @if (authenticated) {
           <li class="nav-item">
             <app-notification-menu></app-notification-menu>
@@ -135,7 +135,7 @@
               <li class="nav-item">
                 <a class="nav-link hireai-link" routerLink="/profile">My Profile</a>
               </li>
-              <!-- Skill catalog management — only recruiters/admins curate
+              <!-- Skill catalog management - only recruiters/admins curate
                    the universe of selectable skills. Candidates never see
                    this link (they consume the catalog passively via their
                    Preferences page). -->

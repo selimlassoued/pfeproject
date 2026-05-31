@@ -110,7 +110,7 @@ export class BrowseJobsComponent implements OnInit {
     }
   }
 
-  // ── Role helpers — strict hierarchy ──────────────────────────────────────
+  // ── Role helpers - strict hierarchy ──────────────────────────────────────
 
   get isSuperAdmin(): boolean { return this.authService.isSuperAdmin(); }
 
@@ -179,7 +179,7 @@ export class BrowseJobsComponent implements OnInit {
 
     const [minSalary, maxSalary] = this.getSalaryRange();
 
-    // Candidates always see only PUBLISHED jobs — filter server-side
+    // Candidates always see only PUBLISHED jobs - filter server-side
     const effectiveStatus = this.isCandidate ? 'PUBLISHED' : this.status;
 
     this.jobService.searchJobs(
@@ -306,7 +306,7 @@ export class BrowseJobsComponent implements OnInit {
     if (min == null && max == null) return 'Salary not specified';
     if (min != null && max == null) return `From ${min} TND`;
     if (min == null && max != null) return `Up to ${max} TND`;
-    return `${min}–${max} TND`;
+    return `${min}-${max} TND`;
   }
 
   badgeText(job: JobOffer): string {
@@ -346,7 +346,7 @@ export class BrowseJobsComponent implements OnInit {
   private async loadCandidatePreferences(): Promise<void> {
     try {
       this.candidatePrefs = await this.candidateProfileService.get();
-    } catch { /* ignore — leave candidatePrefs null */ }
+    } catch { /* ignore - leave candidatePrefs null */ }
   }
 
   // ── Semantic ranking ──────────────────────────────────────────────────────
@@ -398,7 +398,7 @@ export class BrowseJobsComponent implements OnInit {
         candidate_text: candidateText,
         // Structured signals so the backend can do skill overlap + preference
         // fit on top of the embedding similarity. Both arrangement and job
-        // type are multi-select now — empty array (or all options selected)
+        // type are multi-select now - empty array (or all options selected)
         // means "no preference" and every job stays at pref_fit = 1.0.
         candidate_hard_skills:                  p.hardSkills ?? [],
         candidate_preferred_work_arrangements:  p.preferredWorkArrangement ?? [],
@@ -419,7 +419,7 @@ export class BrowseJobsComponent implements OnInit {
       );
       this.jobScores.clear();
       for (const r of resp.results) this.jobScores.set(r.id, r.score);
-    } catch { /* silent — fall back to date order */ }
+    } catch { /* silent - fall back to date order */ }
     finally { this.rankingLoading = false; }
   }
 
@@ -427,9 +427,9 @@ export class BrowseJobsComponent implements OnInit {
   // backend: semantic uses _normalize_cosine (0-1 over the document window)
   // blended 55/45 with skill_overlap, then multiplied by preference fit.
   // Real scores typically land in:
-  //   • Strong match  — ≥ 0.65 (both signals high + preferences match)
-  //   • Good match    — ≥ 0.45
-  //   • Partial match — ≥ 0.25
+  //   • Strong match  - ≥ 0.65 (both signals high + preferences match)
+  //   • Good match    - ≥ 0.45
+  //   • Partial match - ≥ 0.25
   matchLabel(job: JobOffer): string | null {
     if (this.sortMode !== 'match' || !this.isCandidate) return null;
     if (this.rankingLoading) return null;
@@ -451,7 +451,7 @@ export class BrowseJobsComponent implements OnInit {
    * Returns true when the candidate profile has at least one signal the ranker
    * actually consumes. Without any of these, the recommendation collapses to
    * plain text-embedding similarity and produces near-identical scores for
-   * every job — better to send the user to set their preferences first.
+   * every job - better to send the user to set their preferences first.
    */
   private hasUsefulProfileData(): boolean {
     const p = this.candidatePrefs;
@@ -467,7 +467,7 @@ export class BrowseJobsComponent implements OnInit {
   setSortMode(mode: 'date' | 'match') {
     // Block the Recommendation sort when the candidate has nothing the ranker
     // can use. Show a toast explaining why and redirect to /preferences after
-    // a beat — keeps the user in flow instead of silently failing.
+    // a beat - keeps the user in flow instead of silently failing.
     if (mode === 'match' && this.isCandidate && !this.hasUsefulProfileData()) {
       Swal.fire({
         icon: 'info',
@@ -483,7 +483,7 @@ export class BrowseJobsComponent implements OnInit {
           queryParams: { returnTo: '/browse', resume: 'match' },
         });
       });
-      return;  // do NOT flip sortMode — leave Newest selected
+      return;  // do NOT flip sortMode - leave Newest selected
     }
 
     this.sortMode = mode;
@@ -506,7 +506,7 @@ export class BrowseJobsComponent implements OnInit {
     const result = await Swal.fire({
       icon: 'warning',
       title: 'Close this job offer?',
-      text: 'It will stop accepting new applications. Provide a reason — it is recorded in the audit trail.',
+      text: 'It will stop accepting new applications. Provide a reason - it is recorded in the audit trail.',
       input: 'textarea',
       inputPlaceholder: 'e.g. Position filled, budget cancelled, requirements changed…',
       inputAttributes: { rows: '3' },

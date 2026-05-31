@@ -165,7 +165,7 @@ p { margin: 0; }
 }
 .btn-ghost:hover { background: rgba(255,255,255,0.06); }
 
-/* Cautionary action (e.g. Close job) — prominent amber, clearly visible */
+/* Cautionary action (e.g. Close job) - prominent amber, clearly visible */
 .btn-warn {
   background: linear-gradient(135deg, #ed8936, #dd6b20);
   color: #fff;
@@ -267,7 +267,7 @@ input:focus, textarea:focus, select:focus {
 
 /* ── Global <select> popup theming ────────────────────────────────────────
    Without `color-scheme: dark`, Chrome/Edge on Windows render the native
-   <select> popup with the OS light theme — so option text disappears against
+   <select> popup with the OS light theme - so option text disappears against
    our dark background. Setting color-scheme tells the browser to pick a dark
    popup chrome that matches the page. The explicit option styling below is a
    defensive fallback for browsers that don't honor color-scheme on options

@@ -42,7 +42,7 @@
   font-size: 0.92rem;
 }
 
-/* Stat cards — 4 mini-tiles, each with a big number + label. */
+/* Stat cards - 4 mini-tiles, each with a big number + label. */
 .catalog-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(112px, 1fr));
@@ -85,7 +85,7 @@
   color: rgba(248, 250, 252, 0.55);
   font-weight: 700;
 }
-/* Per-stat accent — paints the radial glow in a distinct color. */
+/* Per-stat accent - paints the radial glow in a distinct color. */
 .catalog-stat--demand::before     { background: radial-gradient(ellipse at top, rgba(255, 165, 60, 0.18), transparent 60%); }
 .catalog-stat--demand .catalog-stat__value     { color: #ffd09b; }
 .catalog-stat--universal::before  { background: radial-gradient(ellipse at top, rgba(180, 140, 230, 0.16), transparent 60%); }
@@ -199,7 +199,7 @@
   margin-right: 0.4rem;
 }
 
-/* The pill button — uses a CSS custom property `--accent` (RGB triplet) to
+/* The pill button - uses a CSS custom property `--accent` (RGB triplet) to
    color itself. When --accent isn't set (e.g. "All" pill), falls back to a
    neutral white tint. */
 .domain-pill {
@@ -276,7 +276,7 @@
 }
 .catalog-table__col-actions { width: 1%; white-space: nowrap; }
 
-/* Row hover — subtle accent + cursor cue. In-demand rows get a stronger
+/* Row hover - subtle accent + cursor cue. In-demand rows get a stronger
    left-border so they stand out at a glance. */
 .catalog-row {
   transition: background 120ms ease;
@@ -316,7 +316,7 @@
   font-style: italic;
 }
 
-/* Source label — small pill, two colors. */
+/* Source label - small pill, two colors. */
 .source-tag {
   display: inline-flex;
   align-items: center;
@@ -390,8 +390,16 @@
 }
 .icon-btn--edit:hover   { border-color: rgba(121, 164, 233, 0.55); color: #aac8ff; }
 .icon-btn--remove:hover { border-color: rgba(220,  80,  80, 0.55); color: #ffb3b3; }
+.icon-btn:disabled,
+.icon-btn:disabled:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(248, 250, 252, 0.4);
+  background: transparent;
+}
 
-/* Empty / loading state — center-aligned card with subtle prompt. */
+/* Empty / loading state - center-aligned card with subtle prompt. */
 .catalog-empty {
   padding: 3rem 1rem;
   text-align: center;
@@ -426,7 +434,7 @@
   flex-wrap: wrap;
 }
 
-/* "Removed skills" collapsible — only renders when ≥ 1 tombstone exists. */
+/* "Removed skills" collapsible - only renders when ≥ 1 tombstone exists. */
 .catalog-removed-card {
   padding: 1rem 1.2rem;
   border-radius: 14px;

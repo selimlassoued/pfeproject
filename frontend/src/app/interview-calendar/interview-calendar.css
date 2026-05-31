@@ -37,7 +37,7 @@
 }
 .cal-gcal-logo { width: 16px; height: 16px; flex-shrink: 0; }
 
-/* Synced state — green-tinted, not a button */
+/* Synced state - green-tinted, not a button */
 .cal-gcal--on {
   cursor: default;
   border-color: rgba(74,222,128,0.32);
@@ -101,7 +101,7 @@
 }
 .cal-today-btn:hover { color: var(--color-cream); border-color: var(--color-secondary); }
 
-/* Scope toggle — All team / Mine */
+/* Scope toggle - All team / Mine */
 .cal-scope {
   display: inline-flex; padding: 3px;
   border: 1px solid var(--color-border); border-radius: var(--radius-pill);
@@ -146,7 +146,7 @@
 .cal-day--out { opacity: 0.3; }
 .cal-day--past:not(.cal-day--has) .cal-day-num { opacity: 0.5; }
 
-/* Days that have interviews — clearly highlighted */
+/* Days that have interviews - clearly highlighted */
 .cal-day--has {
   background: linear-gradient(160deg, rgba(121,164,233,0.16), rgba(121,164,233,0.05));
   border-color: rgba(121,164,233,0.30);
@@ -157,7 +157,7 @@
   box-shadow: 0 0 0 2px rgba(121,164,233,0.4);
 }
 
-/* Day number — circular; today gets a filled gradient disc */
+/* Day number - circular; today gets a filled gradient disc */
 .cal-day-num {
   align-self: flex-start;
   width: 1.6rem; height: 1.6rem;

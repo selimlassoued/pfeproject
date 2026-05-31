@@ -1,0 +1,29 @@
+<div class="of-page">
+
+  <div class="of-breadcrumb">
+    @if (app) {
+      <a [routerLink]="['/application', app.applicationId]" class="of-breadcrumb-back">&larr; Application</a>
+      <span class="of-breadcrumb-sep">/</span>
+    }
+    <span class="of-breadcrumb-here">Offer</span>
+  </div>
+
+  @if (loading) { <div class="of-state">Loading…</div> }
+  @if (error)   { <div class="of-error">{{ error }}</div> }
+
+  @if (!loading && app) {
+    <header class="of-page-head">
+      <h2 class="of-title">Offer</h2>
+      <p class="of-subtitle">
+        For <strong>{{ app.candidateName || 'this candidate' }}</strong>
+        @if (app.jobTitle) { · <em>{{ app.jobTitle }}</em> }
+      </p>
+    </header>
+
+    <app-offer-panel
+      [applicationId]="app.applicationId"
+      mode="RECRUITER"
+      [canCreateOffer]="canMakeOffer"
+      (changed)="onOfferChanged()" />
+  }
+</div>

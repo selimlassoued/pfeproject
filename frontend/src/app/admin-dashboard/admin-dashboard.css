@@ -137,7 +137,7 @@
   color: var(--color-secondary);
 }
 
-/* ══ LOG ROW — 4-column grid: [nav] [pill] [info] [time+chevron] ══ */
+/* ══ LOG ROW - 4-column grid: [nav] [pill] [info] [time+chevron] ══ */
 .log-row {
   padding: 0.75rem 1.25rem;
   display: grid;

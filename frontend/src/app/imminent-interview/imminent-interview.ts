@@ -4,10 +4,11 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import Keycloak from 'keycloak-js';
 import { InterviewService, InterviewResponse } from '../services/interview-service';
+import { NotificationSocketService } from '../services/notification-socket.service';
 
 /**
  * A navbar widget that surfaces the single most-imminent interview for the
- * signed-in user — the recruiter who organised it (or was invited) and the
+ * signed-in user - the recruiter who organised it (or was invited) and the
  * candidate it concerns. It stays out of the way until an interview is within
  * 2 hours, then counts down and escalates blue → amber → red as it nears.
  */
@@ -22,6 +23,7 @@ export class ImminentInterview implements OnInit, OnDestroy {
   private readonly keycloak = inject(Keycloak);
   private readonly interviewService = inject(InterviewService);
   private readonly router = inject(Router);
+  private readonly socket = inject(NotificationSocketService);
 
   /** Only show the widget once an interview is this close. */
   private static readonly WINDOW_MS = 2 * 3_600_000;
@@ -31,6 +33,7 @@ export class ImminentInterview implements OnInit, OnDestroy {
   private ticker?: ReturnType<typeof setInterval>;
   private refetch?: ReturnType<typeof setInterval>;
   private changedSub?: Subscription;
+  private wsSub?: Subscription;
 
   ngOnInit(): void {
     const id = this.keycloak.subject;
@@ -39,14 +42,20 @@ export class ImminentInterview implements OnInit, OnDestroy {
     // Tick the countdown; periodically refetch so newly-scheduled interviews appear.
     this.ticker  = setInterval(() => { this.now = Date.now(); }, 30_000);
     this.refetch = setInterval(() => this.load(id), 5 * 60_000);
-    // Refresh instantly when an interview is scheduled / started / completed elsewhere.
+    // Refresh instantly when something in this same tab triggered a change.
     this.changedSub = this.interviewService.changed$.subscribe(() => this.load(id));
+    // Refresh instantly when ANOTHER tab/user changed our interview set - the
+    // backend pushes a thin ping on /topic/interviews.list.{userId} for every
+    // schedule, cancel, reschedule, proposal-pick, delegation, invite that
+    // affects us. No page refresh needed.
+    this.wsSub = this.socket.interviewListChanged$.subscribe(() => this.load(id));
   }
 
   ngOnDestroy(): void {
     if (this.ticker)  clearInterval(this.ticker);
     if (this.refetch) clearInterval(this.refetch);
     this.changedSub?.unsubscribe();
+    this.wsSub?.unsubscribe();
   }
 
   /** A candidate sees their own interviews; staff see ones they run or were invited to. */
@@ -72,7 +81,7 @@ export class ImminentInterview implements OnInit, OnDestroy {
     });
   }
 
-  /** The most-imminent interview worth showing — a live one, else the soonest within the window. */
+  /** The most-imminent interview worth showing - a live one, else the soonest within the window. */
   get target(): InterviewResponse | null {
     let soonest: InterviewResponse | null = null;
     let soonestAt = Infinity;
@@ -81,7 +90,7 @@ export class ImminentInterview implements OnInit, OnDestroy {
       if (iv.status !== 'SCHEDULED') continue;
       const at = new Date(iv.scheduledAt).getTime();
       if (at - this.now > ImminentInterview.WINDOW_MS) continue;  // still too far off
-      if (at < this.now - 90 * 60_000) continue;          // long over — ignore
+      if (at < this.now - 90 * 60_000) continue;          // long over - ignore
       if (at < soonestAt) { soonestAt = at; soonest = iv; }
     }
     return soonest;
@@ -89,7 +98,7 @@ export class ImminentInterview implements OnInit, OnDestroy {
 
   get visible(): boolean { return this.target !== null; }
 
-  /** Urgency tier — drives the colour. */
+  /** Urgency tier - drives the colour. */
   get tier(): 'soon' | 'near' | 'alert' {
     const iv = this.target;
     if (!iv) return 'soon';

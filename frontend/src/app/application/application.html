@@ -44,18 +44,21 @@
         </div>
 
         <!-- Validation feedback -->
-        <div style="margin-top:.35rem; font-size:13px; color: #16a34a;"
-             *ngIf="githubValid() === true">
-          ✓ Link is valid
-        </div>
-        <div style="margin-top:.35rem; font-size:13px; color: #dc2626;"
-             *ngIf="githubValid() === false">
-          ✗ Link is broken or unreachable
-        </div>
-        <div class="text-muted" style="margin-top:.35rem;"
-             *ngIf="form.get('githubUrl')?.touched && form.get('githubUrl')?.invalid">
-          Please enter a valid URL (must start with http:// or https://).
-        </div>
+        @if (githubValid() === true) {
+          <div style="margin-top:.35rem; font-size:13px; color: #16a34a;">
+            ✓ Link is valid
+          </div>
+        }
+        @if (githubValid() === false) {
+          <div style="margin-top:.35rem; font-size:13px; color: #dc2626;">
+            ✗ Link is broken or unreachable
+          </div>
+        }
+        @if (form.get('githubUrl')?.touched && form.get('githubUrl')?.invalid) {
+          <div class="text-muted" style="margin-top:.35rem;">
+            Please enter a valid URL (must start with http:// or https://).
+          </div>
+        }
       </div>
 
       <!-- CV Upload -->
@@ -68,9 +71,11 @@
           (change)="onFileChange($event)"
           style="margin-top:.35rem;"
         />
-        <div class="text-muted" style="margin-top:.35rem;" *ngIf="cvName()">
-          Selected: <span class="mono">{{ cvName() }}</span>
-        </div>
+        @if (cvName()) {
+          <div class="text-muted" style="margin-top:.35rem;">
+            Selected: <span class="mono">{{ cvName() }}</span>
+          </div>
+        }
       </div>
 
       <div class="divider"></div>
@@ -88,8 +93,12 @@
       </div>
 
       <!-- Status messages -->
-      <div style="font-size:13px; color:#dc2626;" *ngIf="error()">{{ error() }}</div>
-      <div style="font-size:13px; color:#16a34a;" *ngIf="success()">{{ success() }}</div>
+      @if (error()) {
+        <div style="font-size:13px; color:#dc2626;">{{ error() }}</div>
+      }
+      @if (success()) {
+        <div style="font-size:13px; color:#16a34a;">{{ success() }}</div>
+      }
 
     </form>
   </article>

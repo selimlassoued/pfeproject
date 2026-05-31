@@ -53,7 +53,7 @@
     </div>
   }
 
-  <!-- Not started — no analysis exists and none is running -->
+  <!-- Not started - no analysis exists and none is running -->
   @if (!loading && !error && notStarted) {
     <div class="drawer-error">
       <div>
@@ -66,7 +66,7 @@
     </div>
   }
 
-  <!-- Failed — show retry -->
+  <!-- Failed - show retry -->
   @if (!loading && analysis && isFailed) {
     <div class="drawer-error">
       <div>
@@ -555,7 +555,7 @@
           }
         </div>
       }
-      <!-- ── End LinkedIn Profile ───────────────────────────────────────────– -->
+      <!-- ── End LinkedIn Profile ───────────────────────────────────────────- -->
 
       <!-- Hackathons -->
       @if (analysis.hackathons.length) {

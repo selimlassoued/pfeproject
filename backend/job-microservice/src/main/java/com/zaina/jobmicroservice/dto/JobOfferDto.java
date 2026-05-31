@@ -15,15 +15,11 @@ import java.util.UUID;
 @AllArgsConstructor
 public class JobOfferDto {
     private UUID id;
-    private String refNumber;   // ← added
+    private String refNumber;   
     private String title;
     private String description;
     private String location;
     private String workArrangement;
-    // Business domain — SOFTWARE_ENGINEERING / FINANCE_BANKING / INSURANCE /
-    // PROJECT_MANAGEMENT / QUALITY_ASSURANCE / BUSINESS_ANALYSIS. Drives the
-    // candidate-side chip-grid filtering so each domain's candidates only
-    // see relevant skills.
     private String domain;
     private Integer minSalary;
     private Integer maxSalary;

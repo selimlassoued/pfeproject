@@ -1,16 +1,18 @@
 <div class="room-shell">
 
   <!-- Recruiter sees this until they let the candidate in. -->
-  <div *ngIf="role === 'recruiter' && state === 'joined' && !candidateAdmitted"
-       class="admit-banner">
-    <span class="admit-msg">Candidate is waiting to be admitted.</span>
-    <button class="btn btn-primary admit-btn" type="button"
-            [disabled]="admitting" (click)="admitCandidate.emit()">
-      {{ admitting ? 'Admitting…' : 'Admit candidate' }}
-    </button>
-  </div>
+  @if (role === 'recruiter' && state === 'joined' && !candidateAdmitted) {
+    <div class="admit-banner">
+      <span class="admit-msg">Candidate is waiting to be admitted.</span>
+      <button class="btn btn-primary admit-btn" type="button"
+              [disabled]="admitting" (click)="admitCandidate.emit()">
+        {{ admitting ? 'Admitting…' : 'Admit candidate' }}
+      </button>
+    </div>
+  }
 
-  <div *ngIf="state === 'waiting'" class="overlay-state waiting">
+  @if (state === 'waiting') {
+  <div class="overlay-state waiting">
     <div class="wait-card">
       <span class="wait-pill">⏳ Interview starts soon</span>
 
@@ -32,21 +34,26 @@
       </p>
     </div>
   </div>
+  }
 
-  <div *ngIf="state === 'connecting'" class="overlay-state connecting">
-    <div class="connect-spinner"></div>
-    <p class="state-label">Connecting to the room…</p>
-    <p class="state-sub">If you see a Jitsi sign-in prompt, click <strong>“Je suis l'hôte”</strong> to enter.</p>
-  </div>
+  @if (state === 'connecting') {
+    <div class="overlay-state connecting">
+      <div class="connect-spinner"></div>
+      <p class="state-label">Connecting to the room…</p>
+      <p class="state-sub">If you see a Jitsi sign-in prompt, click <strong>“Je suis l'hôte”</strong> to enter.</p>
+    </div>
+  }
 
-  <div *ngIf="state === 'error'" class="overlay-state error">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-    <p class="state-label">Room unavailable or microphone access denied.</p>
-  </div>
+  @if (state === 'error') {
+    <div class="overlay-state error">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+      <p class="state-label">Room unavailable or microphone access denied.</p>
+    </div>
+  }
 
   <!--
     Shown after the user clicks End interview. Covers the Jitsi iframe so
@@ -54,70 +61,92 @@
     parent component navigates away within a second once the recording
     upload request has gone out.
   -->
-  <div *ngIf="state === 'ending'" class="overlay-state ending">
-    <div class="connect-spinner"></div>
-    <p class="state-label">Wrapping up the interview…</p>
-    <p class="state-sub">Saving the recording and closing the room.</p>
-  </div>
+  @if (state === 'ending') {
+    <div class="overlay-state ending">
+      <div class="connect-spinner"></div>
+      <p class="state-label">Wrapping up the interview…</p>
+      <p class="state-sub">Saving the recording and closing the room.</p>
+    </div>
+  }
 
-  <!-- Jitsi frame — always in DOM (hidden via CSS during 'ending'). -->
+  <!-- Jitsi frame - always in DOM (hidden via CSS during 'ending'). -->
   <div #jitsiContainer class="jitsi-frame" [class.hidden]="state === 'ending'"></div>
 
   <!--
-    Interview control bar — lives at the bottom of the room shell so it
+    Interview control bar - lives at the bottom of the room shell so it
     reads as part of the video panel (Zoom / Teams pattern). Replaces
     the separate floating bar that previously sat outside the room.
     The Jitsi hangup button is removed from the iframe toolbar; the
     "End interview" button below is the single user-facing end action.
   -->
-  <div *ngIf="state === 'joined'" class="interview-controls">
-    <div class="controls-status">
-      <span *ngIf="isRecording" class="rec-dot">● Recording</span>
-      <span class="rec-role">
-        {{ role === 'recruiter' ? 'Recruiter'
-           : role === 'candidate' ? 'Candidate'
-           : 'Observer — watch only' }}
-      </span>
-    </div>
-
-    <div class="controls-actions">
-      <button *ngIf="isRecording && role !== 'observer'"
-              type="button"
-              class="btn mic-toggle"
-              [class.muted]="jitsiMuted"
-              (click)="toggleMute()">
-        <span class="mic-icon">{{ jitsiMuted ? '🔇' : '🎙️' }}</span>
-        {{ jitsiMuted ? 'Unmute mic' : 'Mute mic' }}
-      </button>
-
-      <button *ngIf="isRecording" class="btn btn-end" (click)="stopRecording()">
-        End interview
-      </button>
-    </div>
-
-    <div class="controls-upload">
-      <span *ngIf="uploadStatus === 'uploading'" class="upload-msg">Saving…</span>
-      <span *ngIf="uploadStatus === 'done'" class="upload-msg success">Saved</span>
-      <span *ngIf="uploadStatus === 'error'" class="upload-msg error">
-        Save failed
-        <button class="btn btn-ghost btn-sm" (click)="stopRecording()">Retry</button>
-      </span>
-    </div>
-  </div>
-
-  <div class="question-group" *ngFor="let group of groupedQuestions">
-    <h4>{{ group.category }}</h4>
-    <div class="question-card"
-         *ngFor="let q of group.questions"
-         [class.asked]="askedQuestions.has(q.id)"
-         [class.skipped]="q.status === 'SKIPPED'">
-      <p>{{ q.text }}</p>
-      <div class="actions" *ngIf="!askedQuestions.has(q.id)">
-        <button (click)="markQuestion(q.id, 'ASKED')">Mark asked</button>
-        <button (click)="markQuestion(q.id, 'SKIPPED')">Skip</button>
+  @if (state === 'joined') {
+    <div class="interview-controls">
+      <div class="controls-status">
+        @if (isRecording) {
+          <span class="rec-dot">● Recording</span>
+        }
+        <span class="rec-role">
+          {{ role === 'recruiter' ? 'Recruiter'
+             : role === 'candidate' ? 'Candidate'
+             : 'Observer - watch only' }}
+        </span>
       </div>
-      <span *ngIf="askedQuestions.has(q.id)" class="asked-badge">Asked</span>
+
+      <div class="controls-actions">
+        @if (isRecording && role !== 'observer') {
+          <button type="button"
+                  class="btn mic-toggle"
+                  [class.muted]="jitsiMuted"
+                  (click)="toggleMute()">
+            <span class="mic-icon">{{ jitsiMuted ? '🔇' : '🎙️' }}</span>
+            {{ jitsiMuted ? 'Unmute mic' : 'Mute mic' }}
+          </button>
+        }
+
+        @if (isRecording) {
+          <button class="btn btn-end" (click)="stopRecording()">
+            End interview
+          </button>
+        }
+      </div>
+
+      <div class="controls-upload">
+        @if (uploadStatus === 'uploading') {
+          <span class="upload-msg">Saving…</span>
+        }
+        @if (uploadStatus === 'done') {
+          <span class="upload-msg success">Saved</span>
+        }
+        @if (uploadStatus === 'error') {
+          <span class="upload-msg error">
+            Save failed
+            <button class="btn btn-ghost btn-sm" (click)="stopRecording()">Retry</button>
+          </span>
+        }
+      </div>
     </div>
-  </div>
+  }
+
+  @for (group of groupedQuestions; track group.category) {
+    <div class="question-group">
+      <h4>{{ group.category }}</h4>
+      @for (q of group.questions; track q.id) {
+        <div class="question-card"
+             [class.asked]="askedQuestions.has(q.id)"
+             [class.skipped]="q.status === 'SKIPPED'">
+          <p>{{ q.text }}</p>
+          @if (!askedQuestions.has(q.id)) {
+            <div class="actions">
+              <button (click)="markQuestion(q.id, 'ASKED')">Mark asked</button>
+              <button (click)="markQuestion(q.id, 'SKIPPED')">Skip</button>
+            </div>
+          }
+          @if (askedQuestions.has(q.id)) {
+            <span class="asked-badge">Asked</span>
+          }
+        </div>
+      }
+    </div>
+  }
 </div>
 

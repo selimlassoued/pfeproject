@@ -27,17 +27,24 @@
   </div>
 
   <!-- Active job filter badge (shown when pre-filtered from job page) -->
-  <div *ngIf="jobId" class="active-filter-row">
-    <span class="active-filter-badge">
-      Filtered by Job ID: <span class="mono">{{ jobId }}</span>
-      <button class="clear-filter-btn" type="button" (click)="jobId = ''; search()">✕</button>
-    </span>
-  </div>
+  @if (jobId) {
+    <div class="active-filter-row">
+      <span class="active-filter-badge">
+        Filtered by Job ID: <span class="mono">{{ jobId }}</span>
+        <button class="clear-filter-btn" type="button" (click)="jobId = ''; search()">✕</button>
+      </span>
+    </div>
+  }
 
-  <div *ngIf="loading" class="apps-state">Loading...</div>
-  <div *ngIf="error"   class="apps-error">{{ error }}</div>
+  @if (loading) {
+    <div class="apps-state">Loading...</div>
+  }
+  @if (error) {
+    <div class="apps-error">{{ error }}</div>
+  }
 
-  <div *ngIf="!loading && applications.length > 0" class="apps-tableWrap">
+  @if (!loading && applications.length > 0) {
+  <div class="apps-tableWrap">
     <table class="apps-table">
       <thead>
         <tr>
@@ -52,17 +59,18 @@
       </thead>
 
       <tbody>
-        <tr *ngFor="let app of applications" (click)="openDetails(app)" style="cursor:pointer;">
+        @for (app of applications; track app.applicationId) {
+        <tr (click)="openDetails(app)" style="cursor:pointer;">
 
           <td class="mono">{{ app.applicationId }}</td>
 
           <td>
-            <div>{{ app.jobTitle || '—' }}</div>
+            <div>{{ app.jobTitle || '-' }}</div>
             <div class="sub-id mono">{{ app.jobId }}</div>
           </td>
 
           <td>
-            <div>{{ app.candidateName || '—' }}</div>
+            <div>{{ app.candidateName || '-' }}</div>
             <div class="sub-id mono">{{ app.candidateUserId }}</div>
           </td>
 
@@ -77,7 +85,7 @@
                 </div>
               }
             } @else {
-              <span class="score-pending">—</span>
+              <span class="score-pending">-</span>
             }
           </td>
 
@@ -95,6 +103,7 @@
             </button>
           </td>
         </tr>
+        }
       </tbody>
     </table>
 
@@ -122,18 +131,24 @@
           ← Prev
         </button>
 
-        <div class="apps-pageBtns" *ngIf="totalPages > 1">
-          <ng-container *ngFor="let it of pageItems()">
-            <span class="apps-ellipsis" *ngIf="it === '...'">…</span>
-            <button *ngIf="isPageNumber(it)"
-              class="apps-pageBtn" type="button"
-              (click)="goToPage(it)"
-              [class.active]="it === pageIndex"
-              [disabled]="loading">
-              {{ it + 1 }}
-            </button>
-          </ng-container>
-        </div>
+        @if (totalPages > 1) {
+          <div class="apps-pageBtns">
+            @for (it of pageItems(); track $index) {
+              @if (it === '...') {
+                <span class="apps-ellipsis">…</span>
+              }
+              @if (isPageNumber(it)) {
+                <button
+                  class="apps-pageBtn" type="button"
+                  (click)="goToPage(it)"
+                  [class.active]="it === pageIndex"
+                  [disabled]="loading">
+                  {{ it + 1 }}
+                </button>
+              }
+            }
+          </div>
+        }
 
         <button class="btn btn-ghost" type="button"
           (click)="next()" [disabled]="loading || pageIndex + 1 >= totalPages">
@@ -142,8 +157,11 @@
       </div>
     </div>
   </div>
+  }
 
-  <div *ngIf="!loading && applications.length === 0" class="apps-empty">
-    No applications found.
-  </div>
+  @if (!loading && applications.length === 0) {
+    <div class="apps-empty">
+      No applications found.
+    </div>
+  }
 </div>

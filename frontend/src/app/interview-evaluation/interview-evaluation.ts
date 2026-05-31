@@ -35,7 +35,7 @@ const DIMENSION_META: Array<{ key: DimensionKey; label: string; prePhase: string
 ];
 
 // Interview-alone score = weighted mean of the six dimensions. Must mirror
-// `_DIM_WEIGHTS` in analysis-service/main.py — the backend uses the same
+// `_DIM_WEIGHTS` in analysis-service/main.py - the backend uses the same
 // weights to derive the delta and final score.
 const DIM_WEIGHTS: Record<DimensionKey, number> = {
   technical_depth:       0.24,
@@ -96,10 +96,10 @@ export class InterviewEvaluation implements OnInit, OnDestroy {
   // muted-red for weak. Stays inside the app's existing palette.
   scoreColor(score: number | null | undefined): string {
     if (score == null) return 'rgba(248,250,252,0.45)';
-    if (score >= 80) return '#fffce5';        // cream — top tier
-    if (score >= 65) return '#79a4e9';        // secondary-blue — strong
-    if (score >= 50) return '#f5c674';        // amber on dark — borderline
-    return '#e8889a';                          // muted-red on dark — weak
+    if (score >= 80) return '#fffce5';        // cream - top tier
+    if (score >= 65) return '#79a4e9';        // secondary-blue - strong
+    if (score >= 50) return '#f5c674';        // amber on dark - borderline
+    return '#e8889a';                          // muted-red on dark - weak
   }
 
 
@@ -172,7 +172,7 @@ export class InterviewEvaluation implements OnInit, OnDestroy {
         label: 'CV + GitHub',
         sublabel: r.githubScore ? this.humanGitHubScore(r.githubScore) : 'No profile signal',
         score: cvScore,
-        display: cvScore != null ? String(cvScore) : '—',
+        display: cvScore != null ? String(cvScore) : '-',
         status: cvScore != null ? 'available' : 'missing',
         color: this.scoreColor(cvScore),
       },
@@ -183,7 +183,7 @@ export class InterviewEvaluation implements OnInit, OnDestroy {
           ? this.humanRecommendation(r.preInterviewRecommendation)
           : 'No job-fit run',
         score: semScore,
-        display: semScore != null ? String(semScore) : '—',
+        display: semScore != null ? String(semScore) : '-',
         status: semScore != null ? 'available' : 'missing',
         color: this.scoreColor(semScore),
       },
@@ -194,16 +194,16 @@ export class InterviewEvaluation implements OnInit, OnDestroy {
           ? this.formatDelta(r.interviewDelta)
           : 'Interview-only score',
         score: this.interviewScore,
-        display: this.interviewScore != null ? String(this.interviewScore) : '—',
+        display: this.interviewScore != null ? String(this.interviewScore) : '-',
         status: this.interviewScore != null ? 'available' : 'missing',
         color: this.scoreColor(this.interviewScore),
       },
       {
         key: 'final',
         label: 'Final',
-        sublabel: r.finalGrade ?? '—',
+        sublabel: r.finalGrade ?? '-',
         score: r.finalScore,
-        display: r.finalScore != null ? String(r.finalScore) : '—',
+        display: r.finalScore != null ? String(r.finalScore) : '-',
         status: 'final',
         color: this.scoreColor(r.finalScore),
       },

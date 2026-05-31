@@ -2,10 +2,41 @@
 
   <div class="schedule-header">
     <h3 class="schedule-title">Schedule Interview</h3>
-    <p class="schedule-subtitle">Pick a day, then choose an available time slot.</p>
 
-    <!-- Test escape hatch — bypasses weekend/past restrictions so a demo
-         interview can be created at any time. Keep OFF for real use. -->
+    <!-- Mode toggle -->
+    <div class="si-mode-toggle" role="tablist" aria-label="Scheduling mode">
+      <button type="button"
+              class="si-mode-btn"
+              [class.si-mode-btn--on]="mode === 'propose'"
+              (click)="setMode('propose')"
+              role="tab"
+              [attr.aria-selected]="mode === 'propose'">
+        <span class="si-mode-title">Propose slots</span>
+        <span class="si-mode-hint">Candidate confirms one of 1-4 times</span>
+      </button>
+      <button type="button"
+              class="si-mode-btn"
+              [class.si-mode-btn--on]="mode === 'direct'"
+              (click)="setMode('direct')"
+              role="tab"
+              [attr.aria-selected]="mode === 'direct'">
+        <span class="si-mode-title">Schedule directly</span>
+        <span class="si-mode-hint">You already agreed on a time</span>
+      </button>
+    </div>
+
+    @if (mode === 'propose') {
+      <p class="schedule-subtitle">
+        Pick 1-4 times across one or several days. The candidate gets a card on their dashboard and confirms one.
+        Offering a single slot works too - a "this is the time I have" invite.
+      </p>
+    } @else {
+      <p class="schedule-subtitle">
+        Pick a day, then choose an available time slot. The interview is created immediately.
+      </p>
+    }
+
+    <!-- Test escape hatch - bypasses weekend/past restrictions for demos. -->
     <label class="si-testmode">
       <input type="checkbox" [(ngModel)]="testMode" />
       <span>Test mode (allow past times &amp; weekends)</span>
@@ -25,7 +56,9 @@
 
     <!-- Time slots -->
     <div class="form-block">
-      <label class="form-label">Time slot</label>
+      <label class="form-label">
+        {{ mode === 'propose' ? 'Pick available times (tap to toggle)' : 'Time slot' }}
+      </label>
 
       @if (busyLoading) {
         <div class="si-slots-msg">Loading availability…</div>
@@ -46,7 +79,7 @@
                             [class.si-slot--recruiter]="slot.state === 'recruiter'"
                             [class.si-slot--candidate]="slot.state === 'candidate'"
                             [class.si-slot--both]="slot.state === 'both'"
-                            [class.si-slot--on]="selectedSlot === slot.time"
+                            [class.si-slot--on]="isSlotPicked(slot.time)"
                             [disabled]="slot.state !== 'free'"
                             [title]="slotTitle(slot)"
                             (click)="pickSlot(slot)">
@@ -67,6 +100,45 @@
       }
     </div>
 
+    <!-- ── Proposal-mode extras: picked slots, deadline, message ───────── -->
+    @if (mode === 'propose') {
+      <div class="form-block">
+        <label class="form-label">
+          Slots offered to the candidate
+          <span class="si-count">({{ proposedSlots.length }}/4)</span>
+        </label>
+        @if (proposedSlots.length === 0) {
+          <div class="si-empty-picks">No slots picked yet - tap times in the grid above.</div>
+        } @else {
+          <div class="si-picked-chips">
+            @for (s of proposedSlots; track s.iso) {
+              <span class="si-picked-chip">
+                {{ s.label }}
+                <button type="button" class="si-picked-remove"
+                        (click)="removeProposedSlot(s.iso)"
+                        title="Remove this slot">✕</button>
+              </span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="form-block">
+        <label class="form-label" for="si-deadline">Candidate must pick by</label>
+        <input id="si-deadline" type="datetime-local" class="form-input"
+               [(ngModel)]="deadline" />
+        <div class="si-hint">After this time, unconfirmed slots are released.</div>
+      </div>
+
+      <div class="form-block">
+        <label class="form-label" for="si-msg">Message (optional)</label>
+        <textarea id="si-msg" class="form-input si-textarea" rows="2"
+                  maxlength="500"
+                  placeholder="e.g. Looking forward to our chat - feel free to pick any of these."
+                  [(ngModel)]="message"></textarea>
+      </div>
+    }
+
     <!-- Error -->
     @if (error) {
       <div class="form-error-box">{{ error }}</div>
@@ -74,7 +146,7 @@
 
     <!-- Actions -->
     <div class="form-actions">
-      @if (testMode) {
+      @if (testMode && mode === 'direct') {
         <button type="button"
                 class="btn btn-ghost schedule-btn"
                 [disabled]="loading"
@@ -83,12 +155,21 @@
           {{ loading ? 'Scheduling…' : 'Schedule now (30 s)' }}
         </button>
       }
-      <button type="button"
-              class="btn btn-primary schedule-btn"
-              [disabled]="!selectedSlot || loading"
-              (click)="submit()">
-        {{ loading ? 'Scheduling…' : 'Schedule Interview' }}
-      </button>
+      @if (mode === 'direct') {
+        <button type="button"
+                class="btn btn-primary schedule-btn"
+                [disabled]="!selectedSlot || loading"
+                (click)="submit()">
+          {{ loading ? 'Scheduling…' : 'Schedule Interview' }}
+        </button>
+      } @else {
+        <button type="button"
+                class="btn btn-primary schedule-btn"
+                [disabled]="!canSendProposal"
+                (click)="sendProposal()">
+          {{ loading ? 'Sending…' : 'Send proposal to candidate' }}
+        </button>
+      }
     </div>
 
   </div>

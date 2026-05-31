@@ -5,7 +5,7 @@
   align-items:end;
 }
 
-/* Counter on the "My Preferences" button — number of catalog items added
+/* Counter on the "My Preferences" button - number of catalog items added
    since the candidate's last preferences visit. Sits on the top-right corner
    of the button like a notification pill. Auto-hides when count = 0. */
 .pref-new-badge{

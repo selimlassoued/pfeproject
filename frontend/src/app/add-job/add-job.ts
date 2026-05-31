@@ -35,7 +35,7 @@ export class AddJob{
 
   // Canonical language names for LANGUAGE-category requirements. Used by the
   // strict dropdown in the template so the recruiter can't store a typo or a
-  // localized spelling — every requirement on the wire is in canonical form
+  // localized spelling - every requirement on the wire is in canonical form
   // (e.g. "Italian", never "Italien"). One source of truth lives in
   // language-options.service so the candidate dropdown and recruiter dropdown
   // can't drift apart.
@@ -43,13 +43,13 @@ export class AddJob{
 
   // Business-domain dropdown options for the Domain field. Same canonical
   // list used by the candidate Preferences page and the Skills Catalog
-  // admin page — one source of truth in services/domains.ts.
+  // admin page - one source of truth in services/domains.ts.
   readonly domainOptions = DOMAIN_OPTIONS;
 
   readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.minLength(3)]],
     description: ['', [Validators.required, Validators.minLength(10)]],
-    // Location is fixed — VERMEG sits at Les Berges du Lac 1, Tunis. The
+    // Location is fixed - VERMEG sits at Les Berges du Lac 1, Tunis. The
     // input was removed from the form; the value is injected at submit time.
     workArrangement: ['', [Validators.required]],
     employmentType: ['', [Validators.required]],
@@ -246,7 +246,7 @@ export class AddJob{
     return {
       title: (v.title ?? '').trim(),
       description: (v.description ?? '').trim(),
-      location: 'Lac 1, Tunis',                     // VERMEG HQ — fixed value
+      location: 'Lac 1, Tunis',                     // VERMEG HQ - fixed value
       workArrangement: v.workArrangement || null,
       domain: v.domain || null,
       openings: (v.openings ?? null) as number,

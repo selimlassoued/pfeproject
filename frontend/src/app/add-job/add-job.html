@@ -102,7 +102,7 @@
             }
           </div>
 
-          <!-- Business domain — determines which candidates see this job's
+          <!-- Business domain - determines which candidates see this job's
                skills in their Preferences chip grid. Same dropdown the
                candidate fills in on /preferences. -->
           <div class="field">
@@ -142,7 +142,7 @@
       <div class="field">
         <label class="toolbar-label">Number of positions to fill</label>
         <input class="input" type="number" min="1" formControlName="openings"
-          placeholder="e.g. 3 — leave empty for unlimited" />
+          placeholder="e.g. 3 - leave empty for unlimited" />
         <div class="text-muted" style="margin-top:.35rem; font-size:.8rem;">
           When this quota is reached, the position closes automatically and remaining candidates are rejected.
         </div>
@@ -263,12 +263,13 @@
       @if (customizeWeights) {
         <div class="req-weights-hint">
           Weights sum: <strong [style.color]="reqWeightsTotal === 100 ? '#68d391' : '#fc8181'">{{ reqWeightsTotal }}%</strong>
-          — adjust sliders so they total 100%.
+          - adjust sliders so they total 100%.
         </div>
       }
 
       <div formArrayName="requirements" class="req-list">
-        <div class="req-item" *ngFor="let r of requirements().controls; let i = index" [formGroupName]="i">
+        @for (r of requirements().controls; track $index; let i = $index) {
+        <div class="req-item" [formGroupName]="i">
           <div class="req-top">
             <div class="req-meta">
               <span class="pill">#{{ i + 1 }}</span>
@@ -293,7 +294,7 @@
 
             <!-- Description: free-text for most categories, strict dropdown
                  for LANGUAGE so the value stored is always one of the canonical
-                 names. Keeps the candidate matcher's life simple — no "Italien"
+                 names. Keeps the candidate matcher's life simple - no "Italien"
                  vs "Italian" reconciliation needed at scoring time. -->
             <div class="field req-desc">
               <label class="toolbar-label">
@@ -372,17 +373,17 @@
                 <label class="toolbar-label">Minimum level required</label>
                 <select class="input" formControlName="languageLevel">
                   <option [ngValue]="null">Any level</option>
-                  <option value="A1">A1 — Beginner</option>
-                  <option value="A2">A2 — Elementary</option>
-                  <option value="B1">B1 — Conversational</option>
-                  <option value="B2">B2 — Professional</option>
-                  <option value="C1">C1 — Advanced</option>
-                  <option value="C2">C2 — Native / Mastery</option>
+                  <option value="A1">A1 - Beginner</option>
+                  <option value="A2">A2 - Elementary</option>
+                  <option value="B1">B1 - Conversational</option>
+                  <option value="B2">B2 - Professional</option>
+                  <option value="C1">C1 - Advanced</option>
+                  <option value="C2">C2 - Native / Mastery</option>
                 </select>
               </div>
             }
 
-            <!-- Weight slider — only shown when customizeWeights is on -->
+            <!-- Weight slider - only shown when customizeWeights is on -->
             @if (customizeWeights) {
               <div class="field req-weight-field">
                 <label class="toolbar-label">Weight: {{ r.get('weight')?.value ?? 0 }}%</label>
@@ -397,6 +398,7 @@
             <div class="hint">Category + description are required.</div>
           }
         </div>
+        }
 
         @if (requirements().length === 0) {
           <div class="empty card" style="padding: var(--space-6);">

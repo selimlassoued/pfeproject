@@ -1,20 +1,23 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { ApplicationService } from '../services/application.service';
-import { ApplicationDto } from '../model/application.dto';
 import { FormsModule } from '@angular/forms';
-import { CvAnalysisDrawer } from '../cv-analysis-drawer/cv-analysis-drawer';
-import { JobService } from '../services/job.service';
 import Keycloak from 'keycloak-js';
 import Swal from 'sweetalert2';
-import { InterviewResponse } from '../services/interview-service';
-import { ScheduleInterview } from '../schedule-interview/schedule-interview';
-import{ InterviewService } from '../services/interview-service';
-import { UserService } from '../services/user-service';
-import { AdminUserRow } from '../model/admin_users.type';
 
-// Allowed status transitions — mirrors backend logic
+import { ApplicationService } from '../services/application.service';
+import { ApplicationDto } from '../model/application.dto';
+import { JobService } from '../services/job.service';
+import { CvAnalysisDrawer } from '../cv-analysis-drawer/cv-analysis-drawer';
+import {
+  InterviewService, InterviewResponse, ProposalResponse,
+} from '../services/interview-service';
+import { OfferService, OfferDto } from '../services/offer.service';
+import { NotificationSocketService } from '../services/notification-socket.service';
+import { SeenTrackerService } from '../services/seen-tracker.service';
+import { Subscription } from 'rxjs';
+
+// Allowed status transitions - mirrors backend logic
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   APPLIED:          ['UNDER_REVIEW', 'REJECTED'],
   UNDER_REVIEW:     ['INTERVIEW_PHASE', 'REJECTED'],
@@ -27,9 +30,17 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   WITHDRAWN:        [],
 };
 
+/**
+ * Recruiter-facing application detail. The interview and offer flows used to
+ * live here too, but they grew large enough that they now live on dedicated
+ * pages (/application/:id/interviews and /application/:id/offer). This page
+ * keeps the candidate overview, status pipeline, signal flow, semantic match,
+ * and CV access, plus two compact summary cards that link to the dedicated
+ * management pages.
+ */
 @Component({
   selector: 'app-application-detail',
-  imports: [CommonModule, FormsModule, CvAnalysisDrawer,ScheduleInterview],
+  imports: [CommonModule, FormsModule, RouterLink, CvAnalysisDrawer],
   templateUrl: './application-detail.html',
   styleUrl: './application-detail.css',
 })
@@ -47,26 +58,21 @@ export class ApplicationDetail implements OnInit, OnDestroy {
 
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Candidate moderation status — loaded separately from application status
   candidateModerated = false;
 
-  // Rank badge
   rank: number | null = null;
   rankTotal: number | null = null;
 
+  // ── Summary card state ──────────────────────────────────────────────────
   interviews: InterviewResponse[] = [];
+  proposals: ProposalResponse[] = [];
   interviewsLoading = false;
-  showScheduleForm = false;
-  scheduledInterview: InterviewResponse | null = null;
-  cancellingId: string | null = null;
 
-  // ── Recruiter invitations to the interview room ──
-  recruiters: AdminUserRow[] = [];
-  inviteSelection = '';
-  invitingId: string | null = null;
-  requestingJoin = false;
-  joinRequestSent = false;
+  offer: OfferDto | null = null;
+  offerLoading = false;
 
+  private wsInterviewSub?: Subscription;
+  private wsOfferSub?: Subscription;
 
   drawerOpen = false;
 
@@ -81,36 +87,33 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private interviewService: InterviewService,
+    private offerService: OfferService,
     private appService: ApplicationService,
     private jobService: JobService,
-    private userService: UserService
+    private socket: NotificationSocketService,
+    private seen: SeenTrackerService,
   ) {}
 
+  // ── Lifecycle ───────────────────────────────────────────────────────────
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       this.error = 'Missing application id';
       return;
     }
-    this.loadRecruiters();
-
-    // Exactly one getOne() call. loadSemanticMatch enriches `this.app` with
-    // jobFitScore asynchronously — a second concurrent getOne() would resolve
-    // later and overwrite that enrichment (plain getOne carries no semantic
-    // match), silently blanking the score in the view.
     this.loading = true;
     this.appService.getOne(id).subscribe({
       next: (data) => {
         this.app = data;
         this.newStatus = this.allowedStatuses[0] ?? '';
         this.loading = false;
-        this.loadInterviews(data.applicationId);
+        this.loadInterviewSummary(data.applicationId);
+        this.loadOffer(data.applicationId);
         this.loadSemanticMatch(id);
         this.appService.getApplicationRank(id).subscribe({
           next: (r) => { this.rank = r.rank; this.rankTotal = r.total; },
           error: () => {}
         });
-        // Load candidate moderation status separately
         if (data.candidateUserId) {
           this.appService.getCandidateModerationStatus(data.candidateUserId).subscribe({
             next: (s) => {
@@ -125,12 +128,30 @@ export class ApplicationDetail implements OnInit, OnDestroy {
         this.loading = false;
       },
     });
+
+    // Live updates: refresh summary card data when the backend pings us via
+    // STOMP for any change to this user's interview set or for any offer
+    // mutation (created / revised / accepted / declined / withdrawn / expired).
+    // The push covers other tabs and the other party's actions, no refresh.
+    this.wsInterviewSub = this.socket.interviewListChanged$.subscribe(() => {
+      if (this.app?.applicationId) this.loadInterviewSummary(this.app.applicationId);
+    });
+    this.wsOfferSub = this.socket.offerChanged$.subscribe(ev => {
+      // Filter to this application so other recruiter offer events on the same
+      // tab (e.g. switching between candidates) don't trigger spurious refetches.
+      if (!this.app?.applicationId) return;
+      if (ev?.applicationId && ev.applicationId !== this.app.applicationId) return;
+      this.loadOffer(this.app.applicationId);
+    });
   }
 
   ngOnDestroy(): void {
     if (this.pollTimer) clearTimeout(this.pollTimer);
+    this.wsInterviewSub?.unsubscribe();
+    this.wsOfferSub?.unsubscribe();
   }
 
+  // ── Semantic match ──────────────────────────────────────────────────────
   private loadSemanticMatch(applicationId: string, attempt = 0): void {
     if (attempt === 0) this.semanticLoading = true;
     this.appService.getSemanticMatch(applicationId).subscribe({
@@ -178,29 +199,25 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     });
   }
 
-  // ── Role helpers ──────────────────────────────────────────────────────────
-
+  // ── Role helpers ────────────────────────────────────────────────────────
   isSuperAdmin(): boolean { return this.keycloak.hasRealmRole('SUPERADMIN'); }
   isAdmin():      boolean { return this.keycloak.hasRealmRole('ADMIN'); }
   isRecruiter():  boolean { return this.keycloak.hasRealmRole('RECRUITER'); }
 
-  /**
-   * Only RECRUITER can signal a candidate.
-   * ADMIN and SUPERADMIN block directly — they don't signal.
-   */
+  /** Only RECRUITER can signal a candidate. ADMIN/SUPERADMIN block directly. */
   canSignal(): boolean {
     return this.isRecruiter() && !this.isAdmin() && !this.isSuperAdmin();
   }
 
-  // ── Status helpers ────────────────────────────────────────────────────────
+  get recruiterEmail(): string { return this.keycloak.tokenParsed?.['email'] ?? ''; }
+  get recruiterId(): string { return this.keycloak.subject ?? ''; }
 
+  // ── Status helpers ──────────────────────────────────────────────────────
   get allowedStatuses(): string[] {
     return ALLOWED_TRANSITIONS[this.app?.status ?? ''] ?? [];
   }
 
-  get isFinalStatus(): boolean {
-    return this.allowedStatuses.length === 0;
-  }
+  get isFinalStatus(): boolean { return this.allowedStatuses.length === 0; }
 
   get isModerated(): boolean {
     return this.candidateModerated
@@ -208,9 +225,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
         || this.app?.status === 'BLOCKED';
   }
 
-  get hasSemanticMatch(): boolean {
-    return this.app?.jobFitScore != null;
-  }
+  get hasSemanticMatch(): boolean { return this.app?.jobFitScore != null; }
 
   semanticScoreLabel(score: number | null | undefined): string {
     if (score == null) return 'Pending';
@@ -228,8 +243,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     return 'Review';
   }
 
-  // ── Pipeline helpers ──────────────────────────────────────────────────────
-
+  // ── Pipeline helpers ────────────────────────────────────────────────────
   private readonly PIPELINE_ORDER = ['APPLIED', 'UNDER_REVIEW', 'INTERVIEW_PHASE', 'OFFER', 'HIRED'];
 
   isStepDone(step: string): boolean {
@@ -247,8 +261,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     return labels[step] ?? step;
   }
 
-  // ── Actions ───────────────────────────────────────────────────────────────
-
+  // ── Navigation / actions ────────────────────────────────────────────────
   openAnalysis(): void { this.drawerOpen = true; }
   closeDrawer(): void  { this.drawerOpen = false; }
 
@@ -274,29 +287,27 @@ export class ApplicationDetail implements OnInit, OnDestroy {
 
   backToList(): void { this.router.navigate(['/listApplications']); }
 
-  // Contextual action buttons per status
+  // ── Status-change buttons ───────────────────────────────────────────────
   get contextualActions(): { label: string; status: string; style: 'primary' | 'secondary' | 'danger' }[] {
     switch (this.app?.status) {
       case 'APPLIED':
-        // No "Move to Interview" — scheduling an interview moves the
-        // application to INTERVIEW_PHASE on its own.
         return [
-          { label: 'Still deciding',     status: 'UNDER_REVIEW',    style: 'primary' },
-          { label: '✗ Reject',             status: 'REJECTED',         style: 'danger' },
+          { label: 'Still deciding', status: 'UNDER_REVIEW', style: 'primary' },
+          { label: '✗ Reject',       status: 'REJECTED',     style: 'danger' },
         ];
       case 'UNDER_REVIEW':
         return [
-          { label: '✗ Reject',             status: 'REJECTED',         style: 'danger' },
+          { label: '✗ Reject',       status: 'REJECTED',     style: 'danger' },
         ];
       case 'INTERVIEW_PHASE':
         return [
-          { label: '→ Send Offer',         status: 'OFFER',            style: 'primary' },
-          { label: '✗ Reject',             status: 'REJECTED',         style: 'danger' },
+          { label: '→ Send Offer',   status: 'OFFER',        style: 'primary' },
+          { label: '✗ Reject',       status: 'REJECTED',     style: 'danger' },
         ];
       case 'OFFER':
         return [
-          { label: '✓ Hire',               status: 'HIRED',            style: 'primary' },
-          { label: '✗ Reject',             status: 'REJECTED',         style: 'danger' },
+          { label: '✓ Hire',         status: 'HIRED',        style: 'primary' },
+          { label: '✗ Reject',       status: 'REJECTED',     style: 'danger' },
         ];
       default:
         return [];
@@ -305,7 +316,6 @@ export class ApplicationDetail implements OnInit, OnDestroy {
 
   moveTo(status: string) {
     if (!this.app?.applicationId) return;
-    // Rejecting is destructive and notifies the candidate — confirm first.
     if (status === 'REJECTED') {
       Swal.fire({
         title: 'Reject this application?',
@@ -344,7 +354,6 @@ export class ApplicationDetail implements OnInit, OnDestroy {
 
   private checkQuotaAfterHire(): void {
     if (!this.app?.jobId) return;
-    // Wait for afterCommit listener to run incrementHired + closeJob
     setTimeout(() => {
       this.jobService.getJobById(this.app!.jobId).subscribe({
         next: (job) => {
@@ -372,8 +381,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     this.moveTo(this.newStatus);
   }
 
-  // ── Signal modal — RECRUITER only ─────────────────────────────────────────
-
+  // ── Signal modal (RECRUITER only) ───────────────────────────────────────
   openSignalModal(): void {
     if (!this.canSignal()) return;
     this.signalModalOpen = true;
@@ -382,21 +390,16 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     this.signalSuccess = false;
   }
 
-  closeSignalModal(): void {
-    this.signalModalOpen = false;
-  }
+  closeSignalModal(): void { this.signalModalOpen = false; }
 
   submitSignal(): void {
     if (!this.app?.candidateUserId || !this.signalReason.trim() || !this.canSignal()) return;
-
     this.signaling = true;
     this.signalError = null;
-
     this.appService.signalCandidate(this.app.candidateUserId, this.signalReason.trim()).subscribe({
       next: () => {
         this.signalSuccess = true;
         this.signaling = false;
-        // Set moderated immediately so button disappears right away
         this.candidateModerated = true;
         setTimeout(() => {
           this.signalModalOpen = false;
@@ -410,177 +413,102 @@ export class ApplicationDetail implements OnInit, OnDestroy {
     });
   }
 
-  loadInterviews(applicationId: string) {
+  // ── Summary loaders ─────────────────────────────────────────────────────
+  /** Lightweight fetch of interviews + proposals so the summary card can show
+   *  counts, the next scheduled interview, and pending/declined badges. The
+   *  heavy management lives on /application/:id/interviews. */
+  private loadInterviewSummary(applicationId: string): void {
     this.interviewsLoading = true;
     this.interviewService.getByApplication(applicationId).subscribe({
-      next: (list: InterviewResponse[]) => {
-        this.interviews = list;
-        this.interviewsLoading = false;
-      },
+      next: (list) => { this.interviews = list; this.interviewsLoading = false; },
       error: () => { this.interviewsLoading = false; }
     });
-  }
-
-  viewSummary() {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) this.router.navigate(['/application', id, 'summary']);
-  }
-
-  // The most recent non-cancelled/completed interview
-  get activeInterview(): InterviewResponse | null {
-    return this.interviews.find(
-      i => i.status === 'SCHEDULED' || i.status === 'IN_PROGRESS'
-    ) ?? null;
-  }
-
-  /** A recruiter may only cancel interviews they scheduled — admins can cancel any. */
-  canCancel(iv: InterviewResponse): boolean {
-    return this.isAdmin() || this.isSuperAdmin() || iv.recruiterId === this.recruiterId;
-  }
-
-  cancelInterview(interview: InterviewResponse) {
-    Swal.fire({
-      title: 'Cancel this interview?',
-      text: 'The interview will be marked as cancelled and the room closed. This cannot be undone.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, cancel it',
-      cancelButtonText: 'Keep it',
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#374151',
-      background: '#141c3c',
-      color: '#e8f0fe',
-    }).then((result) => {
-      if (!result.isConfirmed) return;
-      this.cancellingId = interview.id;
-      const admin = this.isAdmin() || this.isSuperAdmin();
-      this.interviewService.cancelInterview(interview.id, this.recruiterId, admin).subscribe({
-        next: (updated) => {
-          const idx = this.interviews.findIndex(i => i.id === updated.id);
-          if (idx !== -1) this.interviews[idx] = updated;
-          this.cancellingId = null;
-        },
-        error: () => { this.cancellingId = null; },
-      });
+    this.interviewService.getProposalsByApplication(applicationId).subscribe({
+      next: (list) => { this.proposals = list; },
+      error: () => { this.proposals = []; },
     });
   }
-  get canSchedule(): boolean {
-    // Scheduling the first interview is itself the decision to interview —
-    // it's allowed straight from APPLIED or UNDER_REVIEW, and the backend
-    // moves the application to INTERVIEW_PHASE automatically.
+
+  private loadOffer(applicationId: string): void {
+    this.offerLoading = true;
+    this.offerService.get(applicationId).subscribe({
+      next: (o) => { this.offer = o || null; this.offerLoading = false; },
+      error: () => { this.offer = null; this.offerLoading = false; },
+    });
+  }
+
+  // ── Summary getters used by the cards ───────────────────────────────────
+  get nextScheduledInterview(): InterviewResponse | null {
+    return this.interviews.find(i => i.status === 'SCHEDULED') ?? null;
+  }
+
+  get completedInterviewsCount(): number {
+    return this.interviews.filter(i => i.status === 'COMPLETED').length;
+  }
+
+  get pendingProposal(): ProposalResponse | null {
+    return this.proposals.find(p => p.status === 'PENDING') ?? null;
+  }
+
+  /** Surfaced only while there's no pending proposal and no scheduled
+   *  interview to supersede it - same gating as on the dedicated page. */
+  get lastDeclinedProposal(): ProposalResponse | null {
+    if (this.pendingProposal || this.nextScheduledInterview) return null;
+    const declined = this.proposals
+      .filter(p => p.status === 'DECLINED')
+      .sort((a, b) => (b.respondedAt || '').localeCompare(a.respondedAt || ''));
+    return declined[0] ?? null;
+  }
+
+  /** Offers can be sent once we're past the interview phase. Drives the offer
+   *  summary card label ("Make offer" vs "Available once interview phase"). */
+  get canMakeOffer(): boolean {
     const s = this.app?.status;
-    return (s === 'APPLIED' || s === 'UNDER_REVIEW' || s === 'INTERVIEW_PHASE')
-      && this.activeInterview === null;
+    return s === 'INTERVIEW_PHASE' || s === 'OFFER';
   }
-  get recruiterEmail(): string {
-  return this.keycloak.tokenParsed?.['email'] ?? '';
-}
 
-get recruiterId(): string {
-  return this.keycloak.subject ?? '';
-}
-get isKeycloakReady(): boolean {
-  return !!this.keycloak.tokenParsed && !!this.keycloak.subject;
-}
-  onInterviewScheduled(interview: InterviewResponse) {
-  this.scheduledInterview = interview;
-  this.showScheduleForm = false;
-  if (this.app!.applicationId) {
-    this.loadInterviews(this.app!.applicationId);
-    // Scheduling moved the application to INTERVIEW_PHASE backend-side —
-    // refresh it so the status badge reflects that without a manual reload.
-    this.appService.getOne(this.app!.applicationId).subscribe({
-      next: (data) => { this.app = data; },
-      error: () => {},
-    });
+  // ── NEW-since-you-saw-it badges ─────────────────────────────────────────
+  /** Latest interview-related activity for this application, in epoch ms. */
+  private latestInterviewActivityMs(): number {
+    let max = 0;
+    for (const iv of this.interviews) {
+      const t = this.seen.asMs(iv.scheduledAt);
+      if (t > max) max = t;
+    }
+    for (const p of this.proposals) {
+      const a = this.seen.asMs(p.respondedAt);
+      const b = this.seen.asMs(p.createdAt);
+      if (a > max) max = a;
+      if (b > max) max = b;
+    }
+    return max;
   }
-    this.scheduledInterview = null;
-}
-joinInterview() {
-  const iv = this.activeInterview;
-  if (!iv || !this.canJoin(iv)) return;
-  this.router.navigate(['/interview', iv.id, 'room']);
-}
 
-// ── Interview-room access ────────────────────────────────────────────────
+  /** Latest offer activity (offer creation + every revision + a response). */
+  private latestOfferActivityMs(): number {
+    if (!this.offer) return 0;
+    let max = Math.max(
+      this.seen.asMs(this.offer.createdAt),
+      this.seen.asMs(this.offer.respondedAt),
+    );
+    for (const r of this.offer.revisions || []) {
+      const t = this.seen.asMs(r.createdAt);
+      if (t > max) max = t;
+    }
+    return max;
+  }
 
-/** Load the team's recruiters so the organizer can pick who to invite. */
-private loadRecruiters(): void {
-  this.userService.listUsers({ max: 200 })
-    .then(users => {
-      this.recruiters = users.filter(u =>
-        ((u.roles ?? []).includes('RECRUITER') || u.role === 'RECRUITER')
-        && u.id !== this.recruiterId);
-    })
-    .catch(() => { this.recruiters = []; });
-}
+  /** True when there's interview data the recruiter hasn't opened yet. */
+  get hasNewInterviews(): boolean {
+    if (!this.app?.applicationId) return false;
+    return this.seen.isNew(this.app.applicationId, 'interviews',
+                            this.latestInterviewActivityMs());
+  }
 
-/** A recruiter may join only their own interview, one they're invited to, or as admin. */
-canJoin(iv: InterviewResponse): boolean {
-  return this.isAdmin() || this.isSuperAdmin()
-    || iv.recruiterId === this.recruiterId
-    || (iv.invitedRecruiterIds ?? []).includes(this.recruiterId);
-}
-
-/** Only the recruiter who scheduled the interview manages its invitations. */
-canManageInvites(iv: InterviewResponse): boolean {
-  return iv.recruiterId === this.recruiterId;
-}
-
-/** Notify the organizer that this recruiter would like to be invited. */
-requestToJoin(iv: InterviewResponse): void {
-  this.requestingJoin = true;
-  const t = this.keycloak.tokenParsed as Record<string, string> | undefined;
-  const name = t?.['name']
-    || `${t?.['given_name'] ?? ''} ${t?.['family_name'] ?? ''}`.trim()
-    || t?.['preferred_username']
-    || this.recruiterEmail
-    || 'A recruiter';
-  this.interviewService.requestJoin(iv.id, this.recruiterId, name).subscribe({
-    next: () => { this.requestingJoin = false; this.joinRequestSent = true; },
-    error: () => { this.requestingJoin = false; },
-  });
-}
-
-/** Recruiters not yet invited — drives the invite dropdown. */
-availableRecruiters(iv: InterviewResponse): AdminUserRow[] {
-  const invited = new Set(iv.invitedRecruiterIds ?? []);
-  return this.recruiters.filter(r => !invited.has(r.id));
-}
-
-recruiterLabel(id: string): string {
-  const r = this.recruiters.find(x => x.id === id);
-  if (!r) return 'Recruiter';
-  const name = `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim();
-  return name || r.username || r.email || 'Recruiter';
-}
-
-inviteRecruiter(iv: InterviewResponse): void {
-  if (!this.inviteSelection) return;
-  this.invitingId = iv.id;
-  this.interviewService.invite(iv.id, this.inviteSelection).subscribe({
-    next: updated => {
-      const idx = this.interviews.findIndex(i => i.id === updated.id);
-      if (idx !== -1) this.interviews[idx] = updated;
-      this.inviteSelection = '';
-      this.invitingId = null;
-    },
-    error: () => { this.invitingId = null; },
-  });
-}
-
-uninviteRecruiter(iv: InterviewResponse, recruiterId: string): void {
-  this.invitingId = iv.id;
-  this.interviewService.uninvite(iv.id, recruiterId).subscribe({
-    next: updated => {
-      const idx = this.interviews.findIndex(i => i.id === updated.id);
-      if (idx !== -1) this.interviews[idx] = updated;
-      this.invitingId = null;
-    },
-    error: () => { this.invitingId = null; },
-  });
-}
-viewResult(interviewId: string) {
-  this.router.navigate(['/interview', interviewId, 'result']);
-}
+  /** True when there's offer data the recruiter hasn't opened yet. */
+  get hasNewOffer(): boolean {
+    if (!this.app?.applicationId) return false;
+    return this.seen.isNew(this.app.applicationId, 'offer',
+                            this.latestOfferActivityMs());
+  }
 }

@@ -15,7 +15,7 @@ import { DOMAIN_OPTIONS, domainLabel } from '../services/domains';
  *   • Restore previously-removed skills
  *
  * Access: RECRUITER + ADMIN + SUPERADMIN (gated by the route guard).
- * Candidates never see this page — they consume the same catalog via the
+ * Candidates never see this page - they consume the same catalog via the
  * Preferences page's chip grid.
  */
 @Component({
@@ -33,13 +33,13 @@ export class SkillsCatalog implements OnInit {
   // Active skills the catalog currently offers to candidates.
   activeSkills: CatalogItem[] = [];
 
-  // Tombstoned entries — shown in a collapsible "Removed" section with a
+  // Tombstoned entries - shown in a collapsible "Removed" section with a
   // Restore button. Stored separately so the main table stays focused on
   // what candidates actually see.
   removedNames: string[] = [];
 
   newSkillInput = '';
-  // The Skills Catalog only curates HARD skills — soft skills stay as the
+  // The Skills Catalog only curates HARD skills - soft skills stay as the
   // universal hardcoded list on the candidate Preferences page (deliberately
   // not editable here). This constant exists so the API contract still gets
   // an explicit type value.
@@ -62,7 +62,7 @@ export class SkillsCatalog implements OnInit {
 
   /**
    * Maps each canonical domain code to a stable accent color used for chip
-   * styling. Picked by hand so each domain feels distinct at a glance —
+   * styling. Picked by hand so each domain feels distinct at a glance -
    * software=blue (matches the brand secondary), finance=green (money),
    * insurance=teal (cool/calm), PM=amber (energetic), QA=violet,
    * BA=rose. Returned as a CSS custom-property string per chip.
@@ -75,7 +75,7 @@ export class SkillsCatalog implements OnInit {
     QUALITY_ASSURANCE:    '180,140,230', // violet
     BUSINESS_ANALYSIS:    '230,130,170', // rose
   };
-  /** RGB triplet for inline `style` — falls back to brand blue. */
+  /** RGB triplet for inline `style` - falls back to brand blue. */
   accentFor(domain: string): string {
     return this.domainAccent[domain] ?? '121,164,233';
   }
@@ -83,7 +83,7 @@ export class SkillsCatalog implements OnInit {
   constructor(private catalogService: CatalogService) {}
 
   /** Toggle a domain in the "Add" form's domain multi-select. The checked
-   *  set serves two purposes — when adding, it's the tag list for the new
+   *  set serves two purposes - when adding, it's the tag list for the new
    *  skill; while typing, it also filters the catalog table to skills in
    *  those domains (so the recruiter can see what's already there before
    *  adding a possible duplicate). Reset pagination on every toggle. */
@@ -103,7 +103,7 @@ export class SkillsCatalog implements OnInit {
   /**
    * Filters the active skill list by what the recruiter is typing in the
    * "add" input. As soon as they type "kaf", the table shrinks to skills
-   * containing "kaf" — making it obvious if "Kafka" already exists before
+   * containing "kaf" - making it obvious if "Kafka" already exists before
    * they add a duplicate. Case-insensitive substring match.
    * Empty input shows everything.
    */
@@ -112,13 +112,13 @@ export class SkillsCatalog implements OnInit {
     const domainFilter = this.newSkillDomains;
 
     return this.activeSkills.filter(s => {
-      // 1. Text filter — skip rows that don't match the search box (when set).
+      // 1. Text filter - skip rows that don't match the search box (when set).
       if (q && !s.name.toLowerCase().includes(q) &&
               !s.displayName.toLowerCase().includes(q)) {
         return false;
       }
 
-      // 2. Domain filter — when at least one domain checkbox is ticked, show
+      // 2. Domain filter - when at least one domain checkbox is ticked, show
       // only skills that match at least one selected domain OR are universal
       // (empty domains list = applies everywhere). When zero domains are
       // ticked, the filter is off and every skill passes.
@@ -143,7 +143,7 @@ export class SkillsCatalog implements OnInit {
   }
 
   /**
-   * Exact-match check (case-insensitive) — disables the Add button when the
+   * Exact-match check (case-insensitive) - disables the Add button when the
    * recruiter is about to add a skill that already exists in the catalog.
    * Looks at both the canonical key and the display name so they catch
    * "Kafka" vs "kafka" vs "KAFKA" as the same skill.
@@ -156,13 +156,13 @@ export class SkillsCatalog implements OnInit {
     );
   }
 
-  /** True when the input has at least one character but no matches exist —
+  /** True when the input has at least one character but no matches exist -
    *  this is the "OK to add" state where the row would be genuinely new. */
   get isNewName(): boolean {
     return this.newSkillInput.trim().length > 0 && !this.isDuplicate;
   }
 
-  /** Reset pagination whenever the filter changes — bound to (ngModelChange)
+  /** Reset pagination whenever the filter changes - bound to (ngModelChange)
    *  on the input. Without this, typing "kaf" while on page 4 would leave
    *  you stranded past the end of the filtered list. */
   onInputChange(): void {
@@ -178,7 +178,7 @@ export class SkillsCatalog implements OnInit {
     this.loading = true;
     this.error = null;
     try {
-      // Force a fresh fetch — recruiter wants to see current state, not a
+      // Force a fresh fetch - recruiter wants to see current state, not a
       // cache that might be stale because a candidate page loaded it earlier.
       this.catalogService.invalidate();
       const snap = await this.catalogService.getSnapshot();
@@ -186,7 +186,7 @@ export class SkillsCatalog implements OnInit {
 
       // Removed skills come from a separate fetch on the manual catalog
       // (with includeRemoved=true). Stored as a name list so we don't need
-      // their metadata for restoration — just the name.
+      // their metadata for restoration - just the name.
       this.removedNames = await this.fetchRemovedNames();
     } catch (e) {
       this.error = 'Failed to load the skills catalog.';
@@ -258,11 +258,11 @@ export class SkillsCatalog implements OnInit {
    * Open an "Edit domains" dialog for an existing catalog row. The recruiter
    * checks/unchecks the domain boxes; on Save we PATCH the entry, which
    * persists across catalog refreshes (manual row wins over extracted tags).
-   * Works for both auto-extracted and manual entries — a row will be created
+   * Works for both auto-extracted and manual entries - a row will be created
    * if none exists yet.
    */
   async editSkill(item: CatalogItem): Promise<void> {
-    // Build the checkbox list HTML — pre-check the domains the skill already has.
+    // Build the checkbox list HTML - pre-check the domains the skill already has.
     const checkboxes = this.domainOptions.map(d => `
       <label class="hireai-edit-domain">
         <input type="checkbox" value="${d.value}"
@@ -298,7 +298,7 @@ export class SkillsCatalog implements OnInit {
     if (!result.isConfirmed) return;
     const newDomains = (result.value || []) as string[];
 
-    // Skip the network call if nothing actually changed — avoids a useless
+    // Skip the network call if nothing actually changed - avoids a useless
     // round-trip and the toast spam.
     const changed = newDomains.length !== item.domains.length ||
                     newDomains.some(d => !item.domains.includes(d));
@@ -319,13 +319,26 @@ export class SkillsCatalog implements OnInit {
   }
 
   async removeSkill(item: CatalogItem): Promise<void> {
+    // Block removal when the skill is actively required by published jobs.
+    // Tombstoning would hide it from candidate Preferences while jobs still
+    // demand it - silently breaking matching. The button is also disabled
+    // in the template; this guards programmatic / keyboard activations.
+    if (item.currentDemandCount > 0) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Can\'t remove this skill',
+        html: `<p><strong>${item.displayName}</strong> is currently required by ` +
+              `<strong>${item.currentDemandCount}</strong> active job(s).</p>` +
+              `<p>Close or update those jobs first, then come back to remove it.</p>`,
+        confirmButtonText: 'OK',
+      });
+      return;
+    }
+
     const confirmed = await Swal.fire({
       icon: 'warning',
       title: `Remove "${item.displayName}" from the catalog?`,
-      html: item.currentDemandCount > 0
-        ? `<p>This skill is currently required by <strong>${item.currentDemandCount}</strong> active job(s).</p>` +
-          `<p>Candidate profiles that already declared it stay intact, but new candidates won't be able to select it.</p>`
-        : `<p>Candidate profiles that already declared it stay intact, but new candidates won't be able to select it.</p>`,
+      html: `<p>Candidate profiles that already declared it stay intact, but new candidates won't be able to select it.</p>`,
       showCancelButton: true,
       confirmButtonText: 'Remove',
       cancelButtonText: 'Cancel',
@@ -352,7 +365,7 @@ export class SkillsCatalog implements OnInit {
 
   /** Pretty-format an ISO timestamp as "YYYY-MM-DD" for the table. */
   formatDate(iso: string | null): string {
-    if (!iso) return '—';
+    if (!iso) return '-';
     return iso.slice(0, 10);
   }
 }

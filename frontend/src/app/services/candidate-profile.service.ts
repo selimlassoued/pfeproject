@@ -16,7 +16,7 @@ export interface CandidateProfile {
   hardSkills?: string[];
   softSkills?: string[];
   languages?: CandidateLanguage[];
-  // Multi-select preferences — the candidate may accept any of the listed
+  // Multi-select preferences - the candidate may accept any of the listed
   // values. Empty array (or all options selected) means "no preference"; the
   // ranker treats those cases as a full pref_fit = 1.0.
   preferredWorkArrangement?: string[];

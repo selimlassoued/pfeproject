@@ -10,13 +10,13 @@
           automatically as you make them.
         </p>
       </div>
-      <!-- Subtle auto-save indicator — replaces the old "Save preferences"
+      <!-- Subtle auto-save indicator - replaces the old "Save preferences"
            button. Reads "Saving…" while the debounced PUT is in flight,
            "Failed to save" on error, and is hidden otherwise (idle state).
            Keeps the page calmer while still giving the candidate feedback. -->
       <div class="pref-save-indicator" aria-live="polite">
         @if (saving)      { <span class="pref-save-indicator--saving">Saving…</span> }
-        @else if (error)  { <span class="pref-save-indicator--error">Save failed — try again</span> }
+        @else if (error)  { <span class="pref-save-indicator--error">Save failed - try again</span> }
       </div>
     </header>
 
@@ -49,9 +49,9 @@
             <select class="input" formControlName="yearsOfExperience">
               <option value="">Select range</option>
               <option value="0-1">Less than 1 year</option>
-              <option value="1-3">1 – 3 years</option>
-              <option value="3-5">3 – 5 years</option>
-              <option value="5-10">5 – 10 years</option>
+              <option value="1-3">1 - 3 years</option>
+              <option value="3-5">3 - 5 years</option>
+              <option value="5-10">5 - 10 years</option>
               <option value="10+">10+ years</option>
             </select>
           </div>
@@ -67,7 +67,7 @@
               <option value="PHD">PhD</option>
             </select>
             <small class="field-hint">
-              If you hold more than one degree, choose the most recent — that's
+              If you hold more than one degree, choose the most recent - that's
               the one recruiters filter on.
             </small>
           </div>
@@ -79,7 +79,7 @@
         <div class="card-top">
           <div>
             <h3 class="card-title">Domain & Skills</h3>
-            <p class="text-muted">Select your field then pick skills in order of priority — first click = #1.</p>
+            <p class="text-muted">Select your field then pick skills in order of priority - first click = #1.</p>
           </div>
           <div class="card-badge">Steps 2 & 3</div>
         </div>
@@ -165,7 +165,7 @@
           <div class="card-badge">Step 3.5</div>
         </div>
 
-        <!-- Add language row — strict dropdown (no free text) so spellings stay
+        <!-- Add language row - strict dropdown (no free text) so spellings stay
              canonical and the matcher can compare candidates to job LANGUAGE
              requirements without dealing with "anglais" vs "English" etc.
              Options come from the catalog and carry the same 🔥 / ⭐ badges
@@ -266,7 +266,7 @@
                bounced here from /browse trying to use Recommendation with an
                empty profile. Auto-save means their picks are already
                persisted; this button just navigates back and re-triggers
-               the match-sort. For normal flow, no button is needed — the
+               the match-sort. For normal flow, no button is needed - the
                candidate uses the nav menu to go elsewhere. -->
           @if (cameFromBrowse) {
             <button class="btn btn-primary" type="button" (click)="returnToBrowse()">

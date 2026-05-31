@@ -50,7 +50,7 @@ export class KeycloakAccountService {
   /**
    * True if the account is linked to a social identity provider
    * (Google / GitHub). Such users authenticate through the broker, which
-   * bypasses the password OTP flow — so 2-factor self-setup is not offered
+   * bypasses the password OTP flow - so 2-factor self-setup is not offered
    * to them. Any failure is treated as "not linked" so the check is safe.
    */
   async hasLinkedSocialAccount(): Promise<boolean> {

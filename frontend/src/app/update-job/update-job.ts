@@ -38,19 +38,19 @@ private readonly fb = inject(FormBuilder);
     'LANGUAGE',
   ];
 
-  // Canonical language names — drives the strict dropdown for LANGUAGE-
+  // Canonical language names - drives the strict dropdown for LANGUAGE-
   // category requirements. Same list used on add-job and on the candidate
   // side so values stay consistent across the app.
   readonly canonicalLanguages: string[] = getCanonicalLanguages();
 
-  // Business-domain dropdown — same canonical list used by add-job and
+  // Business-domain dropdown - same canonical list used by add-job and
   // the candidate Preferences page.
   readonly domainOptions = DOMAIN_OPTIONS;
 
   readonly form = this.fb.group({
     title: ['', [Validators.required, Validators.minLength(3)]],
     description: ['', [Validators.required, Validators.minLength(10)]],
-    // Location is fixed — VERMEG sits at Les Berges du Lac 1, Tunis. The
+    // Location is fixed - VERMEG sits at Les Berges du Lac 1, Tunis. The
     // input was removed from the form; the value is injected at submit time
     // (or carried over from the existing job on edit).
     workArrangement: ['', [Validators.required]],
@@ -161,7 +161,7 @@ private readonly fb = inject(FormBuilder);
         // For LANGUAGE requirements, try to map any legacy non-canonical
         // description (e.g. "Italien", "Anglais B2") to the canonical name
         // so the strict dropdown shows a sensible pre-selection. Falls back
-        // to the raw value if no alias matches — caller picks manually.
+        // to the raw value if no alias matches - caller picks manually.
         let description = req.description;
         if ((req.category || '').toUpperCase() === 'LANGUAGE') {
           description = canonicalizeLanguage(req.description) ?? req.description;
@@ -318,7 +318,7 @@ private readonly fb = inject(FormBuilder);
     return {
       title: (v.title ?? '').trim(),
       description: (v.description ?? '').trim(),
-      location: 'Lac 1, Tunis',                     // VERMEG HQ — fixed value
+      location: 'Lac 1, Tunis',                     // VERMEG HQ - fixed value
       workArrangement: v.workArrangement || null,
       domain: v.domain || null,
       openings: (v.openings ?? null) as number,
@@ -386,7 +386,7 @@ private readonly fb = inject(FormBuilder);
         this.appService.rematchApplicationsForJob(this.jobId).subscribe();
         await Swal.fire({
           title: 'Re-scoring started',
-          text: 'AI scores are being recalculated in the background. This takes roughly 20–40 seconds per application — refresh the applications table in a minute to see updated rankings.',
+          text: 'AI scores are being recalculated in the background. This takes roughly 20-40 seconds per application - refresh the applications table in a minute to see updated rankings.',
           icon: 'success',
           confirmButtonText: 'Go to job page',
         });

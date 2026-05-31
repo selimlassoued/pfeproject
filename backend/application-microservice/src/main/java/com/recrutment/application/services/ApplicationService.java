@@ -76,7 +76,17 @@ public class ApplicationService {
     private final JobClient jobClient;
     private final UserClient userClient;
     private final AuditClient auditClient;
+    private final com.recrutment.application.repos.OfferRepo offerRepo;
     private final org.springframework.context.ApplicationEventPublisher springEventPublisher;
+
+    // Application states still "in play" — these are the ones we auto-close when
+    // the candidate is hired for a different job.
+    private static final Set<ApplicationStatus> ACTIVE_PIPELINE = Set.of(
+            ApplicationStatus.APPLIED,
+            ApplicationStatus.UNDER_REVIEW,
+            ApplicationStatus.INTERVIEW_PHASE,
+            ApplicationStatus.OFFER
+    );
 
     // ── Transition validator ──────────────────────────────────────────────────
 
@@ -160,7 +170,8 @@ public class ApplicationService {
         return new ApplicationDto(
                 a.getApplicationId(), a.getJobId(), a.getCandidateUserId(),
                 a.getGithubUrl(), a.getStatus(), a.getAppliedAt(),
-                a.getCvFileName(), a.getCvContentType(), jobTitle, candidateName, candidateEmail,
+                a.getCvFileName(), a.getCvContentType(), a.getWithdrawalReason(),
+                jobTitle, candidateName, candidateEmail,
                 semanticMatch != null ? semanticMatch.getJobFitScore() : null,
                 semanticMatch != null ? semanticMatch.getRequiredSkillsMatched() : List.of(),
                 semanticMatch != null ? semanticMatch.getRequiredSkillsMissing() : List.of(),
@@ -636,9 +647,57 @@ public class ApplicationService {
             springEventPublisher.publishEvent(new com.recrutment.application.events.HireCompletedEvent(
                     saved.getJobId(), jobTitle, 0, actorId
             ));
+            // Single-company ATS rule: once hired, the candidate has taken a job
+            // here, so their other in-flight applications are moot. Close them
+            // as WITHDRAWN (not REJECTED — they weren't turned down) with a clear
+            // reason, and pull back any live offers on those applications.
+            withdrawOtherApplicationsOnHire(saved, jobTitle);
         }
 
         return toDto(saved);
+    }
+
+    /**
+     * Auto-close the candidate's OTHER active applications after they're hired.
+     * Status goes to WITHDRAWN with a reason; any SENT/NEGOTIATING offer on those
+     * applications is also withdrawn. Best-effort and non-fatal: a failure here
+     * must not roll back the hire itself.
+     */
+    private void withdrawOtherApplicationsOnHire(Application hired, String hiredJobTitle) {
+        try {
+            String reason = "Withdrawn automatically — hired for "
+                    + (hiredJobTitle != null && !hiredJobTitle.isBlank() ? hiredJobTitle : "another position")
+                    + ".";
+
+            List<Application> others = repo.findByCandidateUserId(hired.getCandidateUserId()).stream()
+                    .filter(a -> !a.getApplicationId().equals(hired.getApplicationId()))
+                    .filter(a -> ACTIVE_PIPELINE.contains(a.getStatus()))
+                    .toList();
+
+            for (Application other : others) {
+                other.setPreviousStatus(other.getStatus());
+                other.setStatus(ApplicationStatus.WITHDRAWN);
+                other.setWithdrawalReason(reason);
+
+                // Pull back any live offer on this now-closed application.
+                offerRepo.findByApplicationId(other.getApplicationId()).ifPresent(offer -> {
+                    if (offer.getStatus() == com.recrutment.application.enums.OfferStatus.SENT
+                            || offer.getStatus() == com.recrutment.application.enums.OfferStatus.NEGOTIATING) {
+                        offer.setStatus(com.recrutment.application.enums.OfferStatus.WITHDRAWN);
+                        offer.setRespondedAt(Instant.now());
+                        offerRepo.save(offer);
+                    }
+                });
+            }
+            if (!others.isEmpty()) {
+                repo.saveAll(others);
+                log.info("Auto-withdrew {} other application(s) for candidate {} after hire ({})",
+                        others.size(), hired.getCandidateUserId(), hiredJobTitle);
+            }
+        } catch (Exception e) {
+            log.error("Failed to auto-withdraw other applications for candidate {} after hire: {}",
+                    hired.getCandidateUserId(), e.getMessage(), e);
+        }
     }
 
     @Transactional

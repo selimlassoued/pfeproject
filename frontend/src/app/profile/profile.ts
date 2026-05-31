@@ -20,7 +20,7 @@ export class Profile implements OnInit {
   error?: string;
   success?: string;
 
-  /** Set during load() — true when the account is linked to Google/GitHub. */
+  /** Set during load() - true when the account is linked to Google/GitHub. */
   hasLinkedSocial = false;
 
   user?: User;
@@ -92,7 +92,7 @@ export class Profile implements OnInit {
 
   /**
    * Launch Keycloak's built-in OTP enrolment ("Configure authenticator app").
-   * `maxAge: 0` forces re-authentication — the user must re-enter their
+   * `maxAge: 0` forces re-authentication - the user must re-enter their
    * password before they can change a security setting like 2FA.
    */
   enableTwoFactor(): void {

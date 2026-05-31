@@ -34,7 +34,7 @@
             <option value="DISABLED">Disabled</option>
           </select>
 
-          <!-- Role filter — hidden for RECRUITER (always shows CANDIDATE) -->
+          <!-- Role filter - hidden for RECRUITER (always shows CANDIDATE) -->
           @if (!isRecruiter()) {
             <select class="input" [(ngModel)]="roleFilter" (ngModelChange)="onFiltersChange()">
               <option value="ALL">All roles</option>
@@ -47,7 +47,7 @@
           <button class="btn btn-ghost" type="button" (click)="refresh()">Apply</button>
         </div>
 
-        <!-- Create user button — ADMIN + SUPERADMIN only -->
+        <!-- Create user button - ADMIN + SUPERADMIN only -->
         @if (!isRecruiter()) {
           <button
             class="btn btn-primary"
@@ -104,15 +104,15 @@
                 <tr class="row-click" (click)="goToUser(u)">
                   <td>
                     <div class="u-main">
-                      <div class="u-name">{{ u.firstName || '—' }} {{ u.lastName || '' }}</div>
-                      <div class="text-muted u-username">{{ u.username || '—' }}</div>
+                      <div class="u-name">{{ u.firstName || '-' }} {{ u.lastName || '' }}</div>
+                      <div class="text-muted u-username">{{ u.username || '-' }}</div>
                     </div>
                   </td>
 
-                  <td class="text-muted">{{ u.email || '—' }}</td>
-                  <td class="text-muted">{{ u.phoneNumber || '—' }}</td>
+                  <td class="text-muted">{{ u.email || '-' }}</td>
+                  <td class="text-muted">{{ u.phoneNumber || '-' }}</td>
 
-                  <td><span class="pill pill-role">{{ u.role || '—' }}</span></td>
+                  <td><span class="pill pill-role">{{ u.role || '-' }}</span></td>
 
                   <td>
                     <span class="pill" [ngClass]="statusPill(u.enabled).cls">
@@ -167,27 +167,36 @@
               <button class="btn btn-ghost" type="button" (click)="first()" [disabled]="pageIndex === 0">« First</button>
               <button class="btn btn-ghost" type="button" (click)="prev()"  [disabled]="pageIndex === 0">← Prev</button>
 
-              <div class="users-pageBtns" *ngIf="totalPages > 1">
-                <button class="users-pageBtn" type="button"
-                  (click)="goToPage(0)" [class.active]="pageIndex === 0"
-                  *ngIf="pages().length && pages()[0] > 0">
-                  1
-                </button>
-                <span class="users-ellipsis" *ngIf="pages().length && pages()[0] > 1">…</span>
-                <button class="users-pageBtn" type="button"
-                  *ngFor="let p of pages()"
-                  (click)="goToPage(p)"
-                  [class.active]="p === pageIndex">
-                  {{ p + 1 }}
-                </button>
-                <span class="users-ellipsis" *ngIf="pages().length && pages()[pages().length - 1] < totalPages - 2">…</span>
-                <button class="users-pageBtn" type="button"
-                  (click)="goToPage(totalPages - 1)"
-                  [class.active]="pageIndex === totalPages - 1"
-                  *ngIf="pages().length && pages()[pages().length - 1] < totalPages - 1">
-                  {{ totalPages }}
-                </button>
-              </div>
+              @if (totalPages > 1) {
+                <div class="users-pageBtns">
+                  @if (pages().length && pages()[0] > 0) {
+                    <button class="users-pageBtn" type="button"
+                      (click)="goToPage(0)" [class.active]="pageIndex === 0">
+                      1
+                    </button>
+                  }
+                  @if (pages().length && pages()[0] > 1) {
+                    <span class="users-ellipsis">…</span>
+                  }
+                  @for (p of pages(); track p) {
+                    <button class="users-pageBtn" type="button"
+                      (click)="goToPage(p)"
+                      [class.active]="p === pageIndex">
+                      {{ p + 1 }}
+                    </button>
+                  }
+                  @if (pages().length && pages()[pages().length - 1] < totalPages - 2) {
+                    <span class="users-ellipsis">…</span>
+                  }
+                  @if (pages().length && pages()[pages().length - 1] < totalPages - 1) {
+                    <button class="users-pageBtn" type="button"
+                      (click)="goToPage(totalPages - 1)"
+                      [class.active]="pageIndex === totalPages - 1">
+                      {{ totalPages }}
+                    </button>
+                  }
+                </div>
+              }
 
               <button class="btn btn-ghost" type="button" (click)="next()" [disabled]="pageIndex + 1 >= totalPages">Next →</button>
               <button class="btn btn-ghost" type="button" (click)="last()" [disabled]="pageIndex === totalPages - 1">Last »</button>

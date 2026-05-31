@@ -41,7 +41,7 @@
   color: var(--color-cream);
 }
 
-/* Dev/test escape hatch — toned down so nobody mistakes it for a primary control. */
+/* Dev/test escape hatch - toned down so nobody mistakes it for a primary control. */
 .si-testmode {
   display: inline-flex;
   align-items: center;
@@ -316,6 +316,110 @@
   background: rgba(251, 191, 36, 0.1);
   border-color: rgba(251, 191, 36, 0.35);
   color: rgba(251, 210, 130, 0.95);
+}
+
+/* ===== MODE TOGGLE ===== */
+.si-mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: var(--space-2);
+}
+.si-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+.si-mode-btn:hover {
+  border-color: rgba(121, 164, 233, 0.45);
+  background: rgba(121, 164, 233, 0.08);
+}
+.si-mode-btn--on {
+  border-color: transparent;
+  background: linear-gradient(135deg, rgba(30, 64, 188, 0.45), rgba(121, 164, 233, 0.45));
+  box-shadow: 0 0 0 1px rgba(121, 164, 233, 0.5), 0 6px 18px rgba(30, 64, 188, 0.25);
+}
+.si-mode-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+.si-mode-hint {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+.si-mode-btn--on .si-mode-hint { color: rgba(255, 255, 255, 0.85); }
+
+/* ===== PICKED-SLOT CHIPS (propose mode) ===== */
+.si-count {
+  margin-left: 0.4rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+.si-empty-picks {
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(121, 164, 233, 0.25);
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+.si-picked-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.si-picked-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.65rem 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(121, 164, 233, 0.16);
+  border: 1px solid rgba(121, 164, 233, 0.35);
+  color: var(--color-cream);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.si-picked-remove {
+  appearance: none;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 140ms ease;
+}
+.si-picked-remove:hover { background: rgba(233, 121, 121, 0.45); }
+
+.si-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 0.3rem;
+}
+.si-textarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+  font-size: 0.92rem;
 }
 
 /* ===== ACTIONS ===== */

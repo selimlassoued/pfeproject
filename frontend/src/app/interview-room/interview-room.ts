@@ -19,7 +19,7 @@ const MAX_RECORDING_MS = 2 * 60 * 60 * 1000;
  * Jitsi calls from a participant's Google Calendar. We kick them on sight
  * because:
  *   • The recording goes to a third-party SaaS (Fireflies, Otter, etc.)
- *     without VERMEG's consent — a GDPR data-processor relationship that
+ *     without VERMEG's consent - a GDPR data-processor relationship that
  *     was never set up.
  *   • HireAI already records the call via the analysis-service for the
  *     transcript pipeline. Bot-side transcription is redundant.
@@ -27,7 +27,7 @@ const MAX_RECORDING_MS = 2 * 60 * 60 * 1000;
  *     list, by which point sensitive content is already on the bot's cloud.
  *
  * Match is case-insensitive substring. Add a token whenever a new notetaker
- * shows up — keeping this current is cheaper than auditing each one.
+ * shows up - keeping this current is cheaper than auditing each one.
  */
 const BOT_NAME_PATTERN = /\b(fireflies|otter\.ai|otter ai|read\.ai|read ai|fathom|noty\.ai|noty ai|tactiq|krisp|sembly|notetaker|note taker|transcribe bot|tldv|t\.l\.d\.v|meetgeek|grain\.com|chorus\.ai|jamie ai)\b/i;
 
@@ -48,11 +48,11 @@ export class InterviewRoom implements OnInit, OnDestroy {
   @Input() jobTitle: string = '';
   /** Has the candidate been let into the room yet? Drives the recruiter's admit banner. */
   @Input() candidateAdmitted = false;
-  /** True while the admit API call is in flight — disables the button. */
+  /** True while the admit API call is in flight - disables the button. */
   @Input() admitting = false;
-  /** Recruiter clicked "Admit" — the page handles the API call. */
+  /** Recruiter clicked "Admit" - the page handles the API call. */
   @Output() admitCandidate = new EventEmitter<void>();
-  /** Jitsi reported the conference is fully closed — the page decides where to send the user. */
+  /** Jitsi reported the conference is fully closed - the page decides where to send the user. */
   @Output() interviewEnded = new EventEmitter<void>();
 
   @ViewChild('jitsiContainer', { static: true }) containerRef!: ElementRef;
@@ -61,7 +61,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
    * 'connecting' covers the gap between the countdown ending and Jitsi
    * firing 'videoConferenceJoined'.
    * 'ending' covers the brief window between the user clicking
-   * End interview and the parent navigating away — without this, Jitsi
+   * End interview and the parent navigating away - without this, Jitsi
    * flashes its "Build your video experience" promo page while we wait
    * for the upload + navigation, which looks unprofessional.
    */
@@ -81,12 +81,12 @@ export class InterviewRoom implements OnInit, OnDestroy {
   private countdownTimer: any = null;
   private joinedAt: number = 0;
   // Cached mute state. Updated on the audioMuteStatusChanged event AND polled
-  // periodically — the event fires reliably only on the FIRST click that
+  // periodically - the event fires reliably only on the FIRST click that
   // actually flips the toolbar; subsequent rapid clicks (which users do when
   // the button "doesn't respond") can miss the event entirely. Public so the
   // template can bind the mic-toggle button label/icon to it.
   //
-  // Initialised in ngOnInit once the @Input() role is bound — the candidate
+  // Initialised in ngOnInit once the @Input() role is bound - the candidate
   // and observer join MUTED, the recruiter joins UNMUTED to greet.
   jitsiMuted = false;
   private muteSyncTimer: any = null;
@@ -113,10 +113,10 @@ export class InterviewRoom implements OnInit, OnDestroy {
  * (we removed Jitsi's microphone toolbar button because its click handler
  * was unreliable). One click does three things atomically:
  *
- *   1. Flip our cached state — UI updates instantly
- *   2. Apply the new state to the MediaRecorder track — .webm starts
+ *   1. Flip our cached state - UI updates instantly
+ *   2. Apply the new state to the MediaRecorder track - .webm starts
  *      capturing or going silent on the very next encoded frame
- *   3. Tell Jitsi to mirror the same state — other call participants
+ *   3. Tell Jitsi to mirror the same state - other call participants
  *      hear or stop hearing us in line with the recording
  *
  * The 500ms polling below is now a passive safety-net that resyncs if
@@ -131,7 +131,7 @@ async toggleMute() {
   const role = this.role;
   const t0 = performance.now().toFixed(0);
   if (!this.micStream) {
-    console.warn(`[MUTE/${role}/${t0}] toggleMute: NO micStream — click ignored`);
+    console.warn(`[MUTE/${role}/${t0}] toggleMute: NO micStream - click ignored`);
     return;
   }
   const tracksBefore = this.micStream.getAudioTracks().map(t => t.enabled);
@@ -149,7 +149,7 @@ async toggleMute() {
   );
   // Mirror to Jitsi so other participants' incoming audio matches what
   // the recording is doing. executeCommand is more reliable than the
-  // toolbar button click — it does not depend on iframe focus or DOM
+  // toolbar button click - it does not depend on iframe focus or DOM
   // event delivery.
   try {
     const jitsiMuted = await this.jitsiApi?.isAudioMuted();
@@ -162,7 +162,7 @@ async toggleMute() {
     }
   } catch (e) {
     console.warn(`[MUTE/${role}/${t0}] jitsi mirror failed:`, e);
-    // If Jitsi mirror fails the recording still respects newMuted —
+    // If Jitsi mirror fails the recording still respects newMuted -
     // the call audio just won't follow, which is the lesser problem.
   }
 }
@@ -171,7 +171,7 @@ async toggleMute() {
  * Apply our cached mute state to the MediaRecorder track. Called once at
  * recording start to enforce the initial role-based mute state. The user-
  * facing path (toggleMute() above) updates the track directly without
- * going through here — so there is NO async Jitsi query that could race.
+ * going through here - so there is NO async Jitsi query that could race.
  */
 private applyMicGating() {
   if (!this.micStream) return;
@@ -294,10 +294,10 @@ private onBeforeUnload = () => {
           : this.participantName,
       },
       configOverwrite: {
-        // Skip Jitsi's native "Rejoindre la réunion" pre-join page — we have our own waiting card.
+        // Skip Jitsi's native "Rejoindre la réunion" pre-join page - we have our own waiting card.
         prejoinPageEnabled: false,
         prejoinConfig: { enabled: false },
-        // Suppress Jitsi's "Demander à rejoindre" lobby — our app already gates admission.
+        // Suppress Jitsi's "Demander à rejoindre" lobby - our app already gates admission.
         lobby: { enabled: false, autoKnock: false },
         enableLobbyChat: false,
         // Cleaner meeting title than the room slug.
@@ -306,7 +306,7 @@ private onBeforeUnload = () => {
         // The recruiter greets first, so they join unmuted. The candidate
         // (and observers) join MUTED so the candidate's mic doesn't capture
         // any of the recruiter's opening greeting before the candidate
-        // takes their first turn — that "dual-unmute window at start of
+        // takes their first turn - that "dual-unmute window at start of
         // call" was the source of cross-mixing in the opening turn.
         startWithAudioMuted: this.role !== 'recruiter',
         // Camera on for recruiter & candidate, off for observers.
@@ -354,7 +354,7 @@ private onBeforeUnload = () => {
           });
           this.loadQuestions();
         }
-        // Observers never record — keeps the 2-speaker transcript clean.
+        // Observers never record - keeps the 2-speaker transcript clean.
         if (this.role !== 'observer') this.startRecording();
       });
     });
@@ -392,7 +392,7 @@ private onBeforeUnload = () => {
       const name = (e.displayName || '').toLowerCase();
       if (BOT_NAME_PATTERN.test(name)) {
         // Tiny delay so Jitsi has fully registered the participant before we
-        // try to remove them — kicking inside the same tick sometimes 404s.
+        // try to remove them - kicking inside the same tick sometimes 404s.
         setTimeout(() => {
           try {
             this.jitsiApi?.executeCommand('kickParticipant', e.id);
@@ -411,7 +411,7 @@ private onBeforeUnload = () => {
     this.jitsiApi.on('readyToClose', () => {
       this.ngZone.run(() => {
         if (this.isRecording) this.stopRecording();
-        // Tell the page the call is over — it'll mark the interview complete and route away.
+        // Tell the page the call is over - it'll mark the interview complete and route away.
         this.interviewEnded.emit();
       });
     });
@@ -431,7 +431,7 @@ private onBeforeUnload = () => {
       video: false,
     });
 
-    // Apply the initial mute state — we don't poll continuously anymore
+    // Apply the initial mute state - we don't poll continuously anymore
     // because our toggleMute() button is the SOLE control of the mic now
     // (Jitsi's flaky button was removed from the toolbar). A periodic
     // poll racing with our own click handler caused a ~100ms window where
@@ -471,7 +471,7 @@ private onBeforeUnload = () => {
    *   2. Tell Jitsi to leave the room. Jitsi's `readyToClose` listener
    *      then fires interviewEnded so the page navigates away.
    * Safe to call from the recording timeout, the manual button, the
-   * Jitsi hangup event handler — all converge to one path.
+   * Jitsi hangup event handler - all converge to one path.
    */
   stopRecording() {
     clearTimeout(this.stopTimer);
@@ -487,16 +487,16 @@ private onBeforeUnload = () => {
     // Leave the Jitsi call.
     try { this.jitsiApi?.executeCommand('hangup'); } catch { /* no-op */ }
     // Tell the parent the interview is over. We do NOT rely on Jitsi's
-    // `readyToClose` event for this — Jitsi only fires it consistently
+    // `readyToClose` event for this - Jitsi only fires it consistently
     // when the user clicks its toolbar hangup button, NOT when hangup is
     // invoked via executeCommand. Skipping this emit was the bug where
-    // "End interview" appeared to do nothing — the recording stopped but
+    // "End interview" appeared to do nothing - the recording stopped but
     // the page never navigated away.
     this.interviewEnded.emit();
   }
 
   private uploadBlob(chunks: Blob[], role: string) {
-    if (chunks.length === 0) { console.warn(`No chunks for ${role} — skipping upload`); return; }
+    if (chunks.length === 0) { console.warn(`No chunks for ${role} - skipping upload`); return; }
 
     const blob     = new Blob(chunks, { type: 'audio/webm' });
     const file     = new File([blob], `${role}-recording.webm`, { type: 'audio/webm' });

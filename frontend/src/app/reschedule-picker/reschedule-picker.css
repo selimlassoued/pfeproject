@@ -1,0 +1,149 @@
+.resched-card {
+  margin-top: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(121, 164, 233, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.resched-header { display: flex; flex-direction: column; gap: 0.25rem; }
+.resched-title {
+  margin: 0;
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+.resched-subtitle { margin: 0; color: var(--color-text-muted); font-size: 0.88rem; line-height: 1.4; }
+
+.resched-form { display: flex; flex-direction: column; gap: 0.7rem; }
+.resched-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.resched-field label { font-size: 0.85rem; font-weight: 600; color: var(--color-text); }
+.resched-input {
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.92rem;
+}
+.resched-textarea { resize: vertical; min-height: 50px; }
+.resched-msg, .resched-empty-picks {
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+}
+.resched-empty-picks {
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(121, 164, 233, 0.25);
+}
+.resched-date-error {
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: rgba(255, 235, 180, 0.95);
+  font-size: 0.86rem;
+}
+
+/* Slot grid */
+.resched-grid { display: flex; flex-direction: column; gap: 5px; }
+.resched-row { display: flex; align-items: center; gap: 0.7rem; }
+.resched-row-label {
+  flex-shrink: 0;
+  width: 2.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+.resched-row-quarters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  flex: 1;
+}
+.resched-slot-empty { display: block; }
+.resched-slot {
+  padding: 0.5rem 0.25rem;
+  border-radius: 9px;
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.14s, background 0.14s, transform 0.14s;
+}
+.resched-slot--free:hover {
+  border-color: rgba(121, 164, 233, 0.6);
+  background: rgba(121, 164, 233, 0.12);
+  transform: translateY(-1px);
+}
+.resched-slot--on, .resched-slot--on:hover {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  border-color: transparent;
+  color: #fff;
+}
+.resched-slot:disabled { cursor: not-allowed; }
+.resched-slot--recruiter, .resched-slot--both {
+  background: rgba(233, 121, 121, 0.1);
+  border-color: rgba(233, 121, 121, 0.35);
+  color: rgba(248, 180, 180, 0.9);
+}
+.resched-slot--candidate {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.35);
+  color: rgba(251, 210, 130, 0.95);
+}
+
+/* Picked chips */
+.resched-count { margin-left: 0.4rem; color: var(--color-text-muted); font-weight: 600; font-size: 0.85rem; }
+.resched-picked-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.resched-picked-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(121, 164, 233, 0.16);
+  border: 1px solid rgba(121, 164, 233, 0.35);
+  color: var(--color-cream);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.resched-picked-remove {
+  appearance: none;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.resched-picked-remove:hover { background: rgba(233, 121, 121, 0.45); }
+
+.resched-hint { font-size: 0.78rem; color: var(--color-text-muted); margin-top: 0.2rem; }
+.resched-error {
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(233, 121, 121, 0.1);
+  border: 1px solid rgba(233, 121, 121, 0.3);
+  color: rgba(255, 220, 220, 0.95);
+  font-size: 0.85rem;
+}
+.resched-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}

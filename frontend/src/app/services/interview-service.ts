@@ -93,6 +93,92 @@ export interface InterviewQuestion {
   status: 'PENDING' | 'ASKED' | 'SKIPPED';
 }
 
+// ── Delegation (organizer hands an interview off to another recruiter) ──
+export type DelegationStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'CANCELLED';
+
+export interface CreateDelegationRequest {
+  toRecruiterId: string;
+  message?: string;
+}
+
+export interface DelegationResponse {
+  id: string;
+  interviewId: string;
+  fromRecruiterId: string;
+  toRecruiterId: string;
+  message?: string | null;
+  status: DelegationStatus;
+  deadline: string;
+  createdAt: string;
+  respondedAt?: string | null;
+  fromRecruiterName?: string | null;
+  toRecruiterName?: string | null;
+  jobTitle?: string | null;
+  interviewScheduledAt?: string | null;
+}
+
+// ── Reschedule request (either side proposes new times for a SCHEDULED interview) ──
+export type ReschedStatus = 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'EXPIRED' | 'CANCELLED';
+export type ReschedProposedBy = 'RECRUITER' | 'CANDIDATE';
+
+export interface CreateReschedRequest {
+  proposedSlots: string[];  // ISO LocalDateTime strings, no Z
+  deadline: string;         // ISO LocalDateTime string, no Z
+  message?: string;
+}
+
+export interface ReschedRequestResponse {
+  id: string;
+  interviewId: string;
+  proposedBy: ReschedProposedBy;
+  requesterId: string;
+  proposedSlots: string[];
+  deadline: string;
+  status: ReschedStatus;
+  confirmedSlot?: string | null;
+  message?: string | null;
+  createdAt: string;
+  respondedAt?: string | null;
+}
+
+// ── Interview proposal (recruiter offers 2-4 slots, candidate picks one) ──
+export type ProposalStatus = 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'EXPIRED' | 'CANCELLED';
+
+export interface CreateProposalRequest {
+  applicationId: string;
+  jobId: string;
+  recruiterId: string;
+  candidateId: string;
+  candidateEmail: string;
+  recruiterEmail: string;
+  jobTitle: string;
+  proposedSlots: string[]; // ISO LocalDateTime strings, no Z
+  deadline: string;        // ISO LocalDateTime string, no Z
+  message?: string;
+}
+
+export interface ProposalResponse {
+  id: string;
+  applicationId: string;
+  jobId: string;
+  recruiterId: string;
+  candidateId: string;
+  candidateEmail: string;
+  recruiterEmail: string;
+  candidateName?: string;
+  recruiterName?: string;
+  jobTitle: string;
+  proposedSlots: string[];
+  deadline: string;
+  status: ProposalStatus;
+  confirmedSlot?: string | null;
+  interviewId?: string | null;
+  message?: string | null;
+  declineReason?: string | null;
+  createdAt: string;
+  respondedAt?: string | null;
+}
+
 
 @Injectable({ providedIn: 'root' })
 export class InterviewService {
@@ -139,7 +225,7 @@ export class InterviewService {
     );
   }
 
-  /** Every interview across the team — drives the shared calendar. */
+  /** Every interview across the team - drives the shared calendar. */
   getAll(): Observable<InterviewResponse[]> {
     return this.http.get<InterviewResponse[]>(this.base);
   }
@@ -155,7 +241,7 @@ export class InterviewService {
       `${this.base}/${id}/uninvite?recruiterId=${recruiterId}`, {});
   }
 
-  /** The organiser admits the waiting candidate — they can then enter the room. */
+  /** The organiser admits the waiting candidate - they can then enter the room. */
   admitCandidate(id: string, requesterId: string, admin: boolean): Observable<InterviewResponse> {
     return this.http.patch<InterviewResponse>(
       `${this.base}/${id}/admit?requesterId=${requesterId}&admin=${admin}`, {});
@@ -202,7 +288,7 @@ getResult(interviewId: string): Observable<InterviewResultResponse> {
   return this.http.get<InterviewResultResponse>(`${this.base}/${interviewId}/result`);
 }
 
-/** All interview results for one application — used by the candidate summary
+/** All interview results for one application - used by the candidate summary
  *  page. Fans out over the application's interviews and joins their results. */
 getResultsByApplication(applicationId: string): Observable<InterviewResultResponse[]> {
   return this.getByApplication(applicationId).pipe(
@@ -222,5 +308,103 @@ getQuestions(interviewId: string): Observable<InterviewQuestion[]> {
 
 markQuestion(interviewId: string, questionId: string, status: 'ASKED' | 'SKIPPED'): Observable<void> {
   return this.http.patch<void>(`${this.base}/${interviewId}/questions/${questionId}`, { status });
+}
+
+// ── Proposal endpoints ────────────────────────────────────────────────────
+createProposal(req: CreateProposalRequest): Observable<ProposalResponse> {
+  return this.http.post<ProposalResponse>(`${this.base}/proposals`, req);
+}
+
+getProposal(id: string): Observable<ProposalResponse> {
+  return this.http.get<ProposalResponse>(`${this.base}/proposals/${id}`);
+}
+
+getProposalsByApplication(applicationId: string): Observable<ProposalResponse[]> {
+  return this.http.get<ProposalResponse[]>(
+    `${this.base}/proposals/application/${applicationId}`);
+}
+
+getProposalsByCandidate(candidateId: string): Observable<ProposalResponse[]> {
+  return this.http.get<ProposalResponse[]>(
+    `${this.base}/proposals/candidate/${candidateId}`);
+}
+
+getProposalsByRecruiter(recruiterId: string): Observable<ProposalResponse[]> {
+  return this.http.get<ProposalResponse[]>(
+    `${this.base}/proposals/recruiter/${recruiterId}`);
+}
+
+/** Candidate picks one of the offered slots by its index in proposedSlots. */
+pickProposalSlot(id: string, slotIndex: number): Observable<ProposalResponse> {
+  return this.http.post<ProposalResponse>(
+    `${this.base}/proposals/${id}/pick?slotIndex=${slotIndex}`, {});
+}
+
+cancelProposal(id: string, requesterId: string, admin = false): Observable<ProposalResponse> {
+  return this.http.post<ProposalResponse>(
+    `${this.base}/proposals/${id}/cancel?requesterId=${requesterId}&admin=${admin}`, {});
+}
+
+/** Candidate can't make any offered slot - decline so the recruiter re-proposes. */
+declineProposal(id: string, reason?: string): Observable<ProposalResponse> {
+  return this.http.post<ProposalResponse>(
+    `${this.base}/proposals/${id}/decline`, reason ? { reason } : {});
+}
+
+// ── Reschedule endpoints ──────────────────────────────────────────────────
+proposeReschedule(interviewId: string, req: CreateReschedRequest): Observable<ReschedRequestResponse> {
+  return this.http.post<ReschedRequestResponse>(
+    `${this.base}/${interviewId}/reschedule`, req);
+}
+
+getReschedRequests(interviewId: string): Observable<ReschedRequestResponse[]> {
+  return this.http.get<ReschedRequestResponse[]>(
+    `${this.base}/${interviewId}/reschedule`);
+}
+
+acceptReschedule(requestId: string, slotIndex: number): Observable<ReschedRequestResponse> {
+  return this.http.post<ReschedRequestResponse>(
+    `${this.base}/reschedule/${requestId}/accept?slotIndex=${slotIndex}`, {});
+}
+
+declineReschedule(requestId: string): Observable<ReschedRequestResponse> {
+  return this.http.post<ReschedRequestResponse>(
+    `${this.base}/reschedule/${requestId}/decline`, {});
+}
+
+cancelReschedule(requestId: string): Observable<ReschedRequestResponse> {
+  return this.http.post<ReschedRequestResponse>(
+    `${this.base}/reschedule/${requestId}/cancel`, {});
+}
+
+// ── Delegation endpoints ──────────────────────────────────────────────────
+proposeDelegation(interviewId: string, req: CreateDelegationRequest): Observable<DelegationResponse> {
+  return this.http.post<DelegationResponse>(
+    `${this.base}/${interviewId}/delegate`, req);
+}
+
+getDelegationsForInterview(interviewId: string): Observable<DelegationResponse[]> {
+  return this.http.get<DelegationResponse[]>(
+    `${this.base}/${interviewId}/delegations`);
+}
+
+getIncomingDelegations(): Observable<DelegationResponse[]> {
+  return this.http.get<DelegationResponse[]>(`${this.base}/delegations/incoming`);
+}
+
+getOutgoingDelegations(): Observable<DelegationResponse[]> {
+  return this.http.get<DelegationResponse[]>(`${this.base}/delegations/outgoing`);
+}
+
+acceptDelegation(id: string): Observable<DelegationResponse> {
+  return this.http.post<DelegationResponse>(`${this.base}/delegations/${id}/accept`, {});
+}
+
+declineDelegation(id: string): Observable<DelegationResponse> {
+  return this.http.post<DelegationResponse>(`${this.base}/delegations/${id}/decline`, {});
+}
+
+cancelDelegation(id: string): Observable<DelegationResponse> {
+  return this.http.post<DelegationResponse>(`${this.base}/delegations/${id}/cancel`, {});
 }
 }

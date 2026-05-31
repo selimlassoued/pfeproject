@@ -31,6 +31,8 @@ import { SkillsCatalog } from './skills-catalog/skills-catalog';
 import { GoogleCallback } from './google-callback/google-callback';
 import { InterviewEvaluation } from './interview-evaluation/interview-evaluation';
 import { ApplicationSummary } from './application-summary/application-summary';
+import { ApplicationInterviewsPage } from './application-interviews/application-interviews';
+import { ApplicationOfferPage } from './application-offer/application-offer';
 
 export const routes: Routes = [
   { path: '',             component: Hero,               canActivate: [homeGuard] },
@@ -55,6 +57,8 @@ export const routes: Routes = [
   { path: 'user/:id',        component: UserDetails,     canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'listApplications',component: ListApplications,canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'application/:id', component: ApplicationDetail,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'application/:id/interviews', component: ApplicationInterviewsPage, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'application/:id/offer', component: ApplicationOfferPage, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'application/:id/summary', component: ApplicationSummary, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'add-job',         component: AddJob,          canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'edit-job/:id',    component: UpdateJob,       canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
