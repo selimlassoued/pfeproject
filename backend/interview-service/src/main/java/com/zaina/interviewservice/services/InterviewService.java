@@ -175,6 +175,8 @@ public class InterviewService {
         }
 
         log.info("Interview {} scheduled for application {}", saved.getId(), saved.getApplicationId());
+        // Real-time ping: candidate and recruiter widgets refetch without page refresh.
+        publishListChange("INTERVIEW_SCHEDULED", saved);
         return toResponse(saved);
     }
 
@@ -213,7 +215,9 @@ public class InterviewService {
                     "Only the recruiter who scheduled this interview can cancel it.");
         }
         interview.setStatus(InterviewStatus.CANCELLED);
-        return toResponse(interviewRepo.save(interview));
+        Interview saved = interviewRepo.save(interview);
+        publishListChange("INTERVIEW_CANCELLED", saved);
+        return toResponse(saved);
     }
 
     public InterviewResponse getInterview(UUID interviewId) {
@@ -264,6 +268,29 @@ public class InterviewService {
         evt.setProducer("interview-service");
         evt.setPayload(payload);
         eventPublisher.publish("notify.interview", evt);
+    }
+
+    /**
+     * Publish a lightweight "interview list changed" event so each participant's
+     * navbar widget reloads in real time. Carries enough context for the
+     * notification-microservice to push a STOMP ping to every affected user.
+     */
+    private void publishListChange(String type, Interview interview) {
+        try {
+            Map<String, Object> payload = baseEventPayload(interview);
+            payload.put("candidateId", interview.getCandidateId().toString());
+            payload.put("recruiterId", interview.getRecruiterId().toString());
+            if (interview.getInvitedRecruiterIds() != null
+                    && !interview.getInvitedRecruiterIds().isEmpty()) {
+                payload.put("invitedRecruiterIds",
+                        interview.getInvitedRecruiterIds().stream()
+                                .map(UUID::toString).toList());
+            }
+            publishEvent(type, payload);
+        } catch (Exception e) {
+            log.warn("Could not publish {} event for interview {}: {}",
+                    type, interview.getId(), e.getMessage());
+        }
     }
 
     /**

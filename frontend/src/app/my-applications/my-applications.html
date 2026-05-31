@@ -8,56 +8,82 @@
     <button class="btn btn-primary" (click)="load()">Refresh</button>
   </div>
 
-  <div *ngIf="loading" class="apps-state">Loading...</div>
-  <div *ngIf="error" class="apps-error">{{ error }}</div>
+  @if (pendingProposals.length > 0) {
+    <div class="apps-proposal-banner-list">
+      @for (p of pendingProposals; track p.id) {
+        <button type="button" class="apps-proposal-banner"
+                (click)="openProposalApp(p)">
+          <span class="apps-proposal-icon">📅</span>
+          <span class="apps-proposal-text">
+            <strong>Pick your interview time</strong>
+            for <em>{{ p.jobTitle }}</em>
+            - {{ p.proposedSlots.length }} options offered
+          </span>
+          <span class="apps-proposal-cta">Open →</span>
+        </button>
+      }
+    </div>
+  }
 
-  <div *ngIf="!loading && applications.length > 0" class="apps-tableWrap">
-    <table class="apps-table">
-      <thead>
-        <tr>
-          <th>Job</th>
-          <th>Status</th>
-          <th>Applied At</th>
-          <th></th>
-        </tr>
-      </thead>
+  @if (loading) {
+    <div class="apps-state">Loading...</div>
+  }
+  @if (error) {
+    <div class="apps-error">{{ error }}</div>
+  }
 
-      <tbody>
-        <tr *ngFor="let app of applications"
-            (click)="openDetails(app)"
-            style="cursor:pointer;">
+  @if (!loading && applications.length > 0) {
+    <div class="apps-tableWrap">
+      <table class="apps-table">
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Status</th>
+            <th>Applied At</th>
+            <th></th>
+          </tr>
+        </thead>
 
-          <td>
-            <div>{{ app.jobTitle || '—' }}</div>
-            <div class="sub-id mono">{{ app.jobId }}</div>
-          </td>
+        <tbody>
+          @for (app of applications; track app.applicationId) {
+            <tr (click)="openDetails(app)"
+                style="cursor:pointer;">
 
-          <td>
-            <span class="app-status" [ngClass]="statusClass(app.status)">
-              {{ app.status }}
-            </span>
-          </td>
+              <td>
+                <div>{{ app.jobTitle || '-' }}</div>
+                <div class="sub-id mono">{{ app.jobId }}</div>
+              </td>
 
-          <td>{{ app.appliedAt | date:'medium' }}</td>
+              <td>
+                <span class="app-status" [ngClass]="statusClass(app.status)">
+                  {{ app.status }}
+                </span>
+              </td>
 
-          <!-- Withdraw action — only shown for APPLIED -->
-          <td class="apps-action-col">
-            @if (canWithdraw(app)) {
-              <button
-                class="btn-withdraw-row"
-                type="button"
-                [disabled]="withdrawingId === app.applicationId"
-                (click)="withdraw(app, $event)">
-                {{ withdrawingId === app.applicationId ? '…' : '✕ Withdraw' }}
-              </button>
-            }
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+              <td>{{ app.appliedAt | date:'medium' }}</td>
 
-  <div *ngIf="!loading && applications.length === 0" class="apps-empty">
-    You haven't applied to any jobs yet.
-  </div>
+              <!-- Withdraw action - only shown for APPLIED -->
+              <td class="apps-action-col">
+                @if (canWithdraw(app)) {
+                  <button
+                    class="btn-withdraw-row"
+                    type="button"
+                    [disabled]="withdrawingId === app.applicationId"
+                    (click)="withdraw(app, $event)">
+                    {{ withdrawingId === app.applicationId ? '…' : '✕ Withdraw' }}
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (!loading && applications.length === 0) {
+    <div class="apps-empty">
+      You haven't applied to any jobs yet.
+    </div>
+  }
 </div>

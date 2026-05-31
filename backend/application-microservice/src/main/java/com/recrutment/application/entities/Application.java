@@ -54,4 +54,9 @@ public class Application {
     // flaggedBy, flagReason, flaggedAt are in the audit service (AuditLog).
     @Enumerated(EnumType.STRING)
     private ApplicationStatus previousStatus;
+
+    // Explains an automatic WITHDRAWN, e.g. when the candidate was hired for
+    // another position so this pipeline was closed on their behalf.
+    @Column(columnDefinition = "TEXT")
+    private String withdrawalReason;
 }

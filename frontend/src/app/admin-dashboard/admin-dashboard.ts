@@ -99,12 +99,12 @@ export class AdminDashboard implements OnInit {
   }
 
   get dashboardSub(): string {
-    if (this.isSuperAdmin()) return 'Full platform overview — all roles activity · HireAI';
+    if (this.isSuperAdmin()) return 'Full platform overview - all roles activity · HireAI';
     if (this.isAdmin())      return 'Recruiter & candidate activity overview · HireAI';
     return 'Your recruitment activity overview · HireAI';
   }
 
-  // ── Filters — SUPERADMIN sees all, ADMIN sees recruiter/candidate only ────
+  // ── Filters - SUPERADMIN sees all, ADMIN sees recruiter/candidate only ────
 
   readonly TIME_RANGES = [
     { key: 'week',    label: 'Last Week'  },
@@ -113,7 +113,7 @@ export class AdminDashboard implements OnInit {
     { key: 'overall', label: 'Overall'    },
   ];
 
-  // SUPERADMIN filters — everything
+  // SUPERADMIN filters - everything
   private readonly FILTERS_SUPERADMIN = [
     { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
     { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
@@ -124,7 +124,7 @@ export class AdminDashboard implements OnInit {
     { key: 'JOBS',                       label: 'Jobs',           color: '#fb923c' },
   ];
 
-  // RECRUITER filters — only recruitment events
+  // RECRUITER filters - only recruitment events
   private readonly FILTERS_RECRUITER = [
     { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
     { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
@@ -133,7 +133,7 @@ export class AdminDashboard implements OnInit {
     { key: 'FLAGS',                      label: 'Flags',          color: '#fbbf24' },
   ];
 
-  // ADMIN filters — recruiter + candidate actions only (no ROLE_UPDATE)
+  // ADMIN filters - recruiter + candidate actions only (no ROLE_UPDATE)
   private readonly FILTERS_ADMIN = [
     { key: 'ALL',                        label: 'All',            color: '#79a4e9' },
     { key: 'APPLICATION_STATUS_UPDATE',  label: 'App Updates',    color: '#79a4e9' },
@@ -150,7 +150,7 @@ export class AdminDashboard implements OnInit {
     return this.FILTERS_RECRUITER;
   }
 
-  // Secondary filters — revealed only when a grouped category chip is active.
+  // Secondary filters - revealed only when a grouped category chip is active.
   readonly SUBFILTERS: Record<string, { key: string; label: string }[]> = {
     JOBS: [
       { key: 'ALL',               label: 'All jobs' },
@@ -189,7 +189,7 @@ export class AdminDashboard implements OnInit {
     JOB_QUOTA_REACHED:          { label: 'Quota Reached',     color: '#22d3ee', bg: 'rgba(34,211,238,0.12)'  },
   };
 
-  // SUPERADMIN breakdown — includes role updates
+  // SUPERADMIN breakdown - includes role updates
   private readonly BREAKDOWN_SUPERADMIN = [
     { key: 'applicationUpdates', label: 'App Updates',  color: '#79a4e9' },
     { key: 'jobUpdates',         label: 'Job Updates',  color: '#fb923c' },
@@ -199,7 +199,7 @@ export class AdminDashboard implements OnInit {
     { key: 'candidateUnflagged', label: 'Unflagged',    color: '#a78bfa' },
   ];
 
-  // ADMIN breakdown — same but without role updates
+  // ADMIN breakdown - same but without role updates
   private readonly BREAKDOWN_ADMIN = [
     { key: 'applicationUpdates', label: 'App Updates',  color: '#79a4e9' },
     { key: 'jobUpdates',         label: 'Job Updates',  color: '#fb923c' },

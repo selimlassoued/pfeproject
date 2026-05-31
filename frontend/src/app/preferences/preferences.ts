@@ -74,7 +74,7 @@ export class Preferences implements OnInit, OnDestroy {
   languages: CandidateLanguage[] = [];
 
   // ── Catalog state (Phase 3) ─────────────────────────────────────────────
-  // Skills + languages come from CatalogService — auto-extracted from current
+  // Skills + languages come from CatalogService - auto-extracted from current
   // jobs PLUS manual recruiter additions. Both are merged client-side so the
   // UI sees one unified list per category. ⭐NEW badges fire when an item's
   // firstSeenAt is later than the candidate's lastPreferencesAcknowledgedAt.
@@ -93,12 +93,12 @@ export class Preferences implements OnInit, OnDestroy {
     if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
     this.autoSaveTimer = setTimeout(() => {
       this.autoSaveTimer = null;
-      // Skip auto-save while the initial profile load is still in flight —
+      // Skip auto-save while the initial profile load is still in flight -
       // the local state may not match the server's snapshot yet and we'd
       // overwrite it. `loading` is set inside load() so this gates correctly.
       if (this.loading) return;
       // Pass `silent=true` so save() skips the returnTo-redirect side
-      // effect — only the explicit "Save preferences" button should redirect.
+      // effect - only the explicit "Save preferences" button should redirect.
       this.save(true);
     }, 500);
   }
@@ -114,14 +114,14 @@ export class Preferences implements OnInit, OnDestroy {
   newLanguage = '';
   newLevel = 'B1';
 
-  /** Languages the candidate hasn't already added — drives the Add-language
+  /** Languages the candidate hasn't already added - drives the Add-language
    *  dropdown so duplicates can't be selected. */
   get availableLanguagesToAdd(): string[] {
     const already = new Set(this.languages.map(l => l.language.toLowerCase()));
     return this.commonLanguages.filter(l => !already.has(l.toLowerCase()));
   }
 
-  /** Catalog-rich version of the above — used by the strict dropdown so it
+  /** Catalog-rich version of the above - used by the strict dropdown so it
    *  can render 🔥 (in demand) and ⭐ (new) markers alongside each option. */
   get availableLanguagesToAddCatalog(): CatalogItem[] {
     const already = new Set(this.languages.map(l => l.language.toLowerCase()));
@@ -142,7 +142,7 @@ export class Preferences implements OnInit, OnDestroy {
       educationLevel:           [''],
       domain:                   [''],
       // Multi-select chips are tracked in selectedArrangements /
-      // selectedJobTypes — these form controls are kept for backwards
+      // selectedJobTypes - these form controls are kept for backwards
       // compatibility with the existing patchValue/getRawValue plumbing.
     });
   }
@@ -156,7 +156,7 @@ export class Preferences implements OnInit, OnDestroy {
       this.loadCatalog(),
     ]);
 
-    // Acknowledge the visit AFTER we've cached lastAcknowledgedAtMs locally —
+    // Acknowledge the visit AFTER we've cached lastAcknowledgedAtMs locally -
     // backend now bumps the timestamp to "now", but our in-memory copy keeps
     // the OLD value so the NEW badges remain visible during THIS page view.
     // The badges only clear on the NEXT visit, which is the right UX.
@@ -172,7 +172,7 @@ export class Preferences implements OnInit, OnDestroy {
   /**
    * Flush any pending auto-save when the candidate navigates away.
    * Without this, clicking a chip and then immediately clicking a nav link
-   * would lose the click — the 500ms debounce wouldn't have fired before
+   * would lose the click - the 500ms debounce wouldn't have fired before
    * the component is destroyed.
    *
    * We call save(true) directly here instead of letting the timer fire,
@@ -184,7 +184,7 @@ export class Preferences implements OnInit, OnDestroy {
       clearTimeout(this.autoSaveTimer);
       this.autoSaveTimer = null;
       // Fire one final save with whatever the current state is. We don't
-      // await it — the component is being destroyed, the consumer of any
+      // await it - the component is being destroyed, the consumer of any
       // result is already gone.
       if (!this.loading) this.save(true).catch(() => { /* logged inside */ });
     }
@@ -214,7 +214,7 @@ export class Preferences implements OnInit, OnDestroy {
     }
   }
 
-  /** ⭐NEW badge condition — fires when the catalog item was first seen after
+  /** ⭐NEW badge condition - fires when the catalog item was first seen after
    *  the candidate's last preferences acknowledgment. */
   isNew(item: CatalogItem): boolean {
     if (!item.firstSeenAt) return false;
@@ -232,7 +232,7 @@ export class Preferences implements OnInit, OnDestroy {
     );
   }
 
-  /** Soft skills shown in the chip grid — the universal hardcoded list,
+  /** Soft skills shown in the chip grid - the universal hardcoded list,
    *  same for every domain. Deliberately NOT merged with the recruiter
    *  catalog: soft skills are domain-agnostic universal behaviors, and the
    *  Skills Catalog only curates HARD skills. Keeps the model simple. */
@@ -258,7 +258,7 @@ export class Preferences implements OnInit, OnDestroy {
       this.languages             = p.languages ?? [];
       // Snapshot the OLD acknowledged timestamp for the ⭐NEW badge logic.
       // We compute against this throughout the current page view, even
-      // though the backend bumps it to "now" via the acknowledge call —
+      // though the backend bumps it to "now" via the acknowledge call -
       // that way badges stay visible while the user is looking and clear
       // only on the next visit.
       this.lastAcknowledgedAtMs = p.lastPreferencesAcknowledgedAt
@@ -302,7 +302,7 @@ export class Preferences implements OnInit, OnDestroy {
   }
 
   /**
-   * Domain change just triggers an auto-save — we DON'T clear hard skills
+   * Domain change just triggers an auto-save - we DON'T clear hard skills
    * anymore. A candidate might have legitimate cross-domain expertise (a
    * backend dev who also knows Excel from a previous Finance role), and
    * erasing it on every domain change loses real data.
@@ -337,8 +337,8 @@ export class Preferences implements OnInit, OnDestroy {
   setDomain(v: string)          { this.form.get('domain')?.setValue(v); this.onDomainChange(); }
 
   // Multi-select toggles for the chips. Click once = add, click again = remove.
-  // Selecting every option is equivalent to selecting none — the ranker treats
-  // both as "no preference" — but we keep the visual state honest (empty stays
+  // Selecting every option is equivalent to selecting none - the ranker treats
+  // both as "no preference" - but we keep the visual state honest (empty stays
   // empty, full stays full) so the user sees exactly what they picked.
   toggleArrangement(v: string) {
     const i = this.selectedArrangements.indexOf(v);
@@ -363,7 +363,7 @@ export class Preferences implements OnInit, OnDestroy {
    * Persist the current form + selections to the backend.
    *
    * @param silent when true (auto-save path), skip the success toast and the
-   *               ?returnTo redirect — those are user-facing side effects
+   *               ?returnTo redirect - those are user-facing side effects
    *               only the explicit "Save preferences" button should trigger.
    *               Auto-save should be invisible.
    */
@@ -402,7 +402,7 @@ export class Preferences implements OnInit, OnDestroy {
         }
       }
     } catch (err) {
-      // Set the error for BOTH paths now — auto-save failures need to surface
+      // Set the error for BOTH paths now - auto-save failures need to surface
       // in the header indicator so the candidate knows their picks aren't
       // saved (otherwise the indicator would silently go from "Saving…" back
       // to hidden as if everything were fine).
@@ -417,7 +417,7 @@ export class Preferences implements OnInit, OnDestroy {
 
   /**
    * True when this Preferences visit was triggered by /browse trying to use
-   * Recommendation with an empty profile — in that case we show a "Back to
+   * Recommendation with an empty profile - in that case we show a "Back to
    * recommendations" button at the bottom of the page (drives the resume
    * flow). For normal visits, no button; candidates leave via the nav.
    */
@@ -428,7 +428,7 @@ export class Preferences implements OnInit, OnDestroy {
   /**
    * Navigate back to /browse with the resume flag so it auto-triggers the
    * match-sort. Auto-save has already persisted everything, so no save call
-   * is needed here — this is purely navigation.
+   * is needed here - this is purely navigation.
    */
   returnToBrowse(): void {
     const resume = this.route.snapshot.queryParamMap.get('resume');

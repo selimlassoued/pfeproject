@@ -1,6 +1,9 @@
 package com.zaina.interviewservice.services;
 import com.zaina.interviewservice.entities.Interview;
+import com.zaina.interviewservice.entities.InterviewProposal;
+import com.zaina.interviewservice.entities.InterviewProposalStatus;
 import com.zaina.interviewservice.entities.InterviewStatus;
+import com.zaina.interviewservice.repos.InterviewProposalRepo;
 import com.zaina.interviewservice.repos.InterviewRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +20,9 @@ import java.util.List;
 public class InterviewStatusScheduler {
 
     private final InterviewRepo interviewRepo;
+    private final InterviewProposalRepo proposalRepo;
+    private final InterviewReschedService reschedService;
+    private final InterviewDelegationService delegationService;
 
     // How long (minutes) an interview is assumed to last before auto-completing
     private static final long INTERVIEW_DURATION_MINUTES = 90;
@@ -28,8 +34,32 @@ public class InterviewStatusScheduler {
             LocalDateTime now = LocalDateTime.now();
             activateScheduled(now);
             completeInProgress(now);
+            expirePendingProposals(now);
+            int expiredReschedReqs = reschedService.expirePending(now);
+            if (expiredReschedReqs > 0) {
+                log.info("Reschedule requests auto-expired: {}", expiredReschedReqs);
+            }
+            int expiredDelegations = delegationService.expirePending(now);
+            if (expiredDelegations > 0) {
+                log.info("Delegation requests auto-expired: {}", expiredDelegations);
+            }
         } catch (Exception e) {
             log.error("InterviewStatusScheduler failed: {}", e.getMessage(), e);
+        }
+    }
+
+    private void expirePendingProposals(LocalDateTime now) {
+        List<InterviewProposal> pending =
+                proposalRepo.findByStatus(InterviewProposalStatus.PENDING);
+        List<InterviewProposal> expired = pending.stream()
+                .filter(p -> p.getDeadline() != null && now.isAfter(p.getDeadline()))
+                .toList();
+        if (!expired.isEmpty()) {
+            expired.forEach(p -> {
+                p.setStatus(InterviewProposalStatus.EXPIRED);
+                log.info("Proposal {} auto-expired (deadline {})", p.getId(), p.getDeadline());
+            });
+            proposalRepo.saveAll(expired);
         }
     }
 

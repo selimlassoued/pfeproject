@@ -99,7 +99,7 @@ export class ListUsers implements OnInit, OnDestroy {
 
   onSearchChange(v: string) { this.search = v; this.emitRefresh(); }
   onFiltersChange() {
-    // RECRUITER cannot change role filter — always CANDIDATE
+    // RECRUITER cannot change role filter - always CANDIDATE
     if (this.isRecruiter() && !this.isAdmin() && !this.isSuperAdmin()) {
       this.roleFilter = 'CANDIDATE';
     }
@@ -131,7 +131,7 @@ export class ListUsers implements OnInit, OnDestroy {
       const rolesSet = new Set<string>();
       for (const u of this.all) {
         const r = (u.role ?? '').trim();
-        if (r && r !== '—') rolesSet.add(r);
+        if (r && r !== '-') rolesSet.add(r);
         for (const rr of (u.roles ?? [])) {
           const x = String(rr).toUpperCase().trim();
           if (x) rolesSet.add(x);
@@ -167,7 +167,7 @@ export class ListUsers implements OnInit, OnDestroy {
         this.roleFilter === 'ALL' ? true :
         this.mainRole(u) === String(this.roleFilter).toUpperCase();
 
-      // ADMIN can only see RECRUITER and CANDIDATE — not other ADMINs or SUPERADMIN
+      // ADMIN can only see RECRUITER and CANDIDATE - not other ADMINs or SUPERADMIN
       const visibilityOk = this.isSuperAdmin() ? true
         : this.isAdmin() ? ['RECRUITER', 'CANDIDATE'].includes(this.mainRole(u))
         : this.mainRole(u) === 'CANDIDATE'; // RECRUITER sees only CANDIDATE
@@ -212,8 +212,8 @@ export class ListUsers implements OnInit, OnDestroy {
   goToUser(u: AdminUserRow) { this.router.navigate(['/user', u.id]); }
 
   formatDate(ts?: number): string {
-    if (!ts) return '—';
-    try { return new Date(ts).toLocaleString(); } catch { return '—'; }
+    if (!ts) return '-';
+    try { return new Date(ts).toLocaleString(); } catch { return '-'; }
   }
 
   statusPill(enabled?: boolean): { text: string; cls: string } {
@@ -250,7 +250,7 @@ export class ListUsers implements OnInit, OnDestroy {
             </select>
           </div>
           <p style="font-size:.8rem;color:rgba(121,164,233,0.55);margin:0">
-            An invitation email will be sent — they'll set their password and
+            An invitation email will be sent - they'll set their password and
             complete their profile (name, phone) on first sign-in.
           </p>
         </div>

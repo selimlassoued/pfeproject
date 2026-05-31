@@ -500,7 +500,7 @@
   .ad-status-edit select.input{ width:100%; min-width:unset; border-radius:var(--radius-xl); padding-right:2.6rem; }
   .ad-status-edit::after{ right:16px; }
 }
-/* ── Interview section — clean rewrite ── */
+/* ── Interview section - clean rewrite ── */
 .interview-section {
   margin-bottom: 1.5rem;
   padding: 1.25rem 1.5rem;
@@ -711,7 +711,7 @@
   outline: none;
 }
 .interview-invite-select:focus { border-color: rgba(121,164,233,0.5); }
-/* Dark dropdown options — the native list is white by default */
+/* Dark dropdown options - the native list is white by default */
 .interview-invite-select option {
   background: #141c3c;
   color: #e8f0fe;
@@ -758,4 +758,438 @@
 .interview-trigger-btn {
   margin-top: 0.5rem;
   width: fit-content;
+}
+
+/* ── Pending delegation (recruiter view) ───────────────────────────────── */
+.interview-deleg-panel {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(168, 132, 226, 0.32);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.interview-deleg-panel--incoming {
+  background:
+    radial-gradient(800px 200px at 0% 0%, rgba(168, 132, 226, 0.16), transparent 70%),
+    rgba(255, 255, 255, 0.04);
+  border-color: rgba(168, 132, 226, 0.5);
+}
+.interview-deleg-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
+.interview-deleg-badge {
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(168, 132, 226, 0.18);
+  border: 1px solid rgba(168, 132, 226, 0.45);
+  color: rgba(220, 200, 255, 0.95);
+}
+.interview-deleg-panel--incoming .interview-deleg-badge {
+  background: linear-gradient(135deg, rgba(126, 90, 196, 0.65), rgba(168, 132, 226, 0.65));
+  color: #fff;
+  border: none;
+}
+.interview-deleg-meta { font-size: 0.82rem; color: var(--color-text-muted); }
+.interview-deleg-msg {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+.interview-deleg-actions {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end;
+}
+
+/* ── Pending reschedule request (recruiter view) ───────────────────────── */
+.interview-resched-panel {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(121, 164, 233, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.interview-resched-panel--from-other {
+  background:
+    radial-gradient(800px 200px at 0% 0%, rgba(251, 191, 36, 0.12), transparent 70%),
+    rgba(255, 255, 255, 0.04);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+.interview-resched-head {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem;
+}
+.interview-resched-badge {
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(121, 164, 233, 0.18);
+  border: 1px solid rgba(121, 164, 233, 0.4);
+  color: rgba(180, 210, 255, 0.95);
+}
+.interview-resched-panel--from-other .interview-resched-badge {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: rgba(251, 191, 36, 0.5);
+  color: rgba(255, 220, 130, 0.95);
+}
+.interview-resched-meta {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+.interview-resched-msg {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+.interview-resched-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem;
+}
+.interview-resched-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(121, 164, 233, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.interview-resched-slot:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(121, 164, 233, 0.6);
+  background: rgba(121, 164, 233, 0.12);
+}
+.interview-resched-slot:disabled { opacity: 0.5; cursor: not-allowed; }
+.interview-resched-slot-day {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.interview-resched-slot-time {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-cream);
+}
+.interview-resched-slot-readonly {
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  color: var(--color-cream);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.interview-resched-actions {
+  display: flex; justify-content: flex-end; gap: 0.5rem;
+}
+
+/* ── Declined proposal notice (recruiter view) ─────────────────────────── */
+.interview-declined-panel {
+  margin-top: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 16px;
+  background:
+    radial-gradient(800px 200px at 0% 0%, rgba(233, 121, 121, 0.12), transparent 70%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(233, 121, 121, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.interview-declined-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.interview-declined-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(233, 121, 121, 0.16);
+  border: 1px solid rgba(233, 121, 121, 0.4);
+  color: rgba(255, 200, 200, 0.95);
+}
+.interview-declined-line { margin: 0; color: var(--color-text); font-size: 0.92rem; }
+.interview-declined-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.15rem 0 0.1rem;
+}
+.interview-declined-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(233, 121, 121, 0.3);
+  min-width: 7.5rem;
+}
+.interview-declined-slot-day {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+.interview-declined-slot-time {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-cream);
+  letter-spacing: -0.01em;
+  text-decoration: line-through;
+  text-decoration-color: rgba(233, 121, 121, 0.65);
+  text-decoration-thickness: 2px;
+}
+.interview-declined-reason {
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  border-left: 3px solid rgba(233, 121, 121, 0.5);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  color: var(--color-cream);
+  font-style: italic;
+  font-size: 0.92rem;
+}
+.interview-declined-noreason { margin: 0; color: var(--color-text-muted); font-size: 0.86rem; font-style: italic; }
+.interview-declined-cta { margin: 0; color: var(--color-text-muted); font-size: 0.85rem; }
+.interview-declined-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.2rem;
+}
+.interview-declined-reject {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.86rem;
+}
+
+/* ── Pending interview proposal (recruiter view) ───────────────────────── */
+.interview-proposal-panel {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 16px;
+  background: rgba(121, 164, 233, 0.08);
+  border: 1px solid rgba(121, 164, 233, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.interview-proposal-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.interview-proposal-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: rgba(251, 210, 130, 0.95);
+}
+.interview-proposal-meta {
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+}
+.interview-proposal-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.interview-proposal-slot {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  color: var(--color-cream);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* ── Offer section ────────────────────────────────────────────────────── */
+.offer-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(121, 164, 233, 0.14);
+}
+.offer-section-header { margin-bottom: 0.75rem; }
+.offer-section-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  letter-spacing: -0.02em;
+}
+
+/* Auto-withdrawn note (candidate hired elsewhere) */
+.ad-withdrawn-note {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  background: rgba(121, 164, 233, 0.08);
+  border: 1px solid rgba(121, 164, 233, 0.3);
+  color: #cfe0ff;
+  font-size: 0.9rem;
+}
+.ad-withdrawn-icon {
+  flex-shrink: 0;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(121, 164, 233, 0.25);
+  font-weight: 800;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* ── Summary cards (Interviews + Offer links) ──────────────────────── */
+.ad-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 760px) {
+  .ad-summary-grid { grid-template-columns: 1fr; }
+}
+.ad-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.15rem;
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+.ad-summary-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(121, 164, 233, 0.45);
+  background: rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+}
+.ad-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ad-summary-title {
+  margin: 0;
+  font-family: var(--font-display);
+  color: var(--color-cream);
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+.ad-summary-spinner { color: var(--color-text-muted); font-weight: 800; }
+.ad-summary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+}
+.ad-summary-line { margin: 0; font-size: 0.92rem; }
+.ad-summary-line strong { color: var(--color-cream); font-weight: 700; }
+.ad-summary-line-muted { color: var(--color-text-muted); }
+.ad-summary-badge {
+  align-self: flex-start;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.ad-summary-badge-info {
+  background: rgba(121, 164, 233, 0.16);
+  border: 1px solid rgba(121, 164, 233, 0.4);
+  color: rgba(180, 210, 255, 0.95);
+}
+.ad-summary-badge-warn {
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: rgba(255, 220, 130, 0.95);
+}
+.ad-summary-badge-status-sent,
+.ad-summary-badge-status-negotiating {
+  background: rgba(121, 164, 233, 0.18);
+  border: 1px solid rgba(121, 164, 233, 0.4);
+  color: rgba(180, 210, 255, 0.95);
+}
+.ad-summary-badge-status-accepted {
+  background: rgba(74, 222, 128, 0.18);
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  color: rgba(180, 250, 200, 0.95);
+}
+.ad-summary-badge-status-declined,
+.ad-summary-badge-status-expired,
+.ad-summary-badge-status-withdrawn {
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: rgba(255, 200, 200, 0.95);
+}
+.ad-summary-cta {
+  align-self: flex-start;
+  padding-top: 0.35rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  font-size: 0.92rem;
+}
+
+.ad-summary-new {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: #fff;
+  vertical-align: middle;
 }

@@ -49,7 +49,7 @@ export class InterviewResult implements OnInit, OnDestroy {
     });
   }
 
-  // ── Color helper — palette matches the rest of the app (cream / blue /
+  // ── Color helper - palette matches the rest of the app (cream / blue /
   //    amber / muted-red on dark background) ──────────────────────────────
   scoreColor(score: number | null | undefined): string {
     if (score == null) return 'rgba(248,250,252,0.45)';
@@ -93,7 +93,7 @@ export class InterviewResult implements OnInit, OnDestroy {
       MAYBE:      'Maybe',
       NO:         'No',
     };
-    return map[this.result?.hiringRecommendation ?? ''] ?? '—';
+    return map[this.result?.hiringRecommendation ?? ''] ?? '-';
   }
 
   back() {

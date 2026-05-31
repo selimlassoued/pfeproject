@@ -8,7 +8,7 @@
     </div>
     <h1 class="as-title">Candidate Evaluation Summary</h1>
     <p class="as-subtitle">
-      The complete picture — CV, GitHub, semantic job match, and every interview
+      The complete picture - CV, GitHub, semantic job match, and every interview
       for this application combined into one verdict.
     </p>
   </div>
@@ -36,7 +36,7 @@
       <div class="as-card as-hero">
         <div class="as-hero-left">
           <div class="as-hero-eyebrow">Candidate</div>
-          <div class="as-hero-name">{{ profile?.candidateName || '—' }}</div>
+          <div class="as-hero-name">{{ profile?.candidateName || '-' }}</div>
           <div class="as-hero-job">{{ profile?.jobTitle || 'Application' }}</div>
           <div class="as-hero-note">
             Overall score is the average of {{ completed.length }}
@@ -62,7 +62,7 @@
         <div class="as-card-head">
           <div class="as-card-title">Evaluation pipeline</div>
           <div class="as-card-sub">
-            Each stage contributed to the verdict — the interviews are averaged into
+            Each stage contributed to the verdict - the interviews are averaged into
             the final standing.
           </div>
         </div>
@@ -71,7 +71,7 @@
             <div class="as-stage">
               <div class="as-stage-bubble" [style.borderColor]="scoreColor(cvGithubScore)">
                 <span [style.color]="scoreColor(cvGithubScore)">
-                  {{ cvGithubScore != null ? cvGithubScore : '—' }}
+                  {{ cvGithubScore != null ? cvGithubScore : '-' }}
                 </span>
               </div>
               <div class="as-stage-label">CV + GitHub</div>
@@ -81,7 +81,7 @@
             <div class="as-stage">
               <div class="as-stage-bubble" [style.borderColor]="scoreColor(profile?.jobFitScore)">
                 <span [style.color]="scoreColor(profile?.jobFitScore)">
-                  {{ profile?.jobFitScore != null ? profile?.jobFitScore : '—' }}
+                  {{ profile?.jobFitScore != null ? profile?.jobFitScore : '-' }}
                 </span>
               </div>
               <div class="as-stage-label">Semantic Match</div>
@@ -91,7 +91,7 @@
             <div class="as-stage">
               <div class="as-stage-bubble" [style.borderColor]="scoreColor(overallScore)">
                 <span [style.color]="scoreColor(overallScore)">
-                  {{ hasCompleted ? overallScore : '—' }}
+                  {{ hasCompleted ? overallScore : '-' }}
                 </span>
               </div>
               <div class="as-stage-label">Interviews</div>
@@ -101,7 +101,7 @@
             <div class="as-stage is-final">
               <div class="as-stage-bubble" [style.borderColor]="scoreColor(overallScore)">
                 <span [style.color]="scoreColor(overallScore)">
-                  {{ hasCompleted ? overallScore : '—' }}
+                  {{ hasCompleted ? overallScore : '-' }}
                 </span>
               </div>
               <div class="as-stage-label">Overall</div>
@@ -201,7 +201,7 @@
                   </div>
                 } @else {
                   <div class="as-iv-score-block">
-                    <div class="as-iv-pending">—</div>
+                    <div class="as-iv-pending">-</div>
                   </div>
                 }
                 <div class="as-iv-open">View details →</div>
@@ -215,7 +215,7 @@
       @if (dimensionRows.length > 0) {
         <div class="as-card">
           <div class="as-card-head">
-            <div class="as-card-title">Dimensional breakdown — averaged</div>
+            <div class="as-card-title">Dimensional breakdown - averaged</div>
             <div class="as-card-sub">
               Mean of each dimension across all analysed interviews.
             </div>

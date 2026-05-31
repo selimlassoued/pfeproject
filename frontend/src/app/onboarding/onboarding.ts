@@ -18,7 +18,7 @@ const DOMAIN_SKILLS: Record<string, string[]> = {
   BUSINESS_ANALYSIS: ['Requirements Analysis','UML','BPMN','Use Cases','Wireframing','SQL','Stakeholder Management','Process Modeling','Agile','JIRA','Confluence','Power BI'],
 };
 
-// SOFT_SKILLS canonical list lives in services/soft-skills.ts — shared with
+// SOFT_SKILLS canonical list lives in services/soft-skills.ts - shared with
 // preferences.ts and catalog.service.ts (used both as the chip grid AND as
 // a denylist for hard-skills extraction). Imported at top of file.
 
@@ -40,7 +40,7 @@ export class Onboarding implements OnInit {
   // Step 1 form
   form: FormGroup;
 
-  // Step 2 — domain
+  // Step 2 - domain
   readonly domains = [
     { value: 'SOFTWARE_ENGINEERING', label: 'Software Engineering / IT' },
     { value: 'FINANCE_BANKING',      label: 'Finance & Banking' },
@@ -50,24 +50,24 @@ export class Onboarding implements OnInit {
     { value: 'BUSINESS_ANALYSIS',    label: 'Business Analysis' },
   ];
 
-  // Step 3 — skills
+  // Step 3 - skills
   readonly softSkills = SOFT_SKILLS;
   selectedHardSkills: string[] = [];
   selectedSoftSkills: string[] = [];
 
-  // Step 5 — job preferences (multi-select chips)
+  // Step 5 - job preferences (multi-select chips)
   selectedArrangements: string[] = [];
   selectedJobTypes:    string[] = [];
 
   // ── Catalog (Phase 3) ──────────────────────────────────────────────────
-  // Same source of truth as the Preferences page — auto-extracted from
+  // Same source of truth as the Preferences page - auto-extracted from
   // jobs + manual recruiter additions. ⭐NEW badges never fire on Onboarding
   // (new candidates have no lastAcknowledgedAt yet) which is correct: every
   // item in the catalog is new to them, marking each individually is noise.
   catalogSkills: CatalogItem[] = [];
   catalogLanguages: CatalogItem[] = [];
 
-  // Step 4 — languages
+  // Step 4 - languages
   languages: CandidateLanguage[] = [];
   readonly cefrLevels = ['A1','A2','B1','B2','C1','C2'];
 
@@ -78,7 +78,7 @@ export class Onboarding implements OnInit {
   commonLanguages: readonly string[] = ALWAYS_SHOWN_LANGUAGES;
   newLanguage = '';
 
-  /** Languages the candidate hasn't already added — drives the Add-language
+  /** Languages the candidate hasn't already added - drives the Add-language
    *  dropdown so duplicates can't be selected. */
   get availableLanguagesToAdd(): string[] {
     const already = new Set(this.languages.map(l => l.language.toLowerCase()));
@@ -101,7 +101,7 @@ export class Onboarding implements OnInit {
       yearsOfExperience: ['', Validators.required],
       educationLevel:    ['', Validators.required],
       domain:            [''],
-      // Multi-select prefs live in selectedArrangements / selectedJobTypes —
+      // Multi-select prefs live in selectedArrangements / selectedJobTypes -
       // see Step 5 panel below.
     });
   }
@@ -111,11 +111,11 @@ export class Onboarding implements OnInit {
     this.firstName = profile?.['given_name'] ?? profile?.['preferred_username'] ?? 'there';
     // Fetch language options in the background so Step 4 has the full list
     // by the time the candidate reaches it. Service degrades to the
-    // ALWAYS_SHOWN trio if the jobs request fails — we never break the flow.
+    // ALWAYS_SHOWN trio if the jobs request fails - we never break the flow.
     this.languageOptions.getAvailableLanguages()
       .then(list => { this.commonLanguages = list; })
       .catch(() => { /* service has its own fallback */ });
-    // Same catalog the Preferences page uses — fire and forget; the chip grid
+    // Same catalog the Preferences page uses - fire and forget; the chip grid
     // re-renders when the data arrives. Onboarding doesn't show ⭐NEW badges
     // since brand-new candidates haven't acknowledged anything yet.
     this.catalogService.getSnapshot()
@@ -233,13 +233,13 @@ export class Onboarding implements OnInit {
     }
   }
 
-  /** "Remind me later" — leave onboarding; it prompts again on next login. */
+  /** "Remind me later" - leave onboarding; it prompts again on next login. */
   remindLater() {
     sessionStorage.setItem('onboardingPrompted', 'true');
     this.router.navigate(['/browse']);
   }
 
-  /** "Don't ask again" — never auto-prompt this candidate to onboard again. */
+  /** "Don't ask again" - never auto-prompt this candidate to onboard again. */
   dontAskAgain() {
     localStorage.setItem('onboardingDismissed', 'true');
     sessionStorage.setItem('onboardingPrompted', 'true');

@@ -9,6 +9,9 @@ export interface ApplicationDto {
   cvFileName: string;
   cvContentType: string;
 
+  /** Set when the application was auto-withdrawn (e.g. candidate hired elsewhere). */
+  withdrawalReason?: string;
+
   jobTitle?: string;
   candidateName?: string;
   candidateEmail?: string;

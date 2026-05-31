@@ -33,12 +33,12 @@ export class GoogleCallback implements OnInit {
 
     if (err) { this.fail('Google authorization was cancelled.'); return; }
     if (!code) { this.fail('No authorization code was returned by Google.'); return; }
-    if (!recruiterId) { this.fail('Your session expired — please sign in again.'); return; }
+    if (!recruiterId) { this.fail('Your session expired - please sign in again.'); return; }
 
     this.google.connect(code, recruiterId).subscribe({
       next: () => {
         this.state = 'done';
-        this.message = 'Google Calendar connected — redirecting…';
+        this.message = 'Google Calendar connected - redirecting…';
         setTimeout(() => this.router.navigate(['/calendar']), 1600);
       },
       error: () => this.fail('Could not connect Google Calendar. Please try again.'),

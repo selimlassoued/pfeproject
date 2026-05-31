@@ -37,7 +37,7 @@
       <div class="ie-card ie-hero">
         <div class="ie-hero-left">
           <div class="ie-hero-eyebrow">Candidate</div>
-          <div class="ie-hero-name">{{ result.candidateName || '—' }}</div>
+          <div class="ie-hero-name">{{ result.candidateName || '-' }}</div>
           <div class="ie-hero-job">{{ result.jobTitle || 'Interview' }}</div>
           @if (verdictLabel) {
             <div class="ie-verdict" [ngClass]="verdictClass">{{ verdictLabel }}</div>

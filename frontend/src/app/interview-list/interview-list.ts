@@ -23,7 +23,7 @@ export class InterviewList implements OnInit {
   searchPosition = '';
   statusFilter = '';
 
-  // Applied filters — committed only when "Search" is clicked, so the table
+  // Applied filters - committed only when "Search" is clicked, so the table
   // doesn't churn on every keystroke (mirrors the applications page).
   private appliedCandidate = '';
   private appliedPosition = '';

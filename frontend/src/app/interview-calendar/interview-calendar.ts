@@ -32,12 +32,12 @@ export class InterviewCalendar implements OnInit, OnDestroy {
 
   /** Every team interview, as loaded from the backend. */
   private allInterviews: InterviewResponse[] = [];
-  /** The subset currently shown — driven by {@link scope}. */
+  /** The subset currently shown - driven by {@link scope}. */
   interviews: InterviewResponse[] = [];
 
   /** 'team' = everyone's interviews, 'mine' = only this recruiter's. */
   scope: 'team' | 'mine' = 'team';
-  /** Keycloak id of the signed-in recruiter — used to tell "mine" apart. */
+  /** Keycloak id of the signed-in recruiter - used to tell "mine" apart. */
   myId = '';
 
   /** Whether this recruiter has linked their Google Calendar. */
@@ -72,7 +72,7 @@ export class InterviewCalendar implements OnInit, OnDestroy {
 
     this.google.status(recruiterId).subscribe({
       next: r => this.googleConnected = r.connected,
-      error: () => { /* sync status is non-critical — leave it disconnected */ },
+      error: () => { /* sync status is non-critical - leave it disconnected */ },
     });
   }
 
@@ -95,7 +95,7 @@ export class InterviewCalendar implements OnInit, OnDestroy {
     this.buildGrid();
   }
 
-  /** Google Calendar sync is a recruiter tool — admins/superadmins don't schedule interviews. */
+  /** Google Calendar sync is a recruiter tool - admins/superadmins don't schedule interviews. */
   get isRecruiter(): boolean {
     return this.keycloak.hasRealmRole('RECRUITER');
   }
@@ -110,7 +110,7 @@ export class InterviewCalendar implements OnInit, OnDestroy {
     if (!recruiterId) return;
     this.google.disconnect(recruiterId).subscribe({
       next: () => this.googleConnected = false,
-      error: () => { /* ignore — user can retry */ },
+      error: () => { /* ignore - user can retry */ },
     });
   }
 
@@ -190,7 +190,7 @@ export class InterviewCalendar implements OnInit, OnDestroy {
   }
   clearDay(): void { this.selectedDay = null; }
 
-  /** Interviews from now onward, soonest first — drives the side agenda. */
+  /** Interviews from now onward, soonest first - drives the side agenda. */
   get upcomingList(): InterviewResponse[] {
     const cutoff = Date.now() - 3 * 3600_000;   // keep ones from the last 3h
     return [...this.interviews]
@@ -207,7 +207,7 @@ export class InterviewCalendar implements OnInit, OnDestroy {
     return this.selectedDay ? this.dayTitle(this.selectedDay.date) : 'Upcoming interviews';
   }
 
-  /** "Today" / "Tomorrow" / "Mon 19 May" — relative day label. */
+  /** "Today" / "Tomorrow" / "Mon 19 May" - relative day label. */
   relativeDay(iso: string): string {
     const d = new Date(iso); d.setHours(0, 0, 0, 0);
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -229,7 +229,7 @@ export class InterviewCalendar implements OnInit, OnDestroy {
   candidateName(iv: InterviewResponse): string {
     return (iv.candidateEmail || '').split('@')[0] || 'Candidate';
   }
-  /** Who scheduled this interview — "you" for the signed-in recruiter. */
+  /** Who scheduled this interview - "you" for the signed-in recruiter. */
   recruiterName(iv: InterviewResponse): string {
     if (iv.recruiterId === this.myId) return 'you';
     return (iv.recruiterEmail || '').split('@')[0] || 'a recruiter';
@@ -245,7 +245,7 @@ export class InterviewCalendar implements OnInit, OnDestroy {
       || (iv.invitedRecruiterIds ?? []).includes(this.myId);
   }
 
-  /** Live countdown label — "" when the interview is too far off or finished. */
+  /** Live countdown label - "" when the interview is too far off or finished. */
   countdownLabel(iv: InterviewResponse): string {
     if (iv.status === 'IN_PROGRESS') return 'Live now';
     if (iv.status !== 'SCHEDULED') return '';
@@ -260,7 +260,7 @@ export class InterviewCalendar implements OnInit, OnDestroy {
       : 'in ' + m + ' min';
   }
 
-  /** Urgency class for the countdown chip — drives its colour. */
+  /** Urgency class for the countdown chip - drives its colour. */
   countdownClass(iv: InterviewResponse): string {
     if (iv.status === 'IN_PROGRESS') return 'cd-live';
     if (iv.status !== 'SCHEDULED') return '';

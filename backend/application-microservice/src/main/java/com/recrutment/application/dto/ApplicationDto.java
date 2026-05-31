@@ -22,6 +22,9 @@ public class ApplicationDto {
     private String cvFileName;
     private String cvContentType;
 
+    /** Set when an application is auto-withdrawn (e.g. candidate hired elsewhere). */
+    private String withdrawalReason;
+
     private String jobTitle;
     private String candidateName;
     private String candidateEmail;

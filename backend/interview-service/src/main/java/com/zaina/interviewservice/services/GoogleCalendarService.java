@@ -142,6 +142,41 @@ public class GoogleCalendarService {
         return eventId;
     }
 
+    /**
+     * Update an existing calendar event's start/end time. Used when an
+     * interview is rescheduled — keeps the same event id so the candidate's
+     * existing calendar entry just moves instead of being deleted+recreated.
+     * No-op when the recruiter hasn't linked Google Calendar or the event id
+     * is missing (e.g. interview scheduled before Calendar was connected).
+     */
+    public void updateInterviewEvent(UUID recruiterId, String eventId, LocalDateTime newStart) {
+        if (eventId == null || eventId.isBlank()) return;
+        GoogleAccount account = googleAccountRepo.findByRecruiterId(recruiterId).orElse(null);
+        if (account == null) return;
+
+        String accessToken = refreshAccessToken(account.getRefreshToken());
+        LocalDateTime end  = newStart.plusMinutes(DURATION_MIN);
+
+        Map<String, Object> body = Map.of(
+                "start", Map.of("dateTime", newStart.format(RFC3339), "timeZone", TIME_ZONE),
+                "end",   Map.of("dateTime", end.format(RFC3339),      "timeZone", TIME_ZONE)
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(accessToken);
+
+        String url = "https://www.googleapis.com/calendar/v3/calendars/primary/events/"
+                + eventId + "?sendUpdates=all";
+        try {
+            restTemplate.exchange(url, HttpMethod.PATCH,
+                    new HttpEntity<>(body, headers), Map.class);
+            log.info("Google Calendar event {} rescheduled to {}", eventId, newStart);
+        } catch (Exception e) {
+            log.warn("Could not update Google Calendar event {}: {}", eventId, e.getMessage());
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private String refreshAccessToken(String refreshToken) {

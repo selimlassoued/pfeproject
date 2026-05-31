@@ -66,7 +66,7 @@ export class ApplicationSummary implements OnInit {
     });
   }
 
-  // ── Colour helper — same palette as the rest of the app ─────────────────
+  // ── Colour helper - same palette as the rest of the app ─────────────────
   scoreColor(score: number | null | undefined): string {
     if (score == null) return 'rgba(248,250,252,0.45)';
     if (score >= 80) return '#fffce5';
@@ -110,7 +110,7 @@ export class ApplicationSummary implements OnInit {
 
   get overallGrade(): string {
     const s = this.overallScore;
-    return s == null ? '—' : this.letterGrade(s);
+    return s == null ? '-' : this.letterGrade(s);
   }
 
   get overallGradeClass(): string {
@@ -176,7 +176,7 @@ export class ApplicationSummary implements OnInit {
     const map: Record<string, string> = {
       STRONG_YES: 'Strong yes', YES: 'Yes', MAYBE: 'Maybe', NO: 'No',
     };
-    return map[rec ?? ''] ?? '—';
+    return map[rec ?? ''] ?? '-';
   }
 
   statusLabel(status: string): string {

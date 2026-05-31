@@ -127,14 +127,14 @@
       <!-- Profile card -->
       <div class="profile-card card">
 
-        <!-- Card header — avatar + name + badges -->
+        <!-- Card header - avatar + name + badges -->
         <div class="profile-head">
           <div class="profile-avatar">
             {{ ((user.firstName || user.username || 'U').slice(0,1) + (user.lastName || '').slice(0,1)).toUpperCase() }}
           </div>
           <div class="profile-head-info">
-            <div class="profile-name">{{ user.firstName || '—' }} {{ user.lastName || '' }}</div>
-            <div class="profile-email-sub">{{ user.email || '—' }}</div>
+            <div class="profile-name">{{ user.firstName || '-' }} {{ user.lastName || '' }}</div>
+            <div class="profile-email-sub">{{ user.email || '-' }}</div>
           </div>
           <div class="profile-head-badges">
             <span class="pill" [ngClass]="statusPill(user.enabled).cls">
@@ -154,17 +154,17 @@
 
           <div class="profile-field">
             <div class="profile-field-label">Email</div>
-            <div class="profile-field-value">{{ user.email || '—' }}</div>
+            <div class="profile-field-value">{{ user.email || '-' }}</div>
           </div>
 
           <div class="profile-field">
             <div class="profile-field-label">Username</div>
-            <div class="profile-field-value">{{ user.username || '—' }}</div>
+            <div class="profile-field-value">{{ user.username || '-' }}</div>
           </div>
 
           <div class="profile-field">
             <div class="profile-field-label">Phone</div>
-            <div class="profile-field-value text-muted">{{ user.phoneNumber || '—' }}</div>
+            <div class="profile-field-value text-muted">{{ user.phoneNumber || '-' }}</div>
           </div>
 
           <div class="profile-field">

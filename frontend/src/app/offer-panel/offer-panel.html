@@ -1,0 +1,202 @@
+<div class="offer-panel">
+
+  @if (loading) {
+    <div class="offer-loading">Loading offer…</div>
+  }
+
+  <!-- ── No offer yet ────────────────────────────────────────────────── -->
+  @if (!loading && !offer) {
+    @if (mode === 'RECRUITER') {
+      @if (canCreateOffer && !showCreateForm) {
+        <button class="btn btn-primary offer-trigger-btn" type="button"
+                (click)="openCreateForm()">
+          Make an offer
+        </button>
+      }
+      @if (!canCreateOffer && !showCreateForm) {
+        <div class="offer-empty">
+          Offers can be sent once the application reaches the interview phase.
+        </div>
+      }
+    } @else {
+      <div class="offer-empty">No offer received yet.</div>
+    }
+  }
+
+  <!-- ── Create-offer form (recruiter only) ──────────────────────────── -->
+  @if (showCreateForm && mode === 'RECRUITER') {
+    <div class="offer-form">
+      <h4 class="offer-form-title">New offer</h4>
+      <div class="offer-form-grid">
+        <div class="offer-field">
+          <label>Salary <span class="offer-required">*</span></label>
+          <div class="offer-salary-row">
+            <input type="number" min="0" step="100" [(ngModel)]="form.salary" placeholder="e.g. 2500" />
+            <select [(ngModel)]="form.currency">
+              <option value="TND">TND</option>
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="offer-field">
+          <label>Start date <span class="offer-required">*</span></label>
+          <input type="date" [(ngModel)]="form.startDate" />
+        </div>
+
+        <div class="offer-field">
+          <label>Contract type <span class="offer-required">*</span></label>
+          <select [(ngModel)]="form.contractType">
+            @for (t of contractTypes; track t) { <option [value]="t">{{ t }}</option> }
+          </select>
+        </div>
+
+        <div class="offer-field">
+          <label>Candidate must respond by <span class="offer-required">*</span></label>
+          <input type="datetime-local" [(ngModel)]="form.expiresAt" />
+        </div>
+
+        <div class="offer-field offer-field--span">
+          <label>Message (optional)</label>
+          <textarea rows="3" maxlength="800" [(ngModel)]="form.message"
+                    placeholder="e.g. We're excited to have you join our team. The salary includes…"></textarea>
+        </div>
+      </div>
+
+      @if (error) { <div class="offer-error">{{ error }}</div> }
+
+      <div class="offer-form-actions">
+        <button class="btn btn-ghost" type="button"
+                [disabled]="saving" (click)="cancelCreateForm()">Cancel</button>
+        <button class="btn btn-primary" type="button"
+                [disabled]="saving" (click)="sendOffer()">
+          {{ saving ? 'Sending…' : 'Send offer to candidate' }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ── Offer summary + negotiation thread ──────────────────────────── -->
+  @if (!loading && offer) {
+    <div class="offer-card" [class.offer-card--active]="isActive">
+      <div class="offer-card-head">
+        <span class="offer-status offer-status--{{ offer.status.toLowerCase() }}">
+          {{ statusLabel }}
+        </span>
+        @if (isActive) {
+          <span class="offer-expires">⌛ {{ expiresLabel(offer) }}</span>
+        }
+      </div>
+
+      <div class="offer-terms">
+        <div class="offer-term">
+          <span class="offer-term-label">Salary</span>
+          <span class="offer-term-value">{{ offer.salary }} {{ offer.currency }}</span>
+        </div>
+        <div class="offer-term">
+          <span class="offer-term-label">Start date</span>
+          <span class="offer-term-value">{{ offer.startDate | date:'mediumDate' }}</span>
+        </div>
+        <div class="offer-term">
+          <span class="offer-term-label">Contract</span>
+          <span class="offer-term-value">{{ offer.contractType }}</span>
+        </div>
+      </div>
+
+      <!-- Thread of revisions -->
+      <div class="offer-thread">
+        <h5 class="offer-thread-title">
+          Negotiation thread
+          <span class="offer-thread-count">({{ offer.revisions.length }})</span>
+        </h5>
+        @for (r of offer.revisions; track r.id) {
+          <div class="offer-msg" [class.offer-msg--recruiter]="r.proposedBy === 'RECRUITER'"
+                                  [class.offer-msg--candidate]="r.proposedBy === 'CANDIDATE'">
+            <div class="offer-msg-head">
+              <span class="offer-msg-who">{{ r.proposedBy === 'RECRUITER' ? 'Recruiter' : 'Candidate' }}</span>
+              <span class="offer-msg-time">{{ r.createdAt | date:'MMM d, HH:mm' }}</span>
+            </div>
+            <div class="offer-msg-terms">
+              {{ r.salary }} {{ r.currency }} · {{ r.startDate | date:'mediumDate' }} · {{ r.contractType }}
+            </div>
+            @if (r.message) {
+              <div class="offer-msg-body">{{ r.message }}</div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Revise form -->
+      @if (showReviseForm && isActive) {
+        <div class="offer-form offer-form--inline">
+          <h5 class="offer-form-title">
+            {{ mode === 'CANDIDATE' ? 'Counter-propose' : 'Revise terms' }}
+          </h5>
+          <div class="offer-form-grid">
+            <div class="offer-field">
+              <label>Salary</label>
+              <input type="number" min="0" step="100" [(ngModel)]="revise.salary" />
+            </div>
+            <div class="offer-field">
+              <label>Start date</label>
+              <input type="date" [(ngModel)]="revise.startDate" />
+            </div>
+            <div class="offer-field">
+              <label>Contract</label>
+              <select [(ngModel)]="revise.contractType">
+                <option value="">Keep current ({{ offer.contractType }})</option>
+                @for (t of contractTypes; track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+            </div>
+            <div class="offer-field offer-field--span">
+              <label>Message <span class="offer-required">*</span></label>
+              <textarea rows="3" maxlength="800" [(ngModel)]="revise.message"
+                        placeholder="Explain your counter…"></textarea>
+            </div>
+          </div>
+          @if (error) { <div class="offer-error">{{ error }}</div> }
+          <div class="offer-form-actions">
+            <button class="btn btn-ghost" type="button"
+                    [disabled]="saving" (click)="cancelReviseForm()">Cancel</button>
+            <button class="btn btn-primary" type="button"
+                    [disabled]="saving" (click)="postRevision()">
+              {{ saving ? 'Sending…' : 'Send' }}
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Action buttons -->
+      @if (isActive && !showReviseForm) {
+        <div class="offer-actions">
+          @if (mode === 'CANDIDATE') {
+            <button class="btn btn-primary" type="button"
+                    [disabled]="saving" (click)="acceptOffer()">Accept</button>
+            <button class="btn btn-ghost" type="button"
+                    [disabled]="saving" (click)="openReviseForm()">Counter-propose</button>
+            <button class="btn btn-warn" type="button"
+                    [disabled]="saving" (click)="declineOffer()">Decline</button>
+          } @else {
+            <button class="btn btn-primary" type="button"
+                    [disabled]="saving" (click)="openReviseForm()">Revise terms</button>
+            <button class="btn btn-warn" type="button"
+                    [disabled]="saving" (click)="withdrawOffer()">Withdraw</button>
+          }
+        </div>
+      }
+
+      @if (error && !showCreateForm && !showReviseForm) {
+        <div class="offer-error">{{ error }}</div>
+      }
+
+      <!-- Allow recruiter to send a NEW offer after a terminal state -->
+      @if (mode === 'RECRUITER' && !isActive && canCreateOffer && !showCreateForm) {
+        <button class="btn btn-primary offer-trigger-btn" type="button"
+                (click)="openCreateForm()">
+          Send a new offer
+        </button>
+      }
+    </div>
+  }
+</div>

@@ -74,7 +74,7 @@
   background: rgba(255,255,255,0.03);
 }
 
-/* Action column header — no label, fixed width */
+/* Action column header - no label, fixed width */
 .users-table thead th:last-child {
   width: 56px;
   text-align: center;

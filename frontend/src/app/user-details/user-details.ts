@@ -133,7 +133,7 @@ export class UserDetails implements OnInit {
 
   /**
    * Can the logged-in user signal this candidate?
-   * RECRUITER only — ADMIN and SUPERADMIN block directly.
+   * RECRUITER only - ADMIN and SUPERADMIN block directly.
    * Cannot signal if already FLAGGED or BLOCKED.
    */
   canSignal(): boolean {
@@ -144,7 +144,7 @@ export class UserDetails implements OnInit {
 
   /**
    * Can the logged-in user unsignal this candidate?
-   * RECRUITER only — and only if they are the one who flagged.
+   * RECRUITER only - and only if they are the one who flagged.
    */
   canUnsignal(): boolean {
     return this.isRecruiter()
@@ -190,8 +190,8 @@ export class UserDetails implements OnInit {
   }
 
   formatDate(ts?: number): string {
-    if (!ts) return '—';
-    try { return new Date(ts).toLocaleString(); } catch { return '—'; }
+    if (!ts) return '-';
+    try { return new Date(ts).toLocaleString(); } catch { return '-'; }
   }
 
   // ── Block / Unblock ───────────────────────────────────────────────────────
@@ -237,7 +237,7 @@ export class UserDetails implements OnInit {
     }
   }
 
-  // ── Dismiss signal — ADMIN + SUPERADMIN ──────────────────────────────────
+  // ── Dismiss signal - ADMIN + SUPERADMIN ──────────────────────────────────
 
   async dismissSignal(): Promise<void> {
     if (!this.user || !this.canDismiss()) return;
@@ -258,7 +258,7 @@ export class UserDetails implements OnInit {
 
     try {
       await this.users.dismissSignal(this.user.id);
-      this.snack.open('Signal dismissed — applications restored', 'OK', { duration: 2500 });
+      this.snack.open('Signal dismissed - applications restored', 'OK', { duration: 2500 });
       await this.load();
     } catch (e: any) {
       this.error = e?.error?.message ?? 'Failed to dismiss signal.';
@@ -267,7 +267,7 @@ export class UserDetails implements OnInit {
     }
   }
 
-  // ── Signal candidate — RECRUITER only ────────────────────────────────────
+  // ── Signal candidate - RECRUITER only ────────────────────────────────────
 
   async signalCandidate(): Promise<void> {
     if (!this.user || !this.canSignal()) return;
@@ -314,7 +314,7 @@ export class UserDetails implements OnInit {
     }
   }
 
-  // ── Unsignal — RECRUITER (own signal only) ────────────────────────────────
+  // ── Unsignal - RECRUITER (own signal only) ────────────────────────────────
 
   async unsignalCandidate(): Promise<void> {
     if (!this.user) return;

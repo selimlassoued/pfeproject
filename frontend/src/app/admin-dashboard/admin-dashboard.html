@@ -15,7 +15,7 @@
     <p class="dash-sub">{{ dashboardSub }}</p>
   </div>
 
-  <!-- Quick nav — hidden for RECRUITER -->
+  <!-- Quick nav - hidden for RECRUITER -->
   @if (!isRecruiter()) {
     <div class="quick-nav fade-up" style="animation-delay:.05s">
       <a routerLink="/recruiter-activity" class="qnav-btn">
@@ -28,30 +28,32 @@
   }
 
   <div class="range-tabs fade-up" style="animation-delay:.08s">
-    <button *ngFor="let r of TIME_RANGES"
-      class="range-tab" [class.range-tab--active]="activeRange === r.key"
-      (click)="setRange(r.key)">
-      {{ r.label }}
-    </button>
+    @for (r of TIME_RANGES; track r.key) {
+      <button
+        class="range-tab" [class.range-tab--active]="activeRange === r.key"
+        (click)="setRange(r.key)">
+        {{ r.label }}
+      </button>
+    }
   </div>
 
   <!-- ── Stats Row ── -->
   <div class="stats-row">
 
-    <!-- Users — ADMIN + SUPERADMIN only -->
+    <!-- Users - ADMIN + SUPERADMIN only -->
     @if (!isRecruiter()) {
       <a routerLink="/listUsers" class="stat-card stat-card--link" style="--accent:#79a4e9;animation-delay:0ms">
         <div class="stat-glow" style="--accent:#79a4e9"></div>
         <div class="stat-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
-        <div class="stat-value">{{ users.length || '—' }}</div>
+        <div class="stat-value">{{ users.length || '-' }}</div>
         <div class="stat-label">Total Users</div>
         <div class="stat-nav-hint">View all →</div>
       </a>
     }
 
-    <!-- Jobs — both roles -->
+    <!-- Jobs - both roles -->
     <a routerLink="/browse" class="stat-card stat-card--link" style="--accent:#79a4e9;animation-delay:60ms">
       <div class="stat-glow" style="--accent:#79a4e9"></div>
       <div class="stat-icon">
@@ -62,18 +64,18 @@
       <div class="stat-nav-hint">View all →</div>
     </a>
 
-    <!-- Applications — both roles -->
+    <!-- Applications - both roles -->
     <a routerLink="/listApplications" class="stat-card stat-card--link" style="--accent:#fbbf24;animation-delay:120ms">
       <div class="stat-glow" style="--accent:#fbbf24"></div>
       <div class="stat-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       </div>
-      <div class="stat-value">{{ appTotal ?? '—' }}</div>
+      <div class="stat-value">{{ appTotal ?? '-' }}</div>
       <div class="stat-label">Applications</div>
       <div class="stat-nav-hint">View all →</div>
     </a>
 
-    <!-- User Blocks — ADMIN + SUPERADMIN only -->
+    <!-- User Blocks - ADMIN + SUPERADMIN only -->
     @if (!isRecruiter()) {
       <div class="stat-card stat-card--link"
         [class.stat-card--loading]="statsLoading"
@@ -83,13 +85,13 @@
         <div class="stat-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
         </div>
-        <div class="stat-value">{{ statsLoading ? '…' : (stats?.userBlocks ?? '—') }}</div>
+        <div class="stat-value">{{ statsLoading ? '…' : (stats?.userBlocks ?? '-') }}</div>
         <div class="stat-label">User Blocks</div>
         <div class="stat-nav-hint">View logs →</div>
       </div>
     }
 
-    <!-- Flagged — both roles -->
+    <!-- Flagged - both roles -->
     <div class="stat-card stat-card--link"
       [class.stat-card--loading]="statsLoading"
       style="--accent:#fbbf24;animation-delay:240ms"
@@ -98,12 +100,12 @@
       <div class="stat-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
       </div>
-      <div class="stat-value">{{ statsLoading ? '…' : (stats?.candidateFlagged ?? '—') }}</div>
+      <div class="stat-value">{{ statsLoading ? '…' : (stats?.candidateFlagged ?? '-') }}</div>
       <div class="stat-label">Flagged</div>
       <div class="stat-nav-hint">View logs →</div>
     </div>
 
-    <!-- App Updates — both roles -->
+    <!-- App Updates - both roles -->
     <div class="stat-card stat-card--link"
       [class.stat-card--loading]="statsLoading"
       style="--accent:#4ade80;animation-delay:300ms"
@@ -112,12 +114,12 @@
       <div class="stat-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
       </div>
-      <div class="stat-value">{{ statsLoading ? '…' : (stats?.applicationUpdates ?? '—') }}</div>
+      <div class="stat-value">{{ statsLoading ? '…' : (stats?.applicationUpdates ?? '-') }}</div>
       <div class="stat-label">App Updates</div>
       <div class="stat-nav-hint">View logs →</div>
     </div>
 
-    <!-- Job Updates — both roles -->
+    <!-- Job Updates - both roles -->
     <div class="stat-card stat-card--link"
       [class.stat-card--loading]="statsLoading"
       style="--accent:#fb923c;animation-delay:360ms"
@@ -126,12 +128,12 @@
       <div class="stat-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
       </div>
-      <div class="stat-value">{{ statsLoading ? '…' : (stats?.jobUpdates ?? '—') }}</div>
+      <div class="stat-value">{{ statsLoading ? '…' : (stats?.jobUpdates ?? '-') }}</div>
       <div class="stat-label">Job Updates</div>
       <div class="stat-nav-hint">View logs →</div>
     </div>
 
-    <!-- Blocked Users — ADMIN + SUPERADMIN only -->
+    <!-- Blocked Users - ADMIN + SUPERADMIN only -->
     @if (!isRecruiter()) {
       <a routerLink="/listUsers" [queryParams]="{filter: 'DISABLED'}" class="stat-card stat-card--link" style="--accent:#f87171;animation-delay:420ms">
         <div class="stat-glow" style="--accent:#f87171"></div>
@@ -164,163 +166,178 @@
 
       <!-- Filter pills -->
       <div class="filters">
-        <button *ngFor="let f of FILTERS"
-          class="filter-btn"
-          [class.active]="activeFilter === f.key"
-          [style.--fcolor]="f.color"
-          (click)="setFilter(f.key)">
-          {{ f.label }}
-        </button>
+        @for (f of FILTERS; track f.key) {
+          <button
+            class="filter-btn"
+            [class.active]="activeFilter === f.key"
+            [style.--fcolor]="f.color"
+            (click)="setFilter(f.key)">
+            {{ f.label }}
+          </button>
+        }
       </div>
 
-      <!-- Secondary filters — shown only for grouped categories -->
+      <!-- Secondary filters - shown only for grouped categories -->
       @if (currentSubFilters.length) {
         <div class="subfilters">
           <span class="subfilters-arrow">↳</span>
-          <button *ngFor="let s of currentSubFilters"
-            class="subfilter-btn"
-            [class.active]="activeSubFilter === s.key"
-            (click)="setSubFilter(s.key)">
-            {{ s.label }}
-          </button>
+          @for (s of currentSubFilters; track s.key) {
+            <button
+              class="subfilter-btn"
+              [class.active]="activeSubFilter === s.key"
+              (click)="setSubFilter(s.key)">
+              {{ s.label }}
+            </button>
+          }
         </div>
       }
 
       <!-- Log list -->
       <div class="glass-card log-card">
-        <ng-container *ngIf="logs.length > 0; else noLogs">
-          <div *ngFor="let log of logs; let i = index; trackBy: trackById"
-            class="log-entry">
+        @if (logs.length > 0) {
+          @for (log of logs; track log.eventId; let i = $index) {
+            <div class="log-entry">
 
-            <div class="log-row"
-              [class.log-row--expanded]="isExpanded(log)"
-              [class.log-row--border]="i < logs.length - 1 && !isExpanded(log)"
-              (click)="toggleLog(log)">
-              <!-- Navigate button — always in col 1 to keep grid aligned -->
-              @if (canNavigate(log) && !isExpanded(log)) {
-                <button class="log-nav-btn" type="button"
-                  (click)="$event.stopPropagation(); navigateFromLog(log)"
-                  title="Go to details">
-                  →
-                </button>
-              } @else {
-                <span style="width:26px;height:26px;display:inline-block;flex-shrink:0;"></span>
+              <div class="log-row"
+                [class.log-row--expanded]="isExpanded(log)"
+                [class.log-row--border]="i < logs.length - 1 && !isExpanded(log)"
+                (click)="toggleLog(log)">
+                <!-- Navigate button - always in col 1 to keep grid aligned -->
+                @if (canNavigate(log) && !isExpanded(log)) {
+                  <button class="log-nav-btn" type="button"
+                    (click)="$event.stopPropagation(); navigateFromLog(log)"
+                    title="Go to details">
+                    →
+                  </button>
+                } @else {
+                  <span style="width:26px;height:26px;display:inline-block;flex-shrink:0;"></span>
+                }
+
+                <span class="event-pill"
+                  [style.color]="getEventMeta(log.eventType).color"
+                  [style.border-color]="getEventMeta(log.eventType).color + '40'"
+                  [style.background]="getEventMeta(log.eventType).bg">
+                  <span class="pill-dot" [style.background]="getEventMeta(log.eventType).color"></span>
+                  {{ getEventMeta(log.eventType).label }}
+                </span>
+
+                <div class="log-info">
+                  <div class="log-main-line">
+                    <span class="log-actor">{{ getActorName(log) }}</span>
+                    @if (getTargetName(log)) {
+                      <span class="log-arrow">→</span>
+                      <span class="log-target">{{ getTargetName(log) }}</span>
+                    }
+                  </div>
+                  @if (getDisplayReason(log); as reason) {
+                    <div class="log-reason">
+                      "{{ reason }}"
+                    </div>
+                  }
+                </div>
+
+                <div class="log-right">
+                  <span class="log-time">{{ timeAgo(log.createdAt || log.occurredAt) }}</span>
+                  <span class="log-chevron" [class.log-chevron--open]="isExpanded(log)">›</span>
+                </div>
+              </div>
+
+              @if (isExpanded(log)) {
+                <div class="log-detail"
+                  [class.log-detail--border]="i < logs.length - 1">
+
+                  @if (canNavigate(log)) {
+                    <button class="log-detail-nav" type="button" (click)="navigateFromLog(log)">
+                      View details →
+                    </button>
+                  }
+                  <div class="log-detail-grid">
+
+                    <div class="ld-item">
+                      <div class="ld-label">Event</div>
+                      <span class="event-pill event-pill--sm"
+                        [style.color]="getEventMeta(log.eventType).color"
+                        [style.border-color]="getEventMeta(log.eventType).color + '40'"
+                        [style.background]="getEventMeta(log.eventType).bg">
+                        <span class="pill-dot" [style.background]="getEventMeta(log.eventType).color"></span>
+                        {{ getEventMeta(log.eventType).label }}
+                      </span>
+                    </div>
+
+                    <div class="ld-item">
+                      <div class="ld-label">Event ID</div>
+                      <div class="ld-value ld-mono">{{ log.eventId }}</div>
+                    </div>
+
+                    <div class="ld-item">
+                      <div class="ld-label">Actor</div>
+                      <div class="ld-value">
+                        <span class="ld-name">{{ getActorName(log) }}</span>
+                        @if (log.actorUserId && log.actorUserId !== 'SYSTEM') {
+                          <span class="ld-sub ld-mono">
+                            {{ log.actorUserId }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    @if (log.targetId) {
+                      <div class="ld-item">
+                        <div class="ld-label">Target</div>
+                        <div class="ld-value">
+                          <span class="ld-name">{{ getTargetName(log) }}</span>
+                          <span class="ld-sub ld-mono">{{ log.targetId }}</span>
+                        </div>
+                      </div>
+                    }
+
+                    @if (getDisplayReason(log); as reason) {
+                      <div class="ld-item">
+                        <div class="ld-label">Reason</div>
+                        <div class="ld-value ld-reason">"{{ reason }}"</div>
+                      </div>
+                    }
+
+                    <div class="ld-item">
+                      <div class="ld-label">Time</div>
+                      <div class="ld-value ld-mono">
+                        {{ formatDate(log.createdAt || log.occurredAt) }}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  @if (getChangesEntries(log).length > 0) {
+                    <div class="ld-changes-title">Changes</div>
+                    <div class="ld-changes">
+                      <div class="ld-change-row ld-change-row--header">
+                        <span class="ld-change-key">Field</span>
+                        <span class="ld-change-before">Before</span>
+                        <span class="ld-change-after">After</span>
+                      </div>
+                      @for (c of getChangesEntries(log); track c.key) {
+                        <div class="ld-change-row">
+                          <span class="ld-change-key">{{ c.key }}</span>
+                          @if (c.oldVal !== null || c.newVal !== null) {
+                            <span class="ld-old">{{ c.oldVal ?? '-' }}</span>
+                            <span class="ld-new">{{ c.newVal ?? '-' }}</span>
+                          }
+                          @if (c.simple !== null) {
+                            <span class="ld-simple">-</span>
+                            <span class="ld-simple">{{ c.simple }}</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+
+                </div>
               }
-
-              <span class="event-pill"
-                [style.color]="getEventMeta(log.eventType).color"
-                [style.border-color]="getEventMeta(log.eventType).color + '40'"
-                [style.background]="getEventMeta(log.eventType).bg">
-                <span class="pill-dot" [style.background]="getEventMeta(log.eventType).color"></span>
-                {{ getEventMeta(log.eventType).label }}
-              </span>
-
-              <div class="log-info">
-                <div class="log-main-line">
-                  <span class="log-actor">{{ getActorName(log) }}</span>
-                  <ng-container *ngIf="getTargetName(log)">
-                    <span class="log-arrow">→</span>
-                    <span class="log-target">{{ getTargetName(log) }}</span>
-                  </ng-container>
-                </div>
-                <div class="log-reason" *ngIf="getDisplayReason(log) as reason">
-                  "{{ reason }}"
-                </div>
-              </div>
-
-              <div class="log-right">
-                <span class="log-time">{{ timeAgo(log.createdAt || log.occurredAt) }}</span>
-                <span class="log-chevron" [class.log-chevron--open]="isExpanded(log)">›</span>
-              </div>
             </div>
-
-            <div class="log-detail"
-              *ngIf="isExpanded(log)"
-              [class.log-detail--border]="i < logs.length - 1">
-
-              @if (canNavigate(log)) {
-                <button class="log-detail-nav" type="button" (click)="navigateFromLog(log)">
-                  View details →
-                </button>
-              }
-              <div class="log-detail-grid">
-
-                <div class="ld-item">
-                  <div class="ld-label">Event</div>
-                  <span class="event-pill event-pill--sm"
-                    [style.color]="getEventMeta(log.eventType).color"
-                    [style.border-color]="getEventMeta(log.eventType).color + '40'"
-                    [style.background]="getEventMeta(log.eventType).bg">
-                    <span class="pill-dot" [style.background]="getEventMeta(log.eventType).color"></span>
-                    {{ getEventMeta(log.eventType).label }}
-                  </span>
-                </div>
-
-                <div class="ld-item">
-                  <div class="ld-label">Event ID</div>
-                  <div class="ld-value ld-mono">{{ log.eventId }}</div>
-                </div>
-
-                <div class="ld-item">
-                  <div class="ld-label">Actor</div>
-                  <div class="ld-value">
-                    <span class="ld-name">{{ getActorName(log) }}</span>
-                    <span class="ld-sub ld-mono" *ngIf="log.actorUserId && log.actorUserId !== 'SYSTEM'">
-                      {{ log.actorUserId }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="ld-item" *ngIf="log.targetId">
-                  <div class="ld-label">Target</div>
-                  <div class="ld-value">
-                    <span class="ld-name">{{ getTargetName(log) }}</span>
-                    <span class="ld-sub ld-mono">{{ log.targetId }}</span>
-                  </div>
-                </div>
-
-                <div class="ld-item" *ngIf="getDisplayReason(log) as reason">
-                  <div class="ld-label">Reason</div>
-                  <div class="ld-value ld-reason">"{{ reason }}"</div>
-                </div>
-
-                <div class="ld-item">
-                  <div class="ld-label">Time</div>
-                  <div class="ld-value ld-mono">
-                    {{ formatDate(log.createdAt || log.occurredAt) }}
-                  </div>
-                </div>
-
-              </div>
-
-              <ng-container *ngIf="getChangesEntries(log).length > 0">
-                <div class="ld-changes-title">Changes</div>
-                <div class="ld-changes">
-                  <div class="ld-change-row ld-change-row--header">
-                    <span class="ld-change-key">Field</span>
-                    <span class="ld-change-before">Before</span>
-                    <span class="ld-change-after">After</span>
-                  </div>
-                  <div *ngFor="let c of getChangesEntries(log)" class="ld-change-row">
-                    <span class="ld-change-key">{{ c.key }}</span>
-                    <ng-container *ngIf="c.oldVal !== null || c.newVal !== null">
-                      <span class="ld-old">{{ c.oldVal ?? '—' }}</span>
-                      <span class="ld-new">{{ c.newVal ?? '—' }}</span>
-                    </ng-container>
-                    <ng-container *ngIf="c.simple !== null">
-                      <span class="ld-simple">—</span>
-                      <span class="ld-simple">{{ c.simple }}</span>
-                    </ng-container>
-                  </div>
-                </div>
-              </ng-container>
-
-            </div>
-          </div>
-        </ng-container>
-        <ng-template #noLogs>
+          }
+        } @else {
           <div class="empty-state">No logs found for this period</div>
-        </ng-template>
+        }
       </div>
 
       <div class="pagination">
@@ -343,26 +360,27 @@
             {{ activeRange === 'overall' ? 'All time' : 'Last ' + activeRange }}
           </span>
         </div>
-        <ng-container *ngIf="!statsLoading; else loadingTpl">
-          <div *ngFor="let item of BREAKDOWN" class="breakdown-item">
-            <div class="breakdown-header">
-              <span class="breakdown-label">{{ item.label }}</span>
-              <span class="breakdown-val" [style.color]="item.color">
-                {{ getBreakdownVal(item.key) }}
-                <span class="breakdown-pct">({{ getBreakdownPct(item.key) }}%)</span>
-              </span>
-            </div>
-            <div class="progress-track">
-              <div class="progress-fill"
-                [style.width.%]="getBreakdownPct(item.key)"
-                [style.background]="'linear-gradient(90deg,' + item.color + '55,' + item.color + ')'">
+        @if (!statsLoading) {
+          @for (item of BREAKDOWN; track item.key) {
+            <div class="breakdown-item">
+              <div class="breakdown-header">
+                <span class="breakdown-label">{{ item.label }}</span>
+                <span class="breakdown-val" [style.color]="item.color">
+                  {{ getBreakdownVal(item.key) }}
+                  <span class="breakdown-pct">({{ getBreakdownPct(item.key) }}%)</span>
+                </span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill"
+                  [style.width.%]="getBreakdownPct(item.key)"
+                  [style.background]="'linear-gradient(90deg,' + item.color + '55,' + item.color + ')'">
+                </div>
               </div>
             </div>
-          </div>
-        </ng-container>
-        <ng-template #loadingTpl>
+          }
+        } @else {
           <div class="empty-state">Loading…</div>
-        </ng-template>
+        }
       </div>
 
       <!-- Top Jobs by Applications -->
@@ -371,36 +389,36 @@
           <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>
           Top Jobs by Applications
         </div>
-        <ng-container *ngIf="topJobs.length > 0; else noTopJobs">
-          <a *ngFor="let job of topJobs; let i = index"
-            [routerLink]="['/jobs', job.jobId]"
-            class="top-job-row top-job-row--link"
-            [class.top-job-row--border]="i < topJobs.length - 1">
-            <div class="top-job-rank"
-              [class.top-job-rank--gold]="i === 0"
-              [class.top-job-rank--silver]="i === 1"
-              [class.top-job-rank--bronze]="i === 2">
-              {{ i + 1 }}
-            </div>
-            <div class="top-job-info">
-              <div class="top-job-title">{{ job.title }}</div>
-              <div class="top-job-bar-wrap">
-                <div class="top-job-bar">
-                  <div class="top-job-bar-fill"
-                    [style.width.%]="(job.count / maxTopJobCount) * 100">
-                  </div>
-                </div>
-                <span class="top-job-count">{{ job.count }}</span>
+        @if (topJobs.length > 0) {
+          @for (job of topJobs; track job.jobId; let i = $index) {
+            <a [routerLink]="['/jobs', job.jobId]"
+              class="top-job-row top-job-row--link"
+              [class.top-job-row--border]="i < topJobs.length - 1">
+              <div class="top-job-rank"
+                [class.top-job-rank--gold]="i === 0"
+                [class.top-job-rank--silver]="i === 1"
+                [class.top-job-rank--bronze]="i === 2">
+                {{ i + 1 }}
               </div>
-            </div>
-          </a>
-        </ng-container>
-        <ng-template #noTopJobs>
+              <div class="top-job-info">
+                <div class="top-job-title">{{ job.title }}</div>
+                <div class="top-job-bar-wrap">
+                  <div class="top-job-bar">
+                    <div class="top-job-bar-fill"
+                      [style.width.%]="(job.count / maxTopJobCount) * 100">
+                    </div>
+                  </div>
+                  <span class="top-job-count">{{ job.count }}</span>
+                </div>
+              </div>
+            </a>
+          }
+        } @else {
           <div class="empty-state">No data</div>
-        </ng-template>
+        }
       </div>
 
-      <!-- Blocked Users — ADMIN + SUPERADMIN only -->
+      <!-- Blocked Users - ADMIN + SUPERADMIN only -->
       @if (!isRecruiter()) {
       <div class="glass-card sidebar-card">
         <div class="section-label">
@@ -408,27 +426,27 @@
           Blocked Users
           <span class="blocked-count-badge">{{ blockedUsers.length }}</span>
         </div>
-        <ng-container *ngIf="blockedUsers.length > 0; else noBlocked">
-          <div *ngFor="let user of blockedUsers.slice(0, 3); let i = index"
-            class="user-row"
-            [class.user-row--border]="i < blockedUsers.slice(0, 3).length - 1">
-            <div class="user-avatar"
-              [style.background]="'hsl(' + getUserHue(user) + ',50%,26%)'"
-              [style.border-color]="'hsl(' + getUserHue(user) + ',50%,36%)'">
-              {{ getUserInitials(user) }}
+        @if (blockedUsers.length > 0) {
+          @for (user of blockedUsers.slice(0, 3); track user.id; let i = $index) {
+            <div class="user-row"
+              [class.user-row--border]="i < blockedUsers.slice(0, 3).length - 1">
+              <div class="user-avatar"
+                [style.background]="'hsl(' + getUserHue(user) + ',50%,26%)'"
+                [style.border-color]="'hsl(' + getUserHue(user) + ',50%,36%)'">
+                {{ getUserInitials(user) }}
+              </div>
+              <div class="user-info">
+                <div class="user-name">{{ user.firstName }} {{ user.lastName }}</div>
+                <div class="user-email">{{ user.email || '-' }}</div>
+              </div>
             </div>
-            <div class="user-info">
-              <div class="user-name">{{ user.firstName }} {{ user.lastName }}</div>
-              <div class="user-email">{{ user.email || '—' }}</div>
-            </div>
-          </div>
+          }
           <a routerLink="/listUsers" [queryParams]="{filter: 'DISABLED'}" class="manage-link">
             Manage all blocked users →
           </a>
-        </ng-container>
-        <ng-template #noBlocked>
+        } @else {
           <div class="empty-state">No blocked users</div>
-        </ng-template>
+        }
       </div>
       }
 

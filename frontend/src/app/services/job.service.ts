@@ -57,7 +57,7 @@ export class JobService {
     return this.http.delete<void>(`${this.API_URL}/${id}`);
   }
 
-  /** Close a published job — stops accepting new applications.
+  /** Close a published job - stops accepting new applications.
    *  `reason` is recorded in the audit trail. The acting recruiter is
    *  identified by the gateway via the auth token. */
   closeJob(id: string, reason: string): Observable<JobOffer> {

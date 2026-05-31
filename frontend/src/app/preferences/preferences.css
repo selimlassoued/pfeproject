@@ -9,7 +9,7 @@
   flex-wrap: wrap;
 }
 
-/* Subtle auto-save status indicator — replaces the old "Save preferences"
+/* Subtle auto-save status indicator - replaces the old "Save preferences"
    button. Only renders when there's something to say (saving in progress or
    an error). Idle state is invisible, keeps the header clean. */
 .pref-save-indicator {
@@ -131,7 +131,7 @@
 
 /* Catalog overlays on top of the base chip:
    • --in-demand → currently mentioned by ≥1 PUBLISHED job. Subtle orange
-                   border + hover tooltip carry the signal. No badge text —
+                   border + hover tooltip carry the signal. No badge text -
                    the recruiter cares more about the count, candidates just
                    need to see "this is currently sought after".
    • --new       → first appeared since the candidate's last visit. Has
@@ -152,7 +152,7 @@
   border-color: rgba(228, 184, 60, 0.85);
 }
 
-/* Small text badge for NEW items — sits inline at the end of the chip
+/* Small text badge for NEW items - sits inline at the end of the chip
    label, gold-toned but muted enough to feel professional. */
 .chip-new-tag {
   display: inline-block;
@@ -234,7 +234,7 @@
 
 .form-group label { display: block; margin-bottom: 0.55rem; font-weight: 700; color: rgba(255,255,255,0.92); }
 
-/* Inline helper text under a form field — used for guidance like
+/* Inline helper text under a form field - used for guidance like
    "pick the most recent degree". Visually subordinate to the label and
    never as loud as an error/status message. */
 .field-hint {
@@ -256,7 +256,7 @@ select.input {
   padding-right: 36px;
   cursor: pointer;
 }
-/* color-scheme + option theming live in global styles.css — applies to every
+/* color-scheme + option theming live in global styles.css - applies to every
    <select> in the app, no per-page duplication needed. */
 
 .status { border-radius: 14px; padding: 0.95rem 1rem; border: 1px solid var(--color-border); background: rgba(255,255,255,0.05); margin-bottom: var(--space-6); }

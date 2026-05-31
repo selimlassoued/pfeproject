@@ -598,3 +598,235 @@
 .cad-iv-consent-pending {
   color: rgba(255, 220, 100, 0.85);
 }
+
+/* ── Interview proposal card (candidate picks one of the offered slots) ── */
+.cad-proposal {
+  margin-top: 0.6rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(800px 200px at 0% 0%, rgba(121,164,233,0.12), transparent 70%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(121, 164, 233, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.cad-proposal-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.cad-proposal-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(30, 64, 188, 0.55), rgba(121, 164, 233, 0.55));
+  color: #fff;
+  border: none;
+}
+.cad-proposal-title {
+  font-weight: 700;
+  color: var(--color-cream);
+  font-size: 1rem;
+  flex: 1;
+}
+.cad-proposal-deadline {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: rgba(251, 210, 130, 0.95);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.cad-proposal-msg {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+.cad-proposal-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.6rem;
+}
+.cad-proposal-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(121, 164, 233, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.cad-proposal-slot:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(121, 164, 233, 0.6);
+  background: rgba(121, 164, 233, 0.12);
+}
+.cad-proposal-slot:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cad-proposal-slot-day {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.cad-proposal-slot-time {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-cream);
+  letter-spacing: -0.01em;
+}
+.cad-proposal-slot-spin {
+  font-size: 0.78rem;
+  color: var(--color-secondary);
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+.cad-proposal-error {
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(233, 121, 121, 0.1);
+  border: 1px solid rgba(233, 121, 121, 0.3);
+  color: rgba(255, 220, 220, 0.95);
+  font-size: 0.85rem;
+}
+
+/* ── Offer section (candidate) ───────────────────────────────────────── */
+.cad-offer-section {
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(121, 164, 233, 0.14);
+}
+
+/* ── Reschedule banner (candidate view) ────────────────────────────────── */
+.cad-resched-panel {
+  margin-top: 0.6rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(121, 164, 233, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.cad-resched-panel--from-other {
+  background:
+    radial-gradient(800px 200px at 0% 0%, rgba(251, 191, 36, 0.12), transparent 70%),
+    rgba(255, 255, 255, 0.04);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+.cad-resched-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
+.cad-resched-badge {
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(121, 164, 233, 0.18);
+  border: 1px solid rgba(121, 164, 233, 0.4);
+  color: rgba(180, 210, 255, 0.95);
+}
+.cad-resched-panel--from-other .cad-resched-badge {
+  background: linear-gradient(135deg, rgba(30, 64, 188, 0.55), rgba(121, 164, 233, 0.55));
+  color: #fff;
+  border: none;
+}
+.cad-resched-meta { font-size: 0.82rem; color: var(--color-text-muted); }
+.cad-resched-msg {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+.cad-resched-title { margin: 0; font-size: 0.9rem; color: var(--color-cream); font-weight: 600; }
+.cad-resched-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem;
+}
+.cad-resched-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(121, 164, 233, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.cad-resched-slot:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(121, 164, 233, 0.6);
+  background: rgba(121, 164, 233, 0.12);
+}
+.cad-resched-slot:disabled { opacity: 0.5; cursor: not-allowed; }
+.cad-resched-slot-day {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.cad-resched-slot-time {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-cream);
+}
+.cad-resched-slot-readonly {
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(121, 164, 233, 0.22);
+  color: var(--color-cream);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.cad-resched-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+/* "None of these work" - subtle text button under the proposal slots */
+.cad-proposal-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+.cad-proposal-none {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  transition: color 140ms ease;
+}
+.cad-proposal-none:hover:not(:disabled) { color: rgba(255, 200, 200, 0.95); }
+.cad-proposal-none:disabled { opacity: 0.5; cursor: not-allowed; }

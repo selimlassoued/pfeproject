@@ -106,6 +106,19 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.PATCH,  "/api/applications/skill-catalog/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
                         .pathMatchers(HttpMethod.DELETE, "/api/applications/skill-catalog/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
 
+                        // ── Offers ────────────────────────────────────────────
+                        // Candidate sees + acts on their own offers (accept /
+                        // decline / counter-propose). Recruiter creates / revises
+                        // / withdraws. Both sides can read the offer thread.
+                        .pathMatchers(HttpMethod.GET,  "/api/applications/me/offers").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.POST, "/api/applications/*/offer/accept").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.POST, "/api/applications/*/offer/decline").hasRole("CANDIDATE")
+                        .pathMatchers(HttpMethod.POST, "/api/applications/*/offer/revisions").hasAnyRole("CANDIDATE", "RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.GET,  "/api/applications/*/offer").hasAnyRole("CANDIDATE", "RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.POST, "/api/applications/*/offer").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.POST, "/api/applications/*/offer/withdraw").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                        .pathMatchers(HttpMethod.GET,  "/api/applications/recruiter/*/offers").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+
                         // ── Applications — apply (candidate only) ─────────────
                         .pathMatchers(HttpMethod.POST, "/api/applications/**").hasRole("CANDIDATE")
 
@@ -138,6 +151,22 @@ public class SecurityConfig {
                                 .pathMatchers(HttpMethod.PATCH, "/api/interviews/*/consent").hasAnyRole("RECRUITER", "CANDIDATE")
 
                                 .pathMatchers(HttpMethod.GET, "/api/interviews/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN", "CANDIDATE")
+                                // Proposal pick — candidate confirming one of the offered slots.
+                                // Must precede the catch-all POST rule below.
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/proposals/*/pick").hasAnyRole("CANDIDATE", "RECRUITER", "ADMIN", "SUPERADMIN")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/proposals/*/decline").hasAnyRole("CANDIDATE", "RECRUITER", "ADMIN", "SUPERADMIN")
+                                // Reschedule — either side proposes; the OTHER side accepts / declines;
+                                // proposer cancels. All ahead of the catch-all RECRUITER-only POST rule.
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/*/reschedule").hasAnyRole("CANDIDATE", "RECRUITER", "ADMIN", "SUPERADMIN")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/reschedule/*/accept").hasAnyRole("CANDIDATE", "RECRUITER", "ADMIN", "SUPERADMIN")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/reschedule/*/decline").hasAnyRole("CANDIDATE", "RECRUITER", "ADMIN", "SUPERADMIN")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/reschedule/*/cancel").hasAnyRole("CANDIDATE", "RECRUITER", "ADMIN", "SUPERADMIN")
+                                // Delegation — recruiter hands an interview off to another recruiter.
+                                // Candidates not involved here (they don't choose interviewers).
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/*/delegate").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/delegations/*/accept").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/delegations/*/decline").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
+                                .pathMatchers(HttpMethod.POST, "/api/interviews/delegations/*/cancel").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
                                 // POST = scheduling / Google Calendar / join requests — recruiter actions only
                                 .pathMatchers(HttpMethod.POST, "/api/interviews/**").hasAnyRole("RECRUITER")
                                 // PATCH = cancel / invite / consent — admins included so they can moderate (e.g. a recruiter left)

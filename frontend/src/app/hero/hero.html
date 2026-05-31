@@ -45,15 +45,15 @@
       <div style="margin-top: 1.5rem; display:grid; gap:.7rem;">
         <div class="text-muted" style="display:flex; gap:.6rem; align-items:flex-start;">
           <span style="width:10px;height:10px;border-radius:999px;margin-top:.35rem;background:linear-gradient(135deg,var(--color-secondary),var(--color-primary));"></span>
-          <span><strong style="color:var(--color-text)">Transparent steps</strong> — Applied → Review → Interview → Decision</span>
+          <span><strong style="color:var(--color-text)">Transparent steps</strong> - Applied → Review → Interview → Decision</span>
         </div>
         <div class="text-muted" style="display:flex; gap:.6rem; align-items:flex-start;">
           <span style="width:10px;height:10px;border-radius:999px;margin-top:.35rem;background:linear-gradient(135deg,var(--color-secondary),var(--color-primary));"></span>
-          <span><strong style="color:var(--color-text)">Privacy-first</strong> — your documents are used only for recruitment</span>
+          <span><strong style="color:var(--color-text)">Privacy-first</strong> - your documents are used only for recruitment</span>
         </div>
         <div class="text-muted" style="display:flex; gap:.6rem; align-items:flex-start;">
           <span style="width:10px;height:10px;border-radius:999px;margin-top:.35rem;background:linear-gradient(135deg,var(--color-secondary),var(--color-primary));"></span>
-          <span><strong style="color:var(--color-text)">Interview support</strong> — transcript → summary </span>
+          <span><strong style="color:var(--color-text)">Interview support</strong> - transcript → summary </span>
         </div>
       </div>
     </div>
@@ -80,8 +80,8 @@
     </p>
 
     <div style="margin-top:1.25rem; display:grid; gap:.9rem;">
+  @for (job of jobs; track job) {
   <div
-    *ngFor="let job of jobs"
     style="
       padding:.9rem;
       border-radius:var(--radius-xl);
@@ -103,6 +103,7 @@
     </div>
 
   </div>
+  }
 </div>
 
 

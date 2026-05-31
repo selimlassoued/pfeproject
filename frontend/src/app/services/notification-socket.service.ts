@@ -4,14 +4,42 @@ import { Subject } from 'rxjs';
 import { Notification } from '../model/notification.model';
 import Keycloak from 'keycloak-js';
 
+/** Backend pushes thin "list changed" pings on /topic/interviews.list.{userId}
+ *  every time something happens that could affect this user's interview set
+ *  (scheduled, cancelled, rescheduled, proposal picked, delegation accepted,
+ *  invited). Components listen and re-fetch. NOT a Notification (no bell entry). */
+export interface InterviewListChange {
+  type: 'LIST_CHANGED';
+  reason: string;
+  interviewId?: string;
+}
+
+/** Backend pushes a tiny "offer changed" ping on /topic/offers.{userId} every
+ *  time an offer is created, revised, accepted, declined, withdrawn, or
+ *  expired. Components reload their offer data on this signal. */
+export interface OfferChange {
+  type: 'OFFER_CHANGED';
+  applicationId: string;
+  offerId: string;
+  status: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class NotificationSocketService {
   private client: Client;
   private notif$ = new Subject<Notification>();
+  private interviewList$ = new Subject<InterviewListChange>();
+  private offer$ = new Subject<OfferChange>();
   private readonly keycloak = inject(Keycloak);
   private subscribed = false;
 
   notifications$ = this.notif$.asObservable();
+  /** Wakes up the navbar imminent-interview widget (and anything else listening)
+   *  when the user's interview set changed elsewhere. */
+  interviewListChanged$ = this.interviewList$.asObservable();
+  /** Wakes up the offer panel / offer summary card when the offer changes
+   *  (created, revised, accepted, declined, withdrawn, expired). */
+  offerChanged$ = this.offer$.asObservable();
 
   constructor() {
     this.client = new Client({
@@ -51,6 +79,25 @@ export class NotificationSocketService {
     this.client.subscribe(`/topic/notifications.${userId}`, (msg: IMessage) => {
       const payload = JSON.parse(msg.body) as Notification;
       this.notif$.next(payload);
+    });
+    this.client.subscribe(`/topic/interviews.list.${userId}`, (msg: IMessage) => {
+      try {
+        const payload = JSON.parse(msg.body) as InterviewListChange;
+        this.interviewList$.next(payload);
+      } catch {
+        // tolerate non-JSON pings; the timing signal is what callers care about
+        this.interviewList$.next({ type: 'LIST_CHANGED', reason: 'UNKNOWN' });
+      }
+    });
+    this.client.subscribe(`/topic/offers.${userId}`, (msg: IMessage) => {
+      try {
+        const payload = JSON.parse(msg.body) as OfferChange;
+        this.offer$.next(payload);
+      } catch {
+        this.offer$.next({
+          type: 'OFFER_CHANGED', applicationId: '', offerId: '', status: '',
+        });
+      }
     });
   }
 

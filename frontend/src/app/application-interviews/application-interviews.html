@@ -1,0 +1,350 @@
+<div class="iv-page">
+
+  <!-- Breadcrumb -->
+  <div class="iv-breadcrumb">
+    @if (app) {
+      <a [routerLink]="['/application', app.applicationId]" class="iv-breadcrumb-back">&larr; Application</a>
+      <span class="iv-breadcrumb-sep">/</span>
+    }
+    <span class="iv-breadcrumb-here">Interviews</span>
+  </div>
+
+  @if (loading) {
+    <div class="iv-state">Loading…</div>
+  }
+  @if (error) {
+    <div class="iv-error">{{ error }}</div>
+  }
+
+  @if (!loading && app) {
+    <header class="iv-page-head">
+      <div>
+        <h2 class="iv-title">Interviews</h2>
+        <p class="iv-subtitle">
+          For <strong>{{ app.candidateName || 'this candidate' }}</strong>
+          @if (app.jobTitle) { · <em>{{ app.jobTitle }}</em> }
+        </p>
+      </div>
+      @if (interviews.length > 0) {
+        <button class="btn btn-primary" type="button" (click)="viewSummary()">
+          View full candidate summary
+        </button>
+      }
+    </header>
+
+    @if (interviewsLoading) {
+      <div class="interview-state-msg">Loading interviews…</div>
+    }
+
+    @if (!interviewsLoading && interviews.length === 0 && !showScheduleForm) {
+      <div class="interview-empty">
+        No interviews scheduled yet.
+      </div>
+    }
+
+    @if (!interviewsLoading && interviews.length > 0) {
+      <div class="interview-list">
+        @for (iv of interviews; track iv.id) {
+          <div class="interview-card" [ngClass]="iv.status.toLowerCase()">
+
+            <div class="interview-card-top">
+              <span class="interview-status-pill">{{ iv.status }}</span>
+              <span class="interview-date">
+                {{ iv.scheduledAt | date:'dd/MM/yyyy' }} &nbsp;{{ iv.scheduledAt | date:'HH:mm' }}
+              </span>
+            </div>
+
+            <div class="interview-card-bottom">
+              <span class="interview-room-label">{{ iv.roomUrl }}</span>
+              @if (iv.status === 'SCHEDULED' && iv.recruiterId === recruiterId && !pendingDelegationFor(iv.id)) {
+                <button class="btn btn-ghost" type="button"
+                        [disabled]="delegating"
+                        (click)="openDelegationModal(iv)">
+                  Ask another recruiter
+                </button>
+              }
+              @if (iv.status === 'SCHEDULED' && canCancel(iv) && !pendingReschedFor(iv.id) && reschedFormFor !== iv.id) {
+                <button class="btn btn-ghost" type="button"
+                        (click)="openReschedForm(iv.id)">Reschedule</button>
+              }
+              @if ((iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS') && canCancel(iv)) {
+                <button
+                  class="btn btn-danger interview-cancel-btn"
+                  (click)="cancelInterview(iv)"
+                  [disabled]="cancellingId === iv.id">
+                  {{ cancellingId === iv.id ? 'Cancelling…' : 'Cancel' }}
+                </button>
+              }
+            </div>
+
+            <!-- Pending delegation banner -->
+            @if (pendingDelegationFor(iv.id); as d) {
+              <div class="interview-deleg-panel"
+                   [class.interview-deleg-panel--incoming]="d.toRecruiterId === recruiterId">
+                <div class="interview-deleg-head">
+                  <span class="interview-deleg-badge">
+                    @if (d.toRecruiterId === recruiterId) {
+                      Take-over request
+                    } @else {
+                      Delegation pending
+                    }
+                  </span>
+                  <span class="interview-deleg-meta">
+                    @if (d.toRecruiterId === recruiterId) {
+                      {{ d.fromRecruiterName || 'Another recruiter' }} asked you · respond by
+                    } @else {
+                      {{ d.toRecruiterName || 'Colleague' }} must respond by
+                    }
+                    {{ d.deadline | date:'MMM d, HH:mm' }}
+                  </span>
+                </div>
+                @if (d.message) {
+                  <p class="interview-deleg-msg">{{ d.message }}</p>
+                }
+                @if (d.toRecruiterId === recruiterId) {
+                  <div class="interview-deleg-actions">
+                    <button class="btn btn-primary" type="button"
+                            [disabled]="acceptingDelegationId === d.id"
+                            (click)="acceptDelegation(d)">
+                      {{ acceptingDelegationId === d.id ? 'Accepting…' : 'Accept - take over' }}
+                    </button>
+                    <button class="btn btn-ghost" type="button"
+                            [disabled]="decliningDelegationId === d.id"
+                            (click)="declineDelegation(d)">Decline</button>
+                  </div>
+                } @else if (d.fromRecruiterId === recruiterId) {
+                  <div class="interview-deleg-actions">
+                    <button class="btn btn-ghost" type="button"
+                            [disabled]="cancellingDelegationId === d.id"
+                            (click)="cancelDelegation(d)">
+                      {{ cancellingDelegationId === d.id ? 'Cancelling…' : 'Cancel request' }}
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Inline reschedule picker -->
+            @if (reschedFormFor === iv.id && app) {
+              <app-reschedule-picker
+                [interviewId]="iv.id"
+                [recruiterId]="iv.recruiterId"
+                [candidateId]="app.candidateUserId"
+                (proposed)="onReschedProposed($event)"
+                (cancelled)="closeReschedForm()" />
+            }
+
+            <!-- Pending reschedule banner -->
+            @if (pendingReschedFor(iv.id); as r) {
+              <div class="interview-resched-panel"
+                   [class.interview-resched-panel--from-other]="r.proposedBy === 'CANDIDATE'">
+                <div class="interview-resched-head">
+                  <span class="interview-resched-badge">
+                    {{ r.proposedBy === 'RECRUITER' ? 'Reschedule sent' : 'Reschedule requested' }}
+                  </span>
+                  <span class="interview-resched-meta">
+                    {{ r.proposedSlots.length }} slots · respond by
+                    {{ r.deadline | date:'MMM d, HH:mm' }}
+                  </span>
+                </div>
+                @if (r.message) {
+                  <p class="interview-resched-msg">{{ r.message }}</p>
+                }
+                @if (r.proposedBy === 'CANDIDATE') {
+                  <div class="interview-resched-slots">
+                    @for (s of r.proposedSlots; track $index) {
+                      <button type="button" class="interview-resched-slot"
+                              [disabled]="acceptingReschedIdx !== null"
+                              (click)="acceptReschedule(r, $index)">
+                        <span class="interview-resched-slot-day">{{ s | date:'EEE d MMM' }}</span>
+                        <span class="interview-resched-slot-time">{{ s | date:'HH:mm' }}</span>
+                      </button>
+                    }
+                  </div>
+                  <div class="interview-resched-actions">
+                    <button class="btn btn-ghost" type="button"
+                            [disabled]="decliningReschedId === r.id"
+                            (click)="declineReschedule(r)">
+                      Keep original time
+                    </button>
+                  </div>
+                }
+                @if (r.proposedBy === 'RECRUITER') {
+                  <div class="interview-resched-slots">
+                    @for (s of r.proposedSlots; track s) {
+                      <span class="interview-resched-slot-readonly">
+                        {{ s | date:'EEE d MMM · HH:mm' }}
+                      </span>
+                    }
+                  </div>
+                  <button class="btn btn-ghost interview-cancel-btn" type="button"
+                          [disabled]="cancellingReschedId === r.id"
+                          (click)="cancelReschedule(r)">
+                    {{ cancellingReschedId === r.id ? 'Cancelling…' : 'Cancel reschedule' }}
+                  </button>
+                }
+              </div>
+            }
+
+            @if (iv.status === 'COMPLETED') {
+              <button class="btn btn-ai" (click)="viewResult(iv.id)">
+                View AI Result
+              </button>
+            }
+
+            <!-- Invite recruiters -->
+            @if ((iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS') && canManageInvites(iv)) {
+              <div class="interview-invite">
+                <div class="interview-invite-label">Invited recruiters</div>
+
+                @if (iv.invitedRecruiterIds?.length) {
+                  <div class="interview-invite-chips">
+                    @for (rid of iv.invitedRecruiterIds; track rid) {
+                      <span class="interview-invite-chip">
+                        {{ recruiterLabel(rid) }}
+                        <button type="button" class="interview-invite-x"
+                                [disabled]="invitingId === iv.id"
+                                (click)="uninviteRecruiter(iv, rid)" aria-label="Remove">✕</button>
+                      </span>
+                    }
+                  </div>
+                }
+                @if (!iv.invitedRecruiterIds?.length) {
+                  <div class="interview-invite-empty">
+                    Only you can join this interview. Invite a colleague to let them join too.
+                  </div>
+                }
+
+                <div class="interview-invite-add">
+                  <select class="interview-invite-select" [(ngModel)]="inviteSelection">
+                    <option value="">Select a recruiter…</option>
+                    @for (r of availableRecruiters(iv); track r.id) {
+                      <option [value]="r.id">{{ recruiterLabel(r.id) }}</option>
+                    }
+                  </select>
+                  <button type="button" class="btn btn-ghost interview-invite-btn"
+                          [disabled]="!inviteSelection || invitingId === iv.id"
+                          (click)="inviteRecruiter(iv)">
+                    {{ invitingId === iv.id ? 'Inviting…' : 'Invite' }}
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <div class="interview-room-wrapper">
+      @if (activeInterview && canJoin(activeInterview)) {
+        <button class="btn btn-primary interview-join-btn" (click)="joinInterview()">
+          Join Interview
+        </button>
+      }
+      @if (activeInterview && !canJoin(activeInterview)) {
+        <div class="interview-private-block">
+          <span class="interview-private-note">This interview is private to its organizer.</span>
+          @if (!joinRequestSent) {
+            <button class="btn btn-ghost interview-request-btn" type="button"
+                    [disabled]="requestingJoin" (click)="requestToJoin(activeInterview)">
+              {{ requestingJoin ? 'Sending request…' : 'Request to join' }}
+            </button>
+          }
+          @if (joinRequestSent) {
+            <span class="interview-request-sent">
+              ✓ Request sent - the organizer has been notified.
+            </span>
+          }
+        </div>
+      }
+    </div>
+
+    @if (pendingProposal) {
+      <div class="interview-proposal-panel">
+        <div class="interview-proposal-head">
+          <span class="interview-proposal-badge">Proposal sent</span>
+          <span class="interview-proposal-meta">
+            {{ pendingProposal.proposedSlots.length }} slots ·
+            candidate must pick by {{ pendingProposal.deadline | date:'MMM d, HH:mm' }}
+          </span>
+        </div>
+        <div class="interview-proposal-slots">
+          @for (s of pendingProposal.proposedSlots; track s) {
+            <span class="interview-proposal-slot">{{ s | date:'EEE d MMM · HH:mm' }}</span>
+          }
+        </div>
+        <button class="btn btn-ghost interview-cancel-btn" type="button"
+                [disabled]="cancellingProposalId === pendingProposal.id"
+                (click)="cancelProposal(pendingProposal)">
+          {{ cancellingProposalId === pendingProposal.id ? 'Cancelling…' : 'Cancel proposal' }}
+        </button>
+      </div>
+    }
+
+    @if (declinedProposal; as dp) {
+      <div class="interview-declined-panel">
+        <div class="interview-declined-head">
+          <span class="interview-declined-badge">Candidate couldn't make it</span>
+        </div>
+        <p class="interview-declined-line">
+          The candidate declined the times you proposed ({{ dp.proposedSlots.length }} slots):
+        </p>
+        <div class="interview-declined-slots">
+          @for (s of dp.proposedSlots; track s) {
+            <div class="interview-declined-slot">
+              <span class="interview-declined-slot-day">{{ s | date:'EEE d MMM' }}</span>
+              <span class="interview-declined-slot-time">{{ s | date:'HH:mm' }}</span>
+            </div>
+          }
+        </div>
+        @if (dp.declineReason) {
+          <blockquote class="interview-declined-reason">
+            "{{ dp.declineReason }}"
+          </blockquote>
+        } @else {
+          <p class="interview-declined-noreason">No reason given.</p>
+        }
+        <div class="interview-declined-footer">
+          <p class="interview-declined-cta">Propose new times below - or if you can't accommodate them:</p>
+          <button class="btn btn-danger interview-declined-reject" type="button"
+                  [disabled]="rejecting"
+                  (click)="rejectCandidate()">
+            Reject candidate
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (!showScheduleForm && canSchedule) {
+      <button class="btn btn-primary interview-trigger-btn"
+        type="button" (click)="showScheduleForm = true">
+        Schedule Interview
+      </button>
+    }
+
+    @if (!canSchedule && !showScheduleForm && !pendingProposal) {
+      <span class="interview-blocked-badge">
+        Interview already scheduled
+      </span>
+    }
+
+    @if (showScheduleForm) {
+      <div class="interview-form-panel">
+        <app-schedule-interview
+          [applicationId]="app.applicationId"
+          [jobId]="app.jobId"
+          [jobTitle]="app.jobTitle || ''"
+          [candidateId]="app.candidateUserId"
+          [candidateEmail]="app.candidateEmail || ''"
+          [recruiterId]="recruiterId"
+          [recruiterEmail]="recruiterEmail"
+          (scheduled)="onInterviewScheduled($event)"
+          (proposed)="onProposalSent($event)" />
+        <button class="btn btn-ghost interview-cancel-btn" type="button"
+                (click)="showScheduleForm = false">
+          Cancel
+        </button>
+      </div>
+    }
+  }
+</div>

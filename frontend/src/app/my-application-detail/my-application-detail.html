@@ -1,6 +1,6 @@
 <!-- my-application-detail.html -->
 <div class="cad-page">
-  <ng-container *ngIf="!loading && app; else stateTpl">
+  @if (!loading && app) {
 
     <!-- HERO -->
     <section class="cad-hero">
@@ -42,7 +42,7 @@
             Download CV
           </button>
 
-          <!-- Withdraw button — only shown when APPLIED -->
+          <!-- Withdraw button - only shown when APPLIED -->
           @if (canWithdraw()) {
             <button
               class="btn btn-withdraw"
@@ -92,9 +92,16 @@
           </div>
 
 
-          <div class="cad-progress-note" *ngIf="(app.status || '') === 'REJECTED'">
-            This application was marked as rejected.
-          </div>
+          @if ((app.status || '') === 'REJECTED') {
+            <div class="cad-progress-note">
+              This application was marked as rejected.
+            </div>
+          }
+          @if ((app.status || '') === 'WITHDRAWN' && app.withdrawalReason) {
+            <div class="cad-progress-note">
+              {{ app.withdrawalReason }}
+            </div>
+          }
         </div>
       </div>
     </section>
@@ -107,19 +114,63 @@
   </div>
 
   <!-- Loading -->
-  <div *ngIf="interviewsLoading" class="cad-interview-state">
-    Loading interviews…
-  </div>
+  @if (interviewsLoading) {
+    <div class="cad-interview-state">
+      Loading interviews…
+    </div>
+  }
+
+  <!-- Pending proposal - candidate picks one of the offered slots -->
+  @if (pendingProposal) {
+    <div class="cad-proposal">
+      <div class="cad-proposal-head">
+        <span class="cad-proposal-badge">Action needed</span>
+        <span class="cad-proposal-title">
+          The recruiter offered you {{ pendingProposal.proposedSlots.length }} interview times
+        </span>
+        <span class="cad-proposal-deadline">{{ proposalDeadlineLabel(pendingProposal) }}</span>
+      </div>
+      @if (pendingProposal.message) {
+        <p class="cad-proposal-msg">{{ pendingProposal.message }}</p>
+      }
+      <div class="cad-proposal-slots">
+        @for (s of pendingProposal.proposedSlots; track $index) {
+          <button type="button" class="cad-proposal-slot"
+                  [disabled]="pickingSlotIdx !== null"
+                  (click)="pickProposalSlot(pendingProposal, $index)">
+            <span class="cad-proposal-slot-day">{{ s | date:'EEE d MMM' }}</span>
+            <span class="cad-proposal-slot-time">{{ s | date:'HH:mm' }}</span>
+            @if (pickingSlotIdx === $index) {
+              <span class="cad-proposal-slot-spin">Confirming…</span>
+            }
+          </button>
+        }
+      </div>
+      @if (proposalError) {
+        <div class="cad-proposal-error">{{ proposalError }}</div>
+      }
+      <div class="cad-proposal-footer">
+        <button type="button" class="cad-proposal-none"
+                [disabled]="pickingSlotIdx !== null"
+                (click)="declineProposal(pendingProposal)">
+          None of these work - ask for other times
+        </button>
+      </div>
+    </div>
+  }
 
   <!-- Empty -->
-  <div *ngIf="!interviewsLoading && interviews.length === 0" class="cad-interview-empty">
-    No interview scheduled yet. You'll be notified when one is set up.
-  </div>
+  @if (!interviewsLoading && interviews.length === 0 && !pendingProposal) {
+    <div class="cad-interview-empty">
+      No interview scheduled yet. You'll be notified when one is set up.
+    </div>
+  }
 
   <!-- Interview cards -->
-  <div class="cad-interview-list" *ngIf="!interviewsLoading && interviews.length > 0">
+  @if (!interviewsLoading && interviews.length > 0) {
+  <div class="cad-interview-list">
+    @for (iv of interviews; track iv.id) {
     <div
-      *ngFor="let iv of interviews"
       class="cad-interview-card"
       [ngClass]="iv.status.toLowerCase()"
     >
@@ -138,34 +189,127 @@
 
 
       <!-- Join button -->
-      <!-- Join button — requires consent -->
-<div class="cad-iv-row" *ngIf="iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS'">
+      <!-- Join button - requires consent -->
+@if (iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS') {
+<div class="cad-iv-row">
   <button
     class="btn btn-primary cad-iv-join"
     type="button"
     (click)="openConsentModal(iv)">
     Join Interview
   </button>
-  <span class="cad-iv-consent-badge" *ngIf="iv.recordingConsent">
-    Consent given
-  </span>
-  <span class="cad-iv-consent-badge cad-iv-consent-pending" *ngIf="!iv.recordingConsent">
-    Consent required
-  </span>
+  @if (iv.recordingConsent) {
+    <span class="cad-iv-consent-badge">
+      Consent given
+    </span>
+  }
+  @if (!iv.recordingConsent) {
+    <span class="cad-iv-consent-badge cad-iv-consent-pending">
+      Consent required
+    </span>
+  }
+  @if (iv.status === 'SCHEDULED' && !pendingReschedFor(iv.id) && reschedFormFor !== iv.id && app) {
+    <button class="btn btn-ghost" type="button"
+            (click)="openReschedForm(iv.id)">Reschedule</button>
+  }
 </div>
+}
+
+      <!-- Inline reschedule picker -->
+      @if (reschedFormFor === iv.id && app) {
+        <app-reschedule-picker
+          [interviewId]="iv.id"
+          [recruiterId]="iv.recruiterId"
+          [candidateId]="app.candidateUserId"
+          (proposed)="onReschedProposed($event)"
+          (cancelled)="closeReschedForm()" />
+      }
+
+      <!-- Pending reschedule banner (candidate view) -->
+      @if (pendingReschedFor(iv.id); as r) {
+        <div class="cad-resched-panel"
+             [class.cad-resched-panel--from-other]="r.proposedBy === 'RECRUITER'">
+          <div class="cad-resched-head">
+            <span class="cad-resched-badge">
+              {{ r.proposedBy === 'CANDIDATE' ? 'Reschedule sent' : 'Action needed' }}
+            </span>
+            <span class="cad-resched-meta">
+              respond by {{ r.deadline | date:'MMM d, HH:mm' }}
+            </span>
+          </div>
+          @if (r.message) {
+            <p class="cad-resched-msg">{{ r.message }}</p>
+          }
+          @if (r.proposedBy === 'RECRUITER') {
+            <p class="cad-resched-title">
+              The recruiter proposed {{ r.proposedSlots.length }} new times:
+            </p>
+            <div class="cad-resched-slots">
+              @for (s of r.proposedSlots; track $index) {
+                <button type="button" class="cad-resched-slot"
+                        [disabled]="acceptingReschedIdx !== null"
+                        (click)="acceptReschedule(r, $index)">
+                  <span class="cad-resched-slot-day">{{ s | date:'EEE d MMM' }}</span>
+                  <span class="cad-resched-slot-time">{{ s | date:'HH:mm' }}</span>
+                </button>
+              }
+            </div>
+            <div class="cad-resched-actions">
+              <button class="btn btn-ghost" type="button"
+                      [disabled]="decliningReschedId === r.id"
+                      (click)="declineReschedule(r)">
+                Keep original time
+              </button>
+            </div>
+          } @else {
+            <p class="cad-resched-title">
+              You proposed these times - waiting for the recruiter:
+            </p>
+            <div class="cad-resched-slots">
+              @for (s of r.proposedSlots; track s) {
+                <span class="cad-resched-slot-readonly">{{ s | date:'EEE d MMM · HH:mm' }}</span>
+              }
+            </div>
+            <button class="btn btn-ghost" type="button"
+                    [disabled]="cancellingReschedId === r.id"
+                    (click)="cancelReschedule(r)">
+              {{ cancellingReschedId === r.id ? 'Cancelling…' : 'Cancel request' }}
+            </button>
+          }
+        </div>
+      }
 
       <!-- Terminal states -->
-      <div class="cad-iv-row" *ngIf="iv.status === 'COMPLETED'">
-        <span class="cad-iv-done"> Interview completed</span>
-      </div>
-      <div class="cad-iv-row" *ngIf="iv.status === 'CANCELLED'">
-        <span class="cad-iv-cancelled">This interview was cancelled</span>
-      </div>
+      @if (iv.status === 'COMPLETED') {
+        <div class="cad-iv-row">
+          <span class="cad-iv-done"> Interview completed</span>
+        </div>
+      }
+      @if (iv.status === 'CANCELLED') {
+        <div class="cad-iv-row">
+          <span class="cad-iv-cancelled">This interview was cancelled</span>
+        </div>
+      }
 
     </div>
+    }
   </div>
+  }
 
 </section>
+
+<!-- ── Offer section (candidate side) ────────────────────────────────── -->
+@if (app && (app.status === 'OFFER' || app.status === 'HIRED')) {
+  <section class="cad-offer-section">
+    <div class="cad-interview-header">
+      <h3 class="cad-interview-title">Offer</h3>
+    </div>
+    <app-offer-panel
+      [applicationId]="app.applicationId"
+      mode="CANDIDATE"
+      (changed)="onOfferChanged()" />
+  </section>
+}
 
     <!-- CONTENT GRID -->
     <section class="cad-grid">
@@ -183,7 +327,7 @@
         <div class="cad-card-body">
           <div class="cad-kv">
             <div class="cad-k">Title</div>
-            <div class="cad-v">{{ app.jobTitle || '—' }}</div>
+            <div class="cad-v">{{ app.jobTitle || '-' }}</div>
           </div>
           <div class="cad-kv">
             <div class="cad-k">Job ID</div>
@@ -202,11 +346,15 @@
         </div>
 
         <div class="cad-card-body">
-          <a *ngIf="app.githubUrl" class="cad-url"
-             [href]="app.githubUrl" target="_blank" rel="noopener">
-            {{ app.githubUrl }}
-          </a>
-          <span *ngIf="!app.githubUrl" class="cad-url cad-url-muted">—</span>
+          @if (app.githubUrl) {
+            <a class="cad-url"
+               [href]="app.githubUrl" target="_blank" rel="noopener">
+              {{ app.githubUrl }}
+            </a>
+          }
+          @if (!app.githubUrl) {
+            <span class="cad-url cad-url-muted">-</span>
+          }
 
           <div class="cad-hint">
             Tip: keep your pinned projects updated, recruiters often check them first.
@@ -234,7 +382,8 @@
           </div>
 
           <!-- Edit block (only while APPLIED) -->
-          <div class="cad-edit" *ngIf="canEdit()">
+          @if (canEdit()) {
+          <div class="cad-edit">
             <div class="cad-edit-head">
               <div>
                 <div class="cad-edit-title">Edit submission</div>
@@ -248,7 +397,8 @@
               </button>
             </div>
 
-            <div class="cad-edit-body" *ngIf="editing()">
+            @if (editing()) {
+            <div class="cad-edit-body">
               <form [formGroup]="form" class="cad-edit-form">
 
                 <div class="cad-field">
@@ -272,19 +422,27 @@
                       {{ githubChecking() ? 'Checking…' : 'Verify' }}
                     </button>
                   </div>
-                  <div class="cad-field-ok" *ngIf="githubValid() === true">✓ Link is valid</div>
-                  <div class="cad-field-err" *ngIf="githubValid() === false">✗ Link is broken or unreachable</div>
-                  <div class="cad-field-err" *ngIf="form.get('githubUrl')?.touched && form.get('githubUrl')?.invalid">
-                    Please enter a valid URL (must start with http:// or https://).
-                  </div>
+                  @if (githubValid() === true) {
+                    <div class="cad-field-ok">✓ Link is valid</div>
+                  }
+                  @if (githubValid() === false) {
+                    <div class="cad-field-err">✗ Link is broken or unreachable</div>
+                  }
+                  @if (form.get('githubUrl')?.touched && form.get('githubUrl')?.invalid) {
+                    <div class="cad-field-err">
+                      Please enter a valid URL (must start with http:// or https://).
+                    </div>
+                  }
                 </div>
 
                 <div class="cad-field">
                   <label class="cad-label">Replace CV (PDF)</label>
                   <input class="input" type="file" accept="application/pdf,.pdf" (change)="onCvChange($event)" />
-                  <div class="cad-filepick" *ngIf="newCvName()">
-                    Selected: <span class="mono">{{ newCvName() }}</span>
-                  </div>
+                  @if (newCvName()) {
+                    <div class="cad-filepick">
+                      Selected: <span class="mono">{{ newCvName() }}</span>
+                    </div>
+                  }
                 </div>
 
                 <div class="cad-edit-actions">
@@ -294,18 +452,24 @@
                   </button>
                 </div>
 
-                <div class="cad-msg cad-msg-ok" *ngIf="success()">{{ success() }}</div>
-                <div class="cad-msg cad-msg-err" *ngIf="error">{{ error }}</div>
+                @if (success()) {
+                  <div class="cad-msg cad-msg-ok">{{ success() }}</div>
+                }
+                @if (error) {
+                  <div class="cad-msg cad-msg-err">{{ error }}</div>
+                }
               </form>
             </div>
+            }
           </div>
+          }
 
           <div class="cad-divider"></div>
 
           <div class="cad-cv-actions">
             <button class="btn btn-primary" type="button" (click)="downloadCv()">Download CV</button>
 
-            <!-- Withdraw button in CV section too — only when APPLIED -->
+            <!-- Withdraw button in CV section too - only when APPLIED -->
             @if (canWithdraw()) {
               <button
                 class="btn btn-withdraw"
@@ -323,12 +487,22 @@
 
     </section>
 
-    <div class="cad-msg cad-msg-err" *ngIf="error" style="margin-top:1rem">{{ error }}</div>
+    @if (error) {
+      <div class="cad-msg cad-msg-err" style="margin-top:1rem">{{ error }}</div>
+    }
 
-  </ng-container>
+  } @else {
+    @if (loading) {
+      <div class="cad-state">Loading…</div>
+    }
+    @if (error) {
+      <div class="cad-error">{{ error }}</div>
+    }
+  }
   <!-- Consent Modal Overlay -->
 <!-- Replace the consent modal section only -->
-<div class="cad-consent-overlay" *ngIf="consentInterviewId()" (click)="closeConsentModal()">
+@if (consentInterviewId()) {
+<div class="cad-consent-overlay" (click)="closeConsentModal()">
   <div class="cad-consent-modal" (click)="$event.stopPropagation()">
 
     <h3 class="cad-consent-title">Recording Consent</h3>
@@ -344,9 +518,11 @@
       you will not be able to join the interview.
     </p>
 
-    <div class="cad-consent-error" *ngIf="consentError()">
-      {{ consentError() }}
-    </div>
+    @if (consentError()) {
+      <div class="cad-consent-error">
+        {{ consentError() }}
+      </div>
+    }
 
     <div class="cad-consent-actions">
       <button class="btn btn-ghost" type="button"
@@ -357,15 +533,11 @@
       <button class="btn btn-primary" type="button"
               (click)="confirmConsent()"
               [disabled]="consentLoading()">
-        {{ consentLoading() ? 'Saving…' : 'I consent — Join Now' }}
+        {{ consentLoading() ? 'Saving…' : 'I consent - Join Now' }}
       </button>
     </div>
 
   </div>
 </div>
-
-  <ng-template #stateTpl>
-    <div *ngIf="loading" class="cad-state">Loading…</div>
-    <div *ngIf="error" class="cad-error">{{ error }}</div>
-  </ng-template>
+}
 </div>

@@ -5,7 +5,7 @@ import type { JobOffer } from '../model/jobOffer.model';
 
 /**
  * The universe of languages this app knows how to handle. We never extract a
- * language name from a job requirement unless it appears in this list — the
+ * language name from a job requirement unless it appears in this list - the
  * list acts as a safety net that filters out typos and unrelated tokens.
  *
  * Adding a new language here makes it eligible to surface in the candidate
@@ -58,18 +58,18 @@ const LANGUAGE_ALIASES: Record<string, readonly string[]> = {
 /**
  * Languages that are always offered in the candidate dropdown, even before
  * the user has loaded a single job. They represent the Tunisian cultural
- * baseline — every candidate's CV mentions some combination of these three
+ * baseline - every candidate's CV mentions some combination of these three
  * and forcing them to always appear means the dropdown never feels empty.
  */
 export const ALWAYS_SHOWN_LANGUAGES: readonly string[] = ['Arabic', 'French', 'English'];
 
 /**
- * The full canonical list of languages the app supports — exposed for screens
+ * The full canonical list of languages the app supports - exposed for screens
  * that need it synchronously (e.g. the recruiter's add-job / update-job pages,
  * where a LANGUAGE requirement is picked from a strict dropdown so it's
  * stored canonically in the DB and the candidate side never has to deal with
  * "Italien" vs "Italian"). Always-shown trio is ordered first, the rest is
- * alphabetical. Derived from LANGUAGE_ALIASES above — single source of truth.
+ * alphabetical. Derived from LANGUAGE_ALIASES above - single source of truth.
  */
 export function getCanonicalLanguages(): string[] {
   const always = ALWAYS_SHOWN_LANGUAGES;
@@ -82,7 +82,7 @@ export function getCanonicalLanguages(): string[] {
 /**
  * Map a legacy / non-canonical language string (e.g. "Italien", "Anglais B2",
  * "FR") to its canonical English name (e.g. "Italian", "English", "French").
- * Returns null when no alias matches — caller decides whether to keep the
+ * Returns null when no alias matches - caller decides whether to keep the
  * raw value, clear the field, or warn the user.
  *
  * Used when loading an existing job into the update-job form so a recruiter
@@ -105,7 +105,7 @@ export function canonicalizeLanguage(input: string | null | undefined): string |
  * any current job's LANGUAGE requirement description").
  *
  * Cached after the first successful fetch so Preferences and Onboarding share
- * one result per page load — there's no value in re-scanning jobs every time
+ * one result per page load - there's no value in re-scanning jobs every time
  * the user opens the language dropdown.
  */
 @Injectable({ providedIn: 'root' })
@@ -140,7 +140,7 @@ export class LanguageOptionsService {
     const extracted = new Set<string>(ALWAYS_SHOWN_LANGUAGES);
 
     for (const job of (jobs as JobOffer[] | undefined) || []) {
-      // Only mine PUBLISHED jobs — DRAFTs and CLOSEDs don't reflect current need.
+      // Only mine PUBLISHED jobs - DRAFTs and CLOSEDs don't reflect current need.
       if (job.jobStatus && job.jobStatus !== 'PUBLISHED') continue;
       const reqs = job.requirements ?? [];
       for (const req of reqs) {
@@ -152,7 +152,7 @@ export class LanguageOptionsService {
         // spellings (English/French/native/code). If ANY alias appears in the
         // requirement text, we add the canonical name to the extracted set.
         // That's how "Italien" in a recruiter's posting surfaces as "Italian"
-        // in the candidate dropdown — same selection, one canonical spelling.
+        // in the candidate dropdown - same selection, one canonical spelling.
         for (const canonical of LANGUAGE_WHITELIST) {
           const aliases = LANGUAGE_ALIASES[canonical] ?? [canonical.toLowerCase()];
           if (aliases.some(alias => text.includes(alias))) {

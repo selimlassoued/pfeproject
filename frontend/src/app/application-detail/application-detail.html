@@ -1,5 +1,5 @@
 <div class="ad-page">
-  <ng-container *ngIf="!loading && app; else stateTpl">
+  @if (!loading && app) {
 
     <!-- Header -->
     <div class="ad-header">
@@ -39,18 +39,22 @@
           </div>
         } @else if (isModerated) {
           <span class="ad-status-moderated">
-            {{ app.status === 'FLAGGED' ? 'Flagged — pending admin review' : 'Blocked by admin' }}
+            {{ app.status === 'FLAGGED' ? 'Flagged - pending admin review' : 'Blocked by admin' }}
           </span>
         } @else {
           <span class="ad-status-final">
-            {{ app.status === 'HIRED' ? '✓ Hired' : '✗ Rejected' }} — status is final
+            @switch (app.status) {
+              @case ('HIRED') { ✓ Hired - status is final }
+              @case ('WITHDRAWN') { Withdrawn - status is final }
+              @default { ✗ Rejected - status is final }
+            }
           </span>
         }
 
         <!-- AI Analysis -->
         <button class="btn btn-ai" type="button" (click)="openAnalysis()">AI Analysis</button>
 
-        <!-- Signal candidate — RECRUITER only, not shown when already moderated -->
+        <!-- Signal candidate - RECRUITER only, not shown when already moderated -->
         @if (canSignal() && !isModerated) {
           <button class="btn btn-signal" type="button" (click)="openSignalModal()">
             Signal Candidate
@@ -60,124 +64,101 @@
         <button class="btn btn-ghost" type="button" (click)="downloadCv()">Download CV</button>
       </div>
     </div>
-    <section class="interview-section">
-  <div class="interview-section-header">
-    <h3 class="interview-section-title">Interviews</h3>
-    @if (interviews.length > 0) {
-      <button class="btn btn-primary" type="button" (click)="viewSummary()">
-        View full candidate summary
-      </button>
+
+    @if (app.status === 'WITHDRAWN' && app.withdrawalReason) {
+      <div class="ad-withdrawn-note">
+        <span class="ad-withdrawn-icon">i</span>
+        <span>{{ app.withdrawalReason }}</span>
+      </div>
     }
-  </div>
 
-  <div *ngIf="interviewsLoading" class="interview-state-msg">Loading interviews…</div>
+    <!-- ── Summary cards: Interviews + Offer ────────────────────────── -->
+    <section class="ad-summary-grid">
 
-  <div *ngIf="!interviewsLoading && interviews.length === 0 && !showScheduleForm" class="interview-empty">
-    No interviews scheduled yet.
-  </div>
+      <!-- Interviews summary card -->
+      <a class="ad-summary-card" [routerLink]="['/application', app.applicationId, 'interviews']">
+        <div class="ad-summary-head">
+          <h3 class="ad-summary-title">
+            Interviews
+            @if (hasNewInterviews) {
+              <span class="ad-summary-new" title="New activity since you last opened this">NEW</span>
+            }
+          </h3>
+          @if (interviewsLoading) {
+            <span class="ad-summary-spinner">…</span>
+          }
+        </div>
 
-  <div class="interview-list" *ngIf="!interviewsLoading && interviews.length > 0">
-    <div *ngFor="let iv of interviews" class="interview-card" [ngClass]="iv.status.toLowerCase()">
+        @if (!interviewsLoading) {
+          <div class="ad-summary-body">
+            @if (interviews.length === 0 && !pendingProposal) {
+              <p class="ad-summary-line ad-summary-line-muted">No interview yet.</p>
+            }
+            @if (nextScheduledInterview; as iv) {
+              <p class="ad-summary-line">
+                Next: <strong>{{ iv.scheduledAt | date:'EEE d MMM, HH:mm' }}</strong>
+              </p>
+            }
+            @if (completedInterviewsCount > 0) {
+              <p class="ad-summary-line ad-summary-line-muted">
+                {{ completedInterviewsCount }} completed
+              </p>
+            }
+            @if (pendingProposal) {
+              <span class="ad-summary-badge ad-summary-badge-info">Proposal waiting</span>
+            }
+            @if (lastDeclinedProposal && !pendingProposal && !nextScheduledInterview) {
+              <span class="ad-summary-badge ad-summary-badge-warn">Candidate declined times</span>
+            }
+          </div>
+        }
 
-      <div class="interview-card-top">
-        <span class="interview-status-pill">{{ iv.status }}</span>
-        <span class="interview-date">
-          {{ iv.scheduledAt | date:'dd/MM/yyyy' }} &nbsp;{{ iv.scheduledAt | date:'HH:mm' }}
+        <span class="ad-summary-cta">Manage interviews &rarr;</span>
+      </a>
+
+      <!-- Offer summary card -->
+      <a class="ad-summary-card" [routerLink]="['/application', app.applicationId, 'offer']">
+        <div class="ad-summary-head">
+          <h3 class="ad-summary-title">
+            Offer
+            @if (hasNewOffer) {
+              <span class="ad-summary-new" title="New activity since you last opened this">NEW</span>
+            }
+          </h3>
+          @if (offerLoading) {
+            <span class="ad-summary-spinner">…</span>
+          }
+        </div>
+
+        @if (!offerLoading) {
+          <div class="ad-summary-body">
+            @if (offer; as o) {
+              <p class="ad-summary-line">
+                <strong>{{ o.salary }} {{ o.currency }}</strong>
+                · {{ o.contractType }} · {{ o.startDate | date:'mediumDate' }}
+              </p>
+              <span class="ad-summary-badge ad-summary-badge-status-{{ o.status.toLowerCase() }}">
+                {{ o.status }}
+              </span>
+            } @else {
+              @if (canMakeOffer) {
+                <p class="ad-summary-line ad-summary-line-muted">No offer yet.</p>
+              } @else {
+                <p class="ad-summary-line ad-summary-line-muted">
+                  Available once the candidate reaches the interview phase.
+                </p>
+              }
+            }
+          </div>
+        }
+
+        <span class="ad-summary-cta">
+          @if (offer) { Open offer &rarr; } @else { Make offer &rarr; }
         </span>
-      </div>
+      </a>
 
-      <div class="interview-card-bottom">
-        <span class="interview-room-label">{{ iv.roomUrl }}</span>
-        <button
-          *ngIf="(iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS') && canCancel(iv)"
-          class="btn btn-danger interview-cancel-btn"
-          (click)="cancelInterview(iv)"
-          [disabled]="cancellingId === iv.id">
-          {{ cancellingId === iv.id ? 'Cancelling…' : 'Cancel' }}
-        </button>
-      </div>
-      <button
-  *ngIf="iv.status === 'COMPLETED'"
-  class="btn btn-ai"
-  (click)="viewResult(iv.id)">
-  View AI Result
-</button>
+    </section>
 
-      <!-- Invite recruiters — only the organizer sees this -->
-      <div class="interview-invite"
-           *ngIf="(iv.status === 'SCHEDULED' || iv.status === 'IN_PROGRESS') && canManageInvites(iv)">
-        <div class="interview-invite-label">Invited recruiters</div>
-
-        <div class="interview-invite-chips" *ngIf="iv.invitedRecruiterIds?.length">
-          <span class="interview-invite-chip" *ngFor="let rid of iv.invitedRecruiterIds">
-            {{ recruiterLabel(rid) }}
-            <button type="button" class="interview-invite-x"
-                    [disabled]="invitingId === iv.id"
-                    (click)="uninviteRecruiter(iv, rid)" aria-label="Remove">✕</button>
-          </span>
-        </div>
-        <div class="interview-invite-empty" *ngIf="!iv.invitedRecruiterIds?.length">
-          Only you can join this interview. Invite a colleague to let them join too.
-        </div>
-
-        <div class="interview-invite-add">
-          <select class="interview-invite-select" [(ngModel)]="inviteSelection">
-            <option value="">Select a recruiter…</option>
-            <option *ngFor="let r of availableRecruiters(iv)" [value]="r.id">
-              {{ recruiterLabel(r.id) }}
-            </option>
-          </select>
-          <button type="button" class="btn btn-ghost interview-invite-btn"
-                  [disabled]="!inviteSelection || invitingId === iv.id"
-                  (click)="inviteRecruiter(iv)">
-            {{ invitingId === iv.id ? 'Inviting…' : 'Invite' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="interview-room-wrapper">
-    <button *ngIf="activeInterview && canJoin(activeInterview)"
-            class="btn btn-primary interview-join-btn" (click)="joinInterview()">
-      Join Interview
-    </button>
-    <div *ngIf="activeInterview && !canJoin(activeInterview)" class="interview-private-block">
-      <span class="interview-private-note">This interview is private to its organizer.</span>
-      <button *ngIf="!joinRequestSent" class="btn btn-ghost interview-request-btn" type="button"
-              [disabled]="requestingJoin" (click)="requestToJoin(activeInterview)">
-        {{ requestingJoin ? 'Sending request…' : 'Request to join' }}
-      </button>
-      <span *ngIf="joinRequestSent" class="interview-request-sent">
-        ✓ Request sent — the organizer has been notified.
-      </span>
-    </div>
-  </div>
-
-  <button *ngIf="!showScheduleForm && canSchedule" class="btn btn-primary interview-trigger-btn"
-    type="button" (click)="showScheduleForm = true">
-    Schedule Interview
-  </button>
-
-  <span class="interview-blocked-badge" *ngIf="!canSchedule && !showScheduleForm">
-    Interview already scheduled
-  </span>
-
-  <div class="interview-form-panel" *ngIf="showScheduleForm">
-    <app-schedule-interview
-      [applicationId]="app.applicationId"
-      [jobId]="app.jobId"
-      [jobTitle]="app.jobTitle || ''"
-      [candidateId]="app.candidateUserId"
-      [candidateEmail]="app.candidateEmail || ''"
-      [recruiterId]="recruiterId"
-      [recruiterEmail]="recruiterEmail"
-      (scheduled)="onInterviewScheduled($event)" />
-    <button class="btn btn-ghost interview-cancel-btn" type="button" (click)="showScheduleForm = false">
-      Cancel
-    </button>
-  </div>
-</section>
     <!-- Main Card -->
     <section class="ad-card">
 
@@ -192,7 +173,7 @@
         <button class="ad-linkbtn" type="button" (click)="goToUser()">View candidate profile</button>
         <button class="ad-linkbtn ad-linkbtn-ai" type="button" (click)="openAnalysis()">View AI CV Analysis</button>
 
-        <!-- Signal shortcut — RECRUITER only, not shown when already moderated -->
+        <!-- Signal shortcut - RECRUITER only, not shown when already moderated -->
         @if (canSignal() && !isModerated) {
           <button class="ad-linkbtn ad-linkbtn-signal" type="button" (click)="openSignalModal()">
             Signal this candidate →
@@ -478,7 +459,7 @@
 
             <div class="ad-block-body">
               <a class="ad-url" [href]="app.githubUrl" target="_blank" rel="noopener">
-                {{ app.githubUrl || '—' }}
+                {{ app.githubUrl || '-' }}
               </a>
             </div>
           </div>
@@ -507,23 +488,26 @@
       </div>
     </section>
 
-  </ng-container>
-
-  <ng-template #stateTpl>
-    <div *ngIf="loading" class="ad-state">Loading…</div>
-    <div *ngIf="error" class="ad-error">{{ error }}</div>
-  </ng-template>
+  } @else {
+    @if (loading) {
+      <div class="ad-state">Loading…</div>
+    }
+    @if (error) {
+      <div class="ad-error">{{ error }}</div>
+    }
+  }
 </div>
 
 <!-- CV Analysis Drawer -->
-<app-cv-analysis-drawer
-  *ngIf="drawerOpen"
-  [applicationId]="app?.applicationId ?? null"
-  [candidateName]="app?.candidateName ?? null"
-  (closed)="closeDrawer()">
-</app-cv-analysis-drawer>
+@if (drawerOpen) {
+  <app-cv-analysis-drawer
+    [applicationId]="app?.applicationId ?? null"
+    [candidateName]="app?.candidateName ?? null"
+    (closed)="closeDrawer()">
+  </app-cv-analysis-drawer>
+}
 
-<!-- Signal Candidate Modal — RECRUITER only -->
+<!-- Signal Candidate Modal - RECRUITER only -->
 @if (signalModalOpen && canSignal()) {
   <div class="modal-backdrop" (click)="closeSignalModal()"></div>
   <div class="modal-panel">

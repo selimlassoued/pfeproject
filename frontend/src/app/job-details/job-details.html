@@ -52,15 +52,15 @@
         </div>
         <div class="info-block">
           <div class="label">Employment</div>
-          <div class="value">{{ formatEmploymentType(job()!.employmentType ?? '—')}}</div>
+          <div class="value">{{ formatEmploymentType(job()!.employmentType ?? '-')}}</div>
         </div>
         <div class="info-block">
           <div class="label">Status</div>
-          <div class="value">{{ formatEmploymentType(job()!.jobStatus ?? '—') }}</div>
+          <div class="value">{{ formatEmploymentType(job()!.jobStatus ?? '-') }}</div>
         </div>
         <div class="info-block">
           <div class="label">Reference</div>
-          <div class="value mono">{{ job()!.refNumber ?? '—' }}</div>
+          <div class="value mono">{{ job()!.refNumber ?? '-' }}</div>
         </div>
         @if (showAppsPanel && job()!.jobStatus === 'PUBLISHED' && job()!.openings != null) {
           <div class="info-block">
@@ -86,19 +86,26 @@
         }
         @if ((job()!.requirements?.length ?? 0) > 0) {
           <div style="display:grid; gap:.75rem; margin-top:.75rem;">
-            <div class="card" style="padding:.85rem;" *ngFor="let r of job()!.requirements">
-              <div class="section-title" style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
-                <strong>{{ r.category }}</strong>
+            @for (r of job()!.requirements; track $index) {
+              <div class="card" style="padding:.85rem;">
+                <div class="section-title" style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+                  <strong>{{ r.category }}</strong>
+                </div>
+                <div class="text-muted" style="margin-top:.35rem;">{{ r.description }}</div>
+                @if (r.minYears != null || r.maxYears != null) {
+                  <div class="text-muted" style="margin-top:.35rem;">
+                    Experience:
+                    @if (r.minYears != null) {
+                      <span>{{ r.minYears }}+</span>
+                    }
+                    @if (r.minYears == null && r.maxYears != null) {
+                      <span>Up to {{ r.maxYears }}</span>
+                    }
+                    years
+                  </div>
+                }
               </div>
-              <div class="text-muted" style="margin-top:.35rem;">{{ r.description }}</div>
-              <div class="text-muted" style="margin-top:.35rem;"
-                *ngIf="r.minYears != null || r.maxYears != null">
-                Experience:
-                <span *ngIf="r.minYears != null">{{ r.minYears }}+</span>
-                <span *ngIf="r.minYears == null && r.maxYears != null">Up to {{ r.maxYears }}</span>
-                years
-              </div>
-            </div>
+            }
           </div>
         }
       </div>
@@ -110,7 +117,7 @@
           </button>
         }
         <button class="btn btn-ghost" type="button" [routerLink]="['/browse']">Back to jobs</button>
-        <!-- Edit / Close / Duplicate — RECRUITER only -->
+        <!-- Edit / Close / Duplicate - RECRUITER only -->
         @if (canManageJobs) {
           <!-- Editable only while DRAFT, or PUBLISHED with zero applicants -->
           @if (canEditJob) {
@@ -126,7 +133,7 @@
             </button>
           }
           @if (job()!.jobStatus === 'PUBLISHED' && statusCountsLoaded() && totalApplicants > 0) {
-            <span class="lock-note">Locked for editing — {{ totalApplicants }} candidate(s) applied</span>
+            <span class="lock-note">Locked for editing - {{ totalApplicants }} candidate(s) applied</span>
           }
         }
       </div>
@@ -159,12 +166,13 @@
               [style.--tab-color]="statusColor(s)"
               (click)="setStatus(s)">
               {{ s }}
-              <span class="apps-tab-count"
-                *ngIf="statusCounts()[s] !== undefined"
-                [style.background]="activeStatus() === s ? statusBg(s) : 'rgba(255,255,255,0.06)'"
-                [style.color]="activeStatus() === s ? statusColor(s) : 'rgba(248,250,252,0.35)'">
-                {{ statusCounts()[s] }}
-              </span>
+              @if (statusCounts()[s] !== undefined) {
+                <span class="apps-tab-count"
+                  [style.background]="activeStatus() === s ? statusBg(s) : 'rgba(255,255,255,0.06)'"
+                  [style.color]="activeStatus() === s ? statusColor(s) : 'rgba(248,250,252,0.35)'">
+                  {{ statusCounts()[s] }}
+                </span>
+              }
             </button>
           }
         </div>
@@ -197,7 +205,7 @@
                       <span class="rank-badge" [class.rank-top]="i === 0">#{{ appPage() * APP_PAGE_SIZE + i + 1 }}</span>
                     </td>
                     <td>
-                      <div class="app-candidate-name">{{ app.candidateName || '—' }}</div>
+                      <div class="app-candidate-name">{{ app.candidateName || '-' }}</div>
                       <div class="text-muted mono" style="font-size:.7rem;">{{ app.candidateUserId }}</div>
                     </td>
                     <td (click)="$event.stopPropagation()">
@@ -206,7 +214,7 @@
                           {{ app.jobFitScore }}%
                         </span>
                       } @else {
-                        <span class="text-muted" style="font-size:.8rem;">—</span>
+                        <span class="text-muted" style="font-size:.8rem;">-</span>
                       }
                     </td>
                     <td>

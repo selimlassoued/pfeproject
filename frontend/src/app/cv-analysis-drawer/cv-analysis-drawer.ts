@@ -18,10 +18,10 @@ export class CvAnalysisDrawer implements OnChanges {
   loading = false;
   error: string | null = null;
   pending = false;
-  notStarted = false;          // polled long enough — no analysis exists or is running
+  notStarted = false;          // polled long enough - no analysis exists or is running
   retrying = false;
 
-  // Bounded polling: 30 × 4s = 120s — covers a slow parse (~96s) + semantic match.
+  // Bounded polling: 30 × 4s = 120s - covers a slow parse (~96s) + semantic match.
   // After this, we stop the spinner and offer a "Run Analysis" button instead of
   // polling forever (the old behaviour, which spun indefinitely for never-analyzed apps).
   private pollCount = 0;
@@ -52,7 +52,7 @@ export class CvAnalysisDrawer implements OnChanges {
     const idAtStart = this.applicationId;
     this.appService.hasCvAnalysis(idAtStart!).subscribe({
       next: (exists) => {
-        if (this.applicationId !== idAtStart) return;   // drawer switched apps — abort
+        if (this.applicationId !== idAtStart) return;   // drawer switched apps - abort
 
         if (exists) {
           this.appService.getCvAnalysis(idAtStart!).subscribe({
@@ -70,7 +70,7 @@ export class CvAnalysisDrawer implements OnChanges {
           return;
         }
 
-        // No analysis row yet — keep polling up to MAX_POLLS, then give up.
+        // No analysis row yet - keep polling up to MAX_POLLS, then give up.
         this.loading = false;
         this.pollCount++;
         if (this.pollCount >= this.MAX_POLLS) {
@@ -146,7 +146,7 @@ export class CvAnalysisDrawer implements OnChanges {
     }
   }
 
-  /** Format 0.0–1.0 ratio as a percentage string e.g. "73%" */
+  /** Format 0.0-1.0 ratio as a percentage string e.g. "73%" */
   ownershipPercent(ratio: number | null | undefined): string {
     if (ratio == null) return '';
     return Math.round(ratio * 100) + '%';
@@ -156,7 +156,7 @@ export class CvAnalysisDrawer implements OnChanges {
     return this.analysis?.parsingStatus === 'FAILED';
   }
 
-  /** Triggers an analysis — used both to retry a FAILED one and to start one
+  /** Triggers an analysis - used both to retry a FAILED one and to start one
    *  for an application that was never analyzed (notStarted state). */
   retry(): void {
     if (!this.applicationId || this.retrying) return;

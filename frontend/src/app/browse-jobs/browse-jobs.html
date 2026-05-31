@@ -20,7 +20,7 @@
     }
   </header>
 
-  <!-- Recruiter tools — RECRUITER only -->
+  <!-- Recruiter tools - RECRUITER only -->
   @if (canManageJobs) {
     <div class="card" style="padding:1rem; margin-bottom:1.25rem;">
       <div style="display:flex; justify-content:space-between; gap:1rem; align-items:center; flex-wrap:wrap;">
@@ -75,9 +75,9 @@
         <select class="input" [value]="salaryRange" (change)="onSalaryRangeChange($event)">
           <option value="any">Any</option>
           <option value="specified">Specified only</option>
-          <option value="0-1000">0–1000 TND</option>
-          <option value="1000-2000">1000–2000 TND</option>
-          <option value="2000-5000">2000–5000 TND</option>
+          <option value="0-1000">0-1000 TND</option>
+          <option value="1000-2000">1000-2000 TND</option>
+          <option value="2000-5000">2000-5000 TND</option>
           <option value="5000+">5000+ TND</option>
         </select>
       </div>
@@ -175,7 +175,7 @@
 
             @if (canManageJobs) {
               <!-- DRAFT jobs are freely editable from the list. PUBLISHED jobs may
-                   still be editable (if no applicants) — but that check needs the
+                   still be editable (if no applicants) - but that check needs the
                    applicant count, so editing them is done from the job detail page. -->
               @if (job.jobStatus === 'DRAFT') {
                 <button class="btn btn-primary" type="button" [routerLink]="['/edit-job', job.id]">Edit</button>
@@ -208,7 +208,7 @@
       <button class="btn btn-ghost" type="button" (click)="nextPage()"
         [disabled]="!(pageResponse?.hasNext ?? false)">Next →</button>
       <!-- Option values must match the labels (and the component's default
-           pageSize) — otherwise the select renders empty because none of the
+           pageSize) - otherwise the select renders empty because none of the
            options match the bound value. -->
       <select class="input" [value]="pageSize" (change)="changePageSize($event)" style="width: auto; padding: 0.5rem;">
         <option value="5">5 per page</option>

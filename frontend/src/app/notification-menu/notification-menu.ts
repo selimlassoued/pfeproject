@@ -97,6 +97,7 @@ export class NotificationsMenu implements OnInit, OnDestroy {
     switch (n.type) {
       case 'INTERVIEW_INVITE':
       case 'INTERVIEW_JOIN_REQUEST':    return 'Go to the interview';
+      case 'INTERVIEW_PROPOSAL_DECLINED': return 'Propose new times';
       case 'APPLICATION_STATUS_UPDATE': return 'View my application';
       case 'JOB_UPDATED':
       case 'JOB_QUOTA_REACHED':         return 'View the job';
@@ -115,6 +116,11 @@ export class NotificationsMenu implements OnInit, OnDestroy {
       case 'INTERVIEW_INVITE':
       case 'INTERVIEW_JOIN_REQUEST':
         path = id ? ['/application', id] : ['/calendar'];
+        break;
+      case 'INTERVIEW_PROPOSAL_DECLINED':
+        // Recruiter notification - relatedEntityId is the applicationId; take
+        // them straight to that application to propose new times.
+        path = id ? ['/application', id] : ['/listApplications'];
         break;
       case 'APPLICATION_STATUS_UPDATE':
         path = id ? ['/my-application', id] : ['/my-applications'];
@@ -156,6 +162,7 @@ export class NotificationsMenu implements OnInit, OnDestroy {
       case 'ROLE_UPDATE':               return 'Role Updated';
       case 'INTERVIEW_INVITE':          return 'Interview Invitation';
       case 'INTERVIEW_JOIN_REQUEST':    return 'Join Request';
+      case 'INTERVIEW_PROPOSAL_DECLINED': return 'Proposal Declined';
       default:                          return type;
     }
   }

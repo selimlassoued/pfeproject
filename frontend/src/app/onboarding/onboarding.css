@@ -45,7 +45,7 @@
   flex-shrink: 0;
 }
 
-/* "Remind me later" — subtle ghost pill */
+/* "Remind me later" - subtle ghost pill */
 .ob-skip {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(121,164,233,0.22);
@@ -64,7 +64,7 @@
   color: #fff;
 }
 
-/* "Don't ask again" — quiet, de-emphasised text link */
+/* "Don't ask again" - quiet, de-emphasised text link */
 .ob-skip--muted {
   background: none;
   border: none;

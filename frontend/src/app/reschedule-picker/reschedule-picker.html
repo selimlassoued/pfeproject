@@ -1,0 +1,95 @@
+<div class="resched-card">
+  <div class="resched-header">
+    <h4 class="resched-title">Propose new times</h4>
+    <p class="resched-subtitle">
+      Pick 1-4 alternative times. The other party gets a card and confirms one.
+      The original interview time stays valid until they pick.
+    </p>
+  </div>
+
+  <div class="resched-form">
+    <div class="resched-field">
+      <label for="resched-date">Day</label>
+      <input id="resched-date" type="date" class="resched-input"
+             [min]="minDate" [(ngModel)]="selectedDate" />
+    </div>
+
+    <div class="resched-field">
+      <label>Pick available times (tap to toggle)</label>
+      @if (busyLoading) {
+        <div class="resched-msg">Loading availability…</div>
+      } @else if (dateError) {
+        <div class="resched-date-error">{{ dateError }}</div>
+      } @else {
+        <div class="resched-grid">
+          @for (row of slotsByHour; track row.hour) {
+            <div class="resched-row">
+              <span class="resched-row-label">{{ row.hour }}h</span>
+              <div class="resched-row-quarters">
+                @for (slot of row.quarters; track slot.time) {
+                  @if (slot.state === 'past') {
+                    <span class="resched-slot-empty" aria-hidden="true"></span>
+                  } @else {
+                    <button type="button" class="resched-slot"
+                            [class.resched-slot--free]="slot.state === 'free'"
+                            [class.resched-slot--recruiter]="slot.state === 'recruiter'"
+                            [class.resched-slot--candidate]="slot.state === 'candidate'"
+                            [class.resched-slot--both]="slot.state === 'both'"
+                            [class.resched-slot--on]="isSlotPicked(slot.time)"
+                            [disabled]="slot.state !== 'free'"
+                            [title]="slotTitle(slot)"
+                            (click)="pickSlot(slot)">
+                      :{{ slot.time.substring(3) }}
+                    </button>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="resched-field">
+      <label>Slots offered <span class="resched-count">({{ proposedSlots.length }}/4)</span></label>
+      @if (proposedSlots.length === 0) {
+        <div class="resched-empty-picks">No slots picked yet - tap times above.</div>
+      } @else {
+        <div class="resched-picked-chips">
+          @for (s of proposedSlots; track s.iso) {
+            <span class="resched-picked-chip">
+              {{ s.label }}
+              <button type="button" class="resched-picked-remove"
+                      (click)="removeProposedSlot(s.iso)" title="Remove">✕</button>
+            </span>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="resched-field">
+      <label for="resched-deadline">Other party must respond by</label>
+      <input id="resched-deadline" type="datetime-local" class="resched-input"
+             [(ngModel)]="deadline" />
+    </div>
+
+    <div class="resched-field">
+      <label for="resched-msg">Reason (optional)</label>
+      <textarea id="resched-msg" class="resched-input resched-textarea" rows="2"
+                maxlength="500"
+                placeholder="e.g. Sorry, something came up - could we move it?"
+                [(ngModel)]="message"></textarea>
+    </div>
+
+    @if (error) { <div class="resched-error">{{ error }}</div> }
+
+    <div class="resched-actions">
+      <button class="btn btn-ghost" type="button"
+              [disabled]="loading" (click)="cancel()">Cancel</button>
+      <button class="btn btn-primary" type="button"
+              [disabled]="!canSubmit" (click)="submit()">
+        {{ loading ? 'Sending…' : 'Send reschedule request' }}
+      </button>
+    </div>
+  </div>
+</div>

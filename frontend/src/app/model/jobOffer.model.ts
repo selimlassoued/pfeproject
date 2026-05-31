@@ -7,7 +7,7 @@ export interface JobOffer {
   description: string;
   location: string;
   workArrangement?: string | null;
-  // Business domain — one of SOFTWARE_ENGINEERING / FINANCE_BANKING /
+  // Business domain - one of SOFTWARE_ENGINEERING / FINANCE_BANKING /
   // INSURANCE / PROJECT_MANAGEMENT / QUALITY_ASSURANCE / BUSINESS_ANALYSIS.
   // Feeds the candidate-side chip-grid filter so each domain's candidates
   // only see relevant skills in their Preferences.

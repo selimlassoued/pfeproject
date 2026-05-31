@@ -32,8 +32,25 @@ public class NotificationEventsListener {
             case "APPLICATION_STATUS_UPDATE" -> notificationService.handleApplicationStatusUpdate(evt);
             case "JOB_UPDATED"       -> notificationService.handleJobUpdated(evt);
             case "JOB_QUOTA_REACHED" -> notificationService.handleJobQuotaReached(evt);
-            case "INTERVIEW_INVITE"       -> notificationService.handleInterviewInvite(evt);
+            case "INTERVIEW_INVITE"       -> {
+                notificationService.handleInterviewInvite(evt);
+                notificationService.pushInterviewListChange(evt);
+            }
             case "INTERVIEW_JOIN_REQUEST" -> notificationService.handleInterviewJoinRequest(evt);
+            case "INTERVIEW_PROPOSAL_DECLINED" -> notificationService.handleInterviewProposalDeclined(evt);
+            // Pure data pings - the navbar imminent-interview widget reloads on
+            // any of these so it appears without a refresh.
+            case "INTERVIEW_SCHEDULED",
+                 "INTERVIEW_CANCELLED",
+                 "INTERVIEW_PROPOSAL_SENT",
+                 "INTERVIEW_PROPOSAL_PICKED",
+                 "INTERVIEW_PROPOSAL_DECLINED",
+                 "INTERVIEW_PROPOSAL_CANCELLED",
+                 "INTERVIEW_RESCHEDULE_CONFIRMED",
+                 "INTERVIEW_DELEGATION_ACCEPTED"
+                                            -> notificationService.pushInterviewListChange(evt);
+            // Live offer push - both candidate and recruiter UIs reload.
+            case "OFFER_CHANGED"             -> notificationService.pushOfferChange(evt);
             default -> { /* ignore */ }
         }
     }

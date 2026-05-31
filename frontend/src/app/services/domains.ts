@@ -6,7 +6,7 @@
  *   • the chip-grid filter (skill shown only if its domains include the
  *     candidate's chosen domain, or it has no domain tags = universal).
  *
- * Adding a new domain here propagates everywhere — recruiter dropdowns,
+ * Adding a new domain here propagates everywhere - recruiter dropdowns,
  * candidate dropdowns, admin tagging, and matcher behavior all stay in sync.
  */
 export interface DomainOption {
@@ -23,7 +23,7 @@ export const DOMAIN_OPTIONS: readonly DomainOption[] = [
   { value: 'BUSINESS_ANALYSIS',    label: 'Business Analysis' },
 ];
 
-/** Quick lookup helper — `domainLabel('FINANCE_BANKING')` → 'Finance & Banking'. */
+/** Quick lookup helper - `domainLabel('FINANCE_BANKING')` → 'Finance & Banking'. */
 export function domainLabel(value: string | null | undefined): string {
   if (!value) return '';
   const hit = DOMAIN_OPTIONS.find(d => d.value === value);

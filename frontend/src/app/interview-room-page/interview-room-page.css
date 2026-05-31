@@ -29,7 +29,7 @@
     color: var(--color-text-danger);
 }
 
-/* ── Candidate lobby — waiting to be admitted ─────────────────────────── */
+/* ── Candidate lobby - waiting to be admitted ─────────────────────────── */
 .lobby-wait {
   flex: 1;
   display: flex;

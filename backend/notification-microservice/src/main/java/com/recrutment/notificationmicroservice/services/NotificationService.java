@@ -196,6 +196,117 @@ public class NotificationService {
         }
     }
 
+    /** The candidate couldn't make any proposed slot — notify the recruiter so
+     *  they can send fresh times. Carries the candidate's reason if given. */
+    /**
+     * Push a lightweight "your interview list changed" ping to every user whose
+     * navbar widget could be affected by an interview event - the candidate, the
+     * organising recruiter, anyone delegated to, and any invited recruiters. The
+     * frontend's ImminentInterview widget listens on this topic and re-fetches
+     * its interview set so the live banner appears without a page refresh. It is
+     * NOT a Notification (no entry in the bell, no email).
+     */
+    public void pushInterviewListChange(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        java.util.Set<String> userIds = new java.util.LinkedHashSet<>();
+        addUserIfPresent(userIds, payload.get("candidateId"));
+        addUserIfPresent(userIds, payload.get("recruiterId"));
+        addUserIfPresent(userIds, payload.get("fromRecruiterId"));
+        addUserIfPresent(userIds, payload.get("toRecruiterId"));
+        addUserIfPresent(userIds, payload.get("invitedRecruiterId"));
+        Object invited = payload.get("invitedRecruiterIds");
+        if (invited instanceof List<?> list) {
+            for (Object item : list) addUserIfPresent(userIds, item);
+        }
+
+        if (userIds.isEmpty()) return;
+
+        Map<String, Object> ping = Map.of(
+                "type",       "LIST_CHANGED",
+                "reason",     evt.getEventType() != null ? evt.getEventType() : "UNKNOWN",
+                "interviewId", String.valueOf(payload.getOrDefault("interviewId", ""))
+        );
+        for (String uid : userIds) {
+            try {
+                messagingTemplate.convertAndSend("/topic/interviews.list." + uid, (Object) ping);
+            } catch (Exception e) {
+                log.warn("Could not push interviews.list ping to {}: {}", uid, e.getMessage());
+            }
+        }
+    }
+
+    private static void addUserIfPresent(java.util.Set<String> sink, Object raw) {
+        if (raw == null) return;
+        String s = raw.toString().trim();
+        if (!s.isEmpty()) sink.add(s);
+    }
+
+    /**
+     * Push a tiny "offer changed" ping to the candidate and recruiter so their
+     * UIs reload the offer state in real time. NOT a Notification (no bell, no
+     * email) - the changes are surfaced via the offer card refreshing.
+     */
+    public void pushOfferChange(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        java.util.Set<String> userIds = new java.util.LinkedHashSet<>();
+        addUserIfPresent(userIds, payload.get("candidateUserId"));
+        addUserIfPresent(userIds, payload.get("recruiterId"));
+        if (userIds.isEmpty()) return;
+
+        Map<String, Object> ping = Map.of(
+                "type",          "OFFER_CHANGED",
+                "applicationId", String.valueOf(payload.getOrDefault("applicationId", "")),
+                "offerId",       String.valueOf(payload.getOrDefault("offerId", "")),
+                "status",        String.valueOf(payload.getOrDefault("status", ""))
+        );
+        for (String uid : userIds) {
+            try {
+                messagingTemplate.convertAndSend("/topic/offers." + uid, (Object) ping);
+            } catch (Exception e) {
+                log.warn("Could not push offers ping to {}: {}", uid, e.getMessage());
+            }
+        }
+    }
+
+    public void handleInterviewProposalDeclined(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String recruiterId = (String) payload.get("recruiterId");
+        if (recruiterId == null || recruiterId.isBlank()) return;
+
+        String jobTitle = (String) payload.getOrDefault("jobTitle", "an interview");
+        String applicationId = (String) payload.get("applicationId");
+        String reason = (String) payload.get("reason");
+
+        String body = "The candidate can't make any of the times you proposed for \""
+                + jobTitle + "\"."
+                + (reason != null && !reason.isBlank()
+                    ? " They said: \"" + reason + "\"."
+                    : "")
+                + " Open the application to propose new times.";
+
+        Notification n = new Notification();
+        n.setUserId(recruiterId);
+        n.setType(NotificationType.INTERVIEW_PROPOSAL_DECLINED);
+        n.setTitle("Candidate declined the proposed interview times");
+        n.setBody(body);
+        n.setRelatedEntityType("APPLICATION");
+        n.setRelatedEntityId(applicationId);
+        repo.save(n);
+
+        // In-app + websocket only — NO email. Recruiters dealing with many
+        // candidates would be flooded if every "can't make these times" sent
+        // mail. The notification bell + the panel on the application page are
+        // enough for them to act.
+        messagingTemplate.convertAndSend("/topic/notifications." + recruiterId, n);
+        messagingTemplate.convertAndSendToUser(recruiterId, "/queue/notifications", n);
+    }
+
     /** A recruiter asked the organizer to be invited to an interview. */
     public void handleInterviewJoinRequest(AppEventMessage evt) {
         Map<String, Object> payload = evt.getPayload();

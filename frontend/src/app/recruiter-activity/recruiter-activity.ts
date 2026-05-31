@@ -70,7 +70,7 @@ export class RecruiterActivity implements OnInit {
         return {
           userId,
           name:  user ? `${firstName} ${lastName}`.trim() : userId.slice(0, 12) + '…',
-          email: user?.email || '—',
+          email: user?.email || '-',
           total,
           hue:     (userId.charCodeAt(0) || 60) * 37 % 360,
           initials: initials || '?',

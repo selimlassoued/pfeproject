@@ -143,7 +143,7 @@
   border: 1px solid rgba(121, 164, 233, 0.25);
 }
 
-/* Per-status colours — class is the lowercased status (getStatusClass). */
+/* Per-status colours - class is the lowercased status (getStatusClass). */
 .interview-status.scheduled {
   background: rgba(121, 164, 233, 0.12);
   color: var(--color-secondary);
@@ -165,7 +165,7 @@
   color: rgba(255, 220, 220, 0.95);
 }
 
-/* Actions cell — buttons sit in one row, wrap on narrow screens. */
+/* Actions cell - buttons sit in one row, wrap on narrow screens. */
 .interviews-actions {
   display: flex;
   align-items: center;

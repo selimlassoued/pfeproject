@@ -60,7 +60,7 @@ export class UserService {
 
   /**
    * Creates a staff account (RECRUITER or ADMIN). The admin only provides
-   * email + role — the invited user fills their own name and phone on first
+   * email + role - the invited user fills their own name and phone on first
    * sign-in (VERIFY_PROFILE). firstName/lastName are sent as empty strings
    * because the gateway builds the Keycloak payload with Map.of(), which
    * rejects null values.
@@ -119,7 +119,7 @@ export class UserService {
       roles.includes('ADMIN')      ? 'ADMIN'      :
       roles.includes('RECRUITER')  ? 'RECRUITER'  :
       roles.includes('CANDIDATE')  ? 'CANDIDATE'  :
-      roles.length ? roles[0] : '—';
+      roles.length ? roles[0] : '-';
 
     return { ...u, attributes: attrs, phoneNumber, roles, role };
   }
