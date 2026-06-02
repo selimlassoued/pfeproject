@@ -32,8 +32,5 @@ public class JobOfferDto {
     private Double experienceWeight;
     private Double seniorityWeight;
     private List<JobRequirementDto> requirements;
-    // ISO-8601 timestamp from Hibernate's @CreationTimestamp on the entity.
-    // Sent to the frontend so the catalog extraction can stamp each skill
-    // with the earliest job that mentioned it (drives the "First seen" UI).
     private Instant createdAt;
 }

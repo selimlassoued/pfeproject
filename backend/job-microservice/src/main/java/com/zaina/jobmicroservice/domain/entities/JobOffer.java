@@ -65,11 +65,11 @@ public class JobOffer {
     // ATS quota
     @Column(nullable = false)
     @Builder.Default
-    private Integer openings = 1;     // number of positions
+    private Integer openings = 1;     
 
     @Column(nullable = false)
     @Builder.Default
-    private Integer hiredCount = 0;   // incremented when a candidate is HIRED
+    private Integer hiredCount = 0;   
 
     @Enumerated(EnumType.STRING)
     private EmploymentType employmentType;
@@ -77,8 +77,7 @@ public class JobOffer {
     @Enumerated(EnumType.STRING)
     private JobStatus jobStatus;
 
-    // ── Recruiter-configurable scoring weights ────────────────────────────────
-    // Nullable to support existing rows — service falls back to defaults when null.
+
     @Builder.Default private Double skillsWeight     = 0.40;
     @Builder.Default private Double semanticWeight   = 0.35;
     @Builder.Default private Double experienceWeight = 0.15;

@@ -33,11 +33,9 @@ public class JobRequirement {
     private Integer minYears;
     private Integer maxYears;
 
-    // Structured skill level — BASIC / INTERMEDIATE / ADVANCED (replaces parsing "Basic knowledge of…")
     private String skillLevel;
 
-    // Structured education fields — replaces parsing "Bachelor in CS student or graduate"
-    private String degreeLevel;      // ANY / BAC / BTS_DUT / LICENCE_BACHELOR / MASTER / PHD
+    private String degreeLevel;      
     private String enrollmentType;   // STUDENT / GRADUATE / BOTH
 
     // Structured language level — CEFR scale

@@ -33,6 +33,7 @@ public class JobOfferServiceImpl implements JobOfferService {
         return applicationClient.hasApplications(jobId);
     }
 
+
     private static JobRequirementDto toDtoReq(JobRequirement r) {
         return new JobRequirementDto(
                 r.getId(),

@@ -92,7 +92,7 @@ public class JobOfferController {
      * Get a specific job by ID
      * GET /api/jobs/{id}
      *
-     * ⚠️ IMPORTANT: This MUST come AFTER /search endpoint
+     * IMPORTANT: This MUST come AFTER /search endpoint
      * FIX #1: Otherwise /search will be matched as an ID!
      *
      * @param id The job ID (UUID)
