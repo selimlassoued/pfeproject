@@ -80,7 +80,7 @@
 .toolbar-label{
   font-size: .9rem;
   font-weight: 600;
-  color: rgba(248, 250, 252, 0.85);
+  color: var(--text-muted);
 }
 
 .addjob-row2{
@@ -92,21 +92,21 @@
 .hint{
   margin-top: .2rem;
   font-size: .85rem;
-  color: rgba(248, 250, 252, 0.65);
+  color: var(--text-muted);
 }
 
 .divider{
   margin: var(--space-6) 0;
   height: 1px;
-  background: rgba(121,164,233,0.18);
+  background: var(--border);
 }
 
 .salary-box{
   margin-top: var(--space-4);
   padding: var(--space-6);
   border-radius: var(--radius-2xl);
-  border: 1px solid rgba(121,164,233,0.22);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
 }
 
 .salary-head{
@@ -133,8 +133,8 @@
 .req-item{
   padding: var(--space-6);
   border-radius: var(--radius-2xl);
-  border: 1px solid rgba(121,164,233,0.18);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
 }
 
 .req-top{
@@ -171,12 +171,12 @@
   height: 12px;
   border-radius: 999px;
   margin-top: .35rem;
-  box-shadow: 0 0 0 4px rgba(121,164,233,0.18);
+  box-shadow: 0 0 0 4px var(--border);
 }
 .status-card--error{ border-color: rgba(211,47,47,0.35); }
 .status-dot--error{ background: #d32f2f; box-shadow: 0 0 0 4px rgba(211,47,47,0.18); }
 
-.status-card--info{ border-color: rgba(121,164,233,0.35); }
+.status-card--info{ border-color: var(--border-strong); }
 .status-dot--info{ background: #1976d2; box-shadow: 0 0 0 4px rgba(25,118,210,0.18); }
 
 @media (max-width: 980px){
@@ -196,7 +196,7 @@ select option {
   color: #f5f7ff;              
 }
 select:hover {
-  border-color: rgba(121, 164, 233, 0.758);
+  border-color: rgba(121,164,233,0.758);
 }
 .salary-grid {
   display: grid;

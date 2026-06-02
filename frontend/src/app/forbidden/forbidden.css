@@ -29,7 +29,7 @@
   transform: translateX(-50%);
   width: 20rem;
   height: 20rem;
-  background: radial-gradient(circle, rgba(121, 164, 233, 0.18), transparent 70%);
+  background: radial-gradient(circle, var(--border), transparent 70%);
   pointer-events: none;
 }
 

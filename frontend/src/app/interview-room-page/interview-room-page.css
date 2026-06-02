@@ -44,7 +44,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 4px solid rgba(121, 164, 233, 0.25);
+  border: 4px solid var(--border-strong);
   border-top-color: #79a4e9;
   animation: lobbySpin 0.9s linear infinite;
   margin-bottom: 0.5rem;
@@ -54,18 +54,18 @@
   margin: 0;
   font-family: var(--font-display, inherit);
   font-size: 1.3rem;
-  color: #fffce5;
+  color: var(--text-display);
   letter-spacing: -0.01em;
 }
 .lobby-msg {
   margin: 0;
   font-size: 0.95rem;
-  color: rgba(248, 250, 252, 0.85);
+  color: var(--text-muted);
   max-width: 32rem;
   line-height: 1.5;
 }
 .lobby-sub {
   margin: 0;
   font-size: 0.8rem;
-  color: rgba(248, 250, 252, 0.45);
+  color: var(--text-soft);
 }

@@ -4,8 +4,8 @@
   padding: var(--space-8);
   border-radius: var(--radius-2xl);
 
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 
   backdrop-filter: blur(12px);
@@ -50,14 +50,14 @@
   padding: 0.35rem 0.7rem;
   border-radius: 999px;
   font-size: 0.78rem;
-  color: rgba(251, 191, 36, 0.95);
-  background: rgba(251, 191, 36, 0.08);
-  border: 1px dashed rgba(251, 191, 36, 0.35);
+  color: rgba(251,191,36,0.95);
+  background: rgba(251,191,36,0.08);
+  border: 1px dashed rgba(251,191,36,0.35);
   width: fit-content;
   cursor: pointer;
   user-select: none;
 }
-.si-testmode input { accent-color: rgba(251, 191, 36, 0.95); }
+.si-testmode input { accent-color: rgba(251,191,36,0.95); }
 
 /* ===== FORM ===== */
 .schedule-form {
@@ -84,8 +84,8 @@
   padding: 0.9rem 1rem;
   border-radius: 14px;
 
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
 
   color: var(--color-text);
   outline: none;
@@ -94,19 +94,19 @@
 }
 
 .form-input:focus {
-  border-color: rgba(121, 164, 233, 0.5);
-  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.12);
+  border-color: var(--border-prominent);
+  box-shadow: 0 0 0 3px var(--border-subtle);
 }
 
 .form-input.invalid {
-  border-color: rgba(233, 121, 121, 0.6);
-  box-shadow: 0 0 0 3px rgba(233, 121, 121, 0.12);
+  border-color: rgba(233,121,121,0.6);
+  box-shadow: 0 0 0 3px rgba(233,121,121,0.12);
 }
 
 /* ===== ERRORS ===== */
 .form-error {
   font-size: 0.82rem;
-  color: rgba(233, 121, 121, 0.95);
+  color: rgba(233,121,121,0.95);
   margin-top: 0.2rem;
 }
 
@@ -114,10 +114,10 @@
   padding: 0.8rem 1rem;
   border-radius: var(--radius-xl);
 
-  background: rgba(233, 121, 121, 0.08);
-  border: 1px solid rgba(233, 121, 121, 0.25);
+  background: rgba(233,121,121,0.08);
+  border: 1px solid rgba(233,121,121,0.25);
 
-  color: rgba(255, 220, 220, 0.95);
+  color: rgba(255,220,220,0.95);
   font-size: 0.9rem;
 }
 
@@ -163,16 +163,16 @@
 .si-date-error {
   padding: 0.85rem 1rem;
   border-radius: var(--radius-xl);
-  background: rgba(251, 191, 36, 0.08);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  color: rgba(255, 235, 180, 0.95);
+  background: rgba(251,191,36,0.08);
+  border: 1px solid rgba(251,191,36,0.3);
+  color: rgba(255,235,180,0.95);
   font-size: 0.88rem;
 }
 .si-slot {
   padding: 0.6rem 0.3rem;
   border-radius: 10px;
-  border: 1px solid rgba(121, 164, 233, 0.22);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
   color: var(--color-text);
   font-size: 0.86rem;
   font-weight: 600;
@@ -181,8 +181,8 @@
   transition: border-color 0.14s, background 0.14s, transform 0.14s;
 }
 .si-slot--free:hover {
-  border-color: rgba(121, 164, 233, 0.6);
-  background: rgba(121, 164, 233, 0.12);
+  border-color: rgba(121,164,233,0.6);
+  background: var(--border-subtle);
   transform: translateY(-1px);
 }
 .si-slot--on,
@@ -195,19 +195,19 @@
 .si-slot--past {
   opacity: 0.4;
   color: var(--color-text-muted);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-1);
   text-decoration: line-through;
 }
 .si-slot--recruiter,
 .si-slot--both {
-  background: rgba(233, 121, 121, 0.1);
-  border-color: rgba(233, 121, 121, 0.35);
-  color: rgba(248, 180, 180, 0.9);
+  background: rgba(233,121,121,0.1);
+  border-color: rgba(233,121,121,0.35);
+  color: rgba(248,180,180,0.9);
 }
 .si-slot--candidate {
-  background: rgba(251, 191, 36, 0.1);
-  border-color: rgba(251, 191, 36, 0.35);
-  color: rgba(251, 210, 130, 0.95);
+  background: rgba(251,191,36,0.1);
+  border-color: rgba(251,191,36,0.35);
+  color: rgba(251,210,130,0.95);
 }
 
 /* Legend */
@@ -230,10 +230,10 @@
   border-radius: 3px;
   display: inline-block;
 }
-.si-dot--free      { background: rgba(121, 164, 233, 0.55); }
-.si-dot--recruiter { background: rgba(233, 121, 121, 0.6); }
-.si-dot--candidate { background: rgba(251, 191, 36, 0.6); }
-.si-dot--past      { background: rgba(255, 255, 255, 0.15); }
+.si-dot--free      { background: rgba(121,164,233,0.55); }
+.si-dot--recruiter { background: rgba(233,121,121,0.6); }
+.si-dot--candidate { background: rgba(251,191,36,0.6); }
+.si-dot--past      { background: rgba(255,255,255,0.15); }
 
 /* Custom off-the-hour time */
 .si-custom {
@@ -243,7 +243,7 @@
   gap: 0.6rem;
   margin-top: var(--space-4);
   padding-top: var(--space-3);
-  border-top: 1px solid rgba(121, 164, 233, 0.12);
+  border-top: 1px solid var(--border-subtle);
 }
 .si-custom-label {
   font-size: 0.8rem;
@@ -252,8 +252,8 @@
 .si-custom-input {
   padding: 0.4rem 0.55rem;
   border-radius: 9px;
-  border: 1px solid rgba(121, 164, 233, 0.25);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
   color: var(--color-text);
   font-family: inherit;
   font-size: 0.85rem;
@@ -269,7 +269,7 @@
   color: var(--color-secondary);
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  background: rgba(121, 164, 233, 0.14);
+  background: var(--border-subtle);
 }
 /* Off-the-hour quarter buttons (:15 / :30 / :45) */
 .si-quarters {
@@ -279,8 +279,8 @@
 .si-quarter {
   padding: 0.4rem 0.7rem;
   border-radius: 9px;
-  border: 1px solid rgba(121, 164, 233, 0.22);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
   color: var(--color-text);
   font-size: 0.82rem;
   font-weight: 600;
@@ -289,8 +289,8 @@
   transition: border-color 0.14s, background 0.14s, transform 0.14s;
 }
 .si-quarter:not(:disabled):hover {
-  border-color: rgba(121, 164, 233, 0.6);
-  background: rgba(121, 164, 233, 0.12);
+  border-color: rgba(121,164,233,0.6);
+  background: var(--border-subtle);
   transform: translateY(-1px);
 }
 .si-quarter--on,
@@ -303,19 +303,19 @@
 .si-quarter--past {
   opacity: 0.4;
   color: var(--color-text-muted);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-1);
   text-decoration: line-through;
 }
 .si-quarter--recruiter,
 .si-quarter--both {
-  background: rgba(233, 121, 121, 0.1);
-  border-color: rgba(233, 121, 121, 0.35);
-  color: rgba(248, 180, 180, 0.9);
+  background: rgba(233,121,121,0.1);
+  border-color: rgba(233,121,121,0.35);
+  color: rgba(248,180,180,0.9);
 }
 .si-quarter--candidate {
-  background: rgba(251, 191, 36, 0.1);
-  border-color: rgba(251, 191, 36, 0.35);
-  color: rgba(251, 210, 130, 0.95);
+  background: rgba(251,191,36,0.1);
+  border-color: rgba(251,191,36,0.35);
+  color: rgba(251,210,130,0.95);
 }
 
 /* ===== MODE TOGGLE ===== */
@@ -332,21 +332,21 @@
   gap: 0.2rem;
   padding: 0.75rem 0.9rem;
   border-radius: 14px;
-  border: 1px solid rgba(121, 164, 233, 0.22);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
   color: var(--color-text);
   cursor: pointer;
   font-family: inherit;
   transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
 }
 .si-mode-btn:hover {
-  border-color: rgba(121, 164, 233, 0.45);
-  background: rgba(121, 164, 233, 0.08);
+  border-color: var(--border-prominent);
+  background: var(--border-subtle);
 }
 .si-mode-btn--on {
   border-color: transparent;
-  background: linear-gradient(135deg, rgba(30, 64, 188, 0.45), rgba(121, 164, 233, 0.45));
-  box-shadow: 0 0 0 1px rgba(121, 164, 233, 0.5), 0 6px 18px rgba(30, 64, 188, 0.25);
+  background: linear-gradient(135deg, rgba(30,64,188,0.45), var(--border-prominent));
+  box-shadow: 0 0 0 1px var(--border-prominent), 0 6px 18px rgba(30,64,188,0.25);
 }
 .si-mode-title {
   font-weight: 700;
@@ -357,7 +357,7 @@
   font-size: 0.78rem;
   color: var(--color-text-muted);
 }
-.si-mode-btn--on .si-mode-hint { color: rgba(255, 255, 255, 0.85); }
+.si-mode-btn--on .si-mode-hint { color: var(--text-muted); }
 
 /* ===== PICKED-SLOT CHIPS (propose mode) ===== */
 .si-count {
@@ -369,8 +369,8 @@
 .si-empty-picks {
   padding: 0.7rem 0.9rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px dashed rgba(121, 164, 233, 0.25);
+  background: var(--surface-1);
+  border: 1px dashed var(--border-strong);
   color: var(--color-text-muted);
   font-size: 0.86rem;
 }
@@ -385,8 +385,8 @@
   gap: 0.45rem;
   padding: 0.4rem 0.65rem 0.4rem 0.8rem;
   border-radius: 999px;
-  background: rgba(121, 164, 233, 0.16);
-  border: 1px solid rgba(121, 164, 233, 0.35);
+  background: var(--border);
+  border: 1px solid var(--border-strong);
   color: var(--color-cream);
   font-size: 0.85rem;
   font-weight: 600;
@@ -394,7 +394,7 @@
 .si-picked-remove {
   appearance: none;
   border: none;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-3);
   color: var(--color-text);
   width: 1.3rem;
   height: 1.3rem;
@@ -408,7 +408,7 @@
   justify-content: center;
   transition: background 140ms ease;
 }
-.si-picked-remove:hover { background: rgba(233, 121, 121, 0.45); }
+.si-picked-remove:hover { background: rgba(233,121,121,0.45); }
 
 .si-hint {
   font-size: 0.8rem;
@@ -440,7 +440,7 @@
 
 .schedule-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(121, 164, 233, 0.15);
+  box-shadow: 0 10px 25px rgba(121,164,233,0.15);
 }
 
 .schedule-btn:disabled {

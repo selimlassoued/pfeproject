@@ -38,7 +38,7 @@
 .selector-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .actor-select {
   flex: 1 1 260px;
-  background: rgba(255,255,255,0.05);
+  background: var(--surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   color: var(--color-text);
@@ -47,13 +47,13 @@
   outline: none; cursor: pointer;
   transition: border-color 0.14s;
 }
-.actor-select:focus { border-color: rgba(121,164,233,0.5); }
+.actor-select:focus { border-color: var(--border-prominent); }
 .actor-select option { background: #0f1629; }
 
 .actor-chip {
   display: flex; align-items: center; gap: 0.65rem;
   background: rgba(121,164,233,0.07);
-  border: 1px solid rgba(121,164,233,0.18);
+  border: 1px solid var(--border);
   border-radius: 12px; padding: 0.55rem 0.9rem;
   flex-shrink: 0;
 }
@@ -67,16 +67,16 @@
 .chip-role {
   font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--color-secondary);
-  background: rgba(121,164,233,0.12);
-  border: 1px solid rgba(121,164,233,0.2);
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
   border-radius: 4px; padding: 0.05rem 0.4rem;
 }
-.chip-email { font-size: 0.72rem; color: rgba(248,250,252,0.4); }
+.chip-email { font-size: 0.72rem; color: var(--text-soft); }
 .chip-total {
   font-size: 0.7rem; font-weight: 700; font-family: monospace;
   color: var(--color-secondary);
-  background: rgba(121,164,233,0.1);
-  border: 1px solid rgba(121,164,233,0.2);
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill); padding: 0.15rem 0.6rem;
   margin-left: auto;
 }
@@ -90,7 +90,7 @@
 .log-count { color: var(--color-secondary); }
 .range-badge {
   font-size: 0.62rem; font-weight: 600; text-transform: none; letter-spacing: 0.03em;
-  color: rgba(248,250,252,0.35); background: rgba(255,255,255,0.06);
+  color: rgba(248,250,252,0.35); background: var(--surface-3);
   border: 1px solid var(--color-border); border-radius: var(--radius-pill);
   padding: 0.1rem 0.5rem;
 }
@@ -103,7 +103,7 @@
   cursor: pointer; font-family: var(--font-body); letter-spacing: 0.04em;
   transition: all 0.14s ease;
 }
-.filter-btn:hover { background: rgba(121,164,233,0.08); }
+.filter-btn:hover { background: var(--border-subtle); }
 .filter-btn.active {
   border-color: color-mix(in srgb, var(--fcolor) 60%, transparent);
   background: color-mix(in srgb, var(--fcolor) 14%, transparent);
@@ -111,7 +111,7 @@
 }
 
 .glass-card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.035));
+  background: linear-gradient(180deg, var(--surface-3), rgba(255,255,255,0.035));
   border: 1px solid var(--color-border); border-radius: var(--radius-2xl); overflow: hidden;
 }
 .log-card { margin-bottom: 0; }
@@ -165,7 +165,7 @@
 
 .log-detail {
   background: rgba(11,16,38,0.6);
-  border-top: 1px solid rgba(121,164,233,0.12);
+  border-top: 1px solid var(--border-subtle);
   padding: 1rem 1.25rem 1.1rem;
   animation: fadeUp 0.2s ease both;
 }
@@ -192,8 +192,8 @@
   letter-spacing: 0.1em; color: rgba(121,164,233,0.55); margin-bottom: 0.45rem;
 }
 .ld-changes {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(121,164,233,0.1);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px; overflow: hidden;
 }
 .ld-change-row {
@@ -203,7 +203,7 @@
   align-items: center;
 }
 .ld-change-row:last-child { border-bottom: none; }
-.ld-change-row--header { background: rgba(121,164,233,0.06); }
+.ld-change-row--header { background: var(--border-subtle); }
 .ld-change-key {
   color: var(--color-secondary); font-weight: 600; font-family: monospace;
   text-transform: uppercase; font-size: 0.66rem; letter-spacing: 0.05em;
@@ -240,7 +240,7 @@
   color: var(--color-text-muted); font-size: 0.72rem; font-weight: 600;
   cursor: pointer; font-family: var(--font-body); transition: all 0.14s ease;
 }
-.pg-btn:hover:not(:disabled) { background: rgba(121,164,233,0.12); border-color: rgba(121,164,233,0.4); color: #e8f0fe; }
+.pg-btn:hover:not(:disabled) { background: var(--border-subtle); border-color: var(--border-prominent); color: #e8f0fe; }
 .pg-btn:disabled { opacity: 0.28; cursor: default; }
 .pg-info { font-size: 0.7rem; color: rgba(248,250,252,0.28); font-family: monospace; }
 

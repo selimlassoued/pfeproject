@@ -9,16 +9,16 @@
   margin-bottom: 1rem;
 }
 .of-breadcrumb-back {
-  color: rgba(248, 250, 252, .78);
+  color: rgba(248,250,252,.78);
   font-weight: 700;
   text-decoration: none;
   transition: color 140ms ease, transform 140ms ease;
 }
 .of-breadcrumb-back:hover {
-  color: rgba(248, 250, 252, .95);
+  color: rgba(248,250,252,.95);
   transform: translateX(-2px);
 }
-.of-breadcrumb-sep { color: rgba(248, 250, 252, .35); }
+.of-breadcrumb-sep { color: rgba(248,250,252,.35); }
 .of-breadcrumb-here { color: var(--color-cream); font-weight: 700; }
 
 .of-page-head { margin-bottom: 1.5rem; }
@@ -40,7 +40,7 @@
 .of-error {
   padding: .85rem 1rem;
   border-radius: var(--radius-xl);
-  background: rgba(233, 121, 121, 0.08);
-  border: 1px solid rgba(233, 121, 121, 0.25);
-  color: rgba(255, 220, 220, 0.95);
+  background: rgba(233,121,121,0.08);
+  border: 1px solid rgba(233,121,121,0.25);
+  color: rgba(255,220,220,0.95);
 }
