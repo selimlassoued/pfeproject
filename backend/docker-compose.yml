@@ -112,10 +112,16 @@ services:
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:9999/actuator/health | grep UP || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      # 30s timeout because the config-server health endpoint can take up to
+      # 18s when GitHub is slow from this network (default health indicator
+      # pings the Git backend). Also bumped start_period for the slow first
+      # boot. Application.yml now disables the slow indicator so probes
+      # respond instantly in normal conditions; this is a safety net.
+      test: ["CMD-SHELL", "curl --fail --silent --max-time 25 http://localhost:9999/actuator/health | grep UP || exit 1"]
+      interval: 15s
+      timeout: 30s
+      retries: 10
+      start_period: 60s
     depends_on:
       eureka-server:
         condition: service_healthy

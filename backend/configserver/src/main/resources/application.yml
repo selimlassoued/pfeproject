@@ -25,3 +25,9 @@ management:
     web:
       exposure:
         include: '*'
+
+# Disable the Spring Cloud Config server health indicator. It pings the Git
+# backend on every probe, which is slow (10-18s) when GitHub is throttled
+# from VERMEG's network. With this off, /actuator/health responds instantly
+# and the compose healthcheck stops timing out.
+spring.cloud.config.server.health.enabled: false
