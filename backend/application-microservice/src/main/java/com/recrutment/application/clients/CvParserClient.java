@@ -397,6 +397,9 @@ public class CvParserClient {
         if (requirements == null) return List.of();
         return requirements.stream().map(req -> {
             Map<String, Object> mapped = new HashMap<>();
+            // id flows through so the matcher can look up cached per-requirement
+            // embeddings from job-microservice instead of re-embedding each time.
+            mapped.put("id",              req.getId() != null ? req.getId().toString() : null);
             mapped.put("category",        req.getCategory());
             mapped.put("description",     req.getDescription());
             mapped.put("weight",          req.getWeight());

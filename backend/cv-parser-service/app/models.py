@@ -288,6 +288,11 @@ class CvAnalysisResult(BaseModel):
 
 
 class JobRequirementInput(BaseModel):
+    # Persistent requirement id from job-microservice. When present the matcher
+    # uses it to look up the cached embedding for this requirement instead of
+    # re-embedding via Ollama. Backwards-compatible: a request without `id`
+    # still works, it just always recomputes.
+    id: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
     weight: Optional[float] = None

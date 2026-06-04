@@ -45,4 +45,19 @@ public class JobRequirement {
     @JoinColumn(name = "job_offer_id", nullable = false)
     @JsonBackReference
     private JobOffer jobOffer;
+
+    // Cached nomic-embed-text embedding for this single requirement's text.
+    // Written by cv-parser-service via PUT after computing the vector during
+    // the first match that needs it. Used to skip Ollama on every subsequent
+    // applicant to the same job.
+    //
+    // Same insertable=false, updatable=false trick as JobOffer.embedding:
+    // JPA's generic INSERT/UPDATE binds Strings as varchar and Postgres won't
+    // auto-cast varchar to vector. The dedicated native UPDATE in
+    // JobRequirementRepo casts explicitly.
+    @Column(name = "embedding", columnDefinition = "vector(768)", insertable = false, updatable = false)
+    private String embedding;
+
+    @Column(name = "embedding_model", length = 64, insertable = false, updatable = false)
+    private String embeddingModel;
 }

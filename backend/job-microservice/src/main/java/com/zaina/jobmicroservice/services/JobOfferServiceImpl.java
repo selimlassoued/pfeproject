@@ -6,6 +6,8 @@ import com.zaina.jobmicroservice.dto.JobEmbeddingDto;
 import com.zaina.jobmicroservice.dto.JobOfferDto;
 import com.zaina.jobmicroservice.dto.JobRequirementDto;
 import com.zaina.jobmicroservice.dto.PageResponse;
+import com.zaina.jobmicroservice.dto.RequirementEmbeddingDto;
+import com.zaina.jobmicroservice.repos.JobRequirementRepo;
 import com.zaina.jobmicroservice.domain.enums.EmploymentType;
 import com.zaina.jobmicroservice.domain.enums.JobStatus;
 import com.zaina.jobmicroservice.messaging.AppEventMessage;
@@ -31,6 +33,7 @@ public class JobOfferServiceImpl implements JobOfferService {
 
     private final AppEventPublisher eventPublisher;
     private final JobOfferRepo jobOfferRepo;
+    private final JobRequirementRepo jobRequirementRepo;
     private final com.zaina.jobmicroservice.clients.ApplicationClient applicationClient;
 
     private boolean hasApplications(UUID jobId) {
@@ -420,11 +423,48 @@ public class JobOfferServiceImpl implements JobOfferService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Embedding must have 768 dimensions, got " + dto.getEmbedding().size());
         }
-        JobOffer job = jobOfferRepo.findById(jobId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found: " + jobId));
-        job.setEmbedding(toVectorLiteral(dto.getEmbedding()));
-        job.setEmbeddingModel(dto.getModel());
-        jobOfferRepo.save(job);
+        if (!jobOfferRepo.existsById(jobId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found: " + jobId);
+        }
+        // Native UPDATE with ::vector cast — JPA's generic UPDATE can't bind a
+        // varchar parameter to a vector column. Bypassing JPA dirty-checking
+        // for this column is intentional (see JobOffer entity for context).
+        jobOfferRepo.updateEmbedding(jobId, toVectorLiteral(dto.getEmbedding()), dto.getModel());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RequirementEmbeddingDto> getRequirementEmbeddings(UUID jobId) {
+        List<com.zaina.jobmicroservice.domain.entities.JobRequirement> reqs =
+                jobRequirementRepo.findByJobOffer_Id(jobId);
+        List<RequirementEmbeddingDto> out = new ArrayList<>();
+        for (var r : reqs) {
+            String raw = r.getEmbedding();
+            if (raw == null || raw.isBlank()) continue;
+            out.add(new RequirementEmbeddingDto(r.getId(), parseVectorLiteral(raw), r.getEmbeddingModel()));
+        }
+        return out;
+    }
+
+    @Override
+    public void saveRequirementEmbedding(UUID jobId, UUID requirementId, RequirementEmbeddingDto dto) {
+        if (dto == null || dto.getEmbedding() == null || dto.getEmbedding().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Embedding payload is empty");
+        }
+        if (dto.getEmbedding().size() != 768) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Embedding must have 768 dimensions, got " + dto.getEmbedding().size());
+        }
+        var req = jobRequirementRepo.findById(requirementId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Requirement not found: " + requirementId));
+        // Defensive ownership check — reject if the requirement doesn't belong
+        // to the job in the URL, prevents cross-job tampering.
+        if (req.getJobOffer() == null || !jobId.equals(req.getJobOffer().getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Requirement " + requirementId + " is not on job " + jobId);
+        }
+        jobRequirementRepo.updateEmbedding(requirementId, toVectorLiteral(dto.getEmbedding()), dto.getModel());
     }
 
     /** Convert a Java float list to pgvector's "[v0,v1,...]" string literal. */

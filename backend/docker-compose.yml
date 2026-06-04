@@ -214,7 +214,7 @@ services:
       - SEMANTIC_MATCH_EMBED_MODEL=nomic-embed-text
       # Used by semantic_matcher._get_or_compute_job_vector to read/write the
       # cached pgvector embedding on the JobOffer row.
-      - JOB_SERVICE_URL=http://job-microservice:8081
+      - JOB_SERVICE_URL=http://job-microservice:8080
       - SEMANTIC_MATCH_ANALYSIS_MODEL=qwen2.5:7b
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       # Persistent skill-intelligence cache (framework→stack + volatility,

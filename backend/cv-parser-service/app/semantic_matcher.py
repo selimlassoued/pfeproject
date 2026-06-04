@@ -25,7 +25,7 @@ ANALYSIS_MODEL   = os.getenv("SEMANTIC_MATCH_ANALYSIS_MODEL", "qwen2.5:7b")
 # Job-microservice base URL. The matcher uses this to read and write the cached
 # job embedding via GET/PUT /api/jobs/{id}/embedding so the same job vector is
 # computed once across all applicants instead of recomputed on every match.
-JOB_SERVICE_URL = os.getenv("JOB_SERVICE_URL", "http://job-microservice:8081")
+JOB_SERVICE_URL = os.getenv("JOB_SERVICE_URL", "http://job-microservice:8080")
 
 # Cosine similarity threshold for semantic skill synonyms (e.g. React / ReactJS)
 # Embedding similarity thresholds for skill matching.
@@ -1060,6 +1060,7 @@ def _get_or_compute_job_vector(
          never PUT the same vector twice for the same match.
     """
     if not job_id:
+        _logger.info("[job-emb] job_id missing, embedding inline (no cache).")
         return _embed_cached(job_text, cache)
 
     cache_key = f"__job_cache::{job_id}"
@@ -1078,16 +1079,18 @@ def _get_or_compute_job_vector(
             if stored_model == EMBEDDING_MODEL and len(vec) == 768:
                 vec = [float(x) for x in vec]
                 cache[cache_key] = vec
+                _logger.info("[job-emb] HIT for %s (model=%s).", job_id, stored_model)
                 return vec
-            # Model mismatch or wrong dim → fall through and recompute.
             _logger.info(
-                "Job %s cached embedding stale (model=%s, dim=%d); recomputing.",
+                "[job-emb] STALE for %s (model=%s, dim=%d); recomputing.",
                 job_id, stored_model, len(vec),
             )
-        elif resp.status_code != 204:
-            _logger.warning("Unexpected status %s reading job embedding.", resp.status_code)
+        elif resp.status_code == 204:
+            _logger.info("[job-emb] MISS for %s; computing.", job_id)
+        else:
+            _logger.warning("[job-emb] Unexpected status %s for %s.", resp.status_code, job_id)
     except Exception as e:
-        _logger.warning("Job-embedding cache read failed for %s: %s", job_id, e)
+        _logger.warning("[job-emb] Read failed for %s: %s", job_id, e)
 
     # Compute fresh.
     vec = _embed_cached(job_text, cache)
@@ -1097,13 +1100,97 @@ def _get_or_compute_job_vector(
     # match still produces a correct score from the freshly computed vector.
     if vec and len(vec) == 768:
         try:
-            requests.put(
+            put_resp = requests.put(
                 url,
                 json={"embedding": vec, "model": EMBEDDING_MODEL},
                 timeout=10,
             )
+            if put_resp.status_code in (200, 204):
+                _logger.info("[job-emb] STORED for %s (%d dims).", job_id, len(vec))
+            else:
+                _logger.warning("[job-emb] PUT got status %s body=%s",
+                                put_resp.status_code, put_resp.text[:200])
         except Exception as e:
-            _logger.warning("Job-embedding cache write failed for %s: %s", job_id, e)
+            _logger.warning("[job-emb] Write failed for %s: %s", job_id, e)
+    else:
+        _logger.warning("[job-emb] Vector wrong size (%d), skipping PUT for %s",
+                        len(vec) if vec else 0, job_id)
+
+    return vec
+
+
+def _prefetch_requirement_vectors(job_id: Optional[str]) -> dict[str, list[float]]:
+    """Bulk-fetch all cached requirement embeddings for a job at the start of
+    a match request. Returns a {requirement_id: vector} map (empty on miss or
+    error). The matcher consults this map before calling Ollama for each
+    requirement and writes back any newly-computed vectors individually.
+    """
+    if not job_id:
+        return {}
+    url = f"{JOB_SERVICE_URL}/api/jobs/{job_id}/requirement-embeddings"
+    try:
+        resp = requests.get(url, timeout=5)
+        if resp.status_code != 200:
+            _logger.info("[req-emb] prefetch got %s for %s", resp.status_code, job_id)
+            return {}
+        out: dict[str, list[float]] = {}
+        for entry in (resp.json() or []):
+            rid   = entry.get("requirementId")
+            model = entry.get("model")
+            vec   = entry.get("embedding") or []
+            if rid and model == EMBEDDING_MODEL and len(vec) == 768:
+                out[str(rid)] = [float(x) for x in vec]
+        _logger.info("[req-emb] prefetched %d cached req vectors for %s", len(out), job_id)
+        return out
+    except Exception as e:
+        _logger.warning("[req-emb] prefetch failed for %s: %s", job_id, e)
+        return {}
+
+
+def _get_or_compute_req_vector(
+    job_id: Optional[str],
+    req_id: Optional[str],
+    req_text: str,
+    cache: dict[str, list[float]],
+    prefetched: dict[str, list[float]],
+) -> list[float]:
+    """Return a requirement's embedding, prefer the persistent cache.
+
+    Lookup order:
+      1. The pre-fetched map (one batch GET at match start).
+      2. The in-request memo (avoid duplicate Ollama calls within one match).
+      3. Compute via Ollama, store both in the in-request memo and PUT to
+         the persistent cache so the next applicant gets it for free.
+    Falls back to a plain inline embed if job_id or req_id is missing.
+    """
+    if not job_id or not req_id:
+        return _embed_cached(req_text, cache)
+
+    rid = str(req_id)
+    if rid in prefetched:
+        return prefetched[rid]
+
+    cache_key = f"__req_cache::{rid}"
+    if cache_key in cache:
+        return cache[cache_key]
+
+    # Cache miss — compute.
+    vec = _embed_cached(req_text, cache)
+    cache[cache_key] = vec
+    prefetched[rid] = vec   # so a repeat lookup in this request also hits
+
+    if vec and len(vec) == 768:
+        url = f"{JOB_SERVICE_URL}/api/jobs/{job_id}/requirements/{rid}/embedding"
+        try:
+            put_resp = requests.put(
+                url,
+                json={"embedding": vec, "model": EMBEDDING_MODEL},
+                timeout=10,
+            )
+            if put_resp.status_code not in (200, 204):
+                _logger.warning("[req-emb] PUT %s got %s", rid, put_resp.status_code)
+        except Exception as e:
+            _logger.warning("[req-emb] Write failed for %s: %s", rid, e)
 
     return vec
 
@@ -2117,13 +2204,20 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
 
     # ── Global embedding similarity ───────────────────────────────────────────
     job_text = _build_job_text(request)
+    job_id_for_cache = getattr(request, "job_id", None)
     # Cache-aware path: pull the job's stored vector from the job-microservice
     # if available, otherwise compute via Ollama and write it back so the next
     # applicant for this job inherits the cached vector. Falls back silently
     # to the in-request cache if anything goes wrong.
-    job_vec = _get_or_compute_job_vector(getattr(request, "job_id", None), job_text, embed_cache)
+    job_vec = _get_or_compute_job_vector(job_id_for_cache, job_text, embed_cache)
     global_sim       = _cosine(job_vec, cv_vec)
     global_sim_score = _normalize_cosine(global_sim)
+
+    # Bulk-fetch every requirement's cached embedding for this job in one call.
+    # The matcher consults this map first before falling back to Ollama for any
+    # requirement whose vector wasn't cached yet (those get PUT back inside
+    # _get_or_compute_req_vector).
+    req_vec_prefetched = _prefetch_requirement_vectors(job_id_for_cache)
 
     # ── Per-requirement semantic scoring ──────────────────────────────────────
     requirement_scores: list[dict] = []
@@ -2199,8 +2293,18 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
                             any_critical_gap = True
             req_score = (weighted_total / weight_total) / 100 if weight_total > 0 else 0.0
         else:
-            # EXPERIENCE / other — embedding similarity
-            req_sim   = _cosine(_embed_cached(req_text, embed_cache), cv_vec)
+            # EXPERIENCE / other — embedding similarity.
+            # Use the cached requirement vector when available; on miss the
+            # wrapper computes via Ollama and PUTs the vector back so future
+            # applicants reuse it.
+            rv = _get_or_compute_req_vector(
+                job_id_for_cache,
+                getattr(req, "id", None),
+                req_text,
+                embed_cache,
+                req_vec_prefetched,
+            )
+            req_sim   = _cosine(rv, cv_vec)
             req_score = _normalize_cosine(req_sim)
 
         req_row: dict = {

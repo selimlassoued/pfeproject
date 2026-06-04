@@ -3,6 +3,7 @@ package com.zaina.jobmicroservice.restControllers;
 import com.zaina.jobmicroservice.dto.JobEmbeddingDto;
 import com.zaina.jobmicroservice.dto.JobOfferDto;
 import com.zaina.jobmicroservice.dto.PageResponse;
+import com.zaina.jobmicroservice.dto.RequirementEmbeddingDto;
 import com.zaina.jobmicroservice.domain.enums.EmploymentType;
 import com.zaina.jobmicroservice.domain.enums.JobStatus;
 import com.zaina.jobmicroservice.services.JobOfferService;
@@ -190,5 +191,36 @@ public class JobOfferController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void putEmbedding(@PathVariable UUID id, @RequestBody JobEmbeddingDto dto) {
         service.saveEmbedding(id, dto);
+    }
+
+    /**
+     * Get every cached requirement embedding for a job, in one batch.
+     * GET /api/jobs/{jobId}/requirement-embeddings
+     *
+     * Returns a list of {requirementId, embedding, model}. Requirements whose
+     * vector hasn't been cached yet are omitted — the caller (cv-parser-service)
+     * compares the list against the job's full requirement set, computes the
+     * missing ones via Ollama, and PUTs each one back.
+     *
+     * Always returns 200 (possibly with an empty list) for a known job.
+     */
+    @GetMapping("/{jobId}/requirement-embeddings")
+    public List<RequirementEmbeddingDto> getRequirementEmbeddings(@PathVariable UUID jobId) {
+        return service.getRequirementEmbeddings(jobId);
+    }
+
+    /**
+     * Persist the embedding for one specific requirement under a job.
+     * PUT /api/jobs/{jobId}/requirements/{reqId}/embedding
+     *
+     * The jobId in the URL is verified to match the requirement's owner — a
+     * mismatch produces 404 to prevent cross-job writes.
+     */
+    @PutMapping("/{jobId}/requirements/{reqId}/embedding")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void putRequirementEmbedding(@PathVariable UUID jobId,
+                                        @PathVariable UUID reqId,
+                                        @RequestBody RequirementEmbeddingDto dto) {
+        service.saveRequirementEmbedding(jobId, reqId, dto);
     }
 }

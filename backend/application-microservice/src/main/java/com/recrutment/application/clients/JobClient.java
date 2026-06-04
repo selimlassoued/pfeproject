@@ -125,6 +125,9 @@ public class JobClient {
     @JsonIgnoreProperties(ignoreUnknown = true)
     @Data
     public static class JobRequirementDto {
+        // Persistent requirement id from the job-microservice. The cv-parser
+        // forwards it so the matcher can look up the cached embedding.
+        private UUID id;
         private String category;
         private String description;
         private Double weight;

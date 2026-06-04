@@ -28,4 +28,16 @@ public interface JobOfferService {
 
     /** Persists the embedding for a job — overwriting any previous value. */
     void saveEmbedding(UUID jobId, JobEmbeddingDto dto);
+
+    /**
+     * Returns the cached embeddings for every requirement of a job that has
+     * one. Requirements without a cached vector are simply omitted; the caller
+     * decides whether to compute and PUT them back.
+     */
+    List<com.zaina.jobmicroservice.dto.RequirementEmbeddingDto> getRequirementEmbeddings(UUID jobId);
+
+    /** Persists the embedding for a single requirement under a job. */
+    void saveRequirementEmbedding(UUID jobId,
+                                  UUID requirementId,
+                                  com.zaina.jobmicroservice.dto.RequirementEmbeddingDto dto);
 }

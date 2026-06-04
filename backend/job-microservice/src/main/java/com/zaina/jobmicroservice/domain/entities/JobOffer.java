@@ -91,16 +91,22 @@ public class JobOffer {
     // Cached semantic-matcher embedding for this job (nomic-embed-text, 768 dims).
     // Computed by the cv-parser-service the first time a candidate applies, then
     // PUT back here so every subsequent applicant reuses it instead of paying
-    // the Ollama cost again. Stored in pgvector's VECTOR type — we read/write
-    // the literal "[v0,v1,...,v767]" form, Postgres handles the conversion.
-    // Nullable: no applicants yet means no embedding cached.
-    @Column(name = "embedding", columnDefinition = "vector(768)")
+    // the Ollama cost again.
+    //
+    // insertable=false, updatable=false: JPA's generic INSERT/UPDATE bind this
+    // as varchar, which Postgres refuses to auto-cast to vector. The embedding
+    // is written through a dedicated native UPDATE in JobOfferRepo that does
+    // the explicit ::vector cast. Reads still come through normally — Postgres
+    // serializes vector back to text in the form "[v0,v1,...]" which the
+    // service parses into a Java float list.
+    @Column(name = "embedding", columnDefinition = "vector(768)", insertable = false, updatable = false)
     private String embedding;
 
     // Records which embedding model produced the stored vector. Lets us detect
     // a model upgrade later and invalidate stale vectors instead of comparing
-    // across embedding spaces.
-    @Column(name = "embedding_model", length = 64)
+    // across embedding spaces. Written alongside the embedding via the same
+    // native UPDATE so the two stay consistent.
+    @Column(name = "embedding_model", length = 64, insertable = false, updatable = false)
     private String embeddingModel;
 
     public void addRequirement(JobRequirement req) {

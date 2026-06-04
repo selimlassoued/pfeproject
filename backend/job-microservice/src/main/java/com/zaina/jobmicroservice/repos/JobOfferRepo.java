@@ -6,8 +6,10 @@ import com.zaina.jobmicroservice.domain.enums.JobStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -51,4 +53,19 @@ public interface JobOfferRepo extends JpaRepository<JobOffer, UUID> {
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(j.refNumber, 5) AS int)), 0) + 1 " +
             "FROM JobOffer j WHERE j.refNumber IS NOT NULL")
     int nextRefSequence();
+
+    /**
+     * Persist the cached embedding for a job. Native SQL with an explicit
+     * ::vector cast — JPA's generated UPDATE can't bind a String to a
+     * vector(768) column directly. Called from JobOfferServiceImpl.saveEmbedding.
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE job_offer " +
+                   "SET embedding = CAST(:vec AS vector), embedding_model = :model " +
+                   "WHERE id = :id",
+           nativeQuery = true)
+    int updateEmbedding(@Param("id") UUID id,
+                        @Param("vec") String vec,
+                        @Param("model") String model);
 }
