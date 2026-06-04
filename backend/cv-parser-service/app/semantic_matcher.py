@@ -3,9 +3,11 @@ import math
 import os
 import re
 import json
+import logging
 from typing import Callable, Iterable, Optional
 
 import ollama
+import requests
 
 from app.models import (
     CvAnalysisResult,
@@ -19,6 +21,11 @@ from app.models import (
 OLLAMA_HOST      = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 EMBEDDING_MODEL  = os.getenv("SEMANTIC_MATCH_EMBED_MODEL", "nomic-embed-text")
 ANALYSIS_MODEL   = os.getenv("SEMANTIC_MATCH_ANALYSIS_MODEL", "qwen2.5:7b")
+
+# Job-microservice base URL. The matcher uses this to read and write the cached
+# job embedding via GET/PUT /api/jobs/{id}/embedding so the same job vector is
+# computed once across all applicants instead of recomputed on every match.
+JOB_SERVICE_URL = os.getenv("JOB_SERVICE_URL", "http://job-microservice:8081")
 
 # Cosine similarity threshold for semantic skill synonyms (e.g. React / ReactJS)
 # Embedding similarity thresholds for skill matching.
@@ -1032,6 +1039,75 @@ def _embed_cached(text: str, cache: dict[str, list[float]]) -> list[float]:
     return cache[key]
 
 
+_logger = logging.getLogger(__name__)
+
+
+def _get_or_compute_job_vector(
+    job_id: Optional[str],
+    job_text: str,
+    cache: dict[str, list[float]],
+) -> list[float]:
+    """Return the job's embedding, using the persisted cache when possible.
+
+    Flow:
+      1. If `job_id` is None → can't reach the cache → compute via Ollama.
+      2. GET /api/jobs/{id}/embedding from job-microservice.
+         - 200 + matching model → use the stored vector. ZERO Ollama cost.
+         - 204 (no cache yet) → compute via Ollama, then PUT it back so future
+           applicants reuse it.
+         - any other status / network error → log + fall back to Ollama.
+      3. The in-request `cache` dict still memoizes within one request so we
+         never PUT the same vector twice for the same match.
+    """
+    if not job_id:
+        return _embed_cached(job_text, cache)
+
+    cache_key = f"__job_cache::{job_id}"
+    if cache_key in cache:
+        return cache[cache_key]
+
+    url = f"{JOB_SERVICE_URL}/api/jobs/{job_id}/embedding"
+
+    # Try the persistent cache first.
+    try:
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            payload = resp.json() or {}
+            stored_model = payload.get("model")
+            vec          = payload.get("embedding") or []
+            if stored_model == EMBEDDING_MODEL and len(vec) == 768:
+                vec = [float(x) for x in vec]
+                cache[cache_key] = vec
+                return vec
+            # Model mismatch or wrong dim → fall through and recompute.
+            _logger.info(
+                "Job %s cached embedding stale (model=%s, dim=%d); recomputing.",
+                job_id, stored_model, len(vec),
+            )
+        elif resp.status_code != 204:
+            _logger.warning("Unexpected status %s reading job embedding.", resp.status_code)
+    except Exception as e:
+        _logger.warning("Job-embedding cache read failed for %s: %s", job_id, e)
+
+    # Compute fresh.
+    vec = _embed_cached(job_text, cache)
+    cache[cache_key] = vec
+
+    # Best-effort write-back. Don't fail the match if persistence fails — the
+    # match still produces a correct score from the freshly computed vector.
+    if vec and len(vec) == 768:
+        try:
+            requests.put(
+                url,
+                json={"embedding": vec, "model": EMBEDDING_MODEL},
+                timeout=10,
+            )
+        except Exception as e:
+            _logger.warning("Job-embedding cache write failed for %s: %s", job_id, e)
+
+    return vec
+
+
 def _cosine(a: list[float], b: list[float]) -> float:
     if not a or not b:
         return 0.0
@@ -2041,7 +2117,12 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
 
     # ── Global embedding similarity ───────────────────────────────────────────
     job_text = _build_job_text(request)
-    global_sim       = _cosine(_embed_cached(job_text, embed_cache), cv_vec)
+    # Cache-aware path: pull the job's stored vector from the job-microservice
+    # if available, otherwise compute via Ollama and write it back so the next
+    # applicant for this job inherits the cached vector. Falls back silently
+    # to the in-request cache if anything goes wrong.
+    job_vec = _get_or_compute_job_vector(getattr(request, "job_id", None), job_text, embed_cache)
+    global_sim       = _cosine(job_vec, cv_vec)
     global_sim_score = _normalize_cosine(global_sim)
 
     # ── Per-requirement semantic scoring ──────────────────────────────────────

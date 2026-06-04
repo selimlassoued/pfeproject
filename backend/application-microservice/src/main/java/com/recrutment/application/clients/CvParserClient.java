@@ -84,6 +84,10 @@ public class CvParserClient {
 
             Map<String, Object> request = new HashMap<>();
             request.put("application_id", applicationId.toString());
+            // job_id lets the matcher fetch the cached embedding for this job
+            // from the job-microservice instead of re-embedding it via Ollama
+            // every time a candidate applies.
+            request.put("job_id", job != null && job.getId() != null ? job.getId().toString() : null);
             request.put("job_title", job != null ? job.getTitle() : null);
             request.put("job_description", job != null ? job.getDescription() : null);
             request.put("job_location", job != null ? job.getLocation() : null);

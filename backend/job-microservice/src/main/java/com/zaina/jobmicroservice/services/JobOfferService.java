@@ -1,5 +1,6 @@
 package com.zaina.jobmicroservice.services;
 
+import com.zaina.jobmicroservice.dto.JobEmbeddingDto;
 import com.zaina.jobmicroservice.dto.JobOfferDto;
 import com.zaina.jobmicroservice.dto.PageResponse;
 import com.zaina.jobmicroservice.domain.enums.EmploymentType;
@@ -21,4 +22,10 @@ public interface JobOfferService {
     JobOfferDto incrementHiredCount(UUID jobId);
     JobOfferDto closeJob(UUID jobId, String actorUserId, String reason);
     void deleteJobOffer(UUID id);
+
+    /** Returns the cached semantic embedding for a job, or null if none yet. */
+    JobEmbeddingDto getEmbedding(UUID jobId);
+
+    /** Persists the embedding for a job — overwriting any previous value. */
+    void saveEmbedding(UUID jobId, JobEmbeddingDto dto);
 }

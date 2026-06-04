@@ -88,6 +88,21 @@ public class JobOffer {
     @JsonManagedReference
     private List<JobRequirement> requirements = new ArrayList<>();
 
+    // Cached semantic-matcher embedding for this job (nomic-embed-text, 768 dims).
+    // Computed by the cv-parser-service the first time a candidate applies, then
+    // PUT back here so every subsequent applicant reuses it instead of paying
+    // the Ollama cost again. Stored in pgvector's VECTOR type — we read/write
+    // the literal "[v0,v1,...,v767]" form, Postgres handles the conversion.
+    // Nullable: no applicants yet means no embedding cached.
+    @Column(name = "embedding", columnDefinition = "vector(768)")
+    private String embedding;
+
+    // Records which embedding model produced the stored vector. Lets us detect
+    // a model upgrade later and invalidate stale vectors instead of comparing
+    // across embedding spaces.
+    @Column(name = "embedding_model", length = 64)
+    private String embeddingModel;
+
     public void addRequirement(JobRequirement req) {
         requirements.add(req);
         req.setJobOffer(this);

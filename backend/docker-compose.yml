@@ -156,7 +156,11 @@ services:
         condition: service_healthy
 
   job-db:
-    image: postgres:16
+    # pgvector image = stock postgres:16 + the `vector` extension preinstalled.
+    # Needed so we can persist 768-dim Ollama embeddings on JobOffer rows and
+    # avoid recomputing them every time a candidate applies. The init script
+    # runs `CREATE EXTENSION vector` on first boot.
+    image: pgvector/pgvector:pg16
     container_name: job-db
     networks:
       - ai-recruitment-network
@@ -168,6 +172,7 @@ services:
       - "5434:5432"
     volumes:
       - job_pgdata:/var/lib/postgresql/data
+      - ./job-db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U jobuser -d jobdb" ]
       interval: 10s
@@ -207,6 +212,9 @@ services:
       - APP_PORT=8085
       - OLLAMA_HOST=http://host.docker.internal:11434
       - SEMANTIC_MATCH_EMBED_MODEL=nomic-embed-text
+      # Used by semantic_matcher._get_or_compute_job_vector to read/write the
+      # cached pgvector embedding on the JobOffer row.
+      - JOB_SERVICE_URL=http://job-microservice:8081
       - SEMANTIC_MATCH_ANALYSIS_MODEL=qwen2.5:7b
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       # Persistent skill-intelligence cache (framework→stack + volatility,

@@ -1,5 +1,6 @@
 package com.zaina.jobmicroservice.restControllers;
 
+import com.zaina.jobmicroservice.dto.JobEmbeddingDto;
 import com.zaina.jobmicroservice.dto.JobOfferDto;
 import com.zaina.jobmicroservice.dto.PageResponse;
 import com.zaina.jobmicroservice.domain.enums.EmploymentType;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -159,5 +161,34 @@ public class JobOfferController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id) {
         service.deleteJobOffer(id);
+    }
+
+    // ── Embedding cache endpoints (consumed by the Python cv-parser-service) ──
+
+    /**
+     * Get the cached semantic embedding for a job, if any.
+     * GET /api/jobs/{id}/embedding
+     * Returns 200 with the vector if present, 204 if no embedding has been
+     * cached yet (so the caller knows to compute one and PUT it back).
+     */
+    @GetMapping("/{id}/embedding")
+    public ResponseEntity<JobEmbeddingDto> getEmbedding(@PathVariable UUID id) {
+        JobEmbeddingDto dto = service.getEmbedding(id);
+        if (dto == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(dto);
+    }
+
+    /**
+     * Persist (or overwrite) the embedding for a job.
+     * PUT /api/jobs/{id}/embedding
+     * Called by the cv-parser-service after computing a fresh embedding via
+     * Ollama. The vector must have 768 dimensions.
+     */
+    @PutMapping("/{id}/embedding")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void putEmbedding(@PathVariable UUID id, @RequestBody JobEmbeddingDto dto) {
+        service.saveEmbedding(id, dto);
     }
 }

@@ -308,6 +308,11 @@ class ScoringWeights(BaseModel):
 
 class SemanticMatchRequest(BaseModel):
     application_id: str
+    # Optional job UUID. When provided, the matcher will look up the cached
+    # embedding for this job from the job-microservice instead of computing it
+    # fresh via Ollama on every match. Backwards-compatible: a request without
+    # job_id still works, it just always recomputes.
+    job_id: Optional[str] = None
     job_title: Optional[str] = None
     job_description: Optional[str] = None
     job_location: Optional[str] = None        # e.g. "Lac 1, Tunis"

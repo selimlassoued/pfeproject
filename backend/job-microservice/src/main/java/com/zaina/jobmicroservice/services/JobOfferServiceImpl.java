@@ -2,6 +2,7 @@ package com.zaina.jobmicroservice.services;
 
 import com.zaina.jobmicroservice.domain.entities.JobOffer;
 import com.zaina.jobmicroservice.domain.entities.JobRequirement;
+import com.zaina.jobmicroservice.dto.JobEmbeddingDto;
 import com.zaina.jobmicroservice.dto.JobOfferDto;
 import com.zaina.jobmicroservice.dto.JobRequirementDto;
 import com.zaina.jobmicroservice.dto.PageResponse;
@@ -13,9 +14,12 @@ import com.zaina.jobmicroservice.repos.JobOfferRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -387,5 +391,65 @@ public class JobOfferServiceImpl implements JobOfferService {
         eventPublisher.publish("notify.job", evt);
 
         return toDto(saved);
+    }
+
+    // ── Embedding cache ──────────────────────────────────────────────────────
+    // The Python cv-parser-service is the producer of these vectors. It calls
+    // GET on first match for a job to look for a cached vector, and PUTs the
+    // freshly-computed one back if none exists. Subsequent applicants for the
+    // same job get the cached vector and avoid the Ollama round-trip entirely.
+
+    @Override
+    @Transactional(readOnly = true)
+    public JobEmbeddingDto getEmbedding(UUID jobId) {
+        JobOffer job = jobOfferRepo.findById(jobId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found: " + jobId));
+        String raw = job.getEmbedding();
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        return new JobEmbeddingDto(parseVectorLiteral(raw), job.getEmbeddingModel());
+    }
+
+    @Override
+    public void saveEmbedding(UUID jobId, JobEmbeddingDto dto) {
+        if (dto == null || dto.getEmbedding() == null || dto.getEmbedding().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Embedding payload is empty");
+        }
+        if (dto.getEmbedding().size() != 768) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Embedding must have 768 dimensions, got " + dto.getEmbedding().size());
+        }
+        JobOffer job = jobOfferRepo.findById(jobId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found: " + jobId));
+        job.setEmbedding(toVectorLiteral(dto.getEmbedding()));
+        job.setEmbeddingModel(dto.getModel());
+        jobOfferRepo.save(job);
+    }
+
+    /** Convert a Java float list to pgvector's "[v0,v1,...]" string literal. */
+    private static String toVectorLiteral(List<Float> v) {
+        StringBuilder sb = new StringBuilder(v.size() * 12);
+        sb.append('[');
+        for (int i = 0; i < v.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append(v.get(i));
+        }
+        sb.append(']');
+        return sb.toString();
+    }
+
+    /** Parse pgvector's "[v0,v1,...]" string literal back into a Java float list. */
+    private static List<Float> parseVectorLiteral(String raw) {
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("[")) trimmed = trimmed.substring(1);
+        if (trimmed.endsWith("]"))   trimmed = trimmed.substring(0, trimmed.length() - 1);
+        String[] parts = trimmed.split(",");
+        List<Float> out = new ArrayList<>(parts.length);
+        for (String p : parts) {
+            String s = p.trim();
+            if (!s.isEmpty()) out.add(Float.parseFloat(s));
+        }
+        return out;
     }
 }
