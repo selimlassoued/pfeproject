@@ -80,7 +80,7 @@
 .toolbar-label{
   font-size: .9rem;
   font-weight: 600;
-  color: rgba(248, 250, 252, 0.85);
+  color: var(--text-muted);
 }
 
 .addjob-row2{
@@ -92,21 +92,21 @@
 .hint{
   margin-top: .2rem;
   font-size: .85rem;
-  color: rgba(248, 250, 252, 0.65);
+  color: var(--text-muted);
 }
 
 .divider{
   margin: var(--space-6) 0;
   height: 1px;
-  background: rgba(121,164,233,0.18);
+  background: var(--border);
 }
 
 .salary-box{
   margin-top: var(--space-4);
   padding: var(--space-6);
   border-radius: var(--radius-2xl);
-  border: 1px solid rgba(121,164,233,0.22);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
 }
 
 .salary-head{
@@ -133,8 +133,8 @@
 .req-item{
   padding: var(--space-6);
   border-radius: var(--radius-2xl);
-  border: 1px solid rgba(121,164,233,0.18);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
   transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 .req-item--must {
@@ -226,7 +226,7 @@
   height: 12px;
   border-radius: 999px;
   margin-top: .35rem;
-  box-shadow: 0 0 0 4px rgba(121,164,233,0.18);
+  box-shadow: 0 0 0 4px var(--border);
 }
 .status-card--error{ border-color: rgba(211,47,47,0.35); }
 .status-dot--error{ background: #d32f2f; box-shadow: 0 0 0 4px rgba(211,47,47,0.18); }
@@ -248,7 +248,7 @@ select option {
   color: #f5f7ff;              
 }
 select:hover {
-  border-color: rgba(121, 164, 233, 0.758);
+  border-color: rgba(121,164,233,0.758);
 }
 .salary-grid {
   display: grid;
@@ -259,14 +259,14 @@ select:hover {
 .salary-grid .input { width: 100%; min-width: 150px; }
 
 .btn-customize {
-  background: rgba(121,164,233,0.10);
-  border: 1px solid rgba(121,164,233,0.28);
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
   color: var(--color-secondary);
   font-weight: 700; font-size: .8rem;
   padding: .38rem .85rem; border-radius: 8px; cursor: pointer;
   transition: background 140ms;
 }
-.btn-customize:hover { background: rgba(121,164,233,0.2); }
+.btn-customize:hover { background: var(--border); }
 .req-weights-hint { font-size:.82rem; color:rgba(248,250,252,.55); padding:.5rem .2rem; margin-bottom:.25rem; }
 .req-weight-field { grid-column: 1 / -1; }
 

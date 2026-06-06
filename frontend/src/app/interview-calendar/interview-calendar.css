@@ -15,8 +15,8 @@
 .cal-upcoming {
   display: flex; align-items: baseline; gap: 0.45rem;
   padding: 0.6rem 1.15rem;
-  border: 1px solid rgba(121,164,233,0.28); border-radius: var(--radius-pill);
-  background: rgba(121,164,233,0.08);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
+  background: var(--border-subtle);
 }
 
 /* ── Google Calendar connect / synced control ── */
@@ -25,7 +25,7 @@
   padding: 0.58rem 1rem;
   border-radius: var(--radius-pill);
   border: 1px solid var(--color-border);
-  background: rgba(255,255,255,0.04);
+  background: var(--surface-2);
   color: var(--color-cream);
   font-size: 0.78rem; font-weight: 600; font-family: inherit;
   cursor: pointer; white-space: nowrap;
@@ -33,7 +33,7 @@
 }
 .cal-gcal:hover {
   border-color: var(--color-secondary);
-  background: rgba(121,164,233,0.10);
+  background: var(--border-subtle);
 }
 .cal-gcal-logo { width: 16px; height: 16px; flex-shrink: 0; }
 
@@ -91,7 +91,7 @@
 }
 .cal-nav-btn:hover {
   border-color: var(--color-secondary); color: var(--color-cream);
-  background: rgba(121,164,233,0.10);
+  background: var(--border-subtle);
 }
 .cal-today-btn {
   height: 32px; padding: 0 0.9rem; border-radius: 9px;
@@ -105,7 +105,7 @@
 .cal-scope {
   display: inline-flex; padding: 3px;
   border: 1px solid var(--color-border); border-radius: var(--radius-pill);
-  background: rgba(255,255,255,0.03);
+  background: var(--surface-1);
 }
 .cal-scope-btn {
   padding: 0.32rem 0.85rem;
@@ -148,13 +148,13 @@
 
 /* Days that have interviews - clearly highlighted */
 .cal-day--has {
-  background: linear-gradient(160deg, rgba(121,164,233,0.16), rgba(121,164,233,0.05));
-  border-color: rgba(121,164,233,0.30);
+  background: linear-gradient(160deg, var(--border), rgba(121,164,233,0.05));
+  border-color: var(--border-strong);
 }
 .cal-day--today { box-shadow: inset 0 0 0 1px var(--color-secondary); }
 .cal-day--selected {
   border-color: var(--color-secondary) !important;
-  box-shadow: 0 0 0 2px rgba(121,164,233,0.4);
+  box-shadow: 0 0 0 2px var(--border-prominent);
 }
 
 /* Day number - circular; today gets a filled gradient disc */
@@ -210,7 +210,7 @@
 .cal-side-empty { padding: var(--space-9) var(--space-2); text-align: center; }
 .cal-side-empty-icon {
   width: 46px; height: 46px; margin: 0 auto var(--space-4);
-  color: rgba(121,164,233,0.4);
+  color: var(--border-prominent);
 }
 .cal-side-empty-icon svg { width: 100%; height: 100%; }
 
@@ -219,7 +219,7 @@
   border: 1px solid var(--color-border); border-radius: 14px;
   border-left: 3px solid var(--st);
   padding: var(--space-4); margin-bottom: var(--space-3);
-  background: rgba(255,255,255,0.03);
+  background: var(--surface-1);
   transition: border-color 0.14s, transform 0.14s;
 }
 .cal-iv:last-child { margin-bottom: 0; }

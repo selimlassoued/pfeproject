@@ -53,7 +53,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 3px solid rgba(121, 164, 233, 0.25);
+  border: 3px solid var(--border-strong);
   border-top-color: #79a4e9;
   animation: connectSpin 0.9s linear infinite;
 }
@@ -69,10 +69,10 @@
   padding: 2.4rem 2.4rem 2rem;
   border-radius: 24px;
   background: linear-gradient(180deg, rgba(20,28,60,0.96), rgba(13,19,45,0.96));
-  border: 1px solid rgba(121,164,233,0.28);
+  border: 1px solid var(--border-strong);
   box-shadow:
     0 24px 72px rgba(0,0,0,0.5),
-    0 0 0 1px rgba(121,164,233,0.06) inset;
+    0 0 0 1px var(--border-subtle) inset;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -95,8 +95,8 @@
   display: inline-block;
   padding: 0.35rem 0.9rem;
   border-radius: 999px;
-  background: rgba(121,164,233,0.12);
-  border: 1px solid rgba(121,164,233,0.32);
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
   color: #79a4e9;
   font-size: 0.72rem;
   font-weight: 700;
@@ -108,13 +108,13 @@
   font-family: var(--font-display, inherit);
   font-size: 1.55rem;
   letter-spacing: -0.02em;
-  color: #fffce5;
+  color: var(--text-display);
   line-height: 1.2;
 }
 .wait-when {
   margin: 0 0 1.2rem;
   font-size: 0.85rem;
-  color: rgba(248,250,252,0.55);
+  color: var(--text-soft);
 }
 .wait-countdown {
   display: flex;
@@ -124,11 +124,11 @@
   margin: 0.6rem 0 1.1rem;
   border-radius: 18px;
   background:
-    radial-gradient(ellipse at center, rgba(121,164,233,0.10), transparent 70%),
-    rgba(255,255,255,0.03);
-  border: 1px solid rgba(121,164,233,0.22);
+    radial-gradient(ellipse at center, var(--border-subtle), transparent 70%),
+    var(--surface-1);
+  border: 1px solid var(--border);
   box-shadow:
-    0 0 40px rgba(121,164,233,0.08),
+    0 0 40px var(--border-subtle),
     0 0 0 1px rgba(121,164,233,0.04) inset;
 }
 .wait-countdown-time {
@@ -136,9 +136,9 @@
   font-size: 3rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #fffce5;
+  color: var(--text-display);
   line-height: 1;
-  text-shadow: 0 0 24px rgba(121,164,233,0.25);
+  text-shadow: 0 0 24px var(--border-strong);
   animation: waitPulse 2s ease-in-out infinite;
 }
 .wait-countdown-label {
@@ -146,21 +146,21 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: rgba(248,250,252,0.4);
+  color: var(--text-soft);
 }
 .wait-role {
   font-size: 0.82rem;
   color: rgba(248,250,252,0.72);
   padding: 0.5rem 1.1rem;
   border-radius: 999px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--surface-2);
+  border: 1px solid var(--surface-3);
 }
 .wait-role strong { color: #79a4e9; font-weight: 700; }
 .wait-hint {
   margin: 0.9rem 0 0;
   font-size: 0.78rem;
-  color: rgba(248,250,252,0.45);
+  color: var(--text-soft);
   line-height: 1.55;
   max-width: 36ch;
 }
@@ -218,8 +218,8 @@
   align-items: center;
   gap: 16px;
   padding: 14px 20px;
-  background: rgba(13, 19, 45, 0.72);
-  border-top: 1px solid rgba(121, 164, 233, 0.18);
+  background: rgba(13,19,45,0.72);
+  border-top: 1px solid var(--border);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   flex-wrap: wrap;
@@ -311,13 +311,13 @@
   gap: 1rem;
   padding: 0.7rem 1rem;
   border-radius: 12px;
-  background: rgba(20, 28, 60, 0.88);
+  background: rgba(20,28,60,0.88);
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(251, 191, 36, 0.45);
+  border: 1px solid rgba(251,191,36,0.45);
   color: #fde68a;
   font-size: 0.88rem;
   font-weight: 600;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35);
   animation: admitPulse 2s ease-in-out infinite;
 }
 .admit-msg { display: inline-flex; align-items: center; gap: 0.5rem; }
@@ -328,8 +328,8 @@
 }
 .admit-btn { flex-shrink: 0; padding: 0.45rem 1.1rem; font-size: 0.85rem; }
 @keyframes admitPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
-  50%      { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.18); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+  50%      { box-shadow: 0 0 0 4px rgba(251,191,36,0.18); }
 }
 @keyframes admitDot {
   0%, 100% { opacity: 1; }

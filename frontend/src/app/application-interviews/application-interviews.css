@@ -40,17 +40,17 @@
 .iv-error{
   padding: .85rem 1rem;
   border-radius: var(--radius-xl);
-  background: rgba(233, 121, 121, 0.08);
-  border: 1px solid rgba(233, 121, 121, 0.25);
-  color: rgba(255, 220, 220, 0.95);
+  background: rgba(233,121,121,0.08);
+  border: 1px solid rgba(233,121,121,0.25);
+  color: rgba(255,220,220,0.95);
 }
 
 .interview-section {
   margin-bottom: 1.5rem;
   padding: 1.25rem 1.5rem;
   border-radius: var(--radius-2xl);
-  border: 1px solid rgba(121, 164, 233, 0.18);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
   backdrop-filter: blur(10px);
 }
 
@@ -85,13 +85,13 @@
   gap: 0.5rem;
   padding: 0.875rem 1rem;
   border-radius: 12px;
-  border: 1px solid rgba(121, 164, 233, 0.18);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
   transition: background 160ms ease;
 }
 
 .interview-card:hover {
-  background: rgba(121, 164, 233, 0.05);
+  background: rgba(121,164,233,0.05);
 }
 
 .interview-card.scheduled  { border-left: 3px solid #3b82f6; }
@@ -119,8 +119,8 @@
   align-items: center;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid rgba(121, 164, 233, 0.25);
-  background: rgba(121, 164, 233, 0.1);
+  border: 1px solid var(--border-strong);
+  background: var(--border-subtle);
   color: var(--color-secondary);
   font-size: 0.75rem;
   font-weight: 700;
@@ -169,7 +169,7 @@
 .interview-private-note {
   display: block;
   font-size: 0.8rem;
-  color: rgba(248,250,252,0.45);
+  color: var(--text-soft);
   font-style: italic;
 }
 .interview-private-block {
@@ -193,7 +193,7 @@
 .interview-invite {
   margin-top: 0.85rem;
   padding-top: 0.85rem;
-  border-top: 1px solid rgba(121,164,233,0.12);
+  border-top: 1px solid var(--border-subtle);
 }
 .interview-invite-label {
   font-size: 0.7rem;
@@ -223,7 +223,7 @@
 .interview-invite-x {
   border: none;
   background: transparent;
-  color: rgba(248,250,252,0.45);
+  color: var(--text-soft);
   cursor: pointer;
   font-size: 0.7rem;
   line-height: 1;
@@ -235,7 +235,7 @@
 .interview-invite-x:disabled { cursor: not-allowed; opacity: 0.5; }
 .interview-invite-empty {
   font-size: 0.78rem;
-  color: rgba(248,250,252,0.4);
+  color: var(--text-soft);
   margin-bottom: 0.55rem;
 }
 .interview-invite-add {
@@ -247,21 +247,21 @@
   min-width: 0;
   padding: 0.5rem 0.7rem;
   border-radius: 10px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(121,164,233,0.22);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
   color: var(--color-text);
   font-size: 0.82rem;
   font-family: inherit;
   outline: none;
 }
-.interview-invite-select:focus { border-color: rgba(121,164,233,0.5); }
+.interview-invite-select:focus { border-color: var(--border-prominent); }
 /* Dark dropdown options - the native list is white by default */
 .interview-invite-select option {
   background: #141c3c;
   color: #e8f0fe;
 }
 .interview-invite-select option:disabled {
-  color: rgba(248,250,252,0.4);
+  color: var(--text-soft);
 }
 .interview-invite-btn {
   flex-shrink: 0;
@@ -296,7 +296,7 @@
   gap: 1rem;
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(121,164,233,0.14);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .interview-trigger-btn {
@@ -309,17 +309,17 @@
   margin-top: 0.75rem;
   padding: 0.85rem 1rem;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(168, 132, 226, 0.32);
+  background: var(--surface-2);
+  border: 1px solid rgba(168,132,226,0.32);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
 .interview-deleg-panel--incoming {
   background:
-    radial-gradient(800px 200px at 0% 0%, rgba(168, 132, 226, 0.16), transparent 70%),
-    rgba(255, 255, 255, 0.04);
-  border-color: rgba(168, 132, 226, 0.5);
+    radial-gradient(800px 200px at 0% 0%, rgba(168,132,226,0.16), transparent 70%),
+    var(--surface-2);
+  border-color: rgba(168,132,226,0.5);
 }
 .interview-deleg-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
 .interview-deleg-badge {
@@ -329,12 +329,12 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(168, 132, 226, 0.18);
-  border: 1px solid rgba(168, 132, 226, 0.45);
-  color: rgba(220, 200, 255, 0.95);
+  background: rgba(168,132,226,0.18);
+  border: 1px solid rgba(168,132,226,0.45);
+  color: rgba(220,200,255,0.95);
 }
 .interview-deleg-panel--incoming .interview-deleg-badge {
-  background: linear-gradient(135deg, rgba(126, 90, 196, 0.65), rgba(168, 132, 226, 0.65));
+  background: linear-gradient(135deg, rgba(126,90,196,0.65), rgba(168,132,226,0.65));
   color: #fff;
   border: none;
 }
@@ -343,7 +343,7 @@
   margin: 0;
   padding: 0.45rem 0.7rem;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-1);
   color: var(--color-text-muted);
   font-size: 0.85rem;
   font-style: italic;
@@ -357,17 +357,17 @@
   margin-top: 0.75rem;
   padding: 0.85rem 1rem;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(121, 164, 233, 0.28);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
 .interview-resched-panel--from-other {
   background:
-    radial-gradient(800px 200px at 0% 0%, rgba(251, 191, 36, 0.12), transparent 70%),
-    rgba(255, 255, 255, 0.04);
-  border-color: rgba(251, 191, 36, 0.4);
+    radial-gradient(800px 200px at 0% 0%, rgba(251,191,36,0.12), transparent 70%),
+    var(--surface-2);
+  border-color: rgba(251,191,36,0.4);
 }
 .interview-resched-head {
   display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem;
@@ -379,14 +379,14 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(121, 164, 233, 0.18);
-  border: 1px solid rgba(121, 164, 233, 0.4);
-  color: rgba(180, 210, 255, 0.95);
+  background: var(--border);
+  border: 1px solid var(--border-prominent);
+  color: rgba(180,210,255,0.95);
 }
 .interview-resched-panel--from-other .interview-resched-badge {
-  background: rgba(251, 191, 36, 0.18);
-  border-color: rgba(251, 191, 36, 0.5);
-  color: rgba(255, 220, 130, 0.95);
+  background: rgba(251,191,36,0.18);
+  border-color: rgba(251,191,36,0.5);
+  color: rgba(255,220,130,0.95);
 }
 .interview-resched-meta {
   font-size: 0.82rem;
@@ -396,7 +396,7 @@
   margin: 0;
   padding: 0.45rem 0.7rem;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-1);
   color: var(--color-text-muted);
   font-size: 0.85rem;
   font-style: italic;
@@ -413,8 +413,8 @@
   gap: 0.15rem;
   padding: 0.65rem 0.85rem;
   border-radius: 12px;
-  border: 1px solid rgba(121, 164, 233, 0.28);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
   color: var(--color-text);
   cursor: pointer;
   font-family: inherit;
@@ -422,8 +422,8 @@
 }
 .interview-resched-slot:hover:not(:disabled) {
   transform: translateY(-1px);
-  border-color: rgba(121, 164, 233, 0.6);
-  background: rgba(121, 164, 233, 0.12);
+  border-color: rgba(121,164,233,0.6);
+  background: var(--border-subtle);
 }
 .interview-resched-slot:disabled { opacity: 0.5; cursor: not-allowed; }
 .interview-resched-slot-day {
@@ -441,8 +441,8 @@
 .interview-resched-slot-readonly {
   padding: 0.3rem 0.6rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   color: var(--color-cream);
   font-size: 0.78rem;
   font-weight: 600;
@@ -457,9 +457,9 @@
   padding: 0.9rem 1.1rem;
   border-radius: 16px;
   background:
-    radial-gradient(800px 200px at 0% 0%, rgba(233, 121, 121, 0.12), transparent 70%),
-    rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(233, 121, 121, 0.35);
+    radial-gradient(800px 200px at 0% 0%, rgba(233,121,121,0.12), transparent 70%),
+    var(--surface-2);
+  border: 1px solid rgba(233,121,121,0.35);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -477,9 +477,9 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(233, 121, 121, 0.16);
-  border: 1px solid rgba(233, 121, 121, 0.4);
-  color: rgba(255, 200, 200, 0.95);
+  background: rgba(233,121,121,0.16);
+  border: 1px solid rgba(233,121,121,0.4);
+  color: rgba(255,200,200,0.95);
 }
 .interview-declined-line { margin: 0; color: var(--color-text); font-size: 0.92rem; }
 .interview-declined-slots {
@@ -495,8 +495,8 @@
   gap: 0.1rem;
   padding: 0.5rem 0.85rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(233, 121, 121, 0.3);
+  background: var(--surface-1);
+  border: 1px solid rgba(233,121,121,0.3);
   min-width: 7.5rem;
 }
 .interview-declined-slot-day {
@@ -512,14 +512,14 @@
   color: var(--color-cream);
   letter-spacing: -0.01em;
   text-decoration: line-through;
-  text-decoration-color: rgba(233, 121, 121, 0.65);
+  text-decoration-color: rgba(233,121,121,0.65);
   text-decoration-thickness: 2px;
 }
 .interview-declined-reason {
   margin: 0;
   padding: 0.55rem 0.85rem;
-  border-left: 3px solid rgba(233, 121, 121, 0.5);
-  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid rgba(233,121,121,0.5);
+  background: var(--surface-1);
   border-radius: 8px;
   color: var(--color-cream);
   font-style: italic;
@@ -546,8 +546,8 @@
   margin-top: 1rem;
   padding: 1rem 1.1rem;
   border-radius: 16px;
-  background: rgba(121, 164, 233, 0.08);
-  border: 1px solid rgba(121, 164, 233, 0.28);
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -565,9 +565,9 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid rgba(251, 191, 36, 0.4);
-  color: rgba(251, 210, 130, 0.95);
+  background: rgba(251,191,36,0.15);
+  border: 1px solid rgba(251,191,36,0.4);
+  color: rgba(251,210,130,0.95);
 }
 .interview-proposal-meta {
   font-size: 0.86rem;
@@ -581,8 +581,8 @@
 .interview-proposal-slot {
   padding: 0.35rem 0.6rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   color: var(--color-cream);
   font-size: 0.82rem;
   font-weight: 600;

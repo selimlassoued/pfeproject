@@ -12,8 +12,8 @@
 .offer-empty {
   padding: 0.9rem 1rem;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px dashed rgba(121, 164, 233, 0.25);
+  background: var(--surface-1);
+  border: 1px dashed var(--border-strong);
   color: var(--color-text-muted);
   font-size: 0.92rem;
 }
@@ -24,8 +24,8 @@
 .offer-form {
   padding: 1.1rem 1.2rem;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
@@ -53,15 +53,15 @@
   font-weight: 600;
   color: var(--color-text);
 }
-.offer-required { color: rgba(233, 121, 121, 0.85); }
+.offer-required { color: rgba(233,121,121,0.85); }
 .offer-field input,
 .offer-field select,
 .offer-field textarea {
   width: 100%;
   padding: 0.65rem 0.85rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   color: var(--color-text);
   font-family: inherit;
   font-size: 0.92rem;
@@ -79,9 +79,9 @@
 .offer-error {
   padding: 0.6rem 0.85rem;
   border-radius: 10px;
-  background: rgba(233, 121, 121, 0.1);
-  border: 1px solid rgba(233, 121, 121, 0.3);
-  color: rgba(255, 220, 220, 0.95);
+  background: rgba(233,121,121,0.1);
+  border: 1px solid rgba(233,121,121,0.3);
+  color: rgba(255,220,220,0.95);
   font-size: 0.85rem;
 }
 
@@ -89,17 +89,17 @@
 .offer-card {
   padding: 1.1rem 1.2rem;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 0.95rem;
 }
 .offer-card--active {
   background:
-    radial-gradient(800px 200px at 0% 0%, rgba(121,164,233,0.12), transparent 70%),
-    rgba(255, 255, 255, 0.04);
-  border-color: rgba(121, 164, 233, 0.35);
+    radial-gradient(800px 200px at 0% 0%, var(--border-subtle), transparent 70%),
+    var(--surface-2);
+  border-color: var(--border-strong);
 }
 .offer-card-head {
   display: flex;
@@ -115,18 +115,18 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.offer-status--sent { background: rgba(121, 164, 233, 0.18); color: rgba(180, 210, 255, 0.95); border: 1px solid rgba(121,164,233,0.4); }
-.offer-status--negotiating { background: rgba(251, 191, 36, 0.15); color: rgba(255, 220, 130, 0.95); border: 1px solid rgba(251,191,36,0.4); }
-.offer-status--accepted { background: rgba(74, 222, 128, 0.18); color: rgba(180, 250, 200, 0.95); border: 1px solid rgba(74,222,128,0.45); }
+.offer-status--sent { background: var(--border); color: rgba(180,210,255,0.95); border: 1px solid var(--border-prominent); }
+.offer-status--negotiating { background: rgba(251,191,36,0.15); color: rgba(255,220,130,0.95); border: 1px solid rgba(251,191,36,0.4); }
+.offer-status--accepted { background: rgba(74,222,128,0.18); color: rgba(180,250,200,0.95); border: 1px solid rgba(74,222,128,0.45); }
 .offer-status--declined,
 .offer-status--withdrawn,
-.offer-status--expired { background: rgba(248, 113, 113, 0.15); color: rgba(255, 200, 200, 0.95); border: 1px solid rgba(248,113,113,0.4); }
+.offer-status--expired { background: rgba(248,113,113,0.15); color: rgba(255,200,200,0.95); border: 1px solid rgba(248,113,113,0.4); }
 
 .offer-expires {
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   color: var(--color-text-muted);
   font-size: 0.8rem;
   font-weight: 600;
@@ -143,8 +143,8 @@
   gap: 0.1rem;
   padding: 0.6rem 0.85rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(121, 164, 233, 0.16);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
 }
 .offer-term-label {
   font-size: 0.72rem;
@@ -166,7 +166,7 @@
   flex-direction: column;
   gap: 0.55rem;
   padding-top: 0.4rem;
-  border-top: 1px solid rgba(121, 164, 233, 0.14);
+  border-top: 1px solid var(--border-subtle);
 }
 .offer-thread-title {
   margin: 0;
@@ -182,14 +182,14 @@
 .offer-msg {
   padding: 0.65rem 0.85rem;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(121, 164, 233, 0.18);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
-.offer-msg--recruiter { border-left: 3px solid rgba(121, 164, 233, 0.6); }
-.offer-msg--candidate { border-left: 3px solid rgba(74, 222, 128, 0.55); }
+.offer-msg--recruiter { border-left: 3px solid rgba(121,164,233,0.6); }
+.offer-msg--candidate { border-left: 3px solid rgba(74,222,128,0.55); }
 .offer-msg-head {
   display: flex;
   justify-content: space-between;

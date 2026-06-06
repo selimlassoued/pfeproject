@@ -23,7 +23,7 @@
   min-height: 1.6rem;
 }
 .pref-save-indicator--saving {
-  color: rgba(121, 164, 233, 0.9);
+  color: rgba(121,164,233,0.9);
 }
 .pref-save-indicator--saving::before {
   content: '';
@@ -31,12 +31,12 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid rgba(121, 164, 233, 0.3);
-  border-top-color: rgba(121, 164, 233, 0.9);
+  border: 2px solid var(--border-strong);
+  border-top-color: rgba(121,164,233,0.9);
   animation: pref-spin 0.8s linear infinite;
 }
 .pref-save-indicator--error {
-  color: rgba(255, 130, 130, 0.95);
+  color: rgba(255,130,130,0.95);
 }
 .pref-save-indicator--error::before {
   content: '!';
@@ -46,7 +46,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgba(220, 38, 38, 0.8);
+  background: rgba(220,38,38,0.8);
   color: #fff;
   font-weight: 800;
   font-size: 0.7rem;
@@ -62,7 +62,7 @@
 
 .pref-card {
   padding: var(--space-10);
-  border: 1px solid rgba(121,164,233,0.26);
+  border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-md);
   margin-bottom: var(--space-6);
 }
@@ -81,7 +81,7 @@
 .pref-section-title {
   font-size: 0.95rem;
   font-weight: 700;
-  color: rgba(255,255,255,0.85);
+  color: var(--text-muted);
   margin: 0 0 var(--space-4);
   display: flex;
   align-items: center;
@@ -91,7 +91,7 @@
 .pref-hint {
   font-size: 0.78rem;
   font-weight: 400;
-  color: rgba(255,255,255,0.45);
+  color: var(--text-soft);
 }
 
 .domain-grid { display: flex; flex-wrap: wrap; gap: var(--space-3); }
@@ -99,25 +99,25 @@
 .domain-chip {
   padding: 0.5rem 1.1rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(121,164,233,0.25);
-  background: rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.75);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-muted);
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s;
 }
-.domain-chip:hover { border-color: rgba(121,164,233,0.5); color: #fff; }
-.domain-chip--active { background: rgba(121,164,233,0.2); border-color: var(--color-secondary); color: #fff; }
+.domain-chip:hover { border-color: var(--border-prominent); color: #fff; }
+.domain-chip--active { background: var(--border); border-color: var(--color-secondary); color: #fff; }
 
 .skills-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
 .skill-chip {
   padding: 0.4rem 0.9rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(121,164,233,0.2);
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.65);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -126,8 +126,8 @@
   align-items: center;
   gap: 0.4rem;
 }
-.skill-chip:hover { border-color: rgba(121,164,233,0.45); color: #fff; }
-.skill-chip--selected { background: rgba(121,164,233,0.18); border-color: var(--color-secondary); color: #fff; }
+.skill-chip:hover { border-color: var(--border-prominent); color: #fff; }
+.skill-chip--selected { background: var(--border); border-color: var(--color-secondary); color: #fff; }
 
 /* Catalog overlays on top of the base chip:
    • --in-demand → currently mentioned by ≥1 PUBLISHED job. Subtle orange
@@ -138,18 +138,18 @@
                    a small "NEW" text badge in the corner of the chip.
    Both can coexist; selected chips still show the blue background. */
 .skill-chip--in-demand {
-  border-color: rgba(220, 140, 70, 0.55);
+  border-color: rgba(220,140,70,0.55);
 }
 .skill-chip--in-demand:hover {
-  border-color: rgba(220, 140, 70, 0.85);
+  border-color: rgba(220,140,70,0.85);
 }
 .skill-chip--new {
-  border-color: rgba(228, 184, 60, 0.75);
-  box-shadow: 0 0 0 1px rgba(228, 184, 60, 0.18);
+  border-color: rgba(228,184,60,0.75);
+  box-shadow: 0 0 0 1px rgba(228,184,60,0.18);
   padding-right: 0.6rem;  /* room for the badge */
 }
 .skill-chip--in-demand.skill-chip--new {
-  border-color: rgba(228, 184, 60, 0.85);
+  border-color: rgba(228,184,60,0.85);
 }
 
 /* Small text badge for NEW items - sits inline at the end of the chip
@@ -159,8 +159,8 @@
   padding: 0.05rem 0.4rem;
   margin-left: 0.35rem;
   border-radius: 4px;
-  background: rgba(228, 184, 60, 0.22);
-  color: rgba(255, 220, 140, 0.96);
+  background: rgba(228,184,60,0.22);
+  color: rgba(255,220,140,0.96);
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -187,20 +187,20 @@
 .pref-chip {
   padding: 0.55rem 1.4rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(121,164,233,0.22);
-  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   color: rgba(255,255,255,0.72);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s;
 }
-.pref-chip:hover { border-color: rgba(121,164,233,0.5); color: #fff; }
-.pref-chip--active { background: rgba(121,164,233,0.2); border-color: var(--color-secondary); color: #fff; }
+.pref-chip:hover { border-color: var(--border-prominent); color: #fff; }
+.pref-chip--active { background: var(--border); border-color: var(--color-secondary); color: #fff; }
 
 .salary-row { display: flex; align-items: flex-end; gap: var(--space-4); }
 .salary-row .form-group { flex: 1; margin: 0; }
-.salary-sep { padding-bottom: 10px; color: rgba(255,255,255,0.4); font-size: 1.1rem; }
+.salary-sep { padding-bottom: 10px; color: var(--text-soft); font-size: 1.1rem; }
 
 .card-top {
   display: flex;
@@ -208,15 +208,15 @@
   align-items: flex-start;
   gap: var(--space-6);
   padding-bottom: var(--space-6);
-  border-bottom: 1px solid rgba(121,164,233,0.18);
+  border-bottom: 1px solid var(--border);
   margin-bottom: var(--space-8);
 }
 .card-title { font-family: var(--font-display); font-size: 1.25rem; color: var(--color-cream); margin: 0; }
 .card-badge {
   padding: 0.35rem 0.7rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(121,164,233,0.25);
-  background: rgba(121,164,233,0.10);
+  border: 1px solid var(--border-strong);
+  background: var(--border-subtle);
   color: var(--color-cream);
   font-weight: 700;
   font-size: 0.85rem;
@@ -224,7 +224,7 @@
 .card-footer {
   margin-top: var(--space-10);
   padding-top: var(--space-6);
-  border-top: 1px solid rgba(121,164,233,0.18);
+  border-top: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -232,7 +232,7 @@
   flex-wrap: wrap;
 }
 
-.form-group label { display: block; margin-bottom: 0.55rem; font-weight: 700; color: rgba(255,255,255,0.92); }
+.form-group label { display: block; margin-bottom: 0.55rem; font-weight: 700; color: var(--text); }
 
 /* Inline helper text under a form field - used for guidance like
    "pick the most recent degree". Visually subordinate to the label and
@@ -242,11 +242,11 @@
   margin-top: 0.45rem;
   font-size: 0.78rem;
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-soft);
   font-style: italic;
 }
 .input { height: 44px; }
-.input:focus { border-color: var(--color-secondary); box-shadow: 0 0 0 3px rgba(121,164,233,0.30); }
+.input:focus { border-color: var(--color-secondary); box-shadow: 0 0 0 3px var(--border-strong); }
 
 select.input {
   appearance: none;
@@ -259,8 +259,8 @@ select.input {
 /* color-scheme + option theming live in global styles.css - applies to every
    <select> in the app, no per-page duplication needed. */
 
-.status { border-radius: 14px; padding: 0.95rem 1rem; border: 1px solid var(--color-border); background: rgba(255,255,255,0.05); margin-bottom: var(--space-6); }
-.status--info    { background: rgba(121,164,233,0.10); }
+.status { border-radius: 14px; padding: 0.95rem 1rem; border: 1px solid var(--color-border); background: var(--surface-2); margin-bottom: var(--space-6); }
+.status--info    { background: var(--border-subtle); }
 .status--success { background: rgba(120,255,197,0.10); border-color: rgba(120,255,197,0.25); }
 .status--error   { background: rgba(255,120,120,0.10); border-color: rgba(255,120,120,0.25); }
 
@@ -283,14 +283,14 @@ select.input {
   gap: var(--space-4);
   padding: 0.55rem 0.9rem;
   border-radius: 10px;
-  border: 1px solid rgba(121,164,233,0.2);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
 }
 
 .lang-name {
   flex: 1;
   font-weight: 600;
-  color: rgba(255,255,255,0.9);
+  color: var(--text);
 }
 
 .lang-level-select {
