@@ -27,6 +27,14 @@ ANALYSIS_MODEL   = os.getenv("SEMANTIC_MATCH_ANALYSIS_MODEL", "qwen2.5:7b")
 # computed once across all applicants instead of recomputed on every match.
 JOB_SERVICE_URL = os.getenv("JOB_SERVICE_URL", "http://job-microservice:8080")
 
+# Application-microservice — owns the skill_catalog_entry table that holds the
+# canonical (skill_name → embedding + volatility + implies) records. The matcher
+# consults this catalog before falling back to Ollama for any per-skill embedding.
+APPLICATION_SERVICE_URL = os.getenv(
+    "APPLICATION_SERVICE_URL", "http://application-microservice:8080"
+)
+SKILL_CATALOG_BASE = f"{APPLICATION_SERVICE_URL}/api/applications/skill-catalog"
+
 # Cosine similarity threshold for semantic skill synonyms (e.g. React / ReactJS)
 # Embedding similarity thresholds for skill matching.
 # The model already encodes language-framework relationships (Java/Spring Boot, PHP/Laravel, etc.)
@@ -1042,6 +1050,141 @@ def _embed_cached(text: str, cache: dict[str, list[float]]) -> list[float]:
 _logger = logging.getLogger(__name__)
 
 
+def _nearest_skill_in_catalog(req_vec: list[float], candidate_names: list[str]) -> dict | None:
+    """Ask the catalog for the closest skill among `candidate_names` to `req_vec`.
+
+    One HTTP call replaces the Python proxy loop in Track 1: Postgres runs the
+    cosine search via pgvector's <=> operator and HNSW index. Returns a dict
+    {name, displayName, score} or None on miss/error.
+
+    Failing closed (return None) means the matcher falls through to its own
+    SEMANTIC-only path, so a flaky application-microservice never breaks
+    matching, just slightly degrades it.
+    """
+    if not req_vec or len(req_vec) != 768 or not candidate_names:
+        return None
+    try:
+        r = requests.post(
+            f"{SKILL_CATALOG_BASE}/nearest-of",
+            json={"embedding": req_vec, "candidates": list(candidate_names)},
+            timeout=5,
+        )
+        if r.status_code == 200:
+            return r.json()
+        # 204 (no candidate has a stored embedding yet) or any other status:
+        # treat as "no proxy" and let the matcher fall back.
+        return None
+    except Exception as e:
+        _logger.warning("[skill-emb] /nearest-of failed: %s", e)
+        return None
+
+
+def _get_or_resolve_skill_vector(skill_text: str, cache: dict[str, list[float]]) -> list[float]:
+    """Catalog-aware skill embedding.
+
+    Used in place of _embed_cached() when the matcher is embedding short
+    skill names (job requirements, CV skills). Replaces the inline-Ollama
+    behaviour with a three-stage pipeline against the application-microservice
+    catalog so vectors live in Postgres instead of being recomputed.
+
+    Flow:
+      1. Normalize the input (lowercase, trim).
+      2. GET /intel — if the row exists with a vector, return it (catalog HIT).
+      3. Compute via Ollama, then POST /resolve to find out if it's a known
+         typo of an existing entry. If so, fetch the canonical row's vector
+         instead of the freshly-computed one (typo dedup).
+      4. If genuinely new (NEW action), PUT the vector to the catalog so
+         future calls hit the cache.
+
+    Always returns a usable vector — falls back to plain Ollama-only embedding
+    on any catalog failure so a flaky application-microservice can't block
+    matching.
+    """
+    if not skill_text or not skill_text.strip():
+        return []
+
+    normalized = skill_text.strip().lower()
+
+    # In-request memo first (cheap).
+    cache_key = f"__catalog::{normalized}"
+    if cache_key in cache:
+        return cache[cache_key]
+
+    # Stage 1: try the catalog cache via GET /intel.
+    intel_url = f"{SKILL_CATALOG_BASE}/{normalized}/intel"
+    try:
+        r = requests.get(intel_url, timeout=3)
+        if r.status_code == 200:
+            payload = r.json() or {}
+            stored_model = payload.get("embeddingModel")
+            vec          = payload.get("embedding") or []
+            if stored_model == EMBEDDING_MODEL and len(vec) == 768:
+                vec = [float(x) for x in vec]
+                cache[cache_key] = vec
+                _logger.info("[skill-emb] HIT catalog for '%s'", normalized)
+                return vec
+        # 204 or 404 — row missing or has no vector. Fall through.
+    except Exception as e:
+        _logger.warning("[skill-emb] catalog GET failed for '%s': %s — falling back to Ollama", normalized, e)
+        vec = _embed_cached(normalized, cache)
+        cache[cache_key] = vec
+        return vec
+
+    # Stage 2: compute via Ollama (or in-request memo).
+    fresh = _embed_cached(normalized, cache)
+    if not fresh or len(fresh) != 768:
+        cache[cache_key] = fresh
+        return fresh
+
+    # Stage 3: ask the catalog if this is a typo of an existing skill.
+    try:
+        resolve_resp = requests.post(
+            f"{SKILL_CATALOG_BASE}/resolve",
+            json={"input": normalized, "embedding": fresh, "embeddingModel": EMBEDDING_MODEL},
+            timeout=5,
+        )
+        if resolve_resp.status_code == 200:
+            decision = resolve_resp.json() or {}
+            action = decision.get("action")
+            matched = decision.get("matchedName")
+
+            if action in ("EXACT", "AUTO_MERGE") and matched:
+                # Use the canonical entry's vector if we can fetch it.
+                _logger.info("[skill-emb] %s '%s' → '%s' (score=%.4f)",
+                             action, normalized, matched, decision.get("topScore") or 0.0)
+                try:
+                    cr = requests.get(f"{SKILL_CATALOG_BASE}/{matched}/intel", timeout=3)
+                    if cr.status_code == 200:
+                        body = cr.json() or {}
+                        canon_vec = body.get("embedding") or []
+                        if len(canon_vec) == 768:
+                            canon_vec = [float(x) for x in canon_vec]
+                            cache[cache_key] = canon_vec
+                            return canon_vec
+                except Exception:
+                    pass
+                # Couldn't fetch canonical — fall through to the fresh vector.
+
+            if action == "NEW":
+                # Persist the new vector so future calls hit the cache.
+                try:
+                    requests.put(
+                        intel_url,
+                        json={"embedding": fresh, "embeddingModel": EMBEDDING_MODEL},
+                        timeout=5,
+                    )
+                    _logger.info("[skill-emb] STORED new catalog row for '%s'", normalized)
+                except Exception as e:
+                    _logger.warning("[skill-emb] PUT failed for '%s': %s", normalized, e)
+            # REVIEW action: do nothing special — use the fresh vector this
+            # round, leave the catalog untouched so an admin can decide later.
+    except Exception as e:
+        _logger.warning("[skill-emb] /resolve failed for '%s': %s", normalized, e)
+
+    cache[cache_key] = fresh
+    return fresh
+
+
 def _get_or_compute_job_vector(
     job_id: Optional[str],
     job_text: str,
@@ -1288,12 +1431,7 @@ def _build_cv_text(cv: CvAnalysisResult) -> str:
 
 def _build_requirement_text(req: JobRequirementInput) -> str:
     cat = (req.category or "REQUIREMENT").upper()
-    years = []
-    if req.min_years is not None:
-        years.append(f"min {req.min_years} years")
-    if req.max_years is not None:
-        years.append(f"max {req.max_years} years")
-    suffix = f" ({', '.join(years)})" if years else ""
+    suffix = f" (min {req.min_years} years)" if req.min_years is not None else ""
     return f"[{cat}] {(req.description or '').strip()}{suffix}".strip()
 
 
@@ -1352,7 +1490,7 @@ def _match_education_req(
     # "LICENCE_BACHELOR,ENGINEER,MASTER" — the recruiter accepts ANY of them.
     # ENGINEER (ingénieur, bac+5) ranks with MASTER, above LICENCE.
     _STRUCTURED_DEGREE_MAP = {
-        "BAC": 0, "BTS_DUT": 1, "LICENCE_BACHELOR": 2,
+        "BAC": 0, "BTS_DUT": 1, "TRAINING": 1, "LICENCE_BACHELOR": 2,
         "ENGINEER": 3, "MASTER": 3, "PHD": 4, "ANY": None,
     }
     structured_req_level: Optional[int] = None
@@ -1417,18 +1555,108 @@ def _match_education_req(
         return 10, "missing"
 
 
-def _match_certification_req(description: str, cv: CvAnalysisResult) -> tuple[int, str]:
-    """Match a CERTIFICATION requirement against the candidate's certifications."""
+def _match_certification_req(
+    description: str,
+    cv: CvAnalysisResult,
+    issuing_org: Optional[str] = None,
+    custom_issuing_org: Optional[str] = None,
+    require_current: bool = False,
+    validity_years: Optional[int] = None,
+) -> tuple[int, str]:
+    """Match a CERTIFICATION requirement against the candidate's certifications.
+
+    Args:
+        description: free-text from the requirement (e.g. "AWS Solutions Architect")
+        cv: the parsed CV
+        issuing_org: if set, only count certs whose text mentions this org
+            (e.g. "AWS" filters to certs containing "amazon" or "aws")
+        require_current: if True, expired certs (cert_year + validity_years
+            < current_year) no longer count as matched
+        validity_years: lifetime of the cert in years. Required when
+            require_current is True; defaults to 3 if unset.
+
+    Score semantics:
+        100 = matched (org + tokens overlap, and not expired if checked)
+         60 = partial match (org + tokens overlap, but expired when currency required)
+          0 = missing (no overlap or wrong org)
+    """
+    import datetime
     req_tokens = {t for t in _normalize(description).split()
                   if len(t) > 2 and t not in _EVIDENCE_SKIP}
     if not req_tokens:
         return 0, "missing"
 
+    # Map issuing-org code → keywords we expect to see in the cert text.
+    # Lowercased + accent-folded same as _normalize would produce.
+    org_keywords: dict[str, set[str]] = {
+        "AWS":              {"aws", "amazon"},
+        "MICROSOFT":        {"microsoft", "azure", "az-", "ms-"},
+        "GOOGLE_CLOUD":     {"google", "gcp"},
+        "ORACLE":           {"oracle", "oca", "ocp"},
+        "IBM":              {"ibm"},
+        "CISCO":            {"cisco", "ccna", "ccnp", "ccie"},
+        "COMPTIA":          {"comptia"},
+        "LINUX_FOUNDATION": {"linux foundation", "cka", "ckad", "cks", "lfcs", "lfce"},
+        "HASHICORP":        {"hashicorp", "terraform", "vault"},
+        "DOCKER":           {"docker", "dca"},
+        "RED_HAT":          {"red hat", "redhat", "rhcsa", "rhce"},
+        "ISC2":             {"isc2", "(isc)", "cissp", "ccsp", "sscp"},
+        "ISACA":            {"isaca", "cisa", "cism", "crisc", "cgeit"},
+        "PMI":              {"pmi", "pmp", "capm"},
+        "SCRUM_ALLIANCE":   {"scrum alliance", "csm", "cspo"},
+        "TOGAF":            {"togaf", "open group"},
+        "ITIL":             {"itil", "axelos"},
+        "SALESFORCE":       {"salesforce", "trailhead"},
+    }
+    org_code = (issuing_org or "").upper()
+    if org_code == "OTHER" and custom_issuing_org and custom_issuing_org.strip():
+        # Free-text org from the recruiter (e.g. "MongoDB University", "SAP").
+        # Normalize the same way we normalize cert text so the substring match
+        # works regardless of casing or accents.
+        org_filter: Optional[set[str]] = {_normalize(custom_issuing_org)}
+    elif org_code and org_code in org_keywords:
+        org_filter = org_keywords[org_code]
+    else:
+        # null, OTHER with no custom value, or any unknown code → no filter
+        org_filter = None
+
+    current_year = datetime.datetime.now().year
+    effective_validity = validity_years if validity_years and validity_years > 0 else 3
+
+    best_score = 0
     for cert in (cv.certifications or []):
         cert_n = _normalize(cert)
-        if any(t in cert_n for t in req_tokens):
-            return 100, "matched"
 
+        # Issuing-org filter — when set (and non-empty), the cert text must
+        # mention the org. "OTHER" / "OTHER / Custom" has an empty keyword
+        # set so we treat it as "no filter".
+        if org_filter:
+            if not any(kw in cert_n for kw in org_filter):
+                continue
+
+        # Keyword overlap with the requirement description.
+        if not any(t in cert_n for t in req_tokens):
+            continue
+
+        # At this point the cert is a textual match. If the recruiter requires
+        # currency, drop it when expired. Year is extracted from anywhere in
+        # the cert string (e.g. "AWS Solutions Architect (2020)" or "issued 2021").
+        if require_current:
+            year_match = re.search(r"(19|20)\d{2}", cert)
+            if year_match:
+                cert_year = int(year_match.group(0))
+                age = current_year - cert_year
+                if age > effective_validity:
+                    # Expired — soft-fail: 60 (partial), recruiter sees they had it
+                    # but the cert is past its validity window.
+                    best_score = max(best_score, 60)
+                    continue
+            # No year extractable — treat as still valid (can't prove expired)
+
+        return 100, "matched"
+
+    if best_score > 0:
+        return best_score, "partial"
     return 0, "missing"
 
 
@@ -1479,6 +1707,118 @@ def _canonical_language(name: Optional[str]) -> Optional[str]:
         if alias in folded:
             return canon
     return None
+
+
+# ── Job-domain fit ──────────────────────────────────────────────────────────
+# When the recruiter tags the job with a domain (FINANCE_BANKING, INSURANCE,
+# ...), we score how well the candidate's prior WORK EXPERIENCE matches that
+# domain. The signal is keyword-based — we walk through each work entry's
+# company name + role title + description, and count matches against the
+# domain's keyword set. Tunisian + international banks/insurers are listed
+# alongside FR + EN domain terms so candidates from any background are caught.
+_DOMAIN_KEYWORDS: dict[str, set[str]] = {
+    "FINANCE_BANKING": {
+        # generic FR + EN
+        "bank", "banque", "banking", "bancaire", "finance", "financial",
+        "financiere", "fintech", "trading", "investment", "investissement",
+        "credit", "compliance", "regulatory", "reglementation", "basel",
+        "settlement", "treasury", "tresorerie", "asset management",
+        "wealth management", "brokerage", "courtage", "swift",
+        # Tunisian banks
+        "biat", "attijari", "bna", "stb", "atb", "bh bank", "amen bank",
+        "ubci", "uib", "qnb", "wifak",
+        # International banks operating in/near Tunisia
+        "bnp paribas", "bnp", "societe generale", "credit agricole",
+        "hsbc", "citi", "goldman sachs", "jp morgan", "barclays",
+        # VERMEG's own products / clients
+        "vermeg", "palmyra", "megara",
+    },
+    "INSURANCE": {
+        # generic FR + EN
+        "insurance", "insurer", "assurance", "assureur", "assurances",
+        "underwriting", "souscription", "actuarial", "actuarielle", "actuaire",
+        "claims", "sinistres", "reinsurance", "reassurance", "solvency",
+        "policy", "police", "broker", "courtier",
+        # Tunisian insurers
+        "star assurance", "comar", "maghrebia", "gat assurances",
+        "lloyd", "ami assurance", "assurances biat",
+        # International
+        "axa", "allianz", "zurich", "generali", "aviva", "munich re",
+        "swiss re",
+    },
+    "SOFTWARE_ENGINEERING": {
+        "software", "logiciel", "engineering", "developer", "developpeur",
+        "developement", "saas", "platform", "plateforme", "tech", "startup",
+        "scale-up", "scaleup", "microservices", "devops", "sre",
+        "site reliability",
+    },
+    "PROJECT_MANAGEMENT": {
+        "project manager", "chef de projet", "program manager",
+        "delivery manager", "pmo", "scrum master", "product owner",
+        "agile", "waterfall", "prince2", "lean", "kanban",
+    },
+    "QUALITY_ASSURANCE": {
+        "qa", "quality assurance", "assurance qualite", "test automation",
+        "test engineer", "ingenieur test", "selenium", "cypress",
+        "playwright", "junit", "testng", "test plan", "regression testing",
+        "cucumber",
+    },
+    "BUSINESS_ANALYSIS": {
+        "business analyst", "analyste metier", "ba", "ba consultant",
+        "functional consultant", "consultant fonctionnel", "requirements",
+        "user stories", "process modeling", "bpmn", "uml",
+    },
+}
+
+
+def _match_job_domain(cv: "CvAnalysisResult", job_domain: Optional[str]) -> tuple[Optional[int], list[str]]:
+    """Score how well the candidate's work experience matches the job's domain.
+
+    Returns (score 0-100, evidence list). When job_domain is null or unknown
+    the score is None and evidence is empty (UI hides the chip entirely).
+
+    Scoring:
+      - 0 distinct matches → 0
+      - 1 distinct match    → 50
+      - 2 distinct matches  → 75
+      - 3+ distinct matches → 100
+    Evidence is a deduplicated list of the matching keywords found, capped
+    at 6 so the chip stays readable. Uses substring matching on normalized
+    text (case + accent insensitive via _normalize).
+    """
+    if not job_domain:
+        return None, []
+    keywords = _DOMAIN_KEYWORDS.get(job_domain.upper())
+    if not keywords:
+        return None, []
+    if not cv.work_experience:
+        return 0, []
+
+    # Walk every work entry and collect the candidate's full domain footprint:
+    # company, position, and description text all count.
+    blob_parts: list[str] = []
+    for w in cv.work_experience:
+        for attr in ("company", "position", "title", "role", "description"):
+            v = getattr(w, attr, None)
+            if v:
+                blob_parts.append(str(v))
+    if not blob_parts:
+        return 0, []
+    blob = _normalize(" ".join(blob_parts))
+
+    # Multi-word keywords need substring matching; single words also work
+    # via substring because _normalize lowercased everything.
+    hits: list[str] = []
+    for kw in keywords:
+        if kw in blob and kw not in hits:
+            hits.append(kw)
+
+    n = len(hits)
+    if   n == 0: score = 0
+    elif n == 1: score = 50
+    elif n == 2: score = 75
+    else:        score = 100
+    return score, hits[:6]
 
 
 def _parse_language_level(text: Optional[str]) -> Optional[int]:
@@ -1583,10 +1923,20 @@ def calibrate_thresholds() -> dict:
     }
 
 
-def _extract_source_tags(req_text: str, cv: CvAnalysisResult) -> str:
+def _extract_source_tags(
+    req_text: str,
+    cv: CvAnalysisResult,
+    sources: Optional['SkillSources'] = None,
+) -> str:
     """
     Return pipe-separated source tags showing WHERE in the CV a requirement is matched.
     Format: "CV Skills | Experience: Vermeg (2026) | GitHub Verified"
+
+    When the requirement isn't found by literal substring match (e.g. TypeScript
+    isn't on the CV but Angular is, and Angular implies TypeScript), the search
+    expands to the implying framework's tokens too. So TypeScript's tags come
+    out as "Via Angular | Experience: Vermeg (2026)" — surfacing the real evidence
+    chain instead of dropping the requirement to a blank chip row.
     """
     clean = re.sub(r"^\[[^\]]+\]\s*", "", req_text.strip())
     tokens = {t for t in _normalize(clean).split()
@@ -1594,23 +1944,46 @@ def _extract_source_tags(req_text: str, cv: CvAnalysisResult) -> str:
     if not tokens:
         return ""
 
-    def matches(text: Optional[str]) -> bool:
+    def matches_any(text: Optional[str], token_set: set[str]) -> bool:
         if not text:
             return False
         n = _normalize(text)
-        return any(t in n for t in tokens)
+        return any(t in n for t in token_set)
+
+    # Framework-implication expansion. If the requirement skill is implied by
+    # a declared framework on the CV (sources.implied_by[req] = "angular"),
+    # we expand the search tokens to ALSO match that framework. This is what
+    # makes implied skills get the same evidence chips as their parent.
+    implying_framework: Optional[str] = None
+    expanded_tokens: set[str] = set(tokens)
+    if sources is not None:
+        req_norm = _normalize(clean)
+        # Direct lookup — req text matches an implied skill key
+        for key in sources.implied_primary:
+            if key == req_norm or key in tokens:
+                fw = sources.implied_by.get(key)
+                if fw:
+                    implying_framework = fw
+                    for tok in fw.split():
+                        if len(tok) > 2:
+                            expanded_tokens.add(tok)
+                    break
 
     tags: list[str] = []
 
-    # 1 — CV Skills section
-    matched_skills = [s for s in (cv.skills or []) if matches(s)]
-    if matched_skills:
+    # 1 — CV Skills section (literal first, then expanded if nothing matched)
+    matched_literal = [s for s in (cv.skills or []) if matches_any(s, tokens)]
+    if matched_literal:
         tags.append("CV Skills")
+    elif implying_framework and any(matches_any(s, {implying_framework}) for s in (cv.skills or [])):
+        # The implying framework IS in CV skills — surface it explicitly so the
+        # candidate gets credit chain visible: "Via Angular" rather than nothing.
+        tags.append(f"Via {implying_framework.title()}")
 
-    # 2 — Work experience
+    # 2 — Work experience (use expanded tokens so Angular-using roles credit TypeScript)
     for exp in (cv.work_experience or []):
-        in_skills_used = any(matches(s) for s in (exp.skills_used or []))
-        in_description = matches(exp.description)
+        in_skills_used = any(matches_any(s, expanded_tokens) for s in (exp.skills_used or []))
+        in_description = matches_any(exp.description, expanded_tokens)
         if in_skills_used or in_description:
             company = exp.company or "Experience"
             year = ""
@@ -1623,17 +1996,19 @@ def _extract_source_tags(req_text: str, cv: CvAnalysisResult) -> str:
                 tags.append(f"Inferred from: {company}{year}")
             break
 
-    # 3 — Projects
+    # 3 — Projects (expanded too)
     for proj in (cv.projects or []):
-        if any(matches(s) for s in (proj.skills_used or [])) or matches(proj.description):
+        if any(matches_any(s, expanded_tokens) for s in (proj.skills_used or [])) \
+                or matches_any(proj.description, expanded_tokens):
             tags.append(f"Project: {proj.title[:30]}" if proj.title else "Project")
             break
 
-    # 4 — GitHub verification
+    # 4 — GitHub verification (literal preferred; implied framework's GitHub
+    # evidence still counts for the implied skill since it's the same code)
     if cv.github_profile:
-        gh_confirmed = any(matches(s) for s in (cv.github_profile.cv_skills_confirmed or []))
-        gh_likely    = any(matches(s) for s in (cv.github_profile.cv_skills_likely or []))
-        gh_tech      = any(matches(s) for s in (cv.github_profile.all_technologies or []))
+        gh_confirmed = any(matches_any(s, expanded_tokens) for s in (cv.github_profile.cv_skills_confirmed or []))
+        gh_likely    = any(matches_any(s, expanded_tokens) for s in (cv.github_profile.cv_skills_likely    or []))
+        gh_tech      = any(matches_any(s, expanded_tokens) for s in (cv.github_profile.all_technologies   or []))
         if gh_confirmed:
             tags.append("GitHub Verified")
         elif gh_likely or gh_tech:
@@ -1689,20 +2064,70 @@ def _build_score_explanation(
     seniority_match: bool,
     candidate_seniority: str,
     required_seniority: Optional[str],
+    skill_scores: Optional[list[dict]] = None,
 ) -> str:
     lines: list[str] = []
 
-    # Skills
-    total_skills = len(matched) + len(missing)
+    # Skills — three-bucket summary so a 78% (partial) skill isn't lumped with
+    # genuinely-absent skills under "missing". A skill scoring ≥80% is matched,
+    # 43-80% partial, <43% missing. Falls back to two-bucket if skill_scores
+    # not provided.
+    def _label_with_qualifier(row: dict) -> str:
+        """Render 'name (raw% / bar% LEVEL → effective%)' when a level
+        requirement modulated the score, plain 'name' otherwise. Surfaces the
+        penalty that's otherwise invisible — a 78% raw against an ADVANCED bar
+        gets pushed below the strong threshold and the user deserves to see why."""
+        name = row.get("skill", "") or ""
+        qualifier = (row.get("qualifier") or "").lower()
+        raw  = int(row.get("rawScore") or row.get("score") or 0)
+        eff  = int(row.get("score") or 0)
+        bar  = int(row.get("qualifierBar") or 0)
+        if qualifier in ("", "any") or bar <= 0:
+            # No level requirement, or candidate raw score >= matched threshold.
+            return f"{name} ({raw}%)" if raw else name
+        label = qualifier.upper()
+        if raw < bar:
+            # Penalised: show raw, the bar that wasn't cleared, and the post-curve effective score.
+            return f"{name} (raw {raw}%, required {label} ≥{bar}%, scored {eff}%)"
+        # Cleared the bar: just show the level was met.
+        return f"{name} ({raw}%, {label} cleared)"
+
+    if skill_scores:
+        strong_rows  = [s for s in skill_scores if s.get("status") == "matched"]
+        partial_rows = [s for s in skill_scores if s.get("status") == "partial"]
+        missing_rows = [s for s in skill_scores if s.get("status") == "missing"]
+        total_skills = len(skill_scores)
+    else:
+        strong_rows  = [{"skill": s} for s in matched]
+        partial_rows = []
+        missing_rows = [{"skill": s} for s in missing]
+        total_skills = len(matched) + len(missing)
+
     if total_skills > 0:
-        pct = round(len(matched) / total_skills * 100)
-        matched_str = ", ".join(matched[:5]) + ("…" if len(matched) > 5 else "")
-        missing_str = ", ".join(missing[:5]) + ("…" if len(missing) > 5 else "")
-        skill_line = f"Skills: {len(matched)}/{total_skills} required skills matched ({pct}%)"
-        if matched:
-            skill_line += f" — found: {matched_str}"
-        if missing:
-            skill_line += f" — missing: {missing_str}"
+        n_full    = len(strong_rows)
+        n_partial = len(partial_rows)
+        n_miss    = len(missing_rows)
+        # Partials count as half a match in the headline percentage so the
+        # number tracks intuition instead of dropping to 0% when every match
+        # landed at, say, 78%.
+        effective_pct = round((n_full + 0.5 * n_partial) / total_skills * 100)
+
+        skill_line = (
+            f"Skills: {n_full} strong, {n_partial} partial, {n_miss} missing "
+            f"out of {total_skills} ({effective_pct}% effective coverage)"
+        )
+        if strong_rows:
+            sample = "; ".join(_label_with_qualifier(r) for r in strong_rows[:3])
+            if len(strong_rows) > 3: sample += "…"
+            skill_line += f" — strong: {sample}"
+        if partial_rows:
+            sample = "; ".join(_label_with_qualifier(r) for r in partial_rows[:3])
+            if len(partial_rows) > 3: sample += "…"
+            skill_line += f" — partial: {sample}"
+        if missing_rows:
+            sample = "; ".join(_label_with_qualifier(r) for r in missing_rows[:3])
+            if len(missing_rows) > 3: sample += "…"
+            skill_line += f" — missing: {sample}"
         lines.append(skill_line)
     else:
         lines.append("Skills: No specific skill requirements defined for this job.")
@@ -1744,6 +2169,108 @@ def _build_score_explanation(
 
 # ── LLM analysis ──────────────────────────────────────────────────────────────
 
+# Generic soft-signal topics worth checking against every CV before claiming
+# a weakness. Used as the FALLBACK when the catalog hasn't been seeded with
+# SOFT-type entries yet — normally the matcher fetches the list (with
+# pre-computed embeddings) from skill_catalog_entry via /by-type/SOFT.
+_SOFT_SIGNALS_FALLBACK: list[str] = [
+    "leadership",
+    "communication and public speaking",
+    "teamwork and collaboration",
+    "initiative and ownership",
+    "problem solving and analytical thinking",
+    "mentoring others",
+]
+
+
+def _fetch_soft_signals_from_catalog() -> dict[str, list[float]]:
+    """Return {signal_name: pre-computed embedding} for every active SOFT row
+    in the skill catalog. Empty dict on miss / error — the caller then falls
+    back to the hardcoded list and on-the-fly embedding.
+
+    Lets admins edit the soft-signal universe via the catalog (add 'product
+    vision', remove 'mentoring others') without a code change."""
+    try:
+        r = requests.get(f"{SKILL_CATALOG_BASE}/by-type/SOFT", timeout=5)
+        if r.status_code != 200:
+            return {}
+        out: dict[str, list[float]] = {}
+        for row in (r.json() or []):
+            name = (row.get("name") or "").strip()
+            vec  = row.get("embedding") or []
+            model = row.get("embeddingModel")
+            if (name and model == EMBEDDING_MODEL and len(vec) == 768):
+                out[name] = [float(x) for x in vec]
+        return out
+    except Exception as e:
+        _logger.warning("[soft-signals] catalog fetch failed: %s", e)
+        return {}
+
+
+def _gather_cv_evidence_pool(cv) -> list[tuple[str, str]]:
+    """Build (label, text) pairs from every CV section that can carry evidence
+    of soft skills or domain experience. Includes paid work, projects,
+    volunteer roles, hackathons, and the summary — no section privileged."""
+    pool: list[tuple[str, str]] = []
+    if cv.summary:
+        pool.append(("summary", cv.summary))
+    for e in (cv.work_experience or []):
+        if e.description:
+            pool.append((f"work: {e.title or 'role'} @ {e.company or 'company'}", e.description))
+    for p in (cv.projects or []):
+        if p.description:
+            pool.append((f"project: {p.title or 'project'}", p.description))
+    for v in (cv.volunteer_work or []):
+        text = ((v.role or '') + ' — ' + (v.description or '')).strip(' —')
+        if text:
+            pool.append((f"volunteer: {v.role or 'role'} @ {v.organization or ''}", text))
+    for h in (cv.hackathons or []):
+        text = ((h.title or '') + ' — ' + (h.description or '')).strip(' —')
+        if text:
+            pool.append((f"hackathon: {h.title or 'event'} ({h.rank or 'participant'})", text))
+    return pool
+
+
+def _semantic_evidence_for(
+    queries: list[str],
+    pool: list[tuple[str, str]],
+    embed_cache: dict[str, list[float]],
+    threshold: float = 0.55,
+    top_n: int = 2,
+    precomputed: dict[str, list[float]] | None = None,
+) -> dict[str, list[dict]]:
+    """For each query string, find the strongest matching passages in `pool`
+    by cosine similarity. Returns {query: [{source, score, passage}, ...]},
+    omitting queries with no above-threshold evidence.
+
+    If `precomputed[query]` is present (from the catalog's pre-stored SOFT
+    embeddings), use it directly — saves an Ollama call per query."""
+    if not pool:
+        return {}
+    pool_vecs = [(label, text, _embed_cached(text[:500], embed_cache)) for label, text in pool]
+    out: dict[str, list[dict]] = {}
+    pre = precomputed or {}
+    for q in queries:
+        q = q.strip()
+        if not q:
+            continue
+        qv = pre.get(q) or _embed_cached(q, embed_cache)
+        if not qv:
+            continue
+        ranked = []
+        for label, text, vec in pool_vecs:
+            if not vec:
+                continue
+            sim = _cosine(qv, vec)
+            if sim >= threshold:
+                ranked.append({"source": label, "score": round(sim, 3),
+                              "passage": text[:280]})
+        ranked.sort(key=lambda x: -x["score"])
+        if ranked:
+            out[q] = ranked[:top_n]
+    return out
+
+
 def _llm_analysis(
     request: SemanticMatchRequest,
     score: int,
@@ -1752,13 +2279,42 @@ def _llm_analysis(
     missing: list[str],
     experience_gap: float,
     seniority_match: bool,
+    embed_cache: dict[str, list[float]] | None = None,
 ) -> tuple[list[str], list[str], str, list[str]]:
     cv = request.cv_analysis
+    # Fresh cache if the caller didn't pass one (e.g. unit tests). In prod
+    # the matcher passes its request-scoped embed_cache so we reuse vectors
+    # already computed for Track 1 / 2.
+    if embed_cache is None:
+        embed_cache = {}
+
+    # Pre-compute semantic evidence so the LLM sees concrete passages instead
+    # of having to skim the whole CV and make subjective calls. The query set
+    # is the SOFT-type entries from the skill catalog (pre-embedded — no
+    # Ollama cost per match) PLUS this job's specific requirement texts.
+    # On catalog miss / first boot, fall back to the hardcoded soft signals
+    # so the analysis still runs.
+    catalog_soft = _fetch_soft_signals_from_catalog()
+    if catalog_soft:
+        soft_signal_names = list(catalog_soft.keys())
+    else:
+        soft_signal_names = list(_SOFT_SIGNALS_FALLBACK)
+
+    evidence_pool = _gather_cv_evidence_pool(cv)
+    evidence_queries: list[str] = list(soft_signal_names)
+    for _r in (request.requirements or []):
+        if _r.description and _r.description.strip():
+            evidence_queries.append(_r.description.strip())
+    evidence_map = _semantic_evidence_for(
+        evidence_queries, evidence_pool, embed_cache,
+        precomputed=catalog_soft,           # skip Ollama for catalog-backed signals
+    )
+
     payload = {
         "job_title": request.job_title,
         "requirements": [
             {"category": r.category, "description": r.description,
-             "min_years": r.min_years, "max_years": r.max_years}
+             "min_years": r.min_years}
             for r in request.requirements
         ],
         "candidate": {
@@ -1776,7 +2332,21 @@ def _llm_analysis(
                 {"title": p.title, "skills_used": (p.skills_used or [])[:12], "description": p.description}
                 for p in (cv.projects or [])[:4]
             ],
+            "hackathons": [
+                {"title": h.title, "rank": h.rank, "date": h.date, "description": h.description}
+                for h in (cv.hackathons or [])[:5]
+            ],
+            "volunteer_work": [
+                {"role": v.role, "organization": v.organization,
+                 "duration": v.duration, "description": v.description}
+                for v in (cv.volunteer_work or [])[:5]
+            ],
+            "awards": (cv.awards or [])[:8],
         },
+        # Semantic evidence — embedding-based. Each topic maps to the
+        # strongest CV passages with cosine similarity. The LLM is instructed
+        # to consult this before deciding a weakness.
+        "evidence_signals": evidence_map,
         "signals": {
             "job_fit_score": score,
             "matched_skills": matched,
@@ -1787,9 +2357,28 @@ def _llm_analysis(
     }
     prompt = (
         "You are a recruiter assistant. Analyze the candidate fit using only the provided data.\n"
+        "\n"
+        "Rules:\n"
+        "1. Use ALL sections of the candidate data before drawing conclusions — not only the paid\n"
+        "   work_experience. The payload also includes hackathons, volunteer_work, projects, and\n"
+        "   awards. Evidence from any of these counts.\n"
+        "2. The `evidence_signals` field maps each topic to the strongest CV passages found by\n"
+        "   semantic similarity, each with a cosine score and the source section. If a topic has\n"
+        "   one or more entries there, the candidate HAS evidence for it — you MUST NOT list a\n"
+        "   weakness saying they 'lack', 'have no', or 'have limited' experience with that topic.\n"
+        "   You may still flag the KIND of evidence (e.g. extracurricular vs paid) but not deny it.\n"
+        "3. Do not assert any weakness that is contradicted by data anywhere in the payload.\n"
+        "4. Be specific about WHY a weakness applies to THIS role. Prefer precise wording like\n"
+        "   'lacks <specific concrete signal>' over vague qualifiers like 'limited' or 'insufficient'.\n"
+        "5. Match the kind of evidence to the kind of requirement: a senior people-management role\n"
+        "   needs evidence of leading paid teams; a customer-facing role needs evidence of\n"
+        "   external-facing work; a technical role needs evidence of hands-on implementation.\n"
+        "   If the candidate only has evidence of a different kind, say which kind they have and\n"
+        "   which kind is missing — do not flatly say they have none.\n"
+        "\n"
         "Return STRICT JSON with keys:\n"
         "  strengths: array of strings (max 5) — what the candidate does well for this role\n"
-        "  weaknesses: array of strings (max 5) — gaps or concerns\n"
+        "  weaknesses: array of strings (max 5) — gaps or concerns, specific and evidence-based\n"
         "  recommendation: exactly one of HIRE, INTERVIEW, REVIEW, REJECT\n"
         "  interview_questions: array of strings (max 5) — questions targeting gaps\n"
         f"Data:\n{json.dumps(payload, ensure_ascii=True)}"
@@ -1965,7 +2554,9 @@ def _compute_skill_score(
     if not normalized:
         return 0, "missing"
 
-    req_vec = _embed_cached(normalized, embed_cache)
+    # Catalog-aware: tries the persistent skill_catalog_entry first, falls back
+    # to Ollama on miss, and PUTs new vectors back so the catalog grows.
+    req_vec = _get_or_resolve_skill_vector(normalized, embed_cache)
 
     # ── Score 1: Direct source evidence ───────────────────────────────────────
     score1 = sources.confidence(normalized)
@@ -1990,18 +2581,17 @@ def _compute_skill_score(
     proxy_in_primary = False
 
     if req_vec:
-        best_sim = 0.0
-        for cv_skill in cv_skills:
-            # Was: `experience_only_credit == 0` — that skipped skills declared
-            # only in the primary CV Skills section, silently hiding
-            # transferable-knowledge proxies like "MySQL declared → some Postgres
-            # credit". Use `confidence > 0` so primary-tier proxies count too.
-            if sources.confidence(cv_skill) == 0:
-                continue
-            sim = _cosine(req_vec, _embed_cached(cv_skill, embed_cache))
-            if sim > best_sim:
-                best_sim   = sim
-                best_proxy = cv_skill
+        # ── Catalog-side proxy search (pgvector + HNSW index) ────────────────
+        # Instead of looping CV skills in Python and computing cosines locally,
+        # send the req vector + the filtered candidate list to the catalog and
+        # let Postgres run ONE indexed query. Same answer, ~25x fewer HTTP
+        # round trips. See SkillCatalogController.nearestOf.
+        candidate_names = [s for s in cv_skills if sources.confidence(s) > 0]
+        best_sim   = 0.0
+        nearest    = _nearest_skill_in_catalog(req_vec, candidate_names)
+        if nearest:
+            best_proxy = nearest.get("name")
+            best_sim   = float(nearest.get("score") or 0.0)
 
         if best_proxy and best_sim >= PROXY_SIM_THRESHOLD:
             proxy_in_primary = best_proxy in sources.primary
@@ -2128,7 +2718,7 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         # the BASIC bar at 50 still counts as matched, while one stuck at 60
         # for an EXPERT requirement drops to ~27 effective and reads as missing.
         status    = _skill_status(effective, threshold)
-        evidence  = _extract_source_tags(skill, cv)
+        evidence  = _extract_source_tags(skill, cv, skill_sources)
         row = {
             "skill":           f"{prefix}{skill}",
             "score":           effective,         # what the UI / aggregation use
@@ -2232,7 +2822,7 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
 
         cat = (req.category or "").upper()
         weight = float(req.weight if req.weight is not None else 1.0)
-        evidence = _extract_source_tags(req_text, cv)
+        evidence = _extract_source_tags(req_text, cv, skill_sources)
 
         # EDUCATION and CERTIFICATION use structured matchers — not embedding
         if cat == "EDUCATION":
@@ -2243,7 +2833,13 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
             )
             req_score = score_val / 100.0
         elif cat == "CERTIFICATION":
-            score_val, _ = _match_certification_req(req.description or "", cv)
+            score_val, _ = _match_certification_req(
+                req.description or "", cv,
+                issuing_org=getattr(req, "issuing_org", None),
+                custom_issuing_org=getattr(req, "custom_issuing_org", None),
+                require_current=bool(getattr(req, "require_current", False)),
+                validity_years=getattr(req, "validity_years", None),
+            )
             req_score = score_val / 100.0
         elif cat in ("LANGUAGE", "LANGUE", "LANGUAGES"):
             score_val, _ = _match_language_req(
@@ -2317,6 +2913,23 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         if cat in ("SKILL", "TECHNICAL", "TECHNOLOGY", "COMPÉTENCE") and req.skill_level:
             req_row["skill_level"]  = req.skill_level
             req_row["critical_gap"] = any_critical_gap
+        # Must-have flag: track whether this requirement is a hard knockout,
+        # and whether the candidate failed it. The default bar is 65% — same
+        # as the INTERMEDIATE qualifier — which catches candidates with clearly
+        # absent or only-marginal evidence without false-rejecting candidates
+        # who have the skill in less-than-ideal CV sections (e.g. projects-only).
+        # For SKILL with an explicit qualifier (BASIC/INTERMEDIATE/ADVANCED/EXPERT)
+        # the bar tracks the qualifier (45/65/80/90) so "must have EXPERT React"
+        # still demands ≥90. This matches the recruiter's stated intent.
+        if bool(getattr(req, "must_have", False)):
+            req_row["must_have"] = True
+            score_pct = round(req_score * 100)
+            if cat in ("SKILL", "TECHNICAL", "TECHNOLOGY", "COMPÉTENCE") and req.skill_level:
+                bar = _QUALIFIER_BARS.get(req.skill_level.lower(), 65)
+            else:
+                bar = 65
+            if score_pct < bar:
+                req_row["must_have_failed"] = True
         requirement_scores.append(req_row)
         weighted_sum  += req_score * weight
         total_weight  += weight
@@ -2375,9 +2988,16 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         seniority_match    = seniority_match,
         candidate_seniority= candidate_seniority,
         required_seniority = required_seniority,
+        # Pass the raw per-skill rows so the explanation can split partial
+        # (43-80%) from missing (<43%) — without this the summary lumps them
+        # together and "javascript at 78%" reads as "missing".
+        skill_scores       = skill_scores,
     )
 
     # ── LLM narrative ─────────────────────────────────────────────────────────
+    # Pass the request-scoped embed_cache so the LLM analyzer can run its
+    # semantic-evidence pre-pass without re-paying Ollama for vectors Track 1
+    # / Track 2 already computed (CV-skill vectors, requirement vectors, etc.)
     strengths, weaknesses, recommendation, interview_questions = _llm_analysis(
         request=request,
         score=job_fit_score,
@@ -2386,7 +3006,27 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         missing=missing,
         experience_gap=experience_gap,
         seniority_match=seniority_match,
+        embed_cache=embed_cache,
     )
+
+    # ── Must-have aggregation ───────────────────────────────────────────────
+    # Walk the per-requirement rows and collect the descriptions of every
+    # must-have requirement the candidate failed. The recruiter UI uses this
+    # to render a red banner and visually demote the application without
+    # changing its status (transparency: recruiter still has the final say).
+    failed_must_haves = [
+        r.get("description", "")
+        for r in requirement_scores
+        if r.get("must_have_failed")
+    ]
+
+    # ── Job-domain fit ──────────────────────────────────────────────────────
+    # Scores how well the candidate's work-experience text matches the job's
+    # domain (banking, insurance, ...). Surfaced as a separate signal on the
+    # recruiter side — NOT blended into job_fit_score for this first version
+    # so existing scores stay comparable. Recruiters who care about industry
+    # fit can use the chip; recruiters who don't can ignore it.
+    domain_fit_score, domain_evidence = _match_job_domain(cv, request.job_domain)
 
     return SemanticMatchResult(
         application_id          = request.application_id,
@@ -2404,4 +3044,8 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
         interview_questions     = interview_questions,
         score_explanation       = score_explanation,
         warnings                = warnings,
+        must_have_failed        = bool(failed_must_haves),
+        failed_must_haves       = failed_must_haves,
+        domain_fit_score        = domain_fit_score,
+        domain_match_evidence   = domain_evidence,
     )

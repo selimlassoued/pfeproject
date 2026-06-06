@@ -223,7 +223,10 @@ services:
     volumes:
       - skill_intel_data:/data
   application-db:
-    image: postgres:16
+    # pgvector image = stock postgres:16 + the `vector` extension preinstalled.
+    # Needed so the skill_catalog_entry table can store the 768-dim embedding
+    # used for typo dedup and (eventually) similar-skill queries.
+    image: pgvector/pgvector:pg16
     container_name: application-db
     networks:
       - ai-recruitment-network
@@ -235,6 +238,7 @@ services:
       - "5435:5432"
     volumes:
       - app_pgdata:/var/lib/postgresql/data
+      - ./application-db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U appuser -d appdb" ]
       interval: 10s

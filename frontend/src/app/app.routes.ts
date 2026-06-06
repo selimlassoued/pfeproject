@@ -8,6 +8,7 @@ import { BrowseJobsComponent } from './browse-jobs/browse-jobs';
 import { JobDetails } from './job-details/job-details';
 import { ListUsers } from './list-users/list-users';
 import { UserDetails } from './user-details/user-details';
+import { CandidateHistory } from './candidate-history/candidate-history';
 import { Application } from './application/application';
 import { ListApplications } from './list-applications/list-applications';
 import { ApplicationDetail } from './application-detail/application-detail';
@@ -55,6 +56,7 @@ export const routes: Routes = [
   // ── ADMIN + SUPERADMIN + RECRUITER ────────────────────────────────────────
   { path: 'listUsers',       component: ListUsers,       canActivate: [canActivateAuthRole], data: { allowedRoles: ['ADMIN', 'SUPERADMIN', 'RECRUITER'] } },
   { path: 'user/:id',        component: UserDetails,     canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
+  { path: 'candidate/:id/history', component: CandidateHistory, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'listApplications',component: ListApplications,canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'application/:id', component: ApplicationDetail,canActivate: [canActivateAuthRole],data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },
   { path: 'application/:id/interviews', component: ApplicationInterviewsPage, canActivate: [canActivateAuthRole], data: { allowedRoles: ['RECRUITER', 'ADMIN', 'SUPERADMIN'] } },

@@ -85,25 +85,105 @@
           <p class="text-muted">No requirements listed.</p>
         }
         @if ((job()!.requirements?.length ?? 0) > 0) {
-          <div style="display:grid; gap:.75rem; margin-top:.75rem;">
+          <div class="req-grid">
             @for (r of job()!.requirements; track $index) {
-              <div class="card" style="padding:.85rem;">
-                <div class="section-title" style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
-                  <strong>{{ r.category }}</strong>
+              <div class="req-card req-{{ r.category?.toLowerCase() }}"
+                   [class.req-card--must]="r.mustHave">
+                <div class="req-head">
+                  <span class="req-badge">
+                    <span class="req-icon">{{ categoryIcon(r.category) }}</span>
+                    {{ r.category }}
+                  </span>
+                  @if (r.mustHave) {
+                    <span class="req-must-badge" title="Hard requirement - candidates failing this are auto-flagged">
+                      <span class="req-must-dot"></span>
+                      Must-have
+                    </span>
+                  }
+                  @if (r.weight != null && r.weight !== 1) {
+                    <span class="req-weight">Weight {{ r.weight }}</span>
+                  }
                 </div>
-                <div class="text-muted" style="margin-top:.35rem;">{{ r.description }}</div>
-                @if (r.minYears != null || r.maxYears != null) {
-                  <div class="text-muted" style="margin-top:.35rem;">
-                    Experience:
-                    @if (r.minYears != null) {
-                      <span>{{ r.minYears }}+</span>
+
+                <div class="req-desc">{{ r.description }}</div>
+
+                <!-- Metadata chips: always rendered, with "Any …" fallbacks -->
+                <div class="req-meta">
+                  <!-- SKILL: years + skill level -->
+                  @if (r.category === 'SKILL') {
+                    <span class="meta-chip">
+                      <span class="meta-key">Experience</span>
+                      <span class="meta-val">{{ yearsLabel(r.minYears) }}</span>
+                    </span>
+                    <span class="meta-chip">
+                      <span class="meta-key">Level</span>
+                      <span class="meta-val">{{ r.skillLevel ? skillLevelLabel(r.skillLevel) : 'Any' }}</span>
+                    </span>
+                  }
+
+                  <!-- EXPERIENCE: years -->
+                  @if (r.category === 'EXPERIENCE') {
+                    <span class="meta-chip">
+                      <span class="meta-key">Years</span>
+                      <span class="meta-val">{{ yearsLabel(r.minYears) }}</span>
+                    </span>
+                  }
+
+                  <!-- LANGUAGE: CEFR level -->
+                  @if (r.category === 'LANGUAGE') {
+                    <span class="meta-chip">
+                      <span class="meta-key">Level</span>
+                      <span class="meta-val">{{ r.languageLevel ? languageLevelLabel(r.languageLevel) : 'Any level' }}</span>
+                    </span>
+                  }
+
+                  <!-- EDUCATION: degree(s) + enrollment + institute -->
+                  @if (r.category === 'EDUCATION') {
+                    <span class="meta-chip">
+                      <span class="meta-key">Degree</span>
+                      <span class="meta-val">{{ r.degreeLevel ? degreeLevelLabel(r.degreeLevel) : 'Any' }}</span>
+                    </span>
+                    <span class="meta-chip">
+                      <span class="meta-key">Status</span>
+                      <span class="meta-val">{{ r.enrollmentType ? enrollmentTypeLabel(r.enrollmentType) : 'Student or Graduate' }}</span>
+                    </span>
+                    @if (r.institute) {
+                      <span class="meta-chip">
+                        <span class="meta-key">Institute</span>
+                        <span class="meta-val">{{ r.institute }}</span>
+                      </span>
                     }
-                    @if (r.minYears == null && r.maxYears != null) {
-                      <span>Up to {{ r.maxYears }}</span>
-                    }
-                    years
-                  </div>
-                }
+                  }
+
+                  <!-- CERTIFICATION: issuing org + currency requirement -->
+                  @if (r.category === 'CERTIFICATION') {
+                    <span class="meta-chip">
+                      <span class="meta-key">Issuer</span>
+                      <span class="meta-val">
+                        @if (r.issuingOrg === 'OTHER' && r.customIssuingOrg) {
+                          {{ r.customIssuingOrg }}
+                        } @else if (r.issuingOrg) {
+                          {{ issuingOrgLabel(r.issuingOrg) }}
+                        } @else {
+                          Any organization
+                        }
+                      </span>
+                    </span>
+                    <span class="meta-chip">
+                      <span class="meta-key">Currency</span>
+                      <span class="meta-val">
+                        @if (r.requireCurrent) {
+                          Must be current
+                          @if (r.validityYears) {
+                            ({{ r.validityYears }}y validity)
+                          }
+                        } @else {
+                          Any (expired OK)
+                        }
+                      </span>
+                    </span>
+                  }
+                </div>
               </div>
             }
           </div>

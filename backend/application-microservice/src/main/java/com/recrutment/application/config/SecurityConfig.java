@@ -20,6 +20,16 @@ public class SecurityConfig {
                 // every schedule / retrigger. No user context exists for that
                 // call so we don't gate it behind a bearer token.
                 .requestMatchers("/api/applications/*/cv-summary").permitAll()
+                // Catalog intel + resolve are consumed by cv-parser-service
+                // during matching and backfill. Internal-only paths inside
+                // the docker network — no user JWT to propagate.
+                .requestMatchers("/api/applications/skill-catalog/*/intel").permitAll()
+                .requestMatchers("/api/applications/skill-catalog/resolve").permitAll()
+                .requestMatchers("/api/applications/skill-catalog/backfill-embeddings").permitAll()
+                // Track 1 proxy search — called once per requirement during matching.
+                .requestMatchers("/api/applications/skill-catalog/nearest-of").permitAll()
+                // Matcher reads the SOFT signal list (with vectors) at the start of each match.
+                .requestMatchers("/api/applications/skill-catalog/by-type/*").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));

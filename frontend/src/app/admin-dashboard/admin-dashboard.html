@@ -133,20 +133,6 @@
       <div class="stat-nav-hint">View logs →</div>
     </div>
 
-    <!-- Blocked Users - ADMIN + SUPERADMIN only -->
-    @if (!isRecruiter()) {
-      <a routerLink="/listUsers" [queryParams]="{filter: 'DISABLED'}" class="stat-card stat-card--link" style="--accent:#f87171;animation-delay:420ms">
-        <div class="stat-glow" style="--accent:#f87171"></div>
-        <div class="stat-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><line x1="17" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="17" y2="13"/></svg>
-        </div>
-        <div class="stat-value">{{ blockedUsers.length }}</div>
-        <div class="stat-label">Blocked Users</div>
-        <div class="stat-nav-hint">Manage →</div>
-      </a>
-    }
-
-
   </div>
 
   <!-- ══ Main Grid ══ -->

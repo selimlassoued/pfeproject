@@ -15,5 +15,26 @@ public class JobRequirementDto {
     private String description;
     private Double weight;
     private Integer minYears;
-    private Integer maxYears;
+
+    /** SKILL: BASIC / INTERMEDIATE / ADVANCED / EXPERT, or null = "Any level". */
+    private String skillLevel;
+    /** EDUCATION: comma-joined enum tokens (BAC, LICENCE_BACHELOR, MASTER, ...). */
+    private String degreeLevel;
+    /** EDUCATION: STUDENT / GRADUATE / BOTH, or null = "Either". */
+    private String enrollmentType;
+    /** EDUCATION: name of the school/university, optional. */
+    private String institute;
+    /** LANGUAGE: CEFR scale A1 .. C2, or null = "Any level". */
+    private String languageLevel;
+    /** CERTIFICATION: vendor / organization that issues the cert. */
+    private String issuingOrg;
+    /** CERTIFICATION: free-text org name when issuingOrg = "OTHER". */
+    private String customIssuingOrg;
+    /** CERTIFICATION: true = expired certs no longer count as matched. */
+    private Boolean requireCurrent;
+    /** CERTIFICATION: years of validity after issue date (default per cert). */
+    private Integer validityYears;
+    /** Hard knockout flag - true = candidate must satisfy this requirement
+     *  or be auto-flagged regardless of overall score. */
+    private Boolean mustHave;
 }

@@ -314,4 +314,93 @@ export class JobDetails implements OnInit {
   formatDate(d: string): string {
     return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
+
+  /** Single icon glyph per requirement category — used in the badge. */
+  categoryIcon(c: string | undefined | null): string {
+    return ({
+      SKILL: '⚙',
+      EXPERIENCE: '⏱',
+      LANGUAGE: '🌐',
+      EDUCATION: '🎓',
+      CERTIFICATION: '✓',
+    } as Record<string, string>)[c ?? ''] ?? '•';
+  }
+
+  /** Format min years into a single human label. Always returns SOMETHING
+   *  so the metadata chip never collapses to nothing. */
+  yearsLabel(min: number | null | undefined): string {
+    if (min != null) return `${min}+ yrs`;
+    return 'No minimum';
+  }
+
+  // ─── Requirement-level human-readable labels ────────────────────────────
+  // The backend stores these as raw enum strings (BASIC, B2, BAC, STUDENT, …).
+  // The candidate-facing card should show something natural to read.
+
+  skillLevelLabel(v: string): string {
+    return ({
+      BASIC: 'Basic', INTERMEDIATE: 'Intermediate',
+      ADVANCED: 'Advanced', EXPERT: 'Expert',
+    } as Record<string, string>)[v] ?? v;
+  }
+
+  languageLevelLabel(v: string): string {
+    return ({
+      A1: 'A1 - Beginner', A2: 'A2 - Elementary',
+      B1: 'B1 - Conversational', B2: 'B2 - Professional',
+      C1: 'C1 - Advanced', C2: 'C2 - Native / Mastery',
+    } as Record<string, string>)[v] ?? v;
+  }
+
+  /** CERTIFICATION: map issuingOrg code to its human-readable label. */
+  issuingOrgLabel(v: string): string {
+    return ({
+      AWS:              'Amazon Web Services',
+      MICROSOFT:        'Microsoft / Azure',
+      GOOGLE_CLOUD:     'Google Cloud',
+      ORACLE:           'Oracle',
+      IBM:              'IBM',
+      CISCO:            'Cisco',
+      COMPTIA:          'CompTIA',
+      LINUX_FOUNDATION: 'Linux Foundation',
+      HASHICORP:        'HashiCorp',
+      DOCKER:           'Docker',
+      RED_HAT:          'Red Hat',
+      ISC2:             '(ISC)²',
+      ISACA:            'ISACA',
+      PMI:              'PMI',
+      SCRUM_ALLIANCE:   'Scrum Alliance',
+      TOGAF:            'TOGAF',
+      ITIL:             'ITIL / AXELOS',
+      SALESFORCE:       'Salesforce',
+      OTHER:            'Other',
+    } as Record<string, string>)[v] ?? v;
+  }
+
+  /** degreeLevel is stored as a comma-joined list ("LICENCE_BACHELOR,MASTER").
+   *  Render each canonical token as its human form, joined with " / ". */
+  degreeLevelLabel(v: string): string {
+    const map: Record<string, string> = {
+      ANY: 'Any degree',
+      BAC: 'Baccalauréat',
+      BTS_DUT: 'BTS / DUT',
+      TRAINING: 'Training',
+      LICENCE_BACHELOR: 'Licence / Bachelor',
+      ENGINEER: 'Engineering Degree',
+      MASTER: 'Master',
+      PHD: 'PhD',
+    };
+    return v.split(',')
+            .map(t => map[t.trim()] ?? t.trim())
+            .filter(Boolean)
+            .join(' / ');
+  }
+
+  enrollmentTypeLabel(v: string): string {
+    return ({
+      STUDENT: 'Student (ongoing)',
+      GRADUATE: 'Graduate (completed)',
+      BOTH: 'Student or Graduate',
+    } as Record<string, string>)[v] ?? v;
+  }
 }

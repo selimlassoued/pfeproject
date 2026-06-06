@@ -134,6 +134,76 @@ async def extract_text_only(
     return {"text": text, "length": len(text)}
 
 
+@app.post("/api/cv-parser/skills/same")
+async def are_skills_same(payload: dict):
+    """LLM tiebreaker for the resolve endpoint's 0.90-0.95 gray band.
+
+    The catalog hits this when two skill names are embedding-similar enough to
+    plausibly be the same (typo, synonym, abbreviation) but not similar enough
+    for silent auto-merge. The LLM (qwen2.5:7b) decides — much more accurate
+    than fixed cosine thresholds for short-string disambiguation.
+
+    Reply shape: {"same": bool, "reason": str}.
+    """
+    a = (payload or {}).get("a", "")
+    b = (payload or {}).get("b", "")
+    if not isinstance(a, str) or not isinstance(b, str) or not a.strip() or not b.strip():
+        raise HTTPException(status_code=400, detail="a and b are required non-empty strings")
+
+    import json as _json
+    from app.semantic_matcher import ollama_client, ANALYSIS_MODEL
+
+    prompt = (
+        "You disambiguate skill names in a recruitment database.\n\n"
+        f"Skill A: \"{a.strip()}\"\n"
+        f"Skill B: \"{b.strip()}\"\n\n"
+        "Are these the SAME technical skill — one being a typo, abbreviation, or formatting "
+        "variant of the other — or are they DIFFERENT skills (different languages, frameworks, "
+        "or technologies)?\n\n"
+        "Reply with STRICT JSON: {\"same\": true|false, \"reason\": \"<one short sentence>\"}"
+    )
+
+    try:
+        resp = ollama_client.chat(
+            model=ANALYSIS_MODEL,
+            format="json",
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.0},
+        )
+        content = resp.get("message", {}).get("content") if isinstance(resp, dict) \
+                  else getattr(resp.message, "content", "")
+        data = _json.loads(content) if content else {}
+        same = bool(data.get("same", False))
+        reason = str(data.get("reason", "")).strip()[:200]
+        return {"same": same, "reason": reason, "model": ANALYSIS_MODEL}
+    except Exception as e:
+        # Fail conservative: treat as different so we never silently merge on error.
+        return {"same": False, "reason": f"llm error: {e.__class__.__name__}", "model": ANALYSIS_MODEL}
+
+
+@app.post("/api/cv-parser/embed-text")
+async def embed_text(payload: dict):
+    """Embed an arbitrary string and return the 768-dim vector.
+
+    Consumed by application-microservice's catalog-backfill flow: when the
+    catalog has rows with NULL embedding (legacy entries added before the
+    pgvector column existed), the Java side POSTs each skill's text here,
+    receives the vector, and persists it via PUT /intel.
+
+    Reuses semantic_matcher._embed which is the same Ollama call path the
+    matcher uses for live scoring — so the stored vector is identical to
+    what the matcher would have produced lazily.
+    """
+    from app.semantic_matcher import _embed, EMBEDDING_MODEL
+    text = (payload or {}).get("text", "")
+    if not isinstance(text, str) or not text.strip():
+        raise HTTPException(status_code=400, detail="text is required")
+    vec = _embed(text.strip())
+    if not vec or len(vec) != 768:
+        raise HTTPException(status_code=502, detail="Ollama returned empty or wrong-dim vector")
+    return {"embedding": vec, "model": EMBEDDING_MODEL, "dim": len(vec)}
+
+
 @app.post("/api/cv-parser/match", response_model=SemanticMatchResult)
 async def semantic_match(request: SemanticMatchRequest):
     """Compute a job-to-CV fit score from job data and an already parsed CV."""

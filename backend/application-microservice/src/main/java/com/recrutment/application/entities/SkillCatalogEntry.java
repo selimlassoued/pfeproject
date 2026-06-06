@@ -79,4 +79,65 @@ public class SkillCatalogEntry {
     @Column(name = "domains", columnDefinition = "text")
     @Builder.Default
     private List<String> domains = new ArrayList<>();
+
+    // ─── Skill intel: embedding + volatility + implies ───────────────────────
+    // Stored alongside the catalog row so every fact about a skill (canonical
+    // name, embedding, volatility, related skills, recency) lives in ONE place.
+    // Replaces the in-container skill_intel_cache.json which didn't survive
+    // rebuilds and lived separately from the catalog.
+
+    /**
+     * 768-dim nomic-embed-text embedding of the skill name. Used for:
+     *   - matcher cosine similarity at scoring time (skill vs cv_skill)
+     *   - typo detection when adding new skills (sim ≥ 0.95 → auto-merge)
+     *   - similar-skill suggestions in admin / candidate UIs.
+     *
+     * insertable=false, updatable=false: Hibernate's generic INSERT/UPDATE
+     * binds Strings as varchar and Postgres won't auto-cast varchar to vector.
+     * Written through a native UPDATE with an explicit ::vector cast.
+     */
+    @Column(name = "embedding", columnDefinition = "vector(768)", insertable = false, updatable = false)
+    private String embedding;
+
+    /** Embedding model that produced the vector. Lets us invalidate on upgrade. */
+    @Column(name = "embedding_model", length = 64, insertable = false, updatable = false)
+    private String embeddingModel;
+
+    /**
+     * Volatility score 1-10 from the LLM. Higher = faster-aging tech.
+     * Drives the matcher's recency penalty for old CV evidence. Null means
+     * "not yet classified — fall back to the hardcoded dict or default."
+     */
+    @Column(name = "volatility")
+    private Integer volatility;
+
+    /**
+     * Half-life in years derived from volatility. Denormalized for query
+     * speed so the matcher doesn't recompute the exponential every call.
+     * Formula: max(1.5, 2 ^ ((10 - volatility) / 3))
+     */
+    @Column(name = "half_life")
+    private Double halfLife;
+
+    /**
+     * Other skills this one implies — e.g. "spring boot" implies "java".
+     * Stored as JSON text via the existing StringListConverter so the catalog
+     * controller can return it as a normal list without a join table.
+     * Used by the matcher's framework→stack credit ("Angular declared →
+     * TypeScript/HTML/CSS credited at declared tier").
+     */
+    @Convert(converter = StringListConverter.class)
+    @Column(name = "implies", columnDefinition = "text")
+    @Builder.Default
+    private List<String> implies = new ArrayList<>();
+
+    /**
+     * When the matcher (or admin) last touched this row. Different from
+     * `first_seen_at` — that's set once at creation. This bumps every time
+     * the embedding is read or the skill appears on a job/CV at match time.
+     * Lets the catalog admin sort by activity and tombstone genuinely-stale
+     * skills.
+     */
+    @Column(name = "last_seen_at")
+    private Instant lastSeenAt;
 }

@@ -172,6 +172,15 @@
 
         <button class="ad-linkbtn" type="button" (click)="goToUser()">View candidate profile</button>
         <button class="ad-linkbtn ad-linkbtn-ai" type="button" (click)="openAnalysis()">View AI CV Analysis</button>
+        <button class="ad-linkbtn" type="button" (click)="toggleHistory()">
+          @if (showHistory) {
+            <span>Hide candidate history</span>
+          } @else if (candidateHistory.length > 0) {
+            <span>{{ candidateHistory.length }} other application{{ candidateHistory.length === 1 ? '' : 's' }}</span>
+          } @else {
+            <span>View candidate history</span>
+          }
+        </button>
 
         <!-- Signal shortcut - RECRUITER only, not shown when already moderated -->
         @if (canSignal() && !isModerated) {
@@ -191,6 +200,37 @@
           <div class="ad-mini-label">Application ID</div>
           <div class="ad-mini-value mono">{{ app.applicationId }}</div>
         </div>
+
+        <!-- Candidate history (lazy loaded on first toggle) -->
+        @if (showHistory) {
+          <div class="ad-divider"></div>
+          <div class="ad-mini-label" style="margin-bottom:0.5rem">Other applications</div>
+
+          @if (historyLoading) {
+            <div class="ad-history-empty">Loading…</div>
+          } @else if (candidateHistory.length === 0) {
+            <div class="ad-history-empty">No other applications from this candidate.</div>
+          } @else {
+            <div class="ad-history-list">
+              @for (row of candidateHistory; track row.applicationId) {
+                <button class="ad-history-row" type="button" (click)="openHistoryRow(row)">
+                  <div class="ad-history-title">
+                    {{ row.jobTitle || 'Untitled role' }}
+                  </div>
+                  <div class="ad-history-meta">
+                    <span class="ad-history-status ad-history-status-{{ row.status?.toLowerCase() }}">
+                      {{ row.status }}
+                    </span>
+                    @if (row.fitScore != null) {
+                      <span class="ad-history-score">{{ row.fitScore }}%</span>
+                    }
+                    <span class="ad-history-date">{{ row.appliedAt | date:'mediumDate' }}</span>
+                  </div>
+                </button>
+              }
+            </div>
+          }
+        }
 
         <!-- Pipeline -->
         <div class="ad-divider"></div>
@@ -267,6 +307,24 @@
                   }
                 </div>
 
+                <!-- Must-have failure banner — the candidate missed at least one
+                     hard requirement the recruiter flagged. Score is still shown
+                     (transparency), but this candidate would normally be cut. -->
+                @if (app.mustHaveFailed && app.failedMustHaves?.length) {
+                  <div class="ad-must-banner">
+                    <div class="ad-must-icon">⛔</div>
+                    <div class="ad-must-body">
+                      <div class="ad-must-title">Missing a must-have requirement</div>
+                      <div class="ad-must-list">
+                        @for (req of app.failedMustHaves; track req) {
+                          <span class="ad-must-chip">{{ req }}</span>
+                        }
+                      </div>
+                      <div class="ad-must-sub">This candidate would be auto-rejected under your job's hard requirements.</div>
+                    </div>
+                  </div>
+                }
+
                 <!-- Non-scoring advisory banners (distance, identity mismatch).
                      These never affect the job_fit_score; they tell the recruiter
                      something they should clarify before the interview. -->
@@ -299,6 +357,29 @@
                   <div class="ad-k">Embedding semantic score</div>
                   <div class="ad-v">{{ app.embeddingScore ?? 0 }}%</div>
                 </div>
+
+                @if (app.domainFitScore != null) {
+                  <div class="ad-domain-box">
+                    <div class="ad-domain-head">
+                      <span class="ad-domain-icon">ⓘ</span>
+                      <span class="ad-domain-title">Industry context</span>
+                    </div>
+                    @if (app.domainMatchEvidence?.length) {
+                      <div class="ad-domain-caption">
+                        Terms from this candidate's work history that relate to the job's industry:
+                      </div>
+                      <div class="ad-domain-chips">
+                        @for (kw of app.domainMatchEvidence; track kw) {
+                          <span class="ad-domain-chip">{{ kw }}</span>
+                        }
+                      </div>
+                    } @else {
+                      <div class="ad-domain-caption ad-domain-caption-muted">
+                        No industry-specific terms found in this candidate's work history - they may still be a strong fit.
+                      </div>
+                    }
+                  </div>
+                }
 
                 <div class="ad-match-section">
                   <div class="ad-k">Required skills breakdown</div>

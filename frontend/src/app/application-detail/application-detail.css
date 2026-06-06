@@ -152,6 +152,87 @@
   flex-shrink:0; font-size:1rem; line-height:1.2; font-weight:800;
 }
 .ad-warning-msg{ flex:1; }
+
+/* Industry context box — purely informational. No score, no colour-by-strength.
+   We just list the industry-related terms found in the candidate's work text so
+   the recruiter can see "ah, they worked in banking" without the system implying
+   whether that's good or bad for the role. A candidate with no matches isn't
+   necessarily a worse fit; they may have transferable skills. */
+.ad-domain-box{
+  margin:.85rem 0 0;
+  padding:.85rem 1rem;
+  border-radius:12px;
+  background:rgba(121,164,233,.06);
+  border:1px solid rgba(121,164,233,.22);
+  display:flex; flex-direction:column; gap:.55rem;
+}
+.ad-domain-head{
+  display:flex; align-items:center; gap:.5rem;
+}
+.ad-domain-icon{
+  font-size:.95rem; line-height:1;
+  color:rgba(121,164,233,.7);
+}
+.ad-domain-title{
+  font-size:.92rem; font-weight:700;
+  color:rgba(248,250,252,.94);
+}
+.ad-domain-caption{
+  font-size:.8rem;
+  color:rgba(248,250,252,.65);
+  line-height:1.4;
+}
+.ad-domain-caption-muted{
+  font-style:italic;
+  color:rgba(248,250,252,.5);
+}
+.ad-domain-chips{ display:flex; flex-wrap:wrap; gap:.35rem; }
+.ad-domain-chip{
+  display:inline-flex; align-items:center;
+  padding:.15rem .55rem; border-radius:999px;
+  font-size:.74rem; font-weight:600;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(121,164,233,.28);
+  color:rgba(248,250,252,.85);
+  letter-spacing:.02em;
+}
+
+/* Must-have failure banner — louder than ad-warning because this is a hard
+   knockout, not an advisory. Red, slightly more padding, the failed
+   requirements rendered as chips so the recruiter sees exactly what's off. */
+.ad-must-banner{
+  display:flex; align-items:flex-start; gap:.75rem;
+  padding:.85rem 1rem; margin:.85rem 0 0;
+  border-radius:12px;
+  border:1px solid rgba(248,113,113,.5);
+  background:
+    radial-gradient(120% 60% at 0% 0%, rgba(248,113,113,.15), transparent 70%),
+    rgba(248,113,113,.07);
+  box-shadow: inset 4px 0 0 0 rgba(248,113,113,.7);
+  color:#fecaca;
+}
+.ad-must-icon{
+  flex-shrink:0; font-size:1.35rem; line-height:1.1;
+}
+.ad-must-body{ flex:1; display:flex; flex-direction:column; gap:.4rem; min-width:0; }
+.ad-must-title{
+  font-size:.95rem; font-weight:700; color:#fecaca;
+  letter-spacing:.01em;
+}
+.ad-must-list{
+  display:flex; flex-wrap:wrap; gap:.4rem;
+}
+.ad-must-chip{
+  display:inline-flex; align-items:center;
+  padding:.2rem .6rem; border-radius:999px;
+  background:rgba(248,113,113,.16);
+  border:1px solid rgba(248,113,113,.45);
+  color:#fee2e2;
+  font-size:.78rem; font-weight:600; line-height:1.2;
+}
+.ad-must-sub{
+  font-size:.78rem; color:rgba(254,202,202,.7); line-height:1.35;
+}
 .ad-match-section{ display:grid; gap:.55rem; }
 .ad-tags{ display:flex; flex-wrap:wrap; gap:.55rem; }
 .ad-tag{
@@ -1192,4 +1273,74 @@
   background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   color: #fff;
   vertical-align: middle;
+}
+
+/* ─── Candidate history list (left-panel) ─────────────────────────────────── */
+.ad-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.ad-history-row {
+  appearance: none;
+  text-align: left;
+  width: 100%;
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  padding: .6rem .7rem;
+  color: rgba(248,250,252,.92);
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.ad-history-row:hover {
+  background: rgba(121,164,233,.10);
+  border-color: rgba(121,164,233,.30);
+  transform: translateY(-1px);
+}
+.ad-history-title {
+  font-weight: 600;
+  font-size: .88rem;
+  margin-bottom: .25rem;
+  color: rgba(248,250,252,.96);
+}
+.ad-history-meta {
+  display: flex;
+  gap: .4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: .72rem;
+}
+.ad-history-status {
+  padding: .12rem .45rem;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  font-size: .65rem;
+  background: rgba(121,164,233,.14);
+  color: #cbd5f5;
+  border: 1px solid rgba(121,164,233,.22);
+}
+.ad-history-status-applied         { background: rgba(121,164,233,.14); color:#cbd5f5; border-color: rgba(121,164,233,.28); }
+.ad-history-status-under_review    { background: rgba(251,191,36,.12);  color:#fde68a; border-color: rgba(251,191,36,.28); }
+.ad-history-status-interview_phase { background: rgba(167,139,250,.12); color:#d8b4fe; border-color: rgba(167,139,250,.28); }
+.ad-history-status-offer           { background: rgba(52,211,153,.12);  color:#a7f3d0; border-color: rgba(52,211,153,.28); }
+.ad-history-status-hired           { background: rgba(74,222,128,.18);  color:#86efac; border-color: rgba(74,222,128,.34); }
+.ad-history-status-rejected        { background: rgba(248,113,113,.12); color:#fca5a5; border-color: rgba(248,113,113,.28); }
+.ad-history-status-withdrawn       { background: rgba(255,255,255,.06); color: rgba(248,250,252,.55); border-color: rgba(255,255,255,.1); }
+.ad-history-status-flagged,
+.ad-history-status-blocked         { background: rgba(244,114,182,.12); color:#fbcfe8; border-color: rgba(244,114,182,.28); }
+.ad-history-score {
+  font-weight: 700;
+  color: rgba(248,250,252,.88);
+}
+.ad-history-date {
+  margin-left: auto;
+  color: rgba(248,250,252,.5);
+}
+.ad-history-empty {
+  font-size: .78rem;
+  color: rgba(248,250,252,.5);
+  padding: .4rem 0;
 }

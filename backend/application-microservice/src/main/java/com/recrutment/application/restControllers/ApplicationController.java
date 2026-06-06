@@ -1,6 +1,8 @@
 package com.recrutment.application.restControllers;
 
+import com.recrutment.application.clients.JobClient;
 import com.recrutment.application.dto.ApplicationDto;
+import com.recrutment.application.dto.CandidateApplicationSummaryDto;
 import com.recrutment.application.dto.CvSummaryDto;
 import com.recrutment.application.dto.PageResponse;
 import com.recrutment.application.dto.SemanticMatchDto;
@@ -32,6 +34,7 @@ public class ApplicationController {
     private final ApplicationService service;
     private final ApplicationRepo repo;
     private final CvAnalysisRepo cvAnalysisRepository;
+    private final JobClient jobClient;
 
     // ── Application endpoints ─────────────────────────────────────────────────
 
@@ -98,6 +101,94 @@ public class ApplicationController {
     @GetMapping("/me")
     public List<ApplicationDto> myApplications(@AuthenticationPrincipal Jwt jwt) {
         return service.listMyApplications(jwt.getSubject());
+    }
+
+    /**
+     * Recruiter / admin view: every application this candidate has submitted
+     * across all jobs in the platform. Used on the application-detail page so
+     * a recruiter can quickly see whether the same candidate has applied
+     * before (and to which roles, with what outcome).
+     *
+     * Returns a slim summary — applicationId, jobId, jobTitle, appliedAt,
+     * status, withdrawalReason, fitScore — not the CV bytes or full match
+     * breakdown. The recruiter clicks into a specific row to drill in.
+     *
+     * Auth: the gateway already restricts /api/applications/** to
+     * RECRUITER/ADMIN/SUPERADMIN, so the controller doesn't re-check roles.
+     * Candidate-side users hit /me/* endpoints which are separately scoped.
+     *
+     * Optional excludeId query param drops the currently-viewed application
+     * from the response so the recruiter only sees the OTHER applications.
+     */
+    @GetMapping("/by-candidate/{candidateUserId}")
+    public List<CandidateApplicationSummaryDto> listByCandidate(
+            @PathVariable String candidateUserId,
+            @RequestParam(name = "excludeId", required = false) UUID excludeId) {
+
+        List<Application> apps = repo.findByCandidateUserId(candidateUserId);
+
+        // Title cache so we don't hit job-microservice 10 times for the same id.
+        java.util.Map<UUID, String> titleCache = new java.util.HashMap<>();
+        // CV-analysis fitScore cache so the JOIN happens once per app.
+        // The repo's findByApplicationId returns the row whose semantic_match
+        // JSON contains jobFitScore — we extract it lazily.
+
+        List<CandidateApplicationSummaryDto> out = new java.util.ArrayList<>(apps.size());
+        for (Application a : apps) {
+            if (excludeId != null && excludeId.equals(a.getApplicationId())) continue;
+
+            String title = null;
+            if (a.getJobId() != null) {
+                title = titleCache.computeIfAbsent(a.getJobId(), id -> {
+                    try {
+                        JobClient.JobDto job = jobClient.getJob(id);
+                        return job != null ? job.getTitle() : null;
+                    } catch (Exception e) {
+                        return null;
+                    }
+                });
+            }
+
+            Integer fitScore = null;
+            try {
+                fitScore = cvAnalysisRepository.findByApplicationId(a.getApplicationId())
+                        .map(cva -> {
+                            // semantic_match is stored as JSONB string in the entity.
+                            Object sm = cva.getSemanticMatch();
+                            if (sm == null) return null;
+                            // ObjectMapper-free path: rely on jackson having parsed the
+                            // JSON into a Map already if the entity uses @Type(JsonType).
+                            // Otherwise fall back to manual extraction.
+                            if (sm instanceof java.util.Map<?, ?> map) {
+                                Object v = map.get("jobFitScore");
+                                if (v instanceof Number n) return n.intValue();
+                            }
+                            String json = sm.toString();
+                            java.util.regex.Matcher m =
+                                    java.util.regex.Pattern.compile("\"jobFitScore\"\\s*:\\s*(\\d+)").matcher(json);
+                            return m.find() ? Integer.parseInt(m.group(1)) : null;
+                        })
+                        .orElse(null);
+            } catch (Exception ignored) { /* leave null */ }
+
+            out.add(new CandidateApplicationSummaryDto(
+                    a.getApplicationId(),
+                    a.getJobId(),
+                    title,
+                    a.getAppliedAt(),
+                    a.getStatus() != null ? a.getStatus().name() : null,
+                    a.getPreviousStatus() != null ? a.getPreviousStatus().name() : null,
+                    a.getWithdrawalReason(),
+                    fitScore
+            ));
+        }
+        // Newest first so the recruiter sees recent activity at a glance.
+        out.sort((x, y) -> {
+            if (x.getAppliedAt() == null) return 1;
+            if (y.getAppliedAt() == null) return -1;
+            return y.getAppliedAt().compareTo(x.getAppliedAt());
+        });
+        return out;
     }
 
     @GetMapping("/me/{id}")

@@ -92,6 +92,9 @@ public class CvParserClient {
             request.put("job_description", job != null ? job.getDescription() : null);
             request.put("job_location", job != null ? job.getLocation() : null);
             request.put("work_arrangement", job != null ? job.getWorkArrangement() : null);
+            // job_domain lets the matcher score the candidate's prior work
+            // experience for industry-fit (e.g. banking → BIAT, Attijari).
+            request.put("job_domain", job != null ? job.getDomain() : null);
             request.put("requirements", mapRequirements(job != null ? job.getRequirements() : List.of()));
             request.put("cv_analysis", mapCvAnalysis(analysis));
             if (job != null) {
@@ -112,7 +115,9 @@ public class CvParserClient {
                     List.<SemanticMatchDto.SkillScoreDto>of(), null, null,
                     null, List.<SemanticMatchDto.RequirementScoreDto>of(),
                     List.of(), List.of(), "REVIEW", List.of(), null,
-                    List.<SemanticMatchDto.WarningDto>of());
+                    List.<SemanticMatchDto.WarningDto>of(),
+                    Boolean.FALSE, List.<String>of(),
+                    null, List.<String>of());
         }
     }
 
@@ -292,7 +297,9 @@ public class CvParserClient {
                     List.<SemanticMatchDto.SkillScoreDto>of(), null, null,
                     null, List.<SemanticMatchDto.RequirementScoreDto>of(),
                     List.of(), List.of(), "REVIEW", List.of(), null,
-                    List.<SemanticMatchDto.WarningDto>of());
+                    List.<SemanticMatchDto.WarningDto>of(),
+                    Boolean.FALSE, List.<String>of(),
+                    null, List.<String>of());
         }
 
         Integer score = toInt(data.get("job_fit_score"));
@@ -316,7 +323,11 @@ public class CvParserClient {
                 data.get("recommendation") instanceof String s ? s : "REVIEW",             // recommendation
                 castList(data.get("interview_questions")),                                  // interviewQuestions
                 data.get("score_explanation") instanceof String s ? s : null,              // scoreExplanation
-                mapWarnings(data.get("warnings"))                                           // warnings
+                mapWarnings(data.get("warnings")),                                          // warnings
+                data.get("must_have_failed") instanceof Boolean b ? b : Boolean.FALSE,     // mustHaveFailed
+                castList(data.get("failed_must_haves")),                                    // failedMustHaves
+                toInt(data.get("domain_fit_score")),                                        // domainFitScore
+                castList(data.get("domain_match_evidence"))                                 // domainMatchEvidence
         );
     }
 
@@ -379,7 +390,9 @@ public class CvParserClient {
                     Float weight = null;
                     Object w = m.get("weight");
                     if (w instanceof Number n) weight = n.floatValue();
-                    Boolean criticalGap = m.get("critical_gap") instanceof Boolean b ? b : null;
+                    Boolean criticalGap     = m.get("critical_gap")     instanceof Boolean b ? b : null;
+                    Boolean mustHave        = m.get("must_have")        instanceof Boolean b ? b : null;
+                    Boolean mustHaveFailed  = m.get("must_have_failed") instanceof Boolean b ? b : null;
                     return new SemanticMatchDto.RequirementScoreDto(
                             m.get("category") instanceof String s ? s : null,
                             m.get("description") instanceof String s ? s : null,
@@ -387,7 +400,9 @@ public class CvParserClient {
                             weight,
                             m.get("evidence") instanceof String s ? s : null,
                             m.get("skill_level") instanceof String s ? s : null,
-                            criticalGap
+                            criticalGap,
+                            mustHave,
+                            mustHaveFailed
                     );
                 })
                 .toList();
@@ -404,11 +419,16 @@ public class CvParserClient {
             mapped.put("description",     req.getDescription());
             mapped.put("weight",          req.getWeight());
             mapped.put("min_years",       req.getMinYears());
-            mapped.put("max_years",       req.getMaxYears());
             mapped.put("skill_level",     req.getSkillLevel());
             mapped.put("degree_level",    req.getDegreeLevel());
             mapped.put("enrollment_type", req.getEnrollmentType());
             mapped.put("language_level",  req.getLanguageLevel());
+            mapped.put("institute",       req.getInstitute());
+            mapped.put("issuing_org",        req.getIssuingOrg());
+            mapped.put("custom_issuing_org", req.getCustomIssuingOrg());
+            mapped.put("require_current",    Boolean.TRUE.equals(req.getRequireCurrent()));
+            mapped.put("validity_years",  req.getValidityYears());
+            mapped.put("must_have",       Boolean.TRUE.equals(req.getMustHave()));
             return mapped;
         }).toList();
     }

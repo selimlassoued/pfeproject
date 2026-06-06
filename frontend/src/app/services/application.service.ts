@@ -75,6 +75,21 @@ export class ApplicationService {
     return this.http.get(`${this.API_URL}/me/${applicationId}/cv`, { responseType: 'blob' });
   }
 
+  /**
+   * Recruiter-side: list every application this candidate has submitted
+   * across all jobs. Used by the "Candidate history" section on
+   * application-detail. Excludes the current application via excludeId so
+   * recruiters only see OTHER applications.
+   */
+  listByCandidate(candidateUserId: string, excludeId?: string): Observable<CandidateApplicationSummary[]> {
+    let params = new HttpParams();
+    if (excludeId) params = params.set('excludeId', excludeId);
+    return this.http.get<CandidateApplicationSummary[]>(
+      `${this.API_URL}/by-candidate/${encodeURIComponent(candidateUserId)}`,
+      { params },
+    );
+  }
+
   updateMyApplication(
     applicationId: string,
     payload: { githubUrl?: string; cv?: File }
@@ -179,4 +194,17 @@ export class ApplicationService {
       `${this.AUDIT_URL}/candidate/${candidateUserId}/flagged-by`
     );
   }
+}
+
+/** Slim row returned by GET /api/applications/by-candidate/{id}. Mirrors the
+ *  backend's CandidateApplicationSummaryDto. */
+export interface CandidateApplicationSummary {
+  applicationId:    string;
+  jobId:            string | null;
+  jobTitle:         string | null;
+  appliedAt:        string;
+  status:           string | null;
+  previousStatus:   string | null;
+  withdrawalReason: string | null;
+  fitScore:         number | null;
 }

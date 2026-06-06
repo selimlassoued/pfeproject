@@ -37,6 +37,10 @@
 
           <!-- CANDIDATE -->
           @if (isViewedUserCandidate()) {
+            <button class="btn btn-ghost" type="button"
+                    [disabled]="acting" (click)="viewApplicationsHistory()">
+              View applications history
+            </button>
             @if (canBlock()) {
               @if (isFlagged()) {
                 <button class="btn btn-warn" type="button"

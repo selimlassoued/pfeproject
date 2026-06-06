@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormArray, FormBuilder, Validators, AbstractControl } from '@angular/forms';
+import { ReactiveFormsModule, FormArray, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterLink, NavigationExtras } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -10,10 +10,21 @@ import { RequirementCategory } from '../model/jobRequirement.model';
 import { JobRequirement } from '../model/jobRequirement.model';
 import { getCanonicalLanguages } from '../services/language-options.service';
 import { DOMAIN_OPTIONS } from '../services/domains';
+import { OrgComboboxComponent } from '../org-combobox/org-combobox.component';
+
+/** Group-level validator: when a requirement's category is EDUCATION, at least
+ *  one degree chip must be selected. Without it, the requirement says nothing
+ *  useful ("any candidate with any/no degree"). */
+function educationDegreeRequiredValidator(group: AbstractControl): ValidationErrors | null {
+  if (group.get('category')?.value !== 'EDUCATION') return null;
+  const raw = (group.get('degreeLevel')?.value as string) || '';
+  const selected = raw.split(',').map(s => s.trim()).filter(Boolean);
+  return selected.length === 0 ? { degreeRequired: true } : null;
+}
 
 @Component({
   selector: 'app-add-job',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, OrgComboboxComponent],
   templateUrl: './add-job.html',
   styleUrl: './add-job.css',
 })
@@ -164,14 +175,25 @@ export class AddJob{
       description:    [preset?.description   ?? '',      [Validators.required, Validators.minLength(2)]],
       weight:         [preset?.weight        ?? null],
       minYears:       [preset?.minYears      ?? null],
-      maxYears:       [preset?.maxYears      ?? null],
       skillLevel:     [preset?.skillLevel     ?? null],
       degreeLevel:    [preset?.degreeLevel    ?? null],
       enrollmentType: [preset?.enrollmentType ?? null],
+      institute:      [preset?.institute      ?? null],
       languageLevel:  [preset?.languageLevel  ?? null],
-    });
+      issuingOrg:       [preset?.issuingOrg       ?? null],
+      customIssuingOrg: [preset?.customIssuingOrg ?? null],
+      requireCurrent:   [preset?.requireCurrent   ?? false],
+      validityYears:    [preset?.validityYears    ?? null],
+      mustHave:       [preset?.mustHave       ?? false],
+    }, { validators: [educationDegreeRequiredValidator] });
     this.requirements().push(group);
     if (this.customizeWeights) this.redistributeWeights();
+  }
+
+  /** True when this EDUCATION requirement has no degree chips selected.
+   *  Used to render an inline error and gate the submit. */
+  needsDegreeSelection(req: AbstractControl): boolean {
+    return !!req.errors?.['degreeRequired'];
   }
 
   removeRequirement(i: number) {
@@ -184,12 +206,79 @@ export class AddJob{
   // Empty = any degree accepted.
   readonly degreeOptions: { value: string; label: string }[] = [
     { value: 'BAC',              label: 'Baccalaureate' },
-    { value: 'BTS_DUT',          label: 'BTS / DUT' },
+    { value: 'TRAINING',         label: 'Training' },
     { value: 'LICENCE_BACHELOR', label: 'Licence / Bachelor' },
     { value: 'ENGINEER',         label: 'Engineering degree' },
     { value: 'MASTER',           label: 'Master' },
     { value: 'PHD',              label: 'PhD / Doctorate' },
   ];
+
+  // CERTIFICATION: known issuing organizations + their typical validity in
+  // years. The validity is used as a sensible default when the recruiter
+  // toggles "must be current" without explicitly setting validityYears.
+  readonly issuingOrgs: { value: string; label: string; defaultValidity: number | null }[] = [
+    { value: 'AWS',              label: 'Amazon Web Services (AWS)',     defaultValidity: 3 },
+    { value: 'MICROSOFT',        label: 'Microsoft / Azure',             defaultValidity: 1 },
+    { value: 'GOOGLE_CLOUD',     label: 'Google Cloud',                  defaultValidity: 2 },
+    { value: 'ORACLE',           label: 'Oracle',                        defaultValidity: null },
+    { value: 'IBM',              label: 'IBM',                           defaultValidity: null },
+    { value: 'CISCO',            label: 'Cisco',                         defaultValidity: 3 },
+    { value: 'COMPTIA',          label: 'CompTIA',                       defaultValidity: 3 },
+    { value: 'LINUX_FOUNDATION', label: 'Linux Foundation (CKA, CKAD…)', defaultValidity: 3 },
+    { value: 'HASHICORP',        label: 'HashiCorp (Terraform, Vault)',  defaultValidity: 2 },
+    { value: 'DOCKER',           label: 'Docker',                        defaultValidity: 2 },
+    { value: 'RED_HAT',          label: 'Red Hat',                       defaultValidity: 3 },
+    { value: 'ISC2',             label: '(ISC)² - CISSP, CCSP, …',       defaultValidity: 3 },
+    { value: 'ISACA',            label: 'ISACA (CISA, CISM, CRISC)',     defaultValidity: 3 },
+    { value: 'PMI',              label: 'PMI (PMP, etc.)',               defaultValidity: 3 },
+    { value: 'SCRUM_ALLIANCE',   label: 'Scrum Alliance',                defaultValidity: 2 },
+    { value: 'TOGAF',            label: 'TOGAF (Open Group)',            defaultValidity: null },
+    { value: 'ITIL',             label: 'ITIL / AXELOS',                 defaultValidity: null },
+    { value: 'SALESFORCE',       label: 'Salesforce',                    defaultValidity: null },
+    { value: 'OTHER',            label: 'Other / Custom',                defaultValidity: null },
+  ];
+
+  /** Same orgs grouped into <optgroup> sections so the dropdown is easier
+   *  to scan. The flat `issuingOrgs` above is kept for the validity-lookup
+   *  helpers (onIssuingOrgChange, onRequireCurrentToggle). */
+  readonly issuingOrgGroups: { label: string; orgs: string[] }[] = [
+    { label: 'Cloud',                 orgs: ['AWS', 'MICROSOFT', 'GOOGLE_CLOUD', 'ORACLE', 'IBM'] },
+    { label: 'Network & Infrastructure', orgs: ['CISCO', 'COMPTIA', 'LINUX_FOUNDATION', 'HASHICORP', 'DOCKER', 'RED_HAT'] },
+    { label: 'Security',              orgs: ['ISC2', 'ISACA'] },
+    { label: 'Process & Architecture', orgs: ['PMI', 'SCRUM_ALLIANCE', 'TOGAF', 'ITIL'] },
+    { label: 'Other',                 orgs: ['SALESFORCE', 'OTHER'] },
+  ];
+
+  /** Look up an org meta record by code — used by the template to render
+   *  each <option> with the right label, since the grouped structure only
+   *  holds codes. */
+  orgMeta(code: string): { value: string; label: string; defaultValidity: number | null } | undefined {
+    return this.issuingOrgs.find(o => o.value === code);
+  }
+
+  /** When the recruiter picks an issuing org, fill validityYears with its
+   *  typical lifetime if requireCurrent is on and validityYears is empty. */
+  onIssuingOrgChange(req: AbstractControl, orgValue: string | null): void {
+    if (!orgValue) return;
+    const meta = this.issuingOrgs.find(o => o.value === orgValue);
+    if (!meta || meta.defaultValidity == null) return;
+    const requireCurrent = req.get('requireCurrent')?.value;
+    const current = req.get('validityYears')?.value;
+    if (requireCurrent && (current == null || current === '')) {
+      req.get('validityYears')?.setValue(meta.defaultValidity);
+    }
+  }
+
+  /** When the recruiter toggles "must be current" on and validityYears is
+   *  empty, prefill with the org default (or 3 years as fallback). */
+  onRequireCurrentToggle(req: AbstractControl, on: boolean): void {
+    if (!on) return;
+    const current = req.get('validityYears')?.value;
+    if (current != null && current !== '') return;
+    const orgValue = req.get('issuingOrg')?.value;
+    const meta = this.issuingOrgs.find(o => o.value === orgValue);
+    req.get('validityYears')?.setValue(meta?.defaultValidity ?? 3);
+  }
 
   isDegreeSelected(req: AbstractControl, value: string): boolean {
     const raw = (req.get('degreeLevel')?.value as string) || '';
@@ -215,16 +304,6 @@ export class AddJob{
       return 'Min salary cannot be greater than max salary.';
     }
 
-    const reqs = this.requirements().controls;
-    for (let i = 0; i < reqs.length; i++) {
-      const r = reqs[i].value as any;
-      const minY = r.minYears ?? null;
-      const maxY = r.maxYears ?? null;
-
-      if (minY != null && maxY != null && minY > maxY) {
-        return `Requirement #${i + 1}: min years cannot be greater than max years.`;
-      }
-    }
     return null;
   }
 
@@ -236,11 +315,16 @@ export class AddJob{
       description:    r.description,
       weight:         this.customizeWeights ? (r.weight ?? null) : null,
       minYears:       r.minYears      ?? null,
-      maxYears:       r.maxYears      ?? null,
       skillLevel:     r.skillLevel     ?? null,
       degreeLevel:    r.degreeLevel    ?? null,
       enrollmentType: r.enrollmentType ?? null,
+      institute:      (r.institute && String(r.institute).trim()) || null,
       languageLevel:  r.languageLevel  ?? null,
+      issuingOrg:       r.issuingOrg       ?? null,
+      customIssuingOrg: (r.customIssuingOrg && String(r.customIssuingOrg).trim()) || null,
+      requireCurrent:   !!r.requireCurrent,
+      validityYears:    r.validityYears    ?? null,
+      mustHave:         !!r.mustHave,
     }));
 
     return {
@@ -329,10 +413,16 @@ export class AddJob{
           description:    r.description,
           weight:         null,
           minYears:       r.minYears,
-          maxYears:       r.maxYears,
           skillLevel:     r.skillLevel,
           degreeLevel:    r.degreeLevel,
           enrollmentType: r.enrollmentType,
+          institute:      r.institute ?? null,
+          languageLevel:  r.languageLevel ?? null,
+          issuingOrg:       r.issuingOrg ?? null,
+          customIssuingOrg: r.customIssuingOrg ?? null,
+          requireCurrent:   !!r.requireCurrent,
+          validityYears:    r.validityYears ?? null,
+          mustHave:       !!r.mustHave,
         });
       }
     } else {

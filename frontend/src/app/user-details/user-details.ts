@@ -81,6 +81,13 @@ export class UserDetails implements OnInit {
     } catch { this.lastFlaggedBy = null; }
   }
 
+  /** Open the dedicated candidate-history page for this candidate. */
+  viewApplicationsHistory(): void {
+    if (this.user?.id) {
+      this.router.navigate(['/candidate', this.user.id, 'history']);
+    }
+  }
+
   // ── Logged-in user role helpers ───────────────────────────────────────────
 
   isSuperAdmin(): boolean { return this.keycloak.hasRealmRole('SUPERADMIN'); }
@@ -101,8 +108,6 @@ export class UserDetails implements OnInit {
   isViewedUserRecruiter():  boolean { return this.viewedUserRole() === 'RECRUITER';  }
   isViewedUserAdmin():      boolean { return this.viewedUserRole() === 'ADMIN';      }
   isViewedUserSuperAdmin(): boolean { return this.viewedUserRole() === 'SUPERADMIN'; }
-
-  isCandidate(): boolean { return this.isViewedUserCandidate(); }
 
   // ── Permission helpers ────────────────────────────────────────────────────
 

@@ -48,7 +48,16 @@ public class JobOfferServiceImpl implements JobOfferService {
                 r.getDescription(),
                 r.getWeight(),
                 r.getMinYears(),
-                r.getMaxYears()
+                r.getSkillLevel(),
+                r.getDegreeLevel(),
+                r.getEnrollmentType(),
+                r.getInstitute(),
+                r.getLanguageLevel(),
+                r.getIssuingOrg(),
+                r.getCustomIssuingOrg(),
+                r.getRequireCurrent(),
+                r.getValidityYears(),
+                r.getMustHave()
         );
     }
 
@@ -155,7 +164,16 @@ public class JobOfferServiceImpl implements JobOfferService {
                         .description(r.getDescription())
                         .weight(r.getWeight())
                         .minYears(r.getMinYears())
-                        .maxYears(r.getMaxYears())
+                        .skillLevel(r.getSkillLevel())
+                        .degreeLevel(r.getDegreeLevel())
+                        .enrollmentType(r.getEnrollmentType())
+                        .institute(r.getInstitute())
+                        .languageLevel(r.getLanguageLevel())
+                        .issuingOrg(r.getIssuingOrg())
+                        .customIssuingOrg(r.getCustomIssuingOrg())
+                        .requireCurrent(Boolean.TRUE.equals(r.getRequireCurrent()))
+                        .validityYears(r.getValidityYears())
+                        .mustHave(Boolean.TRUE.equals(r.getMustHave()))
                         .build();
                 entity.addRequirement(req);
             }
@@ -261,7 +279,16 @@ public class JobOfferServiceImpl implements JobOfferService {
                         .description(r.getDescription())
                         .weight(r.getWeight())
                         .minYears(r.getMinYears())
-                        .maxYears(r.getMaxYears())
+                        .skillLevel(r.getSkillLevel())
+                        .degreeLevel(r.getDegreeLevel())
+                        .enrollmentType(r.getEnrollmentType())
+                        .institute(r.getInstitute())
+                        .languageLevel(r.getLanguageLevel())
+                        .issuingOrg(r.getIssuingOrg())
+                        .customIssuingOrg(r.getCustomIssuingOrg())
+                        .requireCurrent(Boolean.TRUE.equals(r.getRequireCurrent()))
+                        .validityYears(r.getValidityYears())
+                        .mustHave(Boolean.TRUE.equals(r.getMustHave()))
                         .build();
                 existing.addRequirement(req);
             }

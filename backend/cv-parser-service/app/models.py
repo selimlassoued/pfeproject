@@ -297,11 +297,16 @@ class JobRequirementInput(BaseModel):
     description: Optional[str] = None
     weight: Optional[float] = None
     min_years: Optional[int] = None
-    max_years: Optional[int] = None
     skill_level: Optional[str] = None      # BASIC / INTERMEDIATE / ADVANCED
     degree_level: Optional[str] = None     # ANY / BAC / BTS_DUT / LICENCE_BACHELOR / MASTER / PHD
     enrollment_type: Optional[str] = None  # STUDENT / GRADUATE / BOTH
     language_level: Optional[str] = None   # A1 / A2 / B1 / B2 / C1 / C2
+    institute: Optional[str] = None        # EDUCATION: school / university name
+    issuing_org: Optional[str] = None      # CERTIFICATION: AWS / MICROSOFT / CISCO / OTHER ...
+    custom_issuing_org: Optional[str] = None  # CERTIFICATION: free-text org when issuing_org=OTHER
+    require_current: Optional[bool] = False  # CERTIFICATION: drop expired certs
+    validity_years: Optional[int] = None   # CERTIFICATION: years of validity
+    must_have: Optional[bool] = False      # True = hard knockout, candidates failing this are flagged
 
 
 class ScoringWeights(BaseModel):
@@ -322,6 +327,7 @@ class SemanticMatchRequest(BaseModel):
     job_description: Optional[str] = None
     job_location: Optional[str] = None        # e.g. "Lac 1, Tunis"
     work_arrangement: Optional[str] = None    # ON_SITE / HYBRID / REMOTE
+    job_domain: Optional[str] = None          # SOFTWARE_ENGINEERING / FINANCE_BANKING / ...
     requirements: List[JobRequirementInput] = Field(default_factory=list)
     cv_analysis: CvAnalysisResult
     scoring_weights: Optional[ScoringWeights] = None
@@ -345,3 +351,15 @@ class SemanticMatchResult(BaseModel):
     # Non-scoring advisory signals surfaced to the recruiter. Each item has
     # {kind, severity, message, details?}. Examples: distance_far, name_mismatch.
     warnings: List[Dict[str, Any]] = Field(default_factory=list)
+    # Must-have tracking. failed_must_haves carries the descriptions of every
+    # mustHave=True requirement the candidate failed (bucket "missing"). When
+    # non-empty, must_have_failed is True and the application is visually
+    # demoted on the recruiter side (no automatic status change).
+    must_have_failed: bool = False
+    failed_must_haves: List[str] = Field(default_factory=list)
+    # Job-domain fit: how well the candidate's prior work experience matches
+    # the industry/sector the job is in (banking, insurance, telecom, ...).
+    # 0-100 score plus a short list of evidence strings (companies/keywords
+    # found in the CV). Null when the job has no domain set.
+    domain_fit_score: Optional[int] = None
+    domain_match_evidence: List[str] = Field(default_factory=list)

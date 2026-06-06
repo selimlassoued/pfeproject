@@ -198,3 +198,59 @@
   color: var(--color-secondary);
   font-size: 0.85rem;
 }
+
+/* ─── Pagination ──────────────────────────────────────────────────────────── */
+.pager {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .85rem;
+}
+.pager-info {
+  font-size: .82rem;
+  color: rgba(248, 250, 252, .6);
+}
+.pager-info strong { color: rgba(248, 250, 252, .92); font-weight: 700; }
+
+.pager-controls {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  flex-wrap: wrap;
+}
+.pager-btn {
+  appearance: none;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 .65rem;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(121, 164, 233, .22);
+  color: rgba(248, 250, 252, .85);
+  border-radius: 8px;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.pager-btn:hover:not(:disabled):not(.is-active) {
+  background: rgba(121, 164, 233, .12);
+  border-color: rgba(121, 164, 233, .5);
+}
+.pager-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.pager-btn.is-active {
+  background: linear-gradient(135deg, #4f6bf5, #79a4e9);
+  border-color: transparent;
+  color: #fff;
+  cursor: default;
+}
+.pager-ellipsis {
+  padding: 0 .35rem;
+  color: rgba(248, 250, 252, .5);
+  font-weight: 700;
+  user-select: none;
+}

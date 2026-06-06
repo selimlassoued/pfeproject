@@ -135,9 +135,6 @@ public class JobClient {
         @JsonAlias({"minYears", "min_years"})
         private Integer minYears;
 
-        @JsonAlias({"maxYears", "max_years"})
-        private Integer maxYears;
-
         @JsonAlias({"skillLevel", "skill_level"})
         private String skillLevel;
 
@@ -149,5 +146,23 @@ public class JobClient {
 
         @JsonAlias({"languageLevel", "language_level"})
         private String languageLevel;
+
+        @JsonAlias({"institute"})
+        private String institute;
+
+        @JsonAlias({"issuingOrg", "issuing_org"})
+        private String issuingOrg;
+
+        @JsonAlias({"customIssuingOrg", "custom_issuing_org"})
+        private String customIssuingOrg;
+
+        @JsonAlias({"requireCurrent", "require_current"})
+        private Boolean requireCurrent;
+
+        @JsonAlias({"validityYears", "validity_years"})
+        private Integer validityYears;
+
+        @JsonAlias({"mustHave", "must_have"})
+        private Boolean mustHave;
     }
 }
