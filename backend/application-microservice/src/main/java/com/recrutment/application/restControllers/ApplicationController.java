@@ -318,7 +318,7 @@ public class ApplicationController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void signalCandidate(
             @PathVariable String candidateUserId,
-            @RequestBody SignalRequest request,
+            @jakarta.validation.Valid @RequestBody SignalRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         String reason = request != null && request.reason() != null
                 ? request.reason() : "Flagged by recruiter";
@@ -329,7 +329,7 @@ public class ApplicationController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unsignalCandidate(
             @PathVariable String candidateUserId,
-            @RequestBody(required = false) UnsignalRequest request,
+            @jakarta.validation.Valid @RequestBody(required = false) UnsignalRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         String reason = request != null && request.reason() != null
                 ? request.reason() : "Signal withdrawn by recruiter";
@@ -356,8 +356,8 @@ public class ApplicationController {
 
     // ── Request records ───────────────────────────────────────────────────────
 
-    public record SignalRequest(String reason) {}
-    public record UnsignalRequest(String reason) {}
+    public record SignalRequest(@jakarta.validation.constraints.Size(max = 500) String reason) {}
+    public record UnsignalRequest(@jakarta.validation.constraints.Size(max = 500) String reason) {}
     @GetMapping("/{applicationId}/cv-summary")
     public ResponseEntity<CvSummaryDto> getCvSummary(@PathVariable UUID applicationId) {;
         CvAnalysis cv = cvAnalysisRepository.findByApplicationId(applicationId)

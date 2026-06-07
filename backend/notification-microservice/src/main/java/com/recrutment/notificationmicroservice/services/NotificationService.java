@@ -79,8 +79,8 @@ public class NotificationService {
     public void handleRoleUpdate(AppEventMessage evt) {
         String userId = evt.getTarget().getId();
         Map<String, Object> changes = evt.getChanges();
-        List<String> oldRoles = (List<String>) changes.get("oldRoles");
-        List<String> newRoles = (List<String>) changes.get("newRoles");
+        List<String> oldRoles = asStringList(changes.get("oldRoles"));
+        List<String> newRoles = asStringList(changes.get("newRoles"));
 
         String body = "Your roles have changed.\nOld: " + oldRoles + "\nNew: " + newRoles;
 
@@ -536,5 +536,17 @@ public class NotificationService {
         </body>
         </html>
         """.formatted(name, body, ctaUrl);  // 👈 3 placeholders now
+    }
+
+    /** Safe coercion of an Object claim to List&lt;String&gt; without the
+     *  raw-type cast that triggered an unchecked warning. Drops anything
+     *  that isn't a String so a malformed event can't crash this listener. */
+    private static List<String> asStringList(Object raw) {
+        if (!(raw instanceof List<?> list)) return List.of();
+        List<String> out = new java.util.ArrayList<>(list.size());
+        for (Object o : list) {
+            if (o instanceof String s) out.add(s);
+        }
+        return out;
     }
 }

@@ -47,7 +47,7 @@ public class CandidateProfileController {
     @PutMapping("/me")
     public ResponseEntity<CandidateProfileDto> saveMyProfile(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestBody CandidateProfileDto dto) {
+            @jakarta.validation.Valid @RequestBody CandidateProfileDto dto) {
 
         String userId = jwt.getSubject();
         boolean creating = repo.findByUserId(userId).isEmpty();
