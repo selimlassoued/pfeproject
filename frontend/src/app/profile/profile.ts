@@ -6,6 +6,7 @@ import { KeycloakAccountService } from '../services/keycloak-account-service';
 import { User } from '../model/user.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import Keycloak from 'keycloak-js';
+import { loginWithCurrentTheme } from '../utils/keycloak-login';
 
 @Component({
   selector: 'app-profile',
@@ -96,7 +97,7 @@ export class Profile implements OnInit {
    * password before they can change a security setting like 2FA.
    */
   enableTwoFactor(): void {
-    this.keycloak.login({
+    loginWithCurrentTheme(this.keycloak, {
       action: 'CONFIGURE_TOTP',
       redirectUri: window.location.origin + '/profile',
       maxAge: 0,

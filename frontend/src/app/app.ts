@@ -12,6 +12,7 @@ import { NotificationsMenu } from './notification-menu/notification-menu';
 import { ImminentInterview } from './imminent-interview/imminent-interview';
 import { CandidateProfileService } from './services/candidate-profile.service';
 import { ThemeService } from './services/theme.service';
+import { loginWithCurrentTheme } from './utils/keycloak-login';
 
 @Component({
   selector: 'app-root',
@@ -48,8 +49,8 @@ export class App {
         if (this.authenticated) {
           this.keycloak.loadUserProfile().then(profile => {
             this.profile = profile;
-            const first = profile.firstName ?? '';
-            const last  = profile.lastName  ?? '';
+            const first = this.titleCase(profile.firstName ?? '');
+            const last  = this.titleCase(profile.lastName  ?? '');
             this.displayName = `${first} ${last}`.trim() || profile.username || 'Account';
           });
 
@@ -78,7 +79,7 @@ export class App {
     });
   }
 
-  login()  { this.keycloak.login();  }
+  login()  { loginWithCurrentTheme(this.keycloak); }
   logout() { this.keycloak.logout(); }
 
   /** Flip between light and dark — wired to the navbar toggle button. */
@@ -89,4 +90,16 @@ export class App {
   isAdmin():      boolean { return this.keycloak.hasRealmRole('ADMIN') && !this.isSuperAdmin(); }
   isRecruiter():  boolean { return this.keycloak.hasRealmRole('RECRUITER') && !this.isAdmin() && !this.isSuperAdmin(); }
   isCandidate():  boolean { return !this.isSuperAdmin() && !this.isAdmin() && !this.isRecruiter(); }
+
+  /** "SARRA BEN YAGHLANE" → "Sarra Ben Yaghlane".
+   *  Normalizes whatever case the user typed in Keycloak so the navbar
+   *  always reads like a proper name. */
+  private titleCase(s: string): string {
+    return s
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
 }
