@@ -27,7 +27,7 @@
 /* Card refinements */
 .profile-card{
   padding: var(--space-10);
-  border: 1px solid rgba(121,164,233,0.26);
+  border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-md);
 }
 
@@ -37,7 +37,7 @@
   align-items:flex-start;
   gap: var(--space-6);
   padding-bottom: var(--space-6);
-  border-bottom: 1px solid rgba(121,164,233,0.18);
+  border-bottom: 1px solid var(--border);
   margin-bottom: var(--space-8);
 }
 
@@ -51,8 +51,8 @@
 .card-badge{
   padding: 0.35rem 0.7rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(121,164,233,0.25);
-  background: rgba(121,164,233,0.10);
+  border: 1px solid var(--border-strong);
+  background: var(--border-subtle);
   color: var(--color-cream);
   font-weight: 700;
   font-size: 0.85rem;
@@ -76,7 +76,7 @@
   display:block;
   margin-bottom: 0.55rem;
   font-weight: 700;
-  color: rgba(255,255,255,0.92);
+  color: var(--text);
 }
 
 /* Required-field marker */
@@ -91,11 +91,11 @@
 }
 
 .input:hover{
-  border-color: rgba(121,164,233,0.38);
+  border-color: var(--border-prominent);
 }
 .input:focus{
   border-color: var(--color-secondary);
-  box-shadow: 0 0 0 3px rgba(121,164,233,0.30);
+  box-shadow: 0 0 0 3px var(--border-strong);
 }
 
 .phone-row{
@@ -111,8 +111,8 @@
   align-items:center;
   height: 44px;
   border-radius: 12px;
-  border: 1px solid rgba(121,164,233,0.22);
-  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  background: var(--surface-3);
   color: var(--color-cream);
   font-weight: 800;
 }
@@ -128,10 +128,17 @@
   font-weight: 800;
 }
 
+:host-context([data-theme="light"]) .hint{
+  color: #475569 !important;
+}
+:host-context([data-theme="light"]) .hint-strong{
+  color: #1e40bc !important;
+}
+
 .card-footer{
   margin-top: var(--space-10);
   padding-top: var(--space-6);
-  border-top: 1px solid rgba(121,164,233,0.18);
+  border-top: 1px solid var(--border);
   display:flex;
   justify-content:space-between;
   align-items:center;
@@ -148,23 +155,23 @@
   border-radius: 14px;
   padding: 0.95rem 1rem;
   border: 1px solid var(--color-border);
-  background: rgba(255,255,255,0.05);
+  background: var(--surface-2);
   box-shadow: var(--shadow-sm);
   margin-bottom: var(--space-6);
 }
-.status--info{ background: rgba(121,164,233,0.10); }
+.status--info{ background: var(--border-subtle); }
 .status--success{
-  background: rgba(120, 255, 197, 0.10);
-  border-color: rgba(120, 255, 197, 0.25);
+  background: rgba(120,255,197,0.10);
+  border-color: rgba(120,255,197,0.25);
 }
 .status--error{
-  background: rgba(255, 120, 120, 0.10);
-  border-color: rgba(255, 120, 120, 0.25);
+  background: rgba(255,120,120,0.10);
+  border-color: rgba(255,120,120,0.25);
 }
 
 .field-error{
   margin-top: 0.5rem;
-  color: rgba(255, 140, 140, 0.95);
+  color: rgba(255,140,140,0.95);
   font-weight: 700;
 }
 
@@ -185,7 +192,7 @@
 .pref-section-title {
   font-size: 0.95rem;
   font-weight: 700;
-  color: rgba(255,255,255,0.85);
+  color: var(--text-muted);
   margin: 0 0 var(--space-4);
   display: flex;
   align-items: center;
@@ -195,7 +202,7 @@
 .pref-hint {
   font-size: 0.78rem;
   font-weight: 400;
-  color: rgba(255,255,255,0.45);
+  color: var(--text-soft);
 }
 
 /* Domain chips */
@@ -208,17 +215,17 @@
 .domain-chip {
   padding: 0.5rem 1.1rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(121,164,233,0.25);
-  background: rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.75);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-muted);
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s;
 }
-.domain-chip:hover { border-color: rgba(121,164,233,0.5); color: #fff; }
+.domain-chip:hover { border-color: var(--border-prominent); color: #fff; }
 .domain-chip--active {
-  background: rgba(121,164,233,0.2);
+  background: var(--border);
   border-color: var(--color-secondary);
   color: #fff;
 }
@@ -234,9 +241,9 @@
   position: relative;
   padding: 0.4rem 0.9rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(121,164,233,0.2);
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.65);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -245,9 +252,9 @@
   align-items: center;
   gap: 0.4rem;
 }
-.skill-chip:hover { border-color: rgba(121,164,233,0.45); color: #fff; }
+.skill-chip:hover { border-color: var(--border-prominent); color: #fff; }
 .skill-chip--selected {
-  background: rgba(121,164,233,0.18);
+  background: var(--border);
   border-color: var(--color-secondary);
   color: #fff;
 }
@@ -276,17 +283,17 @@
 .pref-chip {
   padding: 0.55rem 1.4rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(121,164,233,0.22);
-  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   color: rgba(255,255,255,0.72);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s;
 }
-.pref-chip:hover { border-color: rgba(121,164,233,0.5); color: #fff; }
+.pref-chip:hover { border-color: var(--border-prominent); color: #fff; }
 .pref-chip--active {
-  background: rgba(121,164,233,0.2);
+  background: var(--border);
   border-color: var(--color-secondary);
   color: #fff;
 }
@@ -300,7 +307,7 @@
 .salary-row .form-group { flex: 1; margin: 0; }
 .salary-sep {
   padding-bottom: 10px;
-  color: rgba(255,255,255,0.4);
+  color: var(--text-soft);
   font-size: 1.1rem;
 }
 

@@ -1112,3 +1112,405 @@ form#kc-register-form{
   background:rgba(255,255,255,0.08) !important;
   border-color:rgba(121,164,233,0.5) !important;
 }
+
+/* =========================================================================
+   LIGHT THEME OVERRIDES
+   -------------------------------------------------------------------------
+   theme-init.js sets <html data-theme="light"> from the ?ui_theme=light URL
+   param sent by the Angular app. Everything above stays untouched so dark
+   mode (default) renders byte-for-byte identical to before.
+   ========================================================================= */
+
+/* ── Floating theme toggle (sun/moon) injected by theme-init.js ────────── */
+button.hireai-theme-toggle{
+  position:fixed !important;
+  top:1.25rem !important;
+  right:1.25rem !important;
+  z-index:9999 !important;
+  width:42px !important;
+  height:42px !important;
+  padding:0 !important;
+  margin:0 !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border-radius:50% !important;
+  border:1px solid rgba(255,255,255,0.18) !important;
+  background:rgba(15,23,42,0.55) !important;
+  background-image:none !important;
+  backdrop-filter:blur(10px) !important;
+  -webkit-backdrop-filter:blur(10px) !important;
+  color:#fde68a !important;
+  box-shadow:0 8px 20px rgba(0,0,0,0.35) !important;
+  cursor:pointer !important;
+  transition:transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
+  width:42px !important;
+  min-width:42px !important;
+}
+button.hireai-theme-toggle:hover{
+  transform:translateY(-1px) !important;
+  background:rgba(15,23,42,0.75) !important;
+  box-shadow:0 12px 28px rgba(0,0,0,0.45) !important;
+}
+button.hireai-theme-toggle:focus,
+button.hireai-theme-toggle:focus-visible{
+  outline:0 !important;
+  box-shadow:0 0 0 3px rgba(121,164,233,0.45), 0 8px 20px rgba(0,0,0,0.35) !important;
+}
+button.hireai-theme-toggle svg{display:block !important;}
+
+:root[data-theme="light"] button.hireai-theme-toggle{
+  background:#ffffff !important;
+  border:1px solid #cbd5e1 !important;
+  color:#1e40bc !important;
+  box-shadow:0 6px 18px rgba(30,64,188,0.18) !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+:root[data-theme="light"] button.hireai-theme-toggle:hover{
+  background:#f8fafc !important;
+  border-color:#1e40bc !important;
+  box-shadow:0 10px 24px rgba(30,64,188,0.26) !important;
+}
+:root[data-theme="light"] button.hireai-theme-toggle:focus,
+:root[data-theme="light"] button.hireai-theme-toggle:focus-visible{
+  box-shadow:0 0 0 3px rgba(30,64,188,0.25), 0 6px 18px rgba(30,64,188,0.18) !important;
+}
+
+:root[data-theme="light"]{
+  --color-primary:#1e40bc;
+  --color-secondary:#4f46e5;
+  --color-cream:#0f172a;
+  --color-bg:#eef2ff;
+  --color-surface:#ffffff;
+  --color-border:rgba(30,64,188,0.16);
+  --color-text:#0f172a;
+  --color-text-muted:#475569;
+  --shadow-md:0 24px 60px -12px rgba(30,64,188,0.22), 0 8px 20px -8px rgba(15,23,42,0.08);
+}
+
+:root[data-theme="light"] html,
+:root[data-theme="light"] body{
+  background:
+    radial-gradient(1200px 700px at 10% -10%, rgba(79,70,229,0.18), transparent 60%),
+    radial-gradient(900px 520px at 92% 0%, rgba(14,165,233,0.14), transparent 55%),
+    radial-gradient(700px 500px at 50% 110%, rgba(30,64,188,0.10), transparent 60%),
+    var(--color-bg) !important;
+  color:var(--color-text) !important;
+}
+
+:root[data-theme="light"] #kc-container,
+:root[data-theme="light"] .login-pf-page .card-pf,
+:root[data-theme="light"] .pf-c-login__main{
+  background:var(--color-surface) !important;
+  border:1px solid var(--color-border) !important;
+  box-shadow:var(--shadow-md) !important;
+  position:relative !important;
+  overflow:hidden !important;
+}
+:root[data-theme="light"] #kc-container::before,
+:root[data-theme="light"] .login-pf-page .card-pf::before,
+:root[data-theme="light"] .pf-c-login__main::before{
+  content:"" !important;
+  position:absolute !important;
+  top:0 !important;
+  left:0 !important;
+  right:0 !important;
+  height:4px !important;
+  background:linear-gradient(90deg,#1e40bc,#4f46e5,#0ea5e9) !important;
+}
+
+:root[data-theme="light"] #kc-page-title{
+  color:#0f172a !important;
+}
+
+:root[data-theme="light"] label,
+:root[data-theme="light"] .pf-c-form__label,
+:root[data-theme="light"] .pf-c-form__label-text{
+  color:#334155 !important;
+}
+
+/* Header logo: swap to the light-mode asset */
+:root[data-theme="light"] #kc-header-wrapper::before,
+:root[data-theme="light"] #kc-header-wrapper .kc-logo-text,
+:root[data-theme="light"] .login-pf-page .kc-logo-text{
+  background-image:url("../img/logo-light.png") !important;
+}
+
+:root[data-theme="light"] input,
+:root[data-theme="light"] input[type="text"],
+:root[data-theme="light"] input[type="password"],
+:root[data-theme="light"] input[type="email"],
+:root[data-theme="light"] input[type="tel"],
+:root[data-theme="light"] textarea,
+:root[data-theme="light"] select,
+:root[data-theme="light"] .pf-c-form-control,
+:root[data-theme="light"] .pf-c-form__control,
+:root[data-theme="light"] .pf-c-text-input-group__text-input,
+:root[data-theme="light"] .pf-c-text-input-group .pf-c-form-control{
+  background:#ffffff !important;
+  border:1px solid #cbd5e1 !important;
+  color:#0f172a !important;
+}
+
+:root[data-theme="light"] input[style],
+:root[data-theme="light"] input[type="password"][style],
+:root[data-theme="light"] .pf-c-form-control[style]{
+  background:#ffffff !important;
+  border:1px solid #cbd5e1 !important;
+  color:#0f172a !important;
+}
+
+:root[data-theme="light"] input::placeholder,
+:root[data-theme="light"] textarea::placeholder{
+  color:rgba(15,23,42,0.42) !important;
+}
+
+:root[data-theme="light"] input:focus,
+:root[data-theme="light"] textarea:focus,
+:root[data-theme="light"] select:focus,
+:root[data-theme="light"] .pf-c-form-control:focus,
+:root[data-theme="light"] .pf-c-text-input-group__text-input:focus{
+  border-color:#1e40bc !important;
+  box-shadow:0 0 0 3px rgba(30,64,188,0.20) !important;
+  background:#ffffff !important;
+}
+
+:root[data-theme="light"] .pf-c-input-group,
+:root[data-theme="light"] .pf-c-text-input-group{
+  background:#ffffff !important;
+  border:1px solid #cbd5e1 !important;
+}
+
+:root[data-theme="light"] .pf-c-input-group:focus-within,
+:root[data-theme="light"] .pf-c-text-input-group:focus-within{
+  border-color:#1e40bc !important;
+  box-shadow:0 0 0 3px rgba(30,64,188,0.20) !important;
+}
+
+:root[data-theme="light"] .pf-c-input-group > .pf-c-form-control,
+:root[data-theme="light"] .pf-c-text-input-group__text-input,
+:root[data-theme="light"] .pf-c-text-input-group__main .pf-c-form-control,
+:root[data-theme="light"] #password{
+  background:transparent !important;
+  color:#0f172a !important;
+}
+
+:root[data-theme="light"] .pf-c-button.pf-m-control,
+:root[data-theme="light"] button.pf-m-control{
+  background:rgba(30,64,188,0.06) !important;
+  border-left:1px solid #cbd5e1 !important;
+  color:#1e40bc !important;
+}
+
+:root[data-theme="light"] .pf-c-button.pf-m-control:hover,
+:root[data-theme="light"] button.pf-m-control:hover{
+  background:rgba(30,64,188,0.12) !important;
+}
+
+/* Primary button stays brand blue gradient in both themes */
+:root[data-theme="light"] a,
+:root[data-theme="light"] .pf-c-button.pf-m-link{
+  color:#1e40bc !important;
+}
+:root[data-theme="light"] a:hover,
+:root[data-theme="light"] .pf-c-button.pf-m-link:hover{
+  color:#0f1f6e !important;
+}
+
+:root[data-theme="light"] #kc-footer,
+:root[data-theme="light"] .login-pf-page .kc-footer,
+:root[data-theme="light"] .pf-c-login__footer{
+  color:#475569 !important;
+}
+
+/* Phone group (custom +216 prefix) */
+:root[data-theme="light"] .hireai-phone-group{
+  background:#ffffff !important;
+  border:1px solid #cbd5e1 !important;
+}
+:root[data-theme="light"] .hireai-phone-group:focus-within{
+  border-color:#1e40bc !important;
+  box-shadow:0 0 0 3px rgba(30,64,188,0.20) !important;
+}
+:root[data-theme="light"] .hireai-phone-prefix{
+  background:rgba(30,64,188,0.08) !important;
+  color:#1e40bc !important;
+  border-right:1px solid #cbd5e1 !important;
+}
+
+/* Subtitle under title */
+:root[data-theme="light"] .hireai-subtitle{
+  color:#475569 !important;
+}
+
+/* Consolidated validation banner: tone down for light bg */
+:root[data-theme="light"] .hireai-error-banner{
+  background:linear-gradient(180deg,rgba(220,38,38,0.10),rgba(220,38,38,0.04)) !important;
+  border:1px solid rgba(220,38,38,0.35) !important;
+  box-shadow:0 4px 14px rgba(220,38,38,0.10) !important;
+}
+:root[data-theme="light"] .hireai-error-title{
+  color:#991b1b !important;
+}
+:root[data-theme="light"] .hireai-error-text,
+:root[data-theme="light"] .hireai-error-list{
+  color:#b91c1c !important;
+}
+:root[data-theme="light"] [id^="input-error"],
+:root[data-theme="light"] .pf-c-form__helper-text.pf-m-error,
+:root[data-theme="light"] .input-error{
+  color:#b91c1c !important;
+}
+:root[data-theme="light"] .alert,
+:root[data-theme="light"] .pf-c-alert{
+  background:rgba(220,38,38,0.08) !important;
+  border:1px solid rgba(220,38,38,0.30) !important;
+  color:#991b1b !important;
+}
+
+/* Secondary IDP link button: bordered light variant */
+:root[data-theme="light"] .hireai-idp-link__secondary{
+  background:#ffffff !important;
+  color:#1e40bc !important;
+  border:1px solid #cbd5e1 !important;
+}
+:root[data-theme="light"] .hireai-idp-link__secondary:hover{
+  background:#f8fafc !important;
+  border-color:#1e40bc !important;
+}
+
+/* Primary submit button: force solid brand-blue gradient with white text.
+   Extra-specific so it beats any base patternfly cascade. */
+:root[data-theme="light"] .login-pf-page input[type="submit"],
+:root[data-theme="light"] .login-pf-page button[type="submit"],
+:root[data-theme="light"] .login-pf-page .pf-c-button.pf-m-primary,
+:root[data-theme="light"] input#kc-login[type="submit"],
+:root[data-theme="light"] input[name="login"][type="submit"],
+:root[data-theme="light"] .pf-c-button.pf-m-primary.pf-m-block,
+:root[data-theme="light"] input.pf-m-primary{
+  background:linear-gradient(135deg,#1e40bc 0%,#4f46e5 100%) !important;
+  background-color:#1e40bc !important;
+  background-image:linear-gradient(135deg,#1e40bc 0%,#4f46e5 100%) !important;
+  color:#ffffff !important;
+  border:0 !important;
+  box-shadow:0 8px 20px rgba(30,64,188,0.28) !important;
+  text-shadow:none !important;
+  font-weight:600 !important;
+}
+:root[data-theme="light"] .login-pf-page input[type="submit"]:hover,
+:root[data-theme="light"] .login-pf-page button[type="submit"]:hover,
+:root[data-theme="light"] .login-pf-page .pf-c-button.pf-m-primary:hover,
+:root[data-theme="light"] input#kc-login[type="submit"]:hover{
+  background:linear-gradient(135deg,#1e3aa8 0%,#4338ca 100%) !important;
+  background-image:linear-gradient(135deg,#1e3aa8 0%,#4338ca 100%) !important;
+  box-shadow:0 12px 28px rgba(30,64,188,0.38) !important;
+  transform:translateY(-1px) !important;
+}
+
+/* "Or sign in with" heading: divider lines + lighter heading weight */
+:root[data-theme="light"] #kc-social-providers > h2,
+:root[data-theme="light"] .kc-social-section > h2{
+  display:flex !important;
+  align-items:center !important;
+  gap:0.75rem !important;
+  font-family:"Montserrat",system-ui,sans-serif !important;
+  font-size:0.78rem !important;
+  font-weight:600 !important;
+  letter-spacing:0.08em !important;
+  text-transform:uppercase !important;
+  color:#64748b !important;
+  margin:1.5rem 0 1rem !important;
+}
+:root[data-theme="light"] #kc-social-providers > h2::before,
+:root[data-theme="light"] #kc-social-providers > h2::after,
+:root[data-theme="light"] .kc-social-section > h2::before,
+:root[data-theme="light"] .kc-social-section > h2::after{
+  content:"" !important;
+  flex:1 1 auto !important;
+  height:1px !important;
+  background:linear-gradient(90deg,transparent,#cbd5e1,transparent) !important;
+}
+
+/* Social provider buttons (GitHub / Google): clean white pills */
+:root[data-theme="light"] .kc-social-links{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:0.6rem !important;
+  list-style:none !important;
+  padding:0 !important;
+  margin:0 !important;
+}
+:root[data-theme="light"] .kc-social-links li{
+  width:100% !important;
+  margin:0 !important;
+}
+:root[data-theme="light"] .kc-social-item,
+:root[data-theme="light"] a.kc-social-item,
+:root[data-theme="light"] .kc-social-links .pf-c-button.pf-m-control{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:0.6rem !important;
+  width:100% !important;
+  background:#ffffff !important;
+  background-image:none !important;
+  border:1px solid #cbd5e1 !important;
+  border-radius:999px !important;
+  color:#0f172a !important;
+  font-weight:600 !important;
+  font-size:0.92rem !important;
+  padding:0.7rem 1rem !important;
+  box-shadow:none !important;
+  text-decoration:none !important;
+  transition:border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease !important;
+}
+:root[data-theme="light"] .kc-social-item:hover,
+:root[data-theme="light"] a.kc-social-item:hover{
+  border-color:#1e40bc !important;
+  box-shadow:0 6px 18px rgba(30,64,188,0.14) !important;
+  transform:translateY(-1px) !important;
+  text-decoration:none !important;
+}
+:root[data-theme="light"] .kc-social-provider-logo{
+  font-size:1.05rem !important;
+  color:#0f172a !important;
+}
+:root[data-theme="light"] .kc-social-provider-name{
+  color:#0f172a !important;
+}
+
+/* Title: keep brand font but tone down weight + add letter spacing */
+:root[data-theme="light"] #kc-page-title{
+  color:#0f172a !important;
+  font-weight:700 !important;
+  letter-spacing:-0.015em !important;
+}
+
+/* Welcome-back subtitle pop: brand-tinted */
+:root[data-theme="light"] .hireai-subtitle{
+  color:#1e40bc !important;
+  font-weight:500 !important;
+}
+
+/* Forgot Password link block: stronger weight, brand color */
+:root[data-theme="light"] #kc-form-options a,
+:root[data-theme="light"] #kc-registration-container a,
+:root[data-theme="light"] #kc-info a{
+  color:#1e40bc !important;
+  font-weight:600 !important;
+}
+:root[data-theme="light"] #kc-form-options a:hover,
+:root[data-theme="light"] #kc-registration-container a:hover,
+:root[data-theme="light"] #kc-info a:hover{
+  color:#1e3aa8 !important;
+}
+
+/* "New user? Register" footer area: cleaner spacing */
+:root[data-theme="light"] #kc-registration-container,
+:root[data-theme="light"] #kc-info{
+  color:#475569 !important;
+  font-size:0.88rem !important;
+  margin-top:1.25rem !important;
+  text-align:center !important;
+}

@@ -79,8 +79,8 @@ public class NotificationService {
     public void handleRoleUpdate(AppEventMessage evt) {
         String userId = evt.getTarget().getId();
         Map<String, Object> changes = evt.getChanges();
-        List<String> oldRoles = (List<String>) changes.get("oldRoles");
-        List<String> newRoles = (List<String>) changes.get("newRoles");
+        List<String> oldRoles = asStringList(changes.get("oldRoles"));
+        List<String> newRoles = asStringList(changes.get("newRoles"));
 
         String body = "Your roles have changed.\nOld: " + oldRoles + "\nNew: " + newRoles;
 
@@ -269,6 +269,359 @@ public class NotificationService {
             } catch (Exception e) {
                 log.warn("Could not push offers ping to {}: {}", uid, e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Offer lifecycle bell notification. Sister of pushOfferChange (which
+     * is a STOMP-only refresh ping); this method ALSO writes a Notification
+     * row + email so the affected user gets the news even if they were
+     * offline when the recruiter sent / candidate accepted / etc.
+     */
+    public void handleOfferChange(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String status = String.valueOf(payload.getOrDefault("status", "")).toUpperCase();
+        String applicationId = String.valueOf(payload.getOrDefault("applicationId", ""));
+        String candidateUserId = (String) payload.get("candidateUserId");
+        String recruiterId     = String.valueOf(payload.getOrDefault("recruiterId", ""));
+
+        // For each status, decide WHO needs the bell. Only the side that didn't
+        // initiate the transition needs to know — the actor already saw the
+        // confirmation in their own UI.
+        String targetUserId;
+        String title;
+        String body;
+        NotificationType type;
+        String candidateCta = applicationId.isEmpty()
+                ? BASE_URL + "/my-applications"
+                : BASE_URL + "/my-application/" + applicationId;
+        String recruiterCta = applicationId.isEmpty()
+                ? BASE_URL + "/applications"
+                : BASE_URL + "/application/" + applicationId;
+        String ctaUrl;
+        switch (status) {
+            case "SENT" -> {
+                targetUserId = candidateUserId;
+                title = "You have a new offer";
+                body  = "A recruiter has sent you a formal offer. Open the application to review the terms and respond.";
+                type  = NotificationType.OFFER_SENT;
+                ctaUrl = candidateCta;
+            }
+            case "NEGOTIATING" -> {
+                // Either side may have posted a revision. Without knowing who
+                // sent the last revision we notify both — frontend already
+                // throttles via the STOMP ping so duplicate bells are unlikely.
+                targetUserId = null;
+                title = "Offer updated with a new revision";
+                body  = "The offer has been updated. Open the application to see the latest terms.";
+                type  = NotificationType.OFFER_REVISED;
+                ctaUrl = candidateCta;
+                notifyBoth(candidateUserId, recruiterId, type, title, body,
+                        "APPLICATION", applicationId, candidateCta, recruiterCta);
+                return;
+            }
+            case "ACCEPTED" -> {
+                targetUserId = recruiterId;
+                title = "Candidate accepted your offer";
+                body  = "The candidate has accepted the offer. Open the application to start onboarding.";
+                type  = NotificationType.OFFER_ACCEPTED;
+                ctaUrl = recruiterCta;
+            }
+            case "DECLINED" -> {
+                targetUserId = recruiterId;
+                title = "Candidate declined your offer";
+                body  = "The candidate declined the offer. Open the application to see if they left a note.";
+                type  = NotificationType.OFFER_DECLINED;
+                ctaUrl = recruiterCta;
+            }
+            case "WITHDRAWN" -> {
+                targetUserId = candidateUserId;
+                title = "Recruiter withdrew their offer";
+                body  = "The recruiter has withdrawn the offer. Open the application for details.";
+                type  = NotificationType.OFFER_WITHDRAWN;
+                ctaUrl = candidateCta;
+            }
+            default -> { return; /* EXPIRED is a silent timer event */ }
+        }
+
+        if (targetUserId == null || targetUserId.isBlank()) return;
+        deliver(targetUserId, type, title, body, "APPLICATION", applicationId, ctaUrl, /*email*/ true);
+    }
+
+    /**
+     * Recruiter sent a list of proposed time slots. The candidate has to pick
+     * one (or decline). Without a bell here they only see it if they happen to
+     * be on the application page at the moment of the STOMP ping.
+     */
+    public void handleInterviewProposalSent(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String candidateId   = (String) payload.get("candidateId");
+        if (candidateId == null || candidateId.isBlank()) return;
+        String applicationId = String.valueOf(payload.getOrDefault("applicationId", ""));
+        String jobTitle      = String.valueOf(payload.getOrDefault("jobTitle", "the position"));
+
+        String title = "A recruiter proposed interview times";
+        String body  = "The recruiter for \"" + jobTitle + "\" proposed several interview slots."
+                     + " Open the application to pick one or decline if none work.";
+        String cta   = applicationId.isEmpty()
+                ? BASE_URL + "/my-applications"
+                : BASE_URL + "/my-application/" + applicationId;
+        deliver(candidateId, NotificationType.INTERVIEW_PROPOSAL_SENT, title, body,
+                "APPLICATION", applicationId, cta, /*email*/ true);
+    }
+
+    /**
+     * One side proposed new times for an existing interview. The OTHER side
+     * needs to accept / decline; that's who gets the bell.
+     */
+    public void handleInterviewRescheduleProposed(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String proposedBy = String.valueOf(payload.getOrDefault("proposedBy", "")).toUpperCase();
+        String recruiterId = (String) payload.get("recruiterId");
+        String candidateId = (String) payload.get("candidateId");
+        // RECIPIENT = whoever did NOT propose.
+        String targetUserId = "CANDIDATE".equals(proposedBy) ? recruiterId : candidateId;
+        if (targetUserId == null || targetUserId.isBlank()) return;
+
+        String applicationId = String.valueOf(payload.getOrDefault("applicationId", ""));
+        String jobTitle      = String.valueOf(payload.getOrDefault("jobTitle", "the interview"));
+        String otherSide = "CANDIDATE".equals(proposedBy) ? "candidate" : "recruiter";
+
+        String title = "Reschedule request for your interview";
+        String body  = "The " + otherSide + " proposed new times for \"" + jobTitle + "\"."
+                     + " Open the application to accept, decline, or counter-propose.";
+        String cta = applicationId.isEmpty()
+                ? BASE_URL + "/applications"
+                : ("CANDIDATE".equals(proposedBy)
+                    ? BASE_URL + "/application/" + applicationId          // recruiter view
+                    : BASE_URL + "/my-application/" + applicationId);     // candidate view
+        deliver(targetUserId, NotificationType.INTERVIEW_RESCHEDULE_PROPOSED, title, body,
+                "APPLICATION", applicationId, cta, /*email*/ true);
+    }
+
+    /**
+     * Recruiter A delegated an interview to recruiter B. B is the one who
+     * has to accept the handoff.
+     */
+    public void handleInterviewDelegationRequested(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String toRecruiterId = (String) payload.get("toRecruiterId");
+        if (toRecruiterId == null || toRecruiterId.isBlank()) return;
+
+        String applicationId = String.valueOf(payload.getOrDefault("applicationId", ""));
+        String jobTitle      = String.valueOf(payload.getOrDefault("jobTitle", "an interview"));
+
+        String title = "A colleague asked you to run an interview";
+        String body  = "Another recruiter delegated the \"" + jobTitle + "\" interview to you."
+                     + " Open the application to accept or decline.";
+        String cta = applicationId.isEmpty()
+                ? BASE_URL + "/applications"
+                : BASE_URL + "/application/" + applicationId;
+        deliver(toRecruiterId, NotificationType.INTERVIEW_DELEGATION_REQUESTED, title, body,
+                "APPLICATION", applicationId, cta, /*email*/ true);
+    }
+
+    /** Reschedule was declined by the other side. The proposer needs to know. */
+    public void handleInterviewRescheduleDeclined(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String proposedBy = String.valueOf(payload.getOrDefault("proposedBy", "")).toUpperCase();
+        // The PROPOSER (whoever asked for the reschedule) gets the bell.
+        String targetUserId = "CANDIDATE".equals(proposedBy)
+                ? (String) payload.get("candidateId")
+                : (String) payload.get("recruiterId");
+        if (targetUserId == null || targetUserId.isBlank()) return;
+
+        String applicationId = String.valueOf(payload.getOrDefault("applicationId", ""));
+        String jobTitle      = String.valueOf(payload.getOrDefault("jobTitle", "the interview"));
+        String otherSide = "CANDIDATE".equals(proposedBy) ? "recruiter" : "candidate";
+        String title = "Reschedule request declined";
+        String body  = "The " + otherSide + " declined your reschedule request for \"" + jobTitle
+                     + "\". The original time still stands.";
+        String cta = applicationId.isEmpty()
+                ? BASE_URL + "/applications"
+                : ("CANDIDATE".equals(proposedBy)
+                    ? BASE_URL + "/my-application/" + applicationId
+                    : BASE_URL + "/application/" + applicationId);
+        deliver(targetUserId, NotificationType.INTERVIEW_RESCHEDULE_DECLINED, title, body,
+                "APPLICATION", applicationId, cta, /*email*/ true);
+    }
+
+    /** Reschedule withdrawn by the proposer. The OTHER side might already have
+     *  half-acted on the request, so they get told. */
+    public void handleInterviewRescheduleCancelled(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String proposedBy = String.valueOf(payload.getOrDefault("proposedBy", "")).toUpperCase();
+        // The RECIPIENT (the side that was being asked to accept) gets the bell.
+        String targetUserId = "CANDIDATE".equals(proposedBy)
+                ? (String) payload.get("recruiterId")
+                : (String) payload.get("candidateId");
+        if (targetUserId == null || targetUserId.isBlank()) return;
+
+        String applicationId = String.valueOf(payload.getOrDefault("applicationId", ""));
+        String jobTitle      = String.valueOf(payload.getOrDefault("jobTitle", "the interview"));
+        String otherSide = "CANDIDATE".equals(proposedBy) ? "candidate" : "recruiter";
+        String title = "Reschedule request cancelled";
+        String body  = "The " + otherSide + " cancelled their reschedule request for \"" + jobTitle
+                     + "\". The original time still stands.";
+        String cta = applicationId.isEmpty()
+                ? BASE_URL + "/applications"
+                : ("CANDIDATE".equals(proposedBy)
+                    ? BASE_URL + "/application/" + applicationId
+                    : BASE_URL + "/my-application/" + applicationId);
+        deliver(targetUserId, NotificationType.INTERVIEW_RESCHEDULE_CANCELLED, title, body,
+                "APPLICATION", applicationId, cta, /*email*/ true);
+    }
+
+    /** Delegation declined by recruiter B. A (the proposer) gets the bell. */
+    public void handleInterviewDelegationDeclined(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String fromRecruiterId = (String) payload.get("fromRecruiterId");
+        if (fromRecruiterId == null || fromRecruiterId.isBlank()) return;
+
+        String applicationId = String.valueOf(payload.getOrDefault("applicationId", ""));
+        String jobTitle      = String.valueOf(payload.getOrDefault("jobTitle", "the interview"));
+        String title = "Delegation declined";
+        String body  = "The colleague you asked to run the \"" + jobTitle
+                     + "\" interview declined. You may want to delegate to someone else or run it yourself.";
+        String cta = applicationId.isEmpty()
+                ? BASE_URL + "/applications"
+                : BASE_URL + "/application/" + applicationId;
+        deliver(fromRecruiterId, NotificationType.INTERVIEW_DELEGATION_DECLINED, title, body,
+                "APPLICATION", applicationId, cta, /*email*/ true);
+    }
+
+    /** Delegation withdrawn by recruiter A. B (who was being asked) is told. */
+    public void handleInterviewDelegationCancelled(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String toRecruiterId = (String) payload.get("toRecruiterId");
+        if (toRecruiterId == null || toRecruiterId.isBlank()) return;
+
+        String applicationId = String.valueOf(payload.getOrDefault("applicationId", ""));
+        String jobTitle      = String.valueOf(payload.getOrDefault("jobTitle", "an interview"));
+        String title = "Delegation cancelled";
+        String body  = "The colleague who asked you to run the \"" + jobTitle
+                     + "\" interview cancelled the request.";
+        String cta = applicationId.isEmpty()
+                ? BASE_URL + "/applications"
+                : BASE_URL + "/application/" + applicationId;
+        deliver(toRecruiterId, NotificationType.INTERVIEW_DELEGATION_CANCELLED, title, body,
+                "APPLICATION", applicationId, cta, /*email*/ true);
+    }
+
+    /**
+     * Recruiter closed a job. Every candidate who applied gets told so they
+     * can stop waiting on it. Uses the existing internal endpoint that already
+     * lists candidate ids by job (originally written for the JOB_QUOTA_REACHED
+     * fanout).
+     */
+    public void handleJobClosed(AppEventMessage evt) {
+        Map<String, Object> payload = evt.getPayload();
+        if (payload == null) return;
+
+        String jobIdStr = String.valueOf(payload.getOrDefault("jobId", ""));
+        if (jobIdStr.isBlank()) return;
+        java.util.UUID jobId;
+        try { jobId = java.util.UUID.fromString(jobIdStr); }
+        catch (IllegalArgumentException e) {
+            log.warn("JOB_CLOSED with invalid jobId {}: {}", jobIdStr, e.getMessage());
+            return;
+        }
+
+        String jobTitle = String.valueOf(payload.getOrDefault("title",
+                payload.getOrDefault("jobTitle", "a job")));
+        java.util.List<String> candidateIds = applicationClient.findCandidateUserIdsByJob(jobId);
+        if (candidateIds == null || candidateIds.isEmpty()) return;
+
+        String title = "A job you applied to was closed";
+        String body  = "The recruiter closed \"" + jobTitle + "\". Your application is now finalized;"
+                     + " you can keep an eye on similar postings from the browse page.";
+        String cta = BASE_URL + "/my-applications";
+        for (String uid : candidateIds) {
+            if (uid == null || uid.isBlank()) continue;
+            deliver(uid, NotificationType.JOB_CLOSED, title, body,
+                    "JOB", jobIdStr, cta, /*email*/ false);
+        }
+    }
+
+    /**
+     * Recruiter flagged a candidate for moderation. Without an "all admins"
+     * broadcast endpoint we can only deliver to the actor themselves as a
+     * confirmation receipt - a TODO for when there's a proper admin-list
+     * endpoint. Stops the silent drop at minimum. Audit log still records
+     * the full event for moderation review.
+     */
+    public void handleCandidateFlagged(AppEventMessage evt) {
+        AppEventMessage.Actor actor = evt.getActor();
+        if (actor == null) return;
+        String actorUserId = actor.getUserId();
+        if (actorUserId == null || actorUserId.isBlank()) return;
+
+        Map<String, Object> payload = evt.getPayload();
+        String candidateId = payload != null ? (String) payload.get("candidateUserId") : null;
+        Object affectedRaw = payload != null ? payload.get("applicationsAffected") : null;
+        String affected = affectedRaw != null ? affectedRaw.toString() : "?";
+        String reason = evt.getReason();
+
+        String title = "Your flag was recorded";
+        String body = "Your moderation flag on the candidate was saved (" + affected
+                + " application(s) marked FLAGGED)."
+                + (reason != null && !reason.isBlank() ? " Reason: " + reason : "");
+        String cta = candidateId != null && !candidateId.isBlank()
+                ? BASE_URL + "/users/" + candidateId
+                : BASE_URL + "/listUsers";
+        deliver(actorUserId, NotificationType.CANDIDATE_FLAGGED, title, body,
+                "USER", candidateId, cta, /*email*/ false);
+    }
+
+    /** Save + STOMP push to one user. Email is optional per type. */
+    private void deliver(String userId, NotificationType type, String title, String body,
+                         String relatedEntityType, String relatedEntityId,
+                         String ctaUrl, boolean alsoEmail) {
+        Notification n = new Notification();
+        n.setUserId(userId);
+        n.setType(type);
+        n.setTitle(title);
+        n.setBody(body);
+        n.setRelatedEntityType(relatedEntityType);
+        n.setRelatedEntityId(relatedEntityId);
+        repo.save(n);
+        messagingTemplate.convertAndSend("/topic/notifications." + userId, n);
+        messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", n);
+        if (alsoEmail) {
+            try {
+                sendEmailToUser(userId, title, body, ctaUrl);
+            } catch (Exception e) {
+                log.warn("Email failed for {} to {}: {}", type, userId, e.getMessage());
+            }
+        }
+    }
+
+    /** Convenience for events where both sides should get a bell (offer revision). */
+    private void notifyBoth(String candidateUserId, String recruiterId,
+                            NotificationType type, String title, String body,
+                            String relatedEntityType, String relatedEntityId,
+                            String candidateCta, String recruiterCta) {
+        if (candidateUserId != null && !candidateUserId.isBlank()) {
+            deliver(candidateUserId, type, title, body, relatedEntityType, relatedEntityId, candidateCta, true);
+        }
+        if (recruiterId != null && !recruiterId.isBlank()) {
+            deliver(recruiterId, type, title, body, relatedEntityType, relatedEntityId, recruiterCta, true);
         }
     }
 
@@ -536,5 +889,17 @@ public class NotificationService {
         </body>
         </html>
         """.formatted(name, body, ctaUrl);  // 👈 3 placeholders now
+    }
+
+    /** Safe coercion of an Object claim to List&lt;String&gt; without the
+     *  raw-type cast that triggered an unchecked warning. Drops anything
+     *  that isn't a String so a malformed event can't crash this listener. */
+    private static List<String> asStringList(Object raw) {
+        if (!(raw instanceof List<?> list)) return List.of();
+        List<String> out = new java.util.ArrayList<>(list.size());
+        for (Object o : list) {
+            if (o instanceof String s) out.add(s);
+        }
+        return out;
     }
 }

@@ -1,6 +1,6 @@
 import { Component, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormArray, FormBuilder, Validators, AbstractControl } from '@angular/forms';
+import { ReactiveFormsModule, FormArray, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -10,11 +10,23 @@ import { JobOffer } from '../model/jobOffer.model';
 import { RequirementCategory } from '../model/jobRequirement.model';
 import { JobRequirement } from '../model/jobRequirement.model';
 import { getCanonicalLanguages, canonicalizeLanguage } from '../services/language-options.service';
+import { applyServerErrors, clearServerErrors, normalizeHttpError } from '../utils/http-error';
 import { DOMAIN_OPTIONS } from '../services/domains';
+import { OrgComboboxComponent } from '../org-combobox/org-combobox.component';
+
+/** Group-level validator: when a requirement's category is EDUCATION, at least
+ *  one degree chip must be selected. Without it, the requirement says nothing
+ *  useful ("any candidate with any/no degree"). */
+function educationDegreeRequiredValidator(group: AbstractControl): ValidationErrors | null {
+  if (group.get('category')?.value !== 'EDUCATION') return null;
+  const raw = (group.get('degreeLevel')?.value as string) || '';
+  const selected = raw.split(',').map(s => s.trim()).filter(Boolean);
+  return selected.length === 0 ? { degreeRequired: true } : null;
+}
 
 @Component({
   selector: 'app-update-job',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, OrgComboboxComponent],
   templateUrl: './update-job.html',
   styleUrl: './update-job.css',
 })
@@ -172,6 +184,12 @@ private readonly fb = inject(FormBuilder);
         skillLevel:     (req as any).skillLevel     ?? null,
         degreeLevel:    (req as any).degreeLevel    ?? null,
         enrollmentType: (req as any).enrollmentType ?? null,
+        institute:      (req as any).institute      ?? null,
+        issuingOrg:       (req as any).issuingOrg       ?? null,
+        customIssuingOrg: (req as any).customIssuingOrg ?? null,
+        requireCurrent:   !!(req as any).requireCurrent,
+        validityYears:    (req as any).validityYears    ?? null,
+        mustHave:       !!(req as any).mustHave,
       });
       }
     } else {
@@ -236,14 +254,24 @@ private readonly fb = inject(FormBuilder);
       description:    [preset?.description   ?? '',      [Validators.required, Validators.minLength(2)]],
       weight:         [preset?.weight        ?? null],
       minYears:       [preset?.minYears      ?? null],
-      maxYears:       [preset?.maxYears      ?? null],
       skillLevel:     [preset?.skillLevel     ?? null],
       degreeLevel:    [preset?.degreeLevel    ?? null],
       enrollmentType: [preset?.enrollmentType ?? null],
+      institute:      [(preset as any)?.institute     ?? null],
       languageLevel:  [(preset as any)?.languageLevel  ?? null],
-    });
+      issuingOrg:       [(preset as any)?.issuingOrg       ?? null],
+      customIssuingOrg: [(preset as any)?.customIssuingOrg ?? null],
+      requireCurrent:   [!!(preset as any)?.requireCurrent],
+      validityYears:    [(preset as any)?.validityYears    ?? null],
+      mustHave:       [!!(preset as any)?.mustHave],
+    }, { validators: [educationDegreeRequiredValidator] });
     this.requirements().push(group);
     if (this.customizeWeights) this.redistributeWeights();
+  }
+
+  /** True when this EDUCATION requirement has no degree chips selected. */
+  needsDegreeSelection(req: AbstractControl): boolean {
+    return !!req.errors?.['degreeRequired'];
   }
 
   removeRequirement(i: number) {
@@ -256,12 +284,66 @@ private readonly fb = inject(FormBuilder);
   // Empty = any degree accepted.
   readonly degreeOptions: { value: string; label: string }[] = [
     { value: 'BAC',              label: 'Baccalaureate' },
-    { value: 'BTS_DUT',          label: 'BTS / DUT' },
+    { value: 'TRAINING',         label: 'Training' },
     { value: 'LICENCE_BACHELOR', label: 'Licence / Bachelor' },
     { value: 'ENGINEER',         label: 'Engineering degree' },
     { value: 'MASTER',           label: 'Master' },
     { value: 'PHD',              label: 'PhD / Doctorate' },
   ];
+
+  readonly issuingOrgs: { value: string; label: string; defaultValidity: number | null }[] = [
+    { value: 'AWS',              label: 'Amazon Web Services (AWS)',     defaultValidity: 3 },
+    { value: 'MICROSOFT',        label: 'Microsoft / Azure',             defaultValidity: 1 },
+    { value: 'GOOGLE_CLOUD',     label: 'Google Cloud',                  defaultValidity: 2 },
+    { value: 'ORACLE',           label: 'Oracle',                        defaultValidity: null },
+    { value: 'IBM',              label: 'IBM',                           defaultValidity: null },
+    { value: 'CISCO',            label: 'Cisco',                         defaultValidity: 3 },
+    { value: 'COMPTIA',          label: 'CompTIA',                       defaultValidity: 3 },
+    { value: 'LINUX_FOUNDATION', label: 'Linux Foundation (CKA, CKAD…)', defaultValidity: 3 },
+    { value: 'HASHICORP',        label: 'HashiCorp (Terraform, Vault)',  defaultValidity: 2 },
+    { value: 'DOCKER',           label: 'Docker',                        defaultValidity: 2 },
+    { value: 'RED_HAT',          label: 'Red Hat',                       defaultValidity: 3 },
+    { value: 'ISC2',             label: '(ISC)² - CISSP, CCSP, …',       defaultValidity: 3 },
+    { value: 'ISACA',            label: 'ISACA (CISA, CISM, CRISC)',     defaultValidity: 3 },
+    { value: 'PMI',              label: 'PMI (PMP, etc.)',               defaultValidity: 3 },
+    { value: 'SCRUM_ALLIANCE',   label: 'Scrum Alliance',                defaultValidity: 2 },
+    { value: 'TOGAF',            label: 'TOGAF (Open Group)',            defaultValidity: null },
+    { value: 'ITIL',             label: 'ITIL / AXELOS',                 defaultValidity: null },
+    { value: 'SALESFORCE',       label: 'Salesforce',                    defaultValidity: null },
+    { value: 'OTHER',            label: 'Other / Custom',                defaultValidity: null },
+  ];
+
+  readonly issuingOrgGroups: { label: string; orgs: string[] }[] = [
+    { label: 'Cloud',                 orgs: ['AWS', 'MICROSOFT', 'GOOGLE_CLOUD', 'ORACLE', 'IBM'] },
+    { label: 'Network & Infrastructure', orgs: ['CISCO', 'COMPTIA', 'LINUX_FOUNDATION', 'HASHICORP', 'DOCKER', 'RED_HAT'] },
+    { label: 'Security',              orgs: ['ISC2', 'ISACA'] },
+    { label: 'Process & Architecture', orgs: ['PMI', 'SCRUM_ALLIANCE', 'TOGAF', 'ITIL'] },
+    { label: 'Other',                 orgs: ['SALESFORCE', 'OTHER'] },
+  ];
+
+  orgMeta(code: string): { value: string; label: string; defaultValidity: number | null } | undefined {
+    return this.issuingOrgs.find(o => o.value === code);
+  }
+
+  onIssuingOrgChange(req: AbstractControl, orgValue: string | null): void {
+    if (!orgValue) return;
+    const meta = this.issuingOrgs.find(o => o.value === orgValue);
+    if (!meta || meta.defaultValidity == null) return;
+    const requireCurrent = req.get('requireCurrent')?.value;
+    const current = req.get('validityYears')?.value;
+    if (requireCurrent && (current == null || current === '')) {
+      req.get('validityYears')?.setValue(meta.defaultValidity);
+    }
+  }
+
+  onRequireCurrentToggle(req: AbstractControl, on: boolean): void {
+    if (!on) return;
+    const current = req.get('validityYears')?.value;
+    if (current != null && current !== '') return;
+    const orgValue = req.get('issuingOrg')?.value;
+    const meta = this.issuingOrgs.find(o => o.value === orgValue);
+    req.get('validityYears')?.setValue(meta?.defaultValidity ?? 3);
+  }
 
   isDegreeSelected(req: AbstractControl, value: string): boolean {
     const raw = (req.get('degreeLevel')?.value as string) || '';
@@ -287,16 +369,6 @@ private readonly fb = inject(FormBuilder);
       return 'Min salary cannot be greater than max salary.';
     }
 
-    const reqs = this.requirements().controls;
-    for (let i = 0; i < reqs.length; i++) {
-      const r = reqs[i].value as any;
-      const minY = r.minYears ?? null;
-      const maxY = r.maxYears ?? null;
-
-      if (minY != null && maxY != null && minY > maxY) {
-        return `Requirement #${i + 1}: min years cannot be greater than max years.`;
-      }
-    }
     return null;
   }
 
@@ -308,11 +380,16 @@ private readonly fb = inject(FormBuilder);
       description:    r.description,
       weight:         this.customizeWeights ? (r.weight ?? null) : null,
       minYears:       r.minYears      ?? null,
-      maxYears:       r.maxYears      ?? null,
       skillLevel:     r.skillLevel     ?? null,
       degreeLevel:    r.degreeLevel    ?? null,
       enrollmentType: r.enrollmentType ?? null,
+      institute:      (r.institute && String(r.institute).trim()) || null,
       languageLevel:  (r as any).languageLevel  ?? null,
+      issuingOrg:       r.issuingOrg       ?? null,
+      customIssuingOrg: (r.customIssuingOrg && String(r.customIssuingOrg).trim()) || null,
+      requireCurrent:   !!r.requireCurrent,
+      validityYears:    r.validityYears    ?? null,
+      mustHave:         !!r.mustHave,
     }));
 
     return {
@@ -336,6 +413,7 @@ private readonly fb = inject(FormBuilder);
 
   async submit() {
     this.error = null;
+    clearServerErrors(this.form);
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -395,8 +473,9 @@ private readonly fb = inject(FormBuilder);
         await this.router.navigate(['/browse']);
       }
     } catch (e: any) {
-      if (e?.status) this.error = `Update failed (HTTP ${e.status}).`;
-      else this.error = 'Update failed.';
+      const httpError = normalizeHttpError(e);
+      applyServerErrors(this.form, httpError.fieldErrors);
+      this.error = httpError.message || 'Update failed.';
       console.error('updateJob error:', e);
     } finally {
       this.saving = false;
@@ -410,6 +489,15 @@ private readonly fb = inject(FormBuilder);
   // convenience for template
   c(path: string) {
     return this.form.get(path);
+  }
+
+  /** Server message takes priority over the client-validator default. */
+  fieldError(path: string, defaultMsg: string): string | null {
+    const ctl = this.form.get(path);
+    if (!ctl) return null;
+    if (ctl.errors?.['server']) return ctl.errors['server'] as string;
+    if (ctl.touched && ctl.invalid) return defaultMsg;
+    return null;
   }
 
   get status(): 'DRAFT' | 'PUBLISHED' {

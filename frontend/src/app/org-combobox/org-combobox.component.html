@@ -1,0 +1,47 @@
+<div class="oc-root" [class.is-open]="open" [class.is-disabled]="disabled">
+  <div class="oc-input-wrap" (click)="openPanel()">
+    <input
+      class="input oc-input"
+      type="text"
+      autocomplete="off"
+      [value]="open ? query : selectedLabel()"
+      [placeholder]="selectedValue ? selectedLabel() : placeholder"
+      [disabled]="disabled"
+      (input)="onQueryInput($event)"
+      (focus)="openPanel()" />
+
+    @if (selectedValue && !disabled) {
+      <button type="button" class="oc-clear"
+              title="Clear selection"
+              (click)="clear($event)">×</button>
+    }
+    <span class="oc-arrow" aria-hidden="true">▾</span>
+  </div>
+
+  @if (open) {
+    <div class="oc-panel" role="listbox">
+      <button type="button" class="oc-option oc-option--any"
+              [class.is-active]="!selectedValue"
+              (click)="select(null)">
+        {{ anyLabel }}
+      </button>
+
+      @for (group of filteredGroups(); track group.label) {
+        <div class="oc-group">
+          <div class="oc-group-label">{{ group.label }}</div>
+          @for (code of group.orgs; track code) {
+            <button type="button" class="oc-option"
+                    [class.is-active]="code === selectedValue"
+                    (click)="select(code)">
+              {{ orgLabel(code) }}
+            </button>
+          }
+        </div>
+      }
+
+      @if (filteredGroups().length === 0) {
+        <div class="oc-empty">No matching organization.</div>
+      }
+    </div>
+  }
+</div>

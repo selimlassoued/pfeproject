@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import Keycloak from 'keycloak-js';
 import Swal from 'sweetalert2';
 
-import { ApplicationService } from '../services/application.service';
+import { ApplicationService, CandidateApplicationSummary } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
 import { JobService } from '../services/job.service';
 import { CvAnalysisDrawer } from '../cv-analysis-drawer/cv-analysis-drawer';
@@ -16,6 +16,7 @@ import { OfferService, OfferDto } from '../services/offer.service';
 import { NotificationSocketService } from '../services/notification-socket.service';
 import { SeenTrackerService } from '../services/seen-tracker.service';
 import { Subscription } from 'rxjs';
+import { normalizeHttpError } from '../utils/http-error';
 
 // Allowed status transitions - mirrors backend logic
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -83,6 +84,12 @@ export class ApplicationDetail implements OnInit, OnDestroy {
   signalError: string | null = null;
   signalSuccess = false;
 
+  // ── Candidate history (recruiter view of this candidate's other apps) ────
+  candidateHistory: CandidateApplicationSummary[] = [];
+  showHistory = false;
+  historyLoading = false;
+  private historyLoaded = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -124,7 +131,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
         }
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Failed to load application';
+        this.error = normalizeHttpError(err).message || 'Failed to load application';
         this.loading = false;
       },
     });
@@ -265,6 +272,33 @@ export class ApplicationDetail implements OnInit, OnDestroy {
   openAnalysis(): void { this.drawerOpen = true; }
   closeDrawer(): void  { this.drawerOpen = false; }
 
+  /** Open/close the "candidate history" section and lazy-load it on first
+   *  open. Excludes the currently-viewed application from the result. */
+  toggleHistory(): void {
+    this.showHistory = !this.showHistory;
+    if (this.showHistory && !this.historyLoaded && this.app?.candidateUserId && this.app?.applicationId) {
+      this.historyLoading = true;
+      this.appService.listByCandidate(this.app.candidateUserId, this.app.applicationId).subscribe({
+        next: (rows) => {
+          this.candidateHistory = rows || [];
+          this.historyLoaded = true;
+          this.historyLoading = false;
+        },
+        error: () => {
+          this.candidateHistory = [];
+          this.historyLoading = false;
+        },
+      });
+    }
+  }
+
+  /** Navigate to one of the candidate's other applications. */
+  openHistoryRow(row: CandidateApplicationSummary): void {
+    if (row?.applicationId) {
+      this.router.navigate(['/application', row.applicationId]);
+    }
+  }
+
   goToJob() {
     if (this.app?.jobId) this.router.navigate(['/jobs', this.app.jobId]);
   }
@@ -346,7 +380,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
         if (status === 'HIRED') this.checkQuotaAfterHire();
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Failed to update status';
+        this.error = normalizeHttpError(err).message || 'Failed to update status';
         this.updatingStatus = false;
       },
     });
@@ -407,7 +441,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
         }, 1500);
       },
       error: (err) => {
-        this.signalError = err?.error?.message || 'Failed to signal candidate';
+        this.signalError = normalizeHttpError(err).message || 'Failed to signal candidate';
         this.signaling = false;
       },
     });

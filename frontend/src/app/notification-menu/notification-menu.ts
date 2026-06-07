@@ -98,9 +98,23 @@ export class NotificationsMenu implements OnInit, OnDestroy {
       case 'INTERVIEW_INVITE':
       case 'INTERVIEW_JOIN_REQUEST':    return 'Go to the interview';
       case 'INTERVIEW_PROPOSAL_DECLINED': return 'Propose new times';
+      case 'INTERVIEW_PROPOSAL_SENT':    return 'Pick a time';
+      case 'INTERVIEW_RESCHEDULE_PROPOSED': return 'Review the request';
+      case 'INTERVIEW_RESCHEDULE_DECLINED': return 'Open the application';
+      case 'INTERVIEW_RESCHEDULE_CANCELLED': return 'Open the application';
+      case 'INTERVIEW_DELEGATION_REQUESTED': return 'Accept or decline';
+      case 'INTERVIEW_DELEGATION_DECLINED': return 'Open the application';
+      case 'INTERVIEW_DELEGATION_CANCELLED': return 'Open the application';
+      case 'JOB_CLOSED':                 return 'Browse open positions';
+      case 'CANDIDATE_FLAGGED':          return 'Review the candidate';
       case 'APPLICATION_STATUS_UPDATE': return 'View my application';
       case 'JOB_UPDATED':
       case 'JOB_QUOTA_REACHED':         return 'View the job';
+      case 'OFFER_SENT':                return 'Review the offer';
+      case 'OFFER_REVISED':             return 'See the latest terms';
+      case 'OFFER_ACCEPTED':            return 'Open the application';
+      case 'OFFER_DECLINED':            return 'Open the application';
+      case 'OFFER_WITHDRAWN':           return 'Open the application';
       case 'USER_BLOCK':
       case 'USER_UNBLOCK':
       case 'ROLE_UPDATE':               return 'Go to my profile';
@@ -118,9 +132,36 @@ export class NotificationsMenu implements OnInit, OnDestroy {
         path = id ? ['/application', id] : ['/calendar'];
         break;
       case 'INTERVIEW_PROPOSAL_DECLINED':
-        // Recruiter notification - relatedEntityId is the applicationId; take
-        // them straight to that application to propose new times.
+      case 'INTERVIEW_RESCHEDULE_PROPOSED':
+      case 'INTERVIEW_RESCHEDULE_DECLINED':
+      case 'INTERVIEW_RESCHEDULE_CANCELLED':
+      case 'INTERVIEW_DELEGATION_REQUESTED':
+      case 'INTERVIEW_DELEGATION_DECLINED':
+      case 'INTERVIEW_DELEGATION_CANCELLED':
+      case 'OFFER_ACCEPTED':
+      case 'OFFER_DECLINED':
+        // Recruiter notifications - relatedEntityId is the applicationId; take
+        // them straight to that application to act.
         path = id ? ['/application', id] : ['/listApplications'];
+        break;
+      case 'JOB_CLOSED':
+        // Candidate side - browse for similar postings.
+        path = ['/browse'];
+        break;
+      case 'CANDIDATE_FLAGGED':
+        // Confirmation receipt for the flagger - jump to the candidate page.
+        path = id ? ['/users', id] : ['/listUsers'];
+        break;
+      case 'INTERVIEW_PROPOSAL_SENT':
+      case 'OFFER_SENT':
+      case 'OFFER_WITHDRAWN':
+        // Candidate notifications - take them to their application view.
+        path = id ? ['/my-application', id] : ['/my-applications'];
+        break;
+      case 'OFFER_REVISED':
+        // Either side might land here - prefer candidate path; recruiter UI
+        // also handles this URL via the role guard.
+        path = id ? ['/my-application', id] : ['/my-applications'];
         break;
       case 'APPLICATION_STATUS_UPDATE':
         path = id ? ['/my-application', id] : ['/my-applications'];
@@ -153,16 +194,47 @@ export class NotificationsMenu implements OnInit, OnDestroy {
     }
   }
 
+  /** Map every notification type to one of a small set of visual categories.
+   *  Used by the template to pick the right SVG icon and the CSS to apply
+   *  the right tinted background per category (sky / indigo / emerald / red
+   *  / violet etc. — same palette as the dashboard). */
+  categoryOf(type: string): 'interview' | 'job' | 'application' | 'offer' | 'user-block' | 'user-unblock' | 'role' | 'default' {
+    if (!type) return 'default';
+    if (type.startsWith('INTERVIEW_')) return 'interview';
+    if (type.startsWith('JOB_'))       return 'job';
+    if (type.startsWith('OFFER_'))     return 'offer';
+    if (type === 'APPLICATION_STATUS_UPDATE') return 'application';
+    if (type === 'USER_BLOCK')   return 'user-block';
+    if (type === 'USER_UNBLOCK') return 'user-unblock';
+    if (type === 'ROLE_UPDATE')  return 'role';
+    return 'default';
+  }
+
   getTypeLabel(type: string): string {
     switch (type) {
       case 'USER_BLOCK':                return 'Account Blocked';
       case 'USER_UNBLOCK':              return 'Account Unblocked';
       case 'APPLICATION_STATUS_UPDATE': return 'Application Update';
       case 'JOB_UPDATED':               return 'Job Updated';
+      case 'JOB_QUOTA_REACHED':         return 'Job Quota Reached';
       case 'ROLE_UPDATE':               return 'Role Updated';
       case 'INTERVIEW_INVITE':          return 'Interview Invitation';
       case 'INTERVIEW_JOIN_REQUEST':    return 'Join Request';
+      case 'INTERVIEW_PROPOSAL_SENT':    return 'Proposed Times';
       case 'INTERVIEW_PROPOSAL_DECLINED': return 'Proposal Declined';
+      case 'INTERVIEW_RESCHEDULE_PROPOSED': return 'Reschedule Request';
+      case 'INTERVIEW_RESCHEDULE_DECLINED': return 'Reschedule Declined';
+      case 'INTERVIEW_RESCHEDULE_CANCELLED': return 'Reschedule Cancelled';
+      case 'INTERVIEW_DELEGATION_REQUESTED': return 'Delegation Request';
+      case 'INTERVIEW_DELEGATION_DECLINED': return 'Delegation Declined';
+      case 'INTERVIEW_DELEGATION_CANCELLED': return 'Delegation Cancelled';
+      case 'JOB_CLOSED':                return 'Job Closed';
+      case 'CANDIDATE_FLAGGED':         return 'Flag Recorded';
+      case 'OFFER_SENT':                return 'New Offer';
+      case 'OFFER_REVISED':             return 'Offer Revised';
+      case 'OFFER_ACCEPTED':            return 'Offer Accepted';
+      case 'OFFER_DECLINED':            return 'Offer Declined';
+      case 'OFFER_WITHDRAWN':           return 'Offer Withdrawn';
       default:                          return type;
     }
   }

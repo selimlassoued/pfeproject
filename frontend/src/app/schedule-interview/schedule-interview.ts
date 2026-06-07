@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { InterviewService, InterviewResponse, ProposalResponse } from '../services/interview-service';
+import { normalizeHttpError } from '../utils/http-error';
 
 /** A bookable hour, plus why it might not be bookable. */
 interface Slot {
@@ -56,6 +57,8 @@ export class ScheduleInterview implements OnInit {
   loading = false;
   busyLoading = true;
   error = '';
+  /** Backend per-field validation messages keyed by DTO field name. */
+  fieldErrors: Record<string, string> = {};
 
   private busyRecruiter: number[] = [];
   private busyCandidate: number[] = [];
@@ -235,6 +238,7 @@ export class ScheduleInterview implements OnInit {
     if (!this.selectedDate || !this.selectedSlot || this.loading) return;
     this.loading = true;
     this.error = '';
+    this.fieldErrors = {};
 
     this.interviewService.schedule({
       applicationId: this.applicationId,
@@ -253,8 +257,9 @@ export class ScheduleInterview implements OnInit {
       },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message
-          || 'Failed to schedule interview. Please try again.';
+        const httpError = normalizeHttpError(err);
+        this.error = httpError.message || 'Failed to schedule interview. Please try again.';
+        this.fieldErrors = httpError.fieldErrors;
         console.error(err);
       },
     });
@@ -272,6 +277,7 @@ export class ScheduleInterview implements OnInit {
     if (!this.canSendProposal) return;
     this.loading = true;
     this.error = '';
+    this.fieldErrors = {};
 
     this.interviewService.createProposal({
       applicationId: this.applicationId,
@@ -293,8 +299,9 @@ export class ScheduleInterview implements OnInit {
       },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message
-          || 'Failed to send proposal. Please try again.';
+        const httpError = normalizeHttpError(err);
+        this.error = httpError.message || 'Failed to send proposal. Please try again.';
+        this.fieldErrors = httpError.fieldErrors;
         console.error(err);
       },
     });
@@ -324,7 +331,7 @@ export class ScheduleInterview implements OnInit {
       next: (interview) => { this.loading = false; this.scheduled.emit(interview); },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message
+        this.error = normalizeHttpError(err).message
           || 'Failed to schedule interview. Please try again.';
         console.error(err);
       },

@@ -42,8 +42,8 @@
 
 .apps-tableWrap{
   border-radius: var(--radius-2xl, 24px);
-  border: 1px solid rgba(121,164,233,0.22);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
   backdrop-filter: blur(10px);
@@ -61,13 +61,13 @@
   font-family: var(--font-display);
   color: var(--color-cream);
   font-size: .95rem;
-  background: rgba(11,16,38,0.55);
-  border-bottom: 1px solid rgba(121,164,233,0.18);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
 }
 
 .apps-table tbody td{
   padding: .95rem 1rem;
-  border-bottom: 1px solid rgba(121,164,233,0.14);
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--color-text);
   vertical-align: middle;
 }
@@ -75,7 +75,7 @@
 .apps-table tbody tr{
   transition: background-color 180ms ease, transform 180ms ease;
 }
-.apps-table tbody tr:hover{ background: rgba(121,164,233,0.06); }
+.apps-table tbody tr:hover{ background: var(--border-subtle); }
 .apps-table tbody tr:active{ transform: translateY(0.5px); }
 .apps-table tbody tr:last-child td{ border-bottom: none; }
 
@@ -85,32 +85,8 @@
   text-align: right;
 }
 
-/* Withdraw button in table row */
-.btn-withdraw-row{
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-  padding: .38rem .7rem;
-  border-radius: 999px;
-  border: 1px solid rgba(233,121,121,0.28);
-  background: rgba(233,121,121,0.08);
-  color: rgba(255,220,220,0.88);
-  font-size: .82rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
-}
-.btn-withdraw-row:hover{
-  background: rgba(233,121,121,0.16);
-  border-color: rgba(233,121,121,0.45);
-  transform: translateY(-1px);
-}
-.btn-withdraw-row:disabled{
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
+/* .btn-withdraw-row and .app-status.* live in styles.css now — one source
+   of truth across my-applications + list-applications. */
 
 .sub-id{
   margin-top: .3rem;
@@ -121,36 +97,16 @@
 .mono{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: .88rem;
-  color: rgba(248,250,252,0.92);
+  color: var(--text);
 }
-
-.app-status{
-  display: inline-flex;
-  align-items: center;
-  padding: .32rem .7rem;
-  border-radius: var(--radius-pill, 999px);
-  border: 1px solid rgba(121,164,233,0.25);
-  background: rgba(121,164,233,0.10);
-  color: var(--color-secondary);
-  font-size: .85rem;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.app-status.applied        { background: rgba(121,164,233,0.10); }
-.app-status.under_review   { background: rgba(121,164,233,0.14); }
-.app-status.interview_phase{ background: rgba(255,252,229,0.10); color: var(--color-cream); border-color: rgba(255,252,229,0.18); }
-.app-status.offer          { background: rgba(121,233,170,0.10); border-color: rgba(121,233,170,0.18); color: rgba(200,255,230,0.95); }
-.app-status.rejected       { background: rgba(233,121,121,0.12); border-color: rgba(233,121,121,0.20); color: rgba(255,220,220,0.95); }
-.app-status.hired          { background: rgba(121,233,170,0.14); border-color: rgba(121,233,170,0.22); color: rgba(200,255,230,1); }
 
 .apps-empty{
   margin-top: var(--space-8, 2rem);
   text-align: center;
   padding: var(--space-12, 3rem);
-  border: 1px dashed rgba(121,164,233,0.30);
+  border: 1px dashed var(--border-strong);
   border-radius: var(--radius-2xl, 24px);
-  background: rgba(255,255,255,0.04);
+  background: var(--surface-2);
   color: var(--color-text-muted);
 }
 
@@ -171,10 +127,10 @@
   gap: 0.85rem;
   padding: 0.85rem 1.1rem;
   border-radius: 14px;
-  border: 1px solid rgba(121, 164, 233, 0.4);
+  border: 1px solid var(--border-prominent);
   background:
-    radial-gradient(800px 200px at 0% 0%, rgba(121, 164, 233, 0.18), transparent 70%),
-    rgba(255, 255, 255, 0.04);
+    radial-gradient(800px 200px at 0% 0%, var(--border), transparent 70%),
+    var(--surface-2);
   color: var(--color-text);
   cursor: pointer;
   font-family: inherit;
@@ -184,7 +140,7 @@
 }
 .apps-proposal-banner:hover {
   transform: translateY(-1px);
-  border-color: rgba(121, 164, 233, 0.7);
+  border-color: rgba(121,164,233,0.7);
 }
 .apps-proposal-icon { font-size: 1.4rem; }
 .apps-proposal-text { flex: 1; }
@@ -197,4 +153,60 @@
   font-weight: 700;
   color: var(--color-secondary);
   font-size: 0.85rem;
+}
+
+/* ─── Pagination ──────────────────────────────────────────────────────────── */
+.pager {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .85rem;
+}
+.pager-info {
+  font-size: .82rem;
+  color: var(--text-muted);
+}
+.pager-info strong { color: var(--text); font-weight: 700; }
+
+.pager-controls {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  flex-wrap: wrap;
+}
+.pager-btn {
+  appearance: none;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 .65rem;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.pager-btn:hover:not(:disabled):not(.is-active) {
+  background: var(--border-subtle);
+  border-color: var(--border-prominent);
+}
+.pager-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.pager-btn.is-active {
+  background: linear-gradient(135deg, #4f6bf5, #79a4e9);
+  border-color: transparent;
+  color: #fff;
+  cursor: default;
+}
+.pager-ellipsis {
+  padding: 0 .35rem;
+  color: var(--text-soft);
+  font-weight: 700;
+  user-select: none;
 }

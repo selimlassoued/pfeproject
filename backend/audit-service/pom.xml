@@ -30,6 +30,23 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
+        <!-- Security: validate Keycloak JWTs as defense in depth so a
+             caller bypassing the gateway still has to present a real
+             token. The audit controller also reads X-Actor-Roles which
+             only the gateway can stamp. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <!-- Spring Boot 4 starter — triggers the JwtDecoder autoconfig
+             from the jwk-set-uri property served by config-server. The
+             raw spring-security-oauth2-resource-server library on its
+             own does not register the autoconfig on Boot 4. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
         <!-- Actuator -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

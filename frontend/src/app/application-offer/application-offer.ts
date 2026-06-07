@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
+import { normalizeHttpError } from '../utils/http-error';
 import { OfferPanel } from '../offer-panel/offer-panel';
 import { SeenTrackerService } from '../services/seen-tracker.service';
 import { NotificationSocketService } from '../services/notification-socket.service';
@@ -48,7 +49,7 @@ export class ApplicationOfferPage implements OnInit {
         this.seen.markSeen(data.applicationId, 'offer');
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Failed to load application';
+        this.error = normalizeHttpError(err).message || 'Failed to load application';
         this.loading = false;
       },
     });

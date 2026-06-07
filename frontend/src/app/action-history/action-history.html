@@ -96,6 +96,7 @@
                 (click)="toggleLog(log)">
 
                 <span class="event-pill"
+                  [attr.data-event]="log.eventType"
                   [style.color]="getEventMeta(log.eventType).color"
                   [style.border-color]="getEventMeta(log.eventType).color + '40'"
                   [style.background]="getEventMeta(log.eventType).bg">
@@ -134,6 +135,7 @@
                     <div class="ld-item">
                       <div class="ld-label">Event</div>
                       <span class="event-pill event-pill--sm"
+                        [attr.data-event]="log.eventType"
                         [style.color]="getEventMeta(log.eventType).color"
                         [style.border-color]="getEventMeta(log.eventType).color + '40'"
                         [style.background]="getEventMeta(log.eventType).bg">

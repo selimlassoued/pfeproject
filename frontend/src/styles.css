@@ -1,20 +1,31 @@
-:root{
-   --color-primary: #1e40bc;
+/* ═══════════════════════════════════════════════════════════════════════════
+   HireAI — global styles + theme tokens
+
+   Two themes: dark (default) and light.
+   ThemeService writes data-theme="light" or data-theme="dark" on <html>.
+   Every component CSS should reference these tokens via var(--…) so theme
+   switching happens automatically with no JS coordination per component.
+
+   Brand colours (primary blue, accents) stay the same in both themes — only
+   the surface/text/border palettes flip.
+═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Brand — identical in both themes */
+  --color-primary:   #1e40bc;
   --color-secondary: #79a4e9;
-  --color-cream: #fffce5;
 
-  --color-bg: #0b1026;
-  --color-surface: rgba(255, 255, 255, 0.06);
-  --color-surface-2: rgba(255, 255, 255, 0.10);
+  /* Status — identical in both themes */
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger:  #f87171;
+  --color-info:    #79a4e9;
 
-  --color-text: #f8fafc;
-  --color-text-muted: rgba(252, 248, 248, 0.645);
-  --color-border: rgba(121, 164, 233, 0.22);
-  --color-focus: rgba(121, 164, 233, 0.38);
-
+  /* Type system */
   --font-display: "Gliker", "Dela Gothic One", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  --font-body: "Montserrat", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-body:    "Montserrat", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 
+  /* Spacing */
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
@@ -24,72 +35,181 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --radius-2xl: 1.75rem;
+  /* Radii */
+  --radius-lg:   1rem;
+  --radius-xl:   1.25rem;
+  --radius-2xl:  1.75rem;
   --radius-pill: 999px;
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.45);
 
   --container-max: 1120px;
 }
 
-@font-face{
-  font-family:"Dela Gothic One";
-  src:url("../public/fonts/DelaGothicOne-Regular.woff2") format("woff2");
-  font-weight:400;
-  font-style:normal;
-  font-display:swap;
+/* ─── Dark theme (default) ─────────────────────────────────────────────── */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Page background */
+  --bg:           #0b1026;
+  --bg-pattern-1: rgba(121, 164, 233, 0.20);
+  --bg-pattern-2: rgba(30,  64, 188, 0.26);
+
+  /* Surfaces (overlays on bg) */
+  --surface-1: rgba(255, 255, 255, 0.03);  /* subtlest */
+  --surface-2: rgba(255, 255, 255, 0.05);  /* default card */
+  --surface-3: rgba(255, 255, 255, 0.08);  /* hover */
+  --surface-4: rgba(255, 255, 255, 0.10);  /* prominent */
+  --surface-solid: #0e1530;                /* opaque alt for select options */
+
+  /* Text */
+  --text:         #f8fafc;
+  --text-muted:   rgba(248, 250, 252, 0.70);
+  --text-soft:    rgba(248, 250, 252, 0.45);
+  --text-display: #fffce5;                 /* warm cream for headings */
+
+  /* Borders (primary-blue with alpha) */
+  --border-subtle:    rgba(121, 164, 233, 0.10);
+  --border:           rgba(121, 164, 233, 0.22);
+  --border-strong:    rgba(121, 164, 233, 0.35);
+  --border-prominent: rgba(121, 164, 233, 0.45);
+  --border-focus:     rgba(121, 164, 233, 0.38);
+
+  /* Navbar */
+  --navbar-bg: rgba(11, 16, 38, 0.72);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  /* Validation/state tints */
+  --tint-danger-bg:     rgba(233, 121, 121, 0.10);
+  --tint-danger-border: rgba(233, 121, 121, 0.28);
+  --tint-danger-text:   rgba(255, 220, 220, 0.95);
+
+  /* ── Aliases for the legacy --color-* names so existing files keep working
+     while the migration proceeds. New code should use the names above. ── */
+  --color-bg:         var(--bg);
+  --color-surface:    var(--surface-2);
+  --color-surface-2:  var(--surface-3);
+  --color-text:       var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border:     var(--border);
+  --color-focus:      var(--border-focus);
+  --color-cream:      var(--text-display);
 }
 
-@font-face{
-  font-family:"Gliker";
-  src:url("../public/fonts/Gliker-SemiBold.woff2") format("woff2");
-  font-weight:600;
-  font-style:normal;
-  font-display:swap;
+/* ─── Light theme ─────────────────────────────────────────────────────────
+   Palette pulled directly from logo-light.png: deep brand blue (#1e40bc) +
+   sky blue (#79a4e9) on a clean white background. The whole UI echoes
+   that identity — brand-blue tinted surfaces, brand-blue shadows, deep
+   navy text — instead of generic gray. Makes the page feel like an
+   extension of the logo, not a separate design.
+─────────────────────────────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Page background — clean off-white with a hint of warmth so it doesn't
+     read as sterile hospital-white. Bg gradients use brand colors for
+     subtle radial blooms. */
+  --bg:           #fbfcff;
+  --bg-pattern-1: rgba(30,  64, 188, 0.12);
+  --bg-pattern-2: rgba(121, 164, 233, 0.08);
+
+  /* Surfaces — tinted with the brand blue instead of black, so card
+     backgrounds look like a continuation of the brand identity. */
+  --surface-1: rgba(30, 64, 188, 0.035);
+  --surface-2: rgba(30, 64, 188, 0.06);
+  --surface-3: rgba(30, 64, 188, 0.09);
+  --surface-4: rgba(30, 64, 188, 0.13);
+  --surface-solid: #ffffff;
+
+  /* Text — deep navy. Same #0b1026 as the dark-mode bg, used inverted. */
+  --text:         #0b1026;
+  --text-muted:   rgba(11, 16, 38, 0.70);
+  --text-soft:    rgba(11, 16, 38, 0.50);
+  --text-display: #1e40bc;                 /* deep brand blue for headings */
+
+  /* Borders — bumped from .18 → .22 baseline so structure shows clearly
+     on white. Stronger variants reach .55 for prominent cards. */
+  --border-subtle:    rgba(30, 64, 188, 0.14);
+  --border:           rgba(30, 64, 188, 0.22);
+  --border-strong:    rgba(30, 64, 188, 0.38);
+  --border-prominent: rgba(30, 64, 188, 0.55);
+  --border-focus:     rgba(30, 64, 188, 0.45);
+
+  /* Navbar — softly tinted with the brand so the bar reads as part of
+     the identity rather than a floating gray strip. */
+  --navbar-bg: rgba(251, 252, 255, 0.88);
+
+  /* Shadows tinted with brand blue (not black) so depth feels coherent
+     with the rest of the palette. */
+  --shadow-sm: 0 1px 2px rgba(30, 64, 188, 0.10);
+  --shadow-md: 0 8px 24px rgba(30, 64, 188, 0.12);
+  --shadow-lg: 0 18px 48px rgba(30, 64, 188, 0.16);
+
+  /* Validation/state tints — same intent, tuned for white bg. */
+  --tint-danger-bg:     rgba(220, 38, 38, 0.06);
+  --tint-danger-border: rgba(220, 38, 38, 0.32);
+  --tint-danger-text:   rgba(153, 27, 27, 0.95);
 }
 
-@font-face{
-  font-family:"Montserrat";
-  src:url("../public/fonts/Montserrat-VariableFont_wght.woff2") format("woff2");
-  font-weight:300 700;
-  font-style:normal;
-  font-display:swap;
+/* ─── Fonts ─────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Dela Gothic One";
+  src: url("../public/fonts/DelaGothicOne-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
+@font-face {
+  font-family: "Gliker";
+  src: url("../public/fonts/Gliker-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Montserrat";
+  src: url("../public/fonts/Montserrat-VariableFont_wght.woff2") format("woff2");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body{
+body {
   padding-top: 75px;
   margin: 0;
   font-family: var(--font-body);
   line-height: 1.5;
-  color: var(--color-text);
+  color: var(--text);
   background:
-    radial-gradient(1200px 650px at 12% -10%, rgba(121,164,233,0.20), transparent 60%),
-    radial-gradient(900px 520px at 92% 0%, rgba(30,64,188,0.26), transparent 55%),
-    var(--color-bg);
+    radial-gradient(1200px 650px at 12% -10%, var(--bg-pattern-1), transparent 60%),
+    radial-gradient(900px 520px at 92% 0%,   var(--bg-pattern-2), transparent 55%),
+    var(--bg);
   background-repeat: no-repeat;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 img { max-width: 100%; height: auto; display: block; }
 a { color: var(--color-secondary); text-decoration: none; }
 a:hover { text-decoration: underline; }
-:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; border-radius: 10px; }
-.container{width:min(100% - 2rem,var(--container-max));margin-inline:auto}
+:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 3px; border-radius: 10px; }
+.container { width: min(100% - 2rem, var(--container-max)); margin-inline: auto; }
 
-/* Typography */
+/* ─── Typography ──────────────────────────────────────────────────────── */
 h1, h2, h3 {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
   margin: 0;
-  color: var(--color-cream);
+  color: var(--text-display);
 }
 p { margin: 0; }
-.text-muted { color: var(--color-text-muted) !important; }
+.text-muted { color: var(--text-muted) !important; }
 
-/* Layout helpers */
+/* ─── Layout helpers ─────────────────────────────────────────────────── */
 .section { padding: var(--space-12) 0; }
 .section-head {
   display: flex;
@@ -107,14 +227,10 @@ p { margin: 0; }
 }
 @media (max-width: 960px) { .grid-3 { grid-template-columns: 1fr; } }
 
-/* Cards */
+/* ─── Cards ──────────────────────────────────────────────────────────── */
 .card {
-  background: linear-gradient(
-    180deg,
-    rgba(255,255,255,0.08),
-    rgba(255,255,255,0.05)
-  );
-  border: 1px solid rgba(121,164,233,0.24);
+  background: linear-gradient(180deg, var(--surface-3), var(--surface-2));
+  border: 1px solid var(--border);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-sm);
   padding: var(--space-8);
@@ -126,15 +242,12 @@ p { margin: 0; }
 }
 .card--hover:hover {
   transform: translateY(-2px);
-  border-color: rgba(121,164,233,0.35);
-  background: rgba(255,255,255,0.05);
+  border-color: var(--border-strong);
+  background: var(--surface-2);
 }
+.card .text-muted { color: var(--text-muted); }
 
-
-.card .text-muted {
-  color: rgba(248, 250, 252, 0.85);
-}
-/* Buttons */
+/* ─── Buttons ────────────────────────────────────────────────────────── */
 .btn {
   appearance: none;
   border: 1px solid transparent;
@@ -160,12 +273,11 @@ p { margin: 0; }
 
 .btn-ghost {
   background: transparent;
-  color: var(--color-text);
-  border-color: var(--color-border);
+  color: var(--text);
+  border-color: var(--border);
 }
-.btn-ghost:hover { background: rgba(255,255,255,0.06); }
+.btn-ghost:hover { background: var(--surface-3); }
 
-/* Cautionary action (e.g. Close job) - prominent amber, clearly visible */
 .btn-warn {
   background: linear-gradient(135deg, #ed8936, #dd6b20);
   color: #fff;
@@ -175,27 +287,27 @@ p { margin: 0; }
 }
 .btn-warn:hover { box-shadow: var(--shadow-lg); filter: brightness(1.05); }
 
-/* Pills / badges */
+/* ─── Pills / badges ─────────────────────────────────────────────────── */
 .pill {
   display: inline-flex;
   align-items: center;
   padding: 0.3rem 0.65rem;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(121,164,233,0.25);
-  background: rgba(121,164,233,0.10);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
   color: var(--color-secondary);
   font-size: 0.85rem;
   font-weight: 600;
 }
 
-/* Navbar (shared) */
+/* ─── Navbar ─────────────────────────────────────────────────────────── */
 .navbar {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(11, 16, 38, 0.72);
+  background: var(--navbar-bg);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border);
 }
 .navbar-inner {
   display: flex;
@@ -215,7 +327,7 @@ p { margin: 0; }
   border-radius: 14px;
   object-fit: cover;
   box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--border-subtle);
 }
 .nav-links {
   display: flex;
@@ -227,72 +339,81 @@ p { margin: 0; }
 .nav-links a {
   padding: 0.55rem 0.85rem;
   border-radius: var(--radius-pill);
-  color: var(--color-text);
+  color: var(--text);
   border: 1px solid transparent;
   transition: background 200ms ease, border-color 200ms ease;
 }
 .nav-links a:hover {
-  background: rgba(121, 164, 233, 0.10);
-  border-color: var(--color-border);
+  background: var(--surface-3);
+  border-color: var(--border);
   text-decoration: none;
 }
 
-/* Hero helpers (shared) */
+/* ─── Hero ───────────────────────────────────────────────────────────── */
 .kicker {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.7rem;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
-  background: rgba(121,164,233,0.08);
-  color: var(--color-cream);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-display);
   font-size: 0.875rem;
 }
 
+/* ─── Form inputs ────────────────────────────────────────────────────── */
 .input, input[type="text"], input[type="email"], input[type="password"], textarea, select {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  color: var(--color-text);
+  color: var(--text);
   padding: 0.75rem 0.9rem;
   font-size: 0.95rem;
 }
-input::placeholder, textarea::placeholder { color: rgba(248, 250, 252, 0.45); }
+input::placeholder, textarea::placeholder { color: var(--text-soft); }
 input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--color-secondary);
-  box-shadow: 0 0 0 3px rgba(121,164,233,0.35);
+  box-shadow: 0 0 0 3px var(--border-focus);
 }
 
-/* ── Global <select> popup theming ────────────────────────────────────────
-   Without `color-scheme: dark`, Chrome/Edge on Windows render the native
-   <select> popup with the OS light theme - so option text disappears against
-   our dark background. Setting color-scheme tells the browser to pick a dark
-   popup chrome that matches the page. The explicit option styling below is a
-   defensive fallback for browsers that don't honor color-scheme on options
-   (Firefox, some Safari versions). Applies to every <select> in the app so
-   page-level files don't have to repeat this fix. */
-select {
-  color-scheme: dark;
-}
+/* Native <select> popup — works in both themes thanks to color-scheme. */
 select option {
-  background: #0e1530;
-  color: rgba(255, 255, 255, 0.94);
+  background: var(--surface-solid);
+  color: var(--text);
   padding: 6px 10px;
 }
 select option:checked,
 select option:hover {
-  background: var(--color-secondary, #79a4e9);
+  background: var(--color-secondary);
   color: #0a0f24;
   font-weight: 700;
 }
 select option[value=""] {
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-soft);
   font-style: italic;
 }
 
-/* --- Invalid field styling (Angular) --- */
+/* Light-mode override: native popup ignores token-only rules in some
+   Chromium builds — force solid white bg + navy text so every option
+   is readable. */
+:root[data-theme="light"] select option {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #0b1026 !important;
+}
+:root[data-theme="light"] select option:checked,
+:root[data-theme="light"] select option:hover {
+  background: #1e40bc !important;
+  background-color: #1e40bc !important;
+  color: #ffffff !important;
+}
+:root[data-theme="light"] select option[value=""] {
+  color: rgba(11, 16, 38, 0.55) !important;
+}
+
+/* Invalid field styling (Angular) */
 input.ng-invalid.ng-touched,
 textarea.ng-invalid.ng-touched,
 select.ng-invalid.ng-touched,
@@ -304,8 +425,6 @@ select.ng-invalid.ng-dirty,
   border-color: rgba(211, 47, 47, 0.85) !important;
   box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.25) !important;
 }
-
-/* Optional: keep the same invalid look when focused */
 input.ng-invalid.ng-touched:focus,
 textarea.ng-invalid.ng-touched:focus,
 select.ng-invalid.ng-touched:focus,
@@ -319,19 +438,649 @@ select.ng-invalid.ng-dirty:focus,
   box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.35) !important;
 }
 
-
-/* Footer */
+/* ─── Footer ─────────────────────────────────────────────────────────── */
 .footer {
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--border);
   padding: var(--space-10) 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 .success-snackbar {
   background: #2e7d32 !important;
   color: #fff !important;
 }
-
 .error-snackbar {
   background: #d32f2f !important;
   color: #fff !important;
+}
+
+/* ─── Theme-toggle button (rendered in navbar by ThemeToggle component) ── */
+.theme-toggle {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+.theme-toggle:hover {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+  transform: scale(1.05);
+}
+.theme-toggle svg { width: 18px; height: 18px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Shared component classes — defined globally so every page that uses
+   them inherits one source of truth.
+
+   Pattern: dark-mode look is the DEFAULT (so dark stays exactly the way
+   it was before themes existed). Light-mode overrides are scoped to
+   :root[data-theme="light"] and provide the contrast bumps needed on
+   a white background.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Application status pills ────────────────────────────────────────── */
+.app-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--border-strong);
+  background: var(--border-subtle);
+  color: var(--color-secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Defaults = original dark-mode look. */
+.app-status.applied        { background: var(--border-subtle); }
+.app-status.under_review   { background: var(--border-subtle); }
+.app-status.interview_phase{ background: rgba(255,252,229,0.10); color: var(--color-cream); border-color: rgba(255,252,229,0.18); }
+.app-status.offer          { background: rgba(121,233,170,0.10); border-color: rgba(121,233,170,0.18); color: rgba(200,255,230,0.95); }
+.app-status.rejected       { background: rgba(233,121,121,0.12); border-color: rgba(233,121,121,0.20); color: rgba(255,220,220,0.95); }
+.app-status.hired          { background: rgba(121,233,170,0.14); border-color: rgba(121,233,170,0.22); color: rgba(200,255,230,1); }
+
+/* Light-mode overrides — saturated tints + deep readable text on white. */
+/* Unified designer palette (light mode) — same Tailwind 600 family used
+   throughout the app for consistency:
+     sky #0284c7 · indigo #4f46e5 · emerald #059669 · amber #d97706
+     red #dc2626 · violet #7c3aed · slate #64748b · rose #be185d
+   Each pill: light tint background, saturated border, deep readable text. */
+:root[data-theme="light"] .app-status.applied        { background: rgba(2,132,199,0.18)   !important; border-color: rgba(2,132,199,0.75)   !important; color: #075985 !important; }
+:root[data-theme="light"] .app-status.under_review   { background: rgba(217,119,6,0.18)   !important; border-color: rgba(217,119,6,0.75)   !important; color: #78350f !important; }
+:root[data-theme="light"] .app-status.interview_phase{ background: rgba(79,70,229,0.18)   !important; border-color: rgba(79,70,229,0.75)   !important; color: #3730a3 !important; }
+:root[data-theme="light"] .app-status.offer          { background: rgba(5,150,105,0.20)   !important; border-color: rgba(5,150,105,0.75)   !important; color: #064e3b !important; }
+:root[data-theme="light"] .app-status.rejected       { background: rgba(220,38,38,0.18)   !important; border-color: rgba(220,38,38,0.75)   !important; color: #7f1d1d !important; }
+:root[data-theme="light"] .app-status.hired          { background: rgba(5,150,105,0.30)   !important; border-color: rgba(5,150,105,0.90)   !important; color: #064e3b !important; }
+:root[data-theme="light"] .app-status.withdrawn      { background: rgba(100,116,139,0.22) !important; border-color: rgba(100,116,139,0.75) !important; color: #1e293b !important; }
+:root[data-theme="light"] .app-status.flagged,
+:root[data-theme="light"] .app-status.blocked        { background: rgba(190,24,93,0.18)   !important; border-color: rgba(190,24,93,0.75)   !important; color: #831843 !important; }
+
+/* ─── Interview status pills ──────────────────────────────────────────── */
+.interview-status {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1px solid var(--border-strong);
+}
+
+/* Defaults = original dark-mode look. */
+.interview-status.scheduled   { background: var(--border-subtle); color: var(--color-secondary); }
+.interview-status.in_progress { background: rgba(245,198,116,0.14); color: #f5c674; border-color: rgba(245,198,116,0.30); }
+.interview-status.completed   { background: rgba(121,233,170,0.12); color: rgba(200,255,230,0.95); }
+.interview-status.cancelled   { background: rgba(233,121,121,0.12); color: rgba(255,220,220,0.95); }
+
+/* Light-mode overrides — saturated tints + deep readable text on white. */
+/* Interview status — uses the same designer palette. */
+:root[data-theme="light"] .interview-status.scheduled   { background: rgba(79,70,229,0.18)  !important; border-color: rgba(79,70,229,0.75)  !important; color: #3730a3 !important; }
+:root[data-theme="light"] .interview-status.in_progress { background: rgba(217,119,6,0.18)  !important; border-color: rgba(217,119,6,0.75)  !important; color: #78350f !important; }
+:root[data-theme="light"] .interview-status.completed   { background: rgba(5,150,105,0.22)  !important; border-color: rgba(5,150,105,0.80)  !important; color: #064e3b !important; }
+:root[data-theme="light"] .interview-status.cancelled   { background: rgba(220,38,38,0.18)  !important; border-color: rgba(220,38,38,0.75)  !important; color: #7f1d1d !important; }
+
+/* ─── Withdraw button (table row variant) ──────────────────────────────── */
+/* Defaults = original soft pink for dark mode. */
+.btn-withdraw-row {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .38rem .7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(233,121,121,0.28);
+  background: rgba(233,121,121,0.08);
+  color: rgba(255,220,220,0.88);
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+.btn-withdraw-row:hover {
+  background: rgba(233,121,121,0.16);
+  border-color: rgba(233,121,121,0.45);
+  transform: translateY(-1px);
+}
+.btn-withdraw-row:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+/* Light-mode override — saturated crimson for white background. */
+:root[data-theme="light"] .btn-withdraw-row {
+  border-color: rgba(239,68,68,0.85);
+  background: rgba(239,68,68,0.22);
+  color: #991b1b;
+}
+:root[data-theme="light"] .btn-withdraw-row:hover {
+  background: rgba(239,68,68,0.32);
+  border-color: rgba(239,68,68,0.95);
+}
+
+/* ─── Activity event pills (admin dashboard) ─────────────────────────────
+   Dark mode: 100% controlled by HTML inline styles — DO NOT TOUCH.
+
+   Light mode: We FIRST override --fcolor per data-event with a curated
+   designer palette that coordinates well together. Then the .event-pill
+   light rule derives bg/border/text from the new --fcolor. The TS color
+   metadata stays the same (so dark mode is unchanged) — we just replace
+   --fcolor in light mode via CSS attribute selector. */
+
+/* Curated palette — each color a Tailwind "600" tone, chosen to harmonize:
+   emerald, indigo (brand-aligned), rose, amber, slate, violet, cyan, yellow */
+:root[data-theme="light"] .event-pill[data-event="JOB_CREATED"]                { --fcolor: #059669 !important; } /* emerald */
+:root[data-theme="light"] .event-pill[data-event="JOB_UPDATED"]                { --fcolor: #4f46e5 !important; } /* indigo (brand family) */
+:root[data-theme="light"] .event-pill[data-event="JOB_CLOSED"]                 { --fcolor: #dc2626 !important; } /* red */
+:root[data-theme="light"] .event-pill[data-event="JOB_QUOTA_REACHED"]          { --fcolor: #ca8a04 !important; } /* yellow */
+:root[data-theme="light"] .event-pill[data-event="APPLICATION_STATUS_UPDATE"]  { --fcolor: #0284c7 !important; } /* sky (brand) */
+:root[data-theme="light"] .event-pill[data-event="APPLICATION_WITHDRAWN"]      { --fcolor: #64748b !important; } /* slate */
+:root[data-theme="light"] .event-pill[data-event="USER_BLOCK"]                 { --fcolor: #dc2626 !important; } /* red */
+:root[data-theme="light"] .event-pill[data-event="USER_UNBLOCK"]               { --fcolor: #059669 !important; } /* emerald */
+:root[data-theme="light"] .event-pill[data-event="CANDIDATE_FLAGGED"]          { --fcolor: #d97706 !important; } /* amber */
+:root[data-theme="light"] .event-pill[data-event="CANDIDATE_UNFLAGGED"]        { --fcolor: #7c3aed !important; } /* violet */
+:root[data-theme="light"] .event-pill[data-event="CANDIDATE_SIGNAL_DISMISSED"] { --fcolor: #0891b2 !important; } /* cyan */
+
+/* Light-mode pill style — derives bg/border/text from the curated --fcolor */
+:root[data-theme="light"] .event-pill {
+  background: color-mix(in srgb, var(--fcolor, var(--color-primary)) 18%, white) !important;
+  border: 1px solid color-mix(in srgb, var(--fcolor, var(--color-primary)) 95%, transparent) !important;
+  color: color-mix(in srgb, var(--fcolor, var(--color-primary)) 80%, #000000) !important;
+  font-weight: 700;
+}
+/* The colored dot inside the pill should also use the curated color */
+:root[data-theme="light"] .event-pill .pill-dot {
+  background: var(--fcolor) !important;
+}
+
+/* ─── Activity filter chips (admin dashboard) ────────────────────────────
+   Same curated palette as the event pills, mapped per filter-key. Keeps
+   semantic categories visually consistent — JOBS filter matches the
+   Job_xxx event colors, FLAGS matches Candidate_Flagged etc. */
+:root[data-theme="light"] .filter-btn[data-filter="ALL"]                         { --fcolor: var(--color-primary) !important; }
+:root[data-theme="light"] .filter-btn[data-filter="JOBS"]                        { --fcolor: #4f46e5 !important; } /* indigo (matches JOB_UPDATED) */
+:root[data-theme="light"] .filter-btn[data-filter="FLAGS"]                       { --fcolor: #d97706 !important; } /* amber */
+:root[data-theme="light"] .filter-btn[data-filter="BLOCKS"]                      { --fcolor: #dc2626 !important; } /* red */
+:root[data-theme="light"] .filter-btn[data-filter="APPLICATION_STATUS_UPDATE"]   { --fcolor: #0284c7 !important; } /* sky */
+:root[data-theme="light"] .filter-btn[data-filter="APPLICATION_WITHDRAWN"]       { --fcolor: #64748b !important; } /* slate */
+:root[data-theme="light"] .filter-btn[data-filter="CANDIDATE_SIGNAL_DISMISSED"]  { --fcolor: #0891b2 !important; } /* cyan */
+
+/* Light-mode active filter chip — same derivation as event pills. */
+:root[data-theme="light"] .filter-btn.active {
+  background: color-mix(in srgb, var(--fcolor, var(--color-primary)) 18%, white) !important;
+  border: 1px solid color-mix(in srgb, var(--fcolor, var(--color-primary)) 75%, transparent) !important;
+  color: color-mix(in srgb, var(--fcolor, var(--color-primary)) 80%, #000000) !important;
+  font-weight: 700;
+}
+:root[data-theme="light"] .filter-btn:not(.active) {
+  background: white;
+  border: 1px solid var(--border) !important;
+  color: var(--text-muted);
+}
+:root[data-theme="light"] .filter-btn:not(.active):hover {
+  background: var(--border-subtle);
+  color: var(--text);
+}
+
+/* ─── Event breakdown sidebar (admin dashboard) ──────────────────────────
+   Override each breakdown row's color so the legend value and progress
+   bar use the same curated palette as the activity pills + filters. */
+:root[data-theme="light"] .breakdown-item[data-bkey="applicationUpdates"] .breakdown-val { color: #0284c7 !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="jobUpdates"]         .breakdown-val { color: #4f46e5 !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="userBlocks"]         .breakdown-val { color: #dc2626 !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="userUnblocks"]       .breakdown-val { color: #059669 !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="candidateFlagged"]   .breakdown-val { color: #d97706 !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="candidateUnflagged"] .breakdown-val { color: #7c3aed !important; }
+
+/* Progress bar override per type — gradient from light tint to solid */
+:root[data-theme="light"] .breakdown-item[data-bkey="applicationUpdates"] .progress-fill { background: linear-gradient(90deg, #0284c755, #0284c7) !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="jobUpdates"]         .progress-fill { background: linear-gradient(90deg, #4f46e555, #4f46e5) !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="userBlocks"]         .progress-fill { background: linear-gradient(90deg, #dc262655, #dc2626) !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="userUnblocks"]       .progress-fill { background: linear-gradient(90deg, #05966955, #059669) !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="candidateFlagged"]   .progress-fill { background: linear-gradient(90deg, #d9770655, #d97706) !important; }
+:root[data-theme="light"] .breakdown-item[data-bkey="candidateUnflagged"] .progress-fill { background: linear-gradient(90deg, #7c3aed55, #7c3aed) !important; }
+
+/* ─── Admin dashboard stat-card icons ──────────────────────────────────
+   Light-mode override for the colored icon tiles. Lives in styles.css
+   so Angular ViewEncapsulation cannot rewrite/scope these selectors
+   and they apply globally to anything using the .stat-icon pattern. */
+:root[data-theme="light"] .stat-card .stat-icon,
+:root[data-theme="light"] .stat-card--link .stat-icon {
+  background: var(--accent) !important;
+  background-color: var(--accent) !important;
+  background-image: none !important;
+  border: none !important;
+  border-color: transparent !important;
+  width: 44px !important;
+  height: 44px !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 36%, transparent),
+              inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+:root[data-theme="light"] .stat-card .stat-icon svg,
+:root[data-theme="light"] .stat-card--link .stat-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+:root[data-theme="light"] .stat-card .stat-icon svg *,
+:root[data-theme="light"] .stat-card--link .stat-icon svg * {
+  stroke: #ffffff !important;
+}
+
+/* ─── Status / role pills (generic two-state) ──────────────────────────── */
+/* Default dark-mode look = original cream / pale-pink text */
+.pill-success {
+  background: rgba(120,255,197,0.12);
+  border-color: rgba(120,255,197,0.30);
+  color: var(--color-cream);
+}
+.pill-danger {
+  background: rgba(255,120,120,0.12);
+  border-color: rgba(255,120,120,0.30);
+  color: var(--color-cream);
+}
+/* Light-mode override — saturated tints + deep readable text. */
+:root[data-theme="light"] .pill-success {
+  background: rgba(34,197,94,0.32);
+  border-color: rgba(34,197,94,0.85);
+  color: #14532d;
+}
+:root[data-theme="light"] .pill-danger {
+  background: rgba(239,68,68,0.28);
+  border-color: rgba(239,68,68,0.85);
+  color: #991b1b;
+}
+
+/* ─── Notification dropdown (light mode) ─────────────────────────────────
+   Original CSS uses a hardcoded dark linear-gradient that beats the
+   theme-token cascade. Override here with !important and high specificity
+   so the panels turn into crisp white cards on light bg. */
+:root[data-theme="light"] .notif-dropdown {
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 1px solid var(--border-strong) !important;
+  box-shadow: 0 12px 40px rgba(30, 64, 188, 0.18) !important;
+}
+:root[data-theme="light"] .notif-detail-card {
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 1px solid var(--border-strong) !important;
+  box-shadow: 0 16px 48px rgba(30, 64, 188, 0.20) !important;
+}
+
+/* Header & list */
+:root[data-theme="light"] .notif-title { color: var(--color-primary) !important; }
+:root[data-theme="light"] .notif-item--unread .notif-item-title { color: var(--text) !important; }
+:root[data-theme="light"] .notif-item--unread { background: rgba(121, 164, 233, 0.10) !important; }
+:root[data-theme="light"] .notif-item:hover  { background: rgba(121, 164, 233, 0.14) !important; }
+:root[data-theme="light"] .notif-empty       { color: var(--text-soft) !important; }
+
+/* Detail card type pills — same designer palette as the dashboard */
+:root[data-theme="light"] .ndc-type-USER_BLOCK                { color: #b91c1c !important; background: rgba(220, 38, 38, 0.14) !important; border-color: rgba(220, 38, 38, 0.45) !important; }
+:root[data-theme="light"] .ndc-type-USER_UNBLOCK              { color: #15803d !important; background: rgba(34, 197, 94, 0.14) !important; border-color: rgba(34, 197, 94, 0.45) !important; }
+:root[data-theme="light"] .ndc-type-APPLICATION_STATUS_UPDATE { color: #1e40af !important; background: rgba(2, 132, 199, 0.14) !important; border-color: rgba(2, 132, 199, 0.45) !important; }
+:root[data-theme="light"] .ndc-type-JOB_UPDATED               { color: #92400e !important; background: rgba(217, 119, 6, 0.14) !important; border-color: rgba(217, 119, 6, 0.45) !important; }
+:root[data-theme="light"] .ndc-type-ROLE_UPDATE,
+:root[data-theme="light"] .ndc-type-INTERVIEW_INVITE,
+:root[data-theme="light"] .ndc-type-INTERVIEW_JOIN_REQUEST    { color: #5b21b6 !important; background: rgba(124, 58, 237, 0.14) !important; border-color: rgba(124, 58, 237, 0.45) !important; }
+
+/* Notification count badge (red bubble over the bell icon) — bump to
+   the designer-palette saturated red so it pops on a white navbar. */
+:root[data-theme="light"] .notif-badge {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+/* ─── Notification type chip ─────────────────────────────────────────────
+   Colored rounded square icon on the left of each notification row.
+   Uses Lucide SVG icons (the same set Vercel/Notion/Linear use). Same
+   designer palette as the dashboard so the chips feel like part of one
+   system. */
+.notif-item-left { gap: 0.5rem; }
+.notif-type-chip {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: rgba(121, 164, 233, 0.15);
+  color: #79a4e9;
+  transition: transform 0.15s ease;
+}
+.notif-type-chip svg { width: 16px; height: 16px; }
+.notif-item:hover .notif-type-chip { transform: scale(1.06); }
+
+/* Per-category colors. Default = DARK MODE — brighter Tailwind 400 tones
+   so icons pop on the dark navy dropdown surface. Light mode overrides
+   below with deeper Tailwind 700 tones for white-bg contrast. */
+.notif-type-chip[data-category="interview"]    { background: rgba(56,189,248,0.18);  color: #38bdf8; }
+.notif-type-chip[data-category="job"]          { background: rgba(129,140,248,0.20); color: #818cf8; }
+.notif-type-chip[data-category="application"]  { background: rgba(56,189,248,0.18);  color: #38bdf8; }
+.notif-type-chip[data-category="user-block"]   { background: rgba(248,113,113,0.20); color: #f87171; }
+.notif-type-chip[data-category="user-unblock"] { background: rgba(52,211,153,0.20);  color: #34d399; }
+.notif-type-chip[data-category="role"]         { background: rgba(167,139,250,0.20); color: #a78bfa; }
+
+/* Light-mode bumps — deeper text colors + matching backgrounds for white-bg readability */
+:root[data-theme="light"] .notif-type-chip[data-category="interview"]    { background: rgba(2,132,199,0.16);  color: #075985; }
+:root[data-theme="light"] .notif-type-chip[data-category="job"]          { background: rgba(79,70,229,0.16);  color: #3730a3; }
+:root[data-theme="light"] .notif-type-chip[data-category="application"]  { background: rgba(2,132,199,0.16);  color: #075985; }
+:root[data-theme="light"] .notif-type-chip[data-category="user-block"]   { background: rgba(220,38,38,0.16);  color: #991b1b; }
+:root[data-theme="light"] .notif-type-chip[data-category="user-unblock"] { background: rgba(5,150,105,0.18);  color: #047857; }
+:root[data-theme="light"] .notif-type-chip[data-category="role"]         { background: rgba(124,58,237,0.16); color: #5b21b6; }
+
+/* ─── Skills catalog (light mode) ────────────────────────────────────────
+   Component CSS is scoped by Angular — these rules live globally so the
+   color overrides actually apply. Dark mode untouched. */
+:root[data-theme="light"] .catalog-add,
+:root[data-theme="light"] .catalog-table-card {
+  background: #ffffff !important;
+  border: 1px solid var(--border-strong) !important;
+  box-shadow: 0 4px 14px rgba(30, 64, 188, 0.06) !important;
+}
+:root[data-theme="light"] .catalog-add__input {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text) !important;
+}
+:root[data-theme="light"] .catalog-add__input:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(30, 64, 188, 0.18) !important;
+}
+
+/* Stat-card numbers — deep readable palette */
+:root[data-theme="light"] .catalog-stat--demand .catalog-stat__value     { color: #92400e !important; }
+:root[data-theme="light"] .catalog-stat--universal .catalog-stat__value  { color: #5b21b6 !important; }
+:root[data-theme="light"] .catalog-stat--manual .catalog-stat__value     { color: #047857 !important; }
+
+:root[data-theme="light"] .catalog-status--duplicate { color: #92400e !important; }
+:root[data-theme="light"] .catalog-status--duplicate::before { background: #d97706 !important; }
+:root[data-theme="light"] .catalog-status--new       { color: #047857 !important; }
+:root[data-theme="light"] .catalog-status--new::before { background: #059669 !important; }
+
+/* Default --accent for the "All" pill (no inline accent) — slate */
+:root[data-theme="light"] .domain-pill { --accent: 100, 116, 139; }
+
+/* Bump pill saturation + darken text so each color reads boldly on white.
+   Uses color-mix to derive a dark variant of the accent for text contrast. */
+:root[data-theme="light"] .domain-pill {
+  background: rgba(var(--accent), 0.20) !important;
+  border: 1px solid rgba(var(--accent), 0.65) !important;
+  color: color-mix(in srgb, rgb(var(--accent)) 65%, #000000) !important;
+  font-weight: 700 !important;
+}
+:root[data-theme="light"] .domain-pill:hover {
+  background: rgba(var(--accent), 0.30) !important;
+  border-color: rgba(var(--accent), 0.85) !important;
+  color: color-mix(in srgb, rgb(var(--accent)) 70%, #000000) !important;
+}
+/* Active pill — fully filled with the accent color + white text, plus
+   a colored glow shadow so it visibly stands apart from inactive pills. */
+:root[data-theme="light"] .domain-pill--active {
+  background: color-mix(in srgb, rgb(var(--accent)) 88%, #000000) !important;
+  border-color: color-mix(in srgb, rgb(var(--accent)) 70%, #000000) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(var(--accent), 0.45),
+              0 0 0 2px rgba(var(--accent), 0.20) !important;
+  font-weight: 700 !important;
+  transform: translateY(-1px);
+}
+:root[data-theme="light"] .domain-pill--active:hover {
+  background: color-mix(in srgb, rgb(var(--accent)) 92%, #000000) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="light"] .domain-chip--universal {
+  background: var(--surface-2) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-muted) !important;
+}
+
+:root[data-theme="light"] .source-tag--manual {
+  background: rgba(124, 58, 237, 0.18) !important;
+  border-color: rgba(124, 58, 237, 0.55) !important;
+  color: #5b21b6 !important;
+}
+:root[data-theme="light"] .source-tag--extracted {
+  background: rgba(2, 132, 199, 0.18) !important;
+  border-color: rgba(2, 132, 199, 0.55) !important;
+  color: #075985 !important;
+}
+
+:root[data-theme="light"] .catalog-row--in-demand td:first-child {
+  border-left-color: #d97706 !important;
+}
+
+:root[data-theme="light"] .demand-badge {
+  background: rgba(217, 119, 6, 0.20) !important;
+  border-color: rgba(217, 119, 6, 0.65) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .demand-dot {
+  background: #d97706 !important;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.22) !important;
+}
+
+/* Edit / Remove action buttons — paired design language.
+   - Edit  → brand-blue chip (confident, neutral action)
+   - Remove → red chip (warning, destructive action)
+   - Disabled → muted slate, low opacity
+   Both feature a soft tinted background by default, deepening on hover. */
+
+/* DARK MODE — paired tinted chips matching the light-mode design idiom
+   but tuned for visibility on dark navy background. */
+:root[data-theme="dark"] .icon-btn--edit {
+  background: rgba(121, 164, 233, 0.10) !important;
+  border: 1px solid rgba(121, 164, 233, 0.32) !important;
+  color: #aac8ff !important;
+  font-weight: 700 !important;
+  transition: background 140ms ease, border-color 140ms ease,
+              transform 140ms ease, box-shadow 140ms ease !important;
+}
+:root[data-theme="dark"] .icon-btn--edit:hover {
+  background: rgba(121, 164, 233, 0.20) !important;
+  border-color: rgba(121, 164, 233, 0.65) !important;
+  color: #d8e6ff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(121, 164, 233, 0.25) !important;
+}
+:root[data-theme="dark"] .icon-btn--remove {
+  background: rgba(248, 113, 113, 0.10) !important;
+  border: 1px solid rgba(248, 113, 113, 0.32) !important;
+  color: #ffb3b3 !important;
+  font-weight: 700 !important;
+  transition: background 140ms ease, border-color 140ms ease,
+              transform 140ms ease, box-shadow 140ms ease !important;
+}
+:root[data-theme="dark"] .icon-btn--remove:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.20) !important;
+  border-color: rgba(248, 113, 113, 0.65) !important;
+  color: #ffd6d6 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(248, 113, 113, 0.25) !important;
+}
+:root[data-theme="dark"] .icon-btn:disabled,
+:root[data-theme="dark"] .icon-btn:disabled:hover {
+  background: var(--surface-1) !important;
+  border-color: var(--border) !important;
+  color: var(--text-soft) !important;
+  opacity: 0.45 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+}
+
+:root[data-theme="light"] .icon-btn--edit {
+  background: rgba(30, 64, 188, 0.10) !important;
+  border: 1px solid rgba(30, 64, 188, 0.30) !important;
+  color: #1e40bc !important;
+  font-weight: 700 !important;
+  transition: background 140ms ease, border-color 140ms ease,
+              transform 140ms ease, box-shadow 140ms ease !important;
+}
+:root[data-theme="light"] .icon-btn--edit:hover {
+  background: rgba(30, 64, 188, 0.18) !important;
+  border-color: rgba(30, 64, 188, 0.55) !important;
+  color: #1e40bc !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(30, 64, 188, 0.18) !important;
+}
+:root[data-theme="light"] .icon-btn--remove {
+  background: rgba(220, 38, 38, 0.10) !important;
+  border: 1px solid rgba(220, 38, 38, 0.30) !important;
+  color: #b91c1c !important;
+  font-weight: 700 !important;
+  transition: background 140ms ease, border-color 140ms ease,
+              transform 140ms ease, box-shadow 140ms ease !important;
+}
+:root[data-theme="light"] .icon-btn--remove:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.18) !important;
+  border-color: rgba(220, 38, 38, 0.60) !important;
+  color: #991b1b !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.18) !important;
+}
+:root[data-theme="light"] .icon-btn:disabled,
+:root[data-theme="light"] .icon-btn:disabled:hover {
+  background: var(--surface-1) !important;
+  border-color: var(--border) !important;
+  color: var(--text-soft) !important;
+  opacity: 0.55 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+}
+
+:root[data-theme="light"] .catalog-removed-card {
+  background: rgba(220, 38, 38, 0.06) !important;
+  border: 1px solid rgba(220, 38, 38, 0.35) !important;
+}
+:root[data-theme="light"] .catalog-removed-card > summary { color: #991b1b !important; }
+:root[data-theme="light"] .catalog-removed-card > summary::before { color: #dc2626 !important; }
+:root[data-theme="light"] .catalog-removed-card__count {
+  background: rgba(220, 38, 38, 0.20) !important;
+  border-color: rgba(220, 38, 38, 0.65) !important;
+  color: #991b1b !important;
+}
+:root[data-theme="light"] .catalog-removed-name { color: #991b1b !important; }
+
+
+/* ─── Calendar countdown + Google-sync chips (light mode) ─────────────────
+   Coordinate the two greens (Calendar synced + Starting now) and the
+   urgency tones (soon/imminent/live + imm--alert) so the eye reads the
+   same color story across navbar countdown, calendar sync chip, and
+   interview card countdowns. Dark mode untouched. */
+
+/* Calendar synced badge (Google) — deep emerald */
+:root[data-theme="light"] .cal-gcal--on {
+  background: rgba(34, 197, 94, 0.20) !important;
+  border-color: rgba(34, 197, 94, 0.55) !important;
+  color: #15803d !important;
+}
+:root[data-theme="light"] .cal-gcal--on:hover {
+  background: rgba(34, 197, 94, 0.20) !important;
+  border-color: rgba(34, 197, 94, 0.55) !important;
+}
+
+/* Countdown chips inside upcoming-interview cards */
+:root[data-theme="light"] .cd-soon     { color: #1e40af !important; background: rgba(121, 164, 233, 0.20) !important; }
+:root[data-theme="light"] .cd-imminent { color: #92400e !important; background: rgba(251, 191, 36, 0.22) !important; }
+:root[data-theme="light"] .cd-live     { color: #15803d !important; background: rgba(34, 197, 94, 0.22) !important; }
+
+/* Navbar imminent-interview countdown (the navbar pill that says
+   "Interview starting now" / "in 12 min" / etc.) */
+:root[data-theme="light"] .imm--soon {
+  color: #1e40af !important;
+  background: rgba(121, 164, 233, 0.20) !important;
+  border-color: rgba(121, 164, 233, 0.55) !important;
+}
+:root[data-theme="light"] .imm--near {
+  color: #92400e !important;
+  background: rgba(251, 191, 36, 0.22) !important;
+  border-color: rgba(251, 191, 36, 0.55) !important;
+}
+:root[data-theme="light"] .imm--alert {
+  color: #991b1b !important;
+  background: rgba(239, 68, 68, 0.22) !important;
+  border-color: rgba(239, 68, 68, 0.65) !important;
+}
+
+/* ─── Calendar status palette (light mode) ─────────────────────────────
+   Override the --st per-status CSS variable so calendar day-cell event
+   chips and the upcoming-card status pills (SCHEDULED / CANCELLED etc.)
+   use the dashboard palette: sky / amber / emerald / saturated red. */
+:root[data-theme="light"] .st-scheduled   { --st: #0284c7 !important; }
+:root[data-theme="light"] .st-in_progress { --st: #d97706 !important; }
+:root[data-theme="light"] .st-completed   { --st: #059669 !important; }
+:root[data-theme="light"] .st-cancelled   { --st: #dc2626 !important; }
+
+/* ─── Browse jobs — status badges, spots indicator, requirement chips ──
+   Each badge gets its inline style from TS. !important on these
+   selectors beats the inline rgba(72,187,120,0.12) / #68d391 etc. */
+:root[data-theme="light"] .pill[data-job-status="PUBLISHED"] {
+  background: rgba(34, 197, 94, 0.22) !important;
+  border: 1px solid rgba(34, 197, 94, 0.65) !important;
+  color: #15803d !important;
+}
+:root[data-theme="light"] .pill[data-job-status="DRAFT"] {
+  background: rgba(251, 191, 36, 0.22) !important;
+  border: 1px solid rgba(251, 191, 36, 0.65) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .pill[data-job-status="CLOSED"] {
+  background: rgba(239, 68, 68, 0.22) !important;
+  border: 1px solid rgba(239, 68, 68, 0.65) !important;
+  color: #b91c1c !important;
+}
+
+/* Spots indicator — "N spots left" / "1 spot left" / "Full" */
+:root[data-theme="light"] .job-spots-pill[data-spots-level="ok"]   { color: #15803d !important; background: rgba(34, 197, 94, 0.18) !important; border-color: rgba(34, 197, 94, 0.55) !important; }
+:root[data-theme="light"] .job-spots-pill[data-spots-level="low"]  { color: #92400e !important; background: rgba(251, 191, 36, 0.22) !important; border-color: rgba(251, 191, 36, 0.55) !important; }
+:root[data-theme="light"] .job-spots-pill[data-spots-level="full"] { color: #b91c1c !important; background: rgba(239, 68, 68, 0.22) !important; border-color: rgba(239, 68, 68, 0.55) !important; }
+
+/* Requirement chips (SKILL: …, LANGUAGE: …, etc.) — generic .pill
+   on light bg looks pale; bump to a clear brand-blue tint. */
+:root[data-theme="light"] .pill:not([data-job-status]):not([data-spots-level]):not(.pill-success):not(.pill-danger):not(.pill-role) {
+  background: rgba(30, 64, 188, 0.10);
+  border: 1px solid rgba(30, 64, 188, 0.32);
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+/* Profile page form hints: dark mode uses near-white text which is
+   invisible on the light card. Global rule so it wins regardless of
+   Angular component encapsulation. */
+:root[data-theme="light"] .hint {
+  color: #475569 !important;
+}
+:root[data-theme="light"] .hint-strong {
+  color: #1e40bc !important;
 }

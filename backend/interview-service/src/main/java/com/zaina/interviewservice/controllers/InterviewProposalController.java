@@ -1,17 +1,16 @@
 package com.zaina.interviewservice.controllers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zaina.interviewservice.clients.UserClient;
 import com.zaina.interviewservice.dto.CreateProposalRequest;
 import com.zaina.interviewservice.dto.ProposalResponse;
 import com.zaina.interviewservice.services.InterviewProposalService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,26 +26,24 @@ public class InterviewProposalController {
 
     @PostMapping
     public ResponseEntity<ProposalResponse> create(
-            @RequestBody CreateProposalRequest req,
-            HttpServletRequest httpRequest) {
+            @jakarta.validation.Valid @RequestBody CreateProposalRequest req,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        // Recruiter identity from JWT — same pattern as InterviewController.
-        String auth = httpRequest.getHeader("Authorization");
-        if (auth != null && auth.startsWith("Bearer ")) {
-            try {
-                String token = auth.substring(7);
-                String payload = token.split("\\.")[1];
-                String decoded = new String(Base64.getUrlDecoder().decode(payload));
-                ObjectMapper mapper = new ObjectMapper();
-                Map<String, Object> claims = mapper.readValue(decoded, Map.class);
-                if (claims.get("name") != null)
-                    req.setRecruiterName(claims.get("name").toString());
-                if (claims.get("email") != null)
-                    req.setRecruiterEmail(claims.get("email").toString());
-                if (claims.get("sub") != null && req.getRecruiterId() == null)
-                    req.setRecruiterId(UUID.fromString(claims.get("sub").toString()));
-            } catch (Exception e) {
-                log.warn("Could not extract recruiter info from JWT: {}", e.getMessage());
+        // Recruiter identity from the JWT that Spring already validated.
+        // Previously this controller hand-decoded the Bearer payload,
+        // trusting it without verifying the signature.
+        if (jwt != null) {
+            String name = jwt.getClaimAsString("name");
+            if (name != null && !name.isBlank()) req.setRecruiterName(name);
+            String email = jwt.getClaimAsString("email");
+            if (email != null && !email.isBlank()) req.setRecruiterEmail(email);
+            String sub = jwt.getSubject();
+            if (sub != null && req.getRecruiterId() == null) {
+                try {
+                    req.setRecruiterId(UUID.fromString(sub));
+                } catch (IllegalArgumentException ex) {
+                    log.warn("JWT sub is not a UUID: {}", sub);
+                }
             }
         }
 
@@ -90,9 +87,9 @@ public class InterviewProposalController {
     public ResponseEntity<ProposalResponse> pick(
             @PathVariable UUID id,
             @RequestParam int slotIndex,
-            HttpServletRequest httpRequest) {
+            @AuthenticationPrincipal Jwt jwt) {
 
-        UUID candidateId = extractUserId(httpRequest);
+        UUID candidateId = subjectAsUuid(jwt);
         return ResponseEntity.ok(proposalService.pickSlot(id, slotIndex, candidateId));
     }
 
@@ -109,24 +106,20 @@ public class InterviewProposalController {
     public ResponseEntity<ProposalResponse> decline(
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, String> body,
-            HttpServletRequest httpRequest) {
-        UUID candidateId = extractUserId(httpRequest);
+            @AuthenticationPrincipal Jwt jwt) {
+        UUID candidateId = subjectAsUuid(jwt);
         String reason = body != null ? body.get("reason") : null;
         return ResponseEntity.ok(proposalService.declineProposal(id, candidateId, reason));
     }
 
-    /** Pull the caller's userId out of the JWT (sub claim). Returns null on failure. */
-    private UUID extractUserId(HttpServletRequest req) {
+    /** JWT 'sub' as UUID. Returns null if missing or not a UUID. */
+    private static UUID subjectAsUuid(Jwt jwt) {
+        if (jwt == null) return null;
+        String sub = jwt.getSubject();
+        if (sub == null) return null;
         try {
-            String auth = req.getHeader("Authorization");
-            if (auth == null || !auth.startsWith("Bearer ")) return null;
-            String payload = auth.substring(7).split("\\.")[1];
-            String decoded = new String(Base64.getUrlDecoder().decode(payload));
-            Map<?, ?> claims = new ObjectMapper().readValue(decoded, Map.class);
-            Object sub = claims.get("sub");
-            return sub == null ? null : UUID.fromString(sub.toString());
-        } catch (Exception e) {
-            log.warn("Could not extract userId from JWT: {}", e.getMessage());
+            return UUID.fromString(sub);
+        } catch (IllegalArgumentException e) {
             return null;
         }
     }

@@ -1,5 +1,8 @@
 package com.zaina.interviewservice.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,15 +14,20 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ScheduleInterviewRequest {
-    private UUID applicationId;
-    private UUID jobId;
-    private UUID recruiterId;
-    private UUID candidateId;
-    private String candidateEmail;
-    private String recruiterEmail;
-    private String candidateName;
-    private String recruiterName;
-    private String jobTitle;
-    private LocalDateTime scheduledAt;
+
+    @NotNull private UUID applicationId;
+    @NotNull private UUID jobId;
+    @NotNull private UUID recruiterId;
+    @NotNull private UUID candidateId;
+
+    @Email @Size(max = 120) private String candidateEmail;
+    @Email @Size(max = 120) private String recruiterEmail;
+
+    @Size(max = 200) private String candidateName;
+    @Size(max = 200) private String recruiterName;
+    @Size(max = 200) private String jobTitle;
+
+    @NotNull private LocalDateTime scheduledAt;
+
     private Boolean recordingConsent;
 }

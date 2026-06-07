@@ -23,11 +23,13 @@ public class JobClient {
         this.restTemplate = restTemplate;
     }
 
-    @org.springframework.beans.factory.annotation.Value("${job.service.internal.url:http://job-microservice:8080}")
-    private String jobServiceInternalUrl;
+    /** Eureka service id resolved by the @LoadBalanced RestTemplate, NOT
+     *  a raw hostname. Calls go direct to a job-microservice instance,
+     *  skipping the gateway. */
+    private static final String JOB_SERVICE = "http://JOB-MICROSERVICE";
 
     public JobDto getJob(UUID id) {
-        String url = "http://gateway:8888/api/jobs/" + id;
+        String url = JOB_SERVICE + "/api/jobs/" + id;
 
         try {
             log.info("[JobClient] GET {}", url);
@@ -49,7 +51,7 @@ public class JobClient {
 
     public void incrementHired(UUID jobId) {
         // Internal call — bypass gateway to avoid auth requirement
-        String url = jobServiceInternalUrl + "/api/jobs/" + jobId + "/hired";
+        String url = JOB_SERVICE + "/api/jobs/" + jobId + "/hired";
         try {
             log.info("[JobClient] POST {}", url);
             restTemplate.postForEntity(url, null, Void.class);
@@ -60,7 +62,7 @@ public class JobClient {
 
     public JobDto closeJob(UUID jobId) {
         // Internal call — bypass gateway to avoid auth requirement
-        String url = jobServiceInternalUrl + "/api/jobs/" + jobId + "/close";
+        String url = JOB_SERVICE + "/api/jobs/" + jobId + "/close";
         try {
             log.info("[JobClient] POST {}", url);
             ResponseEntity<JobDto> resp = restTemplate.postForEntity(url, null, JobDto.class);
@@ -125,15 +127,15 @@ public class JobClient {
     @JsonIgnoreProperties(ignoreUnknown = true)
     @Data
     public static class JobRequirementDto {
+        // Persistent requirement id from the job-microservice. The cv-parser
+        // forwards it so the matcher can look up the cached embedding.
+        private UUID id;
         private String category;
         private String description;
         private Double weight;
 
         @JsonAlias({"minYears", "min_years"})
         private Integer minYears;
-
-        @JsonAlias({"maxYears", "max_years"})
-        private Integer maxYears;
 
         @JsonAlias({"skillLevel", "skill_level"})
         private String skillLevel;
@@ -146,5 +148,23 @@ public class JobClient {
 
         @JsonAlias({"languageLevel", "language_level"})
         private String languageLevel;
+
+        @JsonAlias({"institute"})
+        private String institute;
+
+        @JsonAlias({"issuingOrg", "issuing_org"})
+        private String issuingOrg;
+
+        @JsonAlias({"customIssuingOrg", "custom_issuing_org"})
+        private String customIssuingOrg;
+
+        @JsonAlias({"requireCurrent", "require_current"})
+        private Boolean requireCurrent;
+
+        @JsonAlias({"validityYears", "validity_years"})
+        private Integer validityYears;
+
+        @JsonAlias({"mustHave", "must_have"})
+        private Boolean mustHave;
     }
 }

@@ -28,7 +28,7 @@ public class InterviewReschedController {
     @PostMapping("/{interviewId}/reschedule")
     public ResponseEntity<ReschedRequestResponse> propose(
             @PathVariable UUID interviewId,
-            @RequestBody CreateReschedRequest req,
+            @jakarta.validation.Valid @RequestBody CreateReschedRequest req,
             HttpServletRequest httpRequest) {
         JwtInfo info = extractJwt(httpRequest);
         InterviewReschedRequest.ProposedBy role = info.hasRole("CANDIDATE")

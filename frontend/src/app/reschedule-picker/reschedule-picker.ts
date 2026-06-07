@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
+import { normalizeHttpError } from '../utils/http-error';
 import {
   CreateReschedRequest,
   InterviewService,
@@ -50,6 +51,8 @@ export class ReschedulePicker implements OnInit {
   loading = false;
   busyLoading = true;
   error = '';
+  /** Per-field server validation messages keyed by DTO field name. */
+  fieldErrors: Record<string, string> = {};
 
   private busyRecruiter: number[] = [];
   private busyCandidate: number[] = [];
@@ -171,6 +174,7 @@ export class ReschedulePicker implements OnInit {
     if (!this.canSubmit) return;
     this.loading = true;
     this.error = '';
+    this.fieldErrors = {};
     const req: CreateReschedRequest = {
       proposedSlots: this.proposedSlots.map(s => s.iso),
       deadline: this.deadline.length === 16 ? `${this.deadline}:00` : this.deadline,
@@ -180,8 +184,9 @@ export class ReschedulePicker implements OnInit {
       next: (r) => { this.loading = false; this.proposed.emit(r); },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message
-          || 'Failed to propose new times. Please try again.';
+        const httpError = normalizeHttpError(err);
+        this.error = httpError.message || 'Failed to propose new times. Please try again.';
+        this.fieldErrors = httpError.fieldErrors;
         console.error(err);
       },
     });

@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApplicationService } from '../services/application.service';
+import { normalizeHttpError } from '../utils/http-error';
 
 @Component({
   selector: 'app-application',
@@ -138,7 +139,17 @@ export class Application {
           this.error.set('You already applied to this job.');
           return;
         }
-        this.error.set(err?.error?.message ?? 'Failed to submit application.');
+        const httpError = normalizeHttpError(err);
+        // If the backend sent field errors (e.g. file too large, malformed
+        // github url), surface them alongside the main message.
+        const fieldList = Object.entries(httpError.fieldErrors)
+          .map(([f, m]) => `${f}: ${m}`)
+          .join(' · ');
+        this.error.set(
+          fieldList
+            ? `${httpError.message} (${fieldList})`
+            : httpError.message || 'Failed to submit application.'
+        );
       },
     });
   }

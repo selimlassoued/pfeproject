@@ -29,6 +29,30 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
+        <!-- Jakarta Bean Validation, enabled by @Valid on @RequestBody. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Security: validate Keycloak JWTs on every request. Defense in
+             depth so a caller bypassing the gateway (via Docker network)
+             still has to present a real token. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <!-- Spring Boot 4 starter — includes the OAuth2ResourceServer
+             autoconfig that creates the JwtDecoder bean from the
+             spring.security.oauth2.resourceserver.jwt.jwk-set-uri
+             property served by config-server. The raw spring-security-
+             oauth2-resource-server + jose libraries do NOT trigger the
+             autoconfig on Spring Boot 4 (works on 3.x). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
         <!-- Actuator -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -86,6 +110,15 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- pgvector JDBC + Hibernate type bridge. Lets JPA persist
+             VECTOR(768) columns natively (PGvector type round-trips to
+             float[]/PGvector wrapper). -->
+        <dependency>
+            <groupId>com.pgvector</groupId>
+            <artifactId>pgvector</artifactId>
+            <version>0.1.6</version>
         </dependency>
 
     </dependencies>

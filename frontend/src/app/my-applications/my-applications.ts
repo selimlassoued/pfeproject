@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
+import { normalizeHttpError } from '../utils/http-error';
 import { InterviewService, ProposalResponse } from '../services/interview-service';
 import { NotificationSocketService } from '../services/notification-socket.service';
 import { Subscription } from 'rxjs';
@@ -21,6 +22,10 @@ export class MyApplications implements OnInit, OnDestroy {
   loading = false;
   error: string | null = null;
   withdrawingId: string | null = null;
+
+  // ── pagination ────────────────────────────────────────────────
+  readonly pageSize = 10;
+  currentPage = 0;
 
   /** Pending interview proposals - surfaced as a banner. */
   pendingProposals: ProposalResponse[] = [];
@@ -78,13 +83,61 @@ export class MyApplications implements OnInit, OnDestroy {
     this.appService.getMyApplications().subscribe({
       next: (data) => {
         this.applications = data ?? [];
+        this.clampPage();
         this.loading = false;
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Failed to load your applications';
+        this.error = normalizeHttpError(err).message || 'Failed to load your applications';
         this.loading = false;
       },
     });
+  }
+
+  // ── pagination helpers ───────────────────────────────────────
+  totalPages(): number {
+    return Math.max(1, Math.ceil(this.applications.length / this.pageSize));
+  }
+
+  pagedApplications(): ApplicationDto[] {
+    const start = this.currentPage * this.pageSize;
+    return this.applications.slice(start, start + this.pageSize);
+  }
+
+  pageNumbers(): (number | '…')[] {
+    const total = this.totalPages();
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+    const cur = this.currentPage;
+    const out: (number | '…')[] = [0];
+    if (cur > 2) out.push('…');
+    const start = Math.max(1, cur - 1);
+    const end   = Math.min(total - 2, cur + 1);
+    for (let i = start; i <= end; i++) out.push(i);
+    if (cur < total - 3) out.push('…');
+    out.push(total - 1);
+    return out;
+  }
+
+  goToPage(p: number | '…'): void {
+    if (p === '…') return;
+    const total = this.totalPages();
+    this.currentPage = Math.max(0, Math.min(total - 1, p));
+  }
+
+  prevPage(): void { if (this.currentPage > 0) this.currentPage--; }
+  nextPage(): void { if (this.currentPage < this.totalPages() - 1) this.currentPage++; }
+
+  rangeStart(): number {
+    return this.applications.length === 0 ? 0 : this.currentPage * this.pageSize + 1;
+  }
+  rangeEnd(): number {
+    return Math.min(this.applications.length, (this.currentPage + 1) * this.pageSize);
+  }
+
+  /** Keep currentPage valid after the list shrinks (e.g. after withdraw). */
+  private clampPage(): void {
+    const max = this.totalPages() - 1;
+    if (this.currentPage > max) this.currentPage = max;
+    if (this.currentPage < 0) this.currentPage = 0;
   }
 
   openDetails(app: ApplicationDto) {
@@ -129,10 +182,11 @@ export class MyApplications implements OnInit, OnDestroy {
         this.applications = this.applications.filter(
           a => a.applicationId !== app.applicationId
         );
+        this.clampPage();
       },
       error: (err) => {
         this.withdrawingId = null;
-        this.error = err?.error?.message || 'Failed to withdraw application.';
+        this.error = normalizeHttpError(err).message || 'Failed to withdraw application.';
       },
     });
   }

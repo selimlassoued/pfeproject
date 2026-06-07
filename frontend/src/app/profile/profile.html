@@ -32,7 +32,9 @@
             <div class="form-group">
               <label>Username <span class="req">*</span></label>
               <input class="input" formControlName="username" placeholder="your.username" />
-              @if (form.get('username')?.invalid && form.get('username')?.touched) {
+              @if (form.get('username')?.errors?.['server']) {
+                <small class="field-error">{{ form.get('username')?.errors?.['server'] }}</small>
+              } @else if (form.get('username')?.invalid && form.get('username')?.touched) {
                 <small class="field-error">
                   @if (form.get('username')?.errors?.['required']) { Username is required }
                   @else { Username must be at least 3 characters }
@@ -49,16 +51,16 @@
             <div class="form-group">
               <label>First name <span class="req">*</span></label>
               <input class="input" formControlName="firstName" placeholder="First Name" />
-              @if (form.get('firstName')?.invalid && form.get('firstName')?.touched) {
-                <small class="field-error">First name is required</small>
+              @if (fieldError('firstName', 'First name is required'); as msg) {
+                <small class="field-error">{{ msg }}</small>
               }
             </div>
 
             <div class="form-group">
               <label>Last name <span class="req">*</span></label>
               <input class="input" formControlName="lastName" placeholder="Last Name" />
-              @if (form.get('lastName')?.invalid && form.get('lastName')?.touched) {
-                <small class="field-error">Last name is required</small>
+              @if (fieldError('lastName', 'Last name is required'); as msg) {
+                <small class="field-error">{{ msg }}</small>
               }
             </div>
 
@@ -77,7 +79,9 @@
                   (input)="onPhoneInput($event)"
                 />
               </div>
-              @if (form.get('phoneNational')?.invalid && form.get('phoneNational')?.touched) {
+              @if (form.get('phoneNational')?.errors?.['server']) {
+                <small class="field-error">{{ form.get('phoneNational')?.errors?.['server'] }}</small>
+              } @else if (form.get('phoneNational')?.invalid && form.get('phoneNational')?.touched) {
                 <small class="field-error">
                   @if (form.get('phoneNational')?.errors?.['required']) { Phone number is required }
                   @else { Enter exactly 8 digits }

@@ -1,73 +1,26 @@
 server:
-  port: ${SERVER_PORT:8086}
+  # Port is left at the Spring Boot default (8080), same as every other
+  # service. Eureka registers (name, host, 8080) on startup so the gateway
+  # finds us via lb://interview-service without any hardcoded port.
   error:
     include-message: always
 
 recordings:
-  dir: ${RECORDINGS_DIR:recordings}
+  dir: ${RECORDINGS_DIR:recordings}    # interview-specific path
 
 spring:
-  servlet:
-    multipart:
-      enabled: true
-      max-file-size: 500MB
-      max-request-size: 500MB
   application:
-    name: interview-service
+    name: interview-service     # required so Spring knows which remote file to fetch
   cloud:
     discovery:
       enabled: true
   config:
     import: optional:configserver:${CONFIG_SERVICE_URL:http://config-server:9999}
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/interviewdb}
-    username: ${SPRING_DATASOURCE_USERNAME:interviewuser}
-    password: ${SPRING_DATASOURCE_PASSWORD:interviewpass}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: 5672
-
-eureka:
-  client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka
-  instance:
-    prefer-ip-address: true
-
-analysis:
-  sidecar:
-    url: ${ANALYSIS_SIDECAR_URL:http://analysis-service:8000}
-
-google:
-  client-id: ${GOOGLE_CLIENT_ID:}
-  client-secret: ${GOOGLE_CLIENT_SECRET:}
-  redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4200/google-callback}
-
-app:
-  messaging:
-    exchange: ${APP_MESSAGING_EXCHANGE:app.events}
-
-application:
-  service:
-    url: ${APPLICATION_SERVICE_URL:http://application-microservice:8081}
-
-job:
-  service:
-    url: ${JOB_SERVICE_URL:http://job-microservice:8080}
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "mappings,health"
-user:
-  service:
-    url: http://gateway:8888   # or http://user-service:8083 if calling directly
+  servlet:
+    multipart:
+      # 50 MB is comfortably more than any real interview audio chunk
+      # (typically 5-20 MB at the codec we use) while keeping a single
+      # malicious request from filling the recordings disk. Used to be
+      # 500 MB which was an easy DoS vector.
+      max-file-size: 50MB
+      max-request-size: 50MB

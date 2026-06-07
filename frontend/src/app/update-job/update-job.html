@@ -76,8 +76,8 @@
             placeholder="e.g. Frontend Developer"
             formControlName="title"
           />
-          @if (form.get('title')?.touched && form.get('title')?.invalid) {
-            <div class="text-muted" style="margin-top:.35rem;">Title is required.</div>
+          @if (fieldError('title', 'Title is required.'); as msg) {
+            <div class="text-muted" style="margin-top:.35rem;">{{ msg }}</div>
           }
         </div>
 
@@ -90,8 +90,8 @@
               <option value="HYBRID">Hybrid</option>
               <option value="REMOTE">Remote</option>
             </select>
-            @if (form.get('workArrangement')?.touched && form.get('workArrangement')?.invalid) {
-              <div class="text-muted" style="margin-top:.35rem;">Work arrangement is required.</div>
+            @if (fieldError('workArrangement', 'Work arrangement is required.'); as msg) {
+              <div class="text-muted" style="margin-top:.35rem;">{{ msg }}</div>
             }
           </div>
 
@@ -104,8 +104,8 @@
               <option value="CONTRACT">CONTRACT</option>
               <option value="INTERNSHIP">INTERNSHIP</option>
             </select>
-            @if (form.get('employmentType')?.touched && form.get('employmentType')?.invalid) {
-              <div class="text-muted" style="margin-top:.35rem;">Employment type is required.</div>
+            @if (fieldError('employmentType', 'Employment type is required.'); as msg) {
+              <div class="text-muted" style="margin-top:.35rem;">{{ msg }}</div>
             }
           </div>
 
@@ -120,8 +120,8 @@
                 <option [value]="d.value">{{ d.label }}</option>
               }
             </select>
-            @if (form.get('domain')?.touched && form.get('domain')?.invalid) {
-              <div class="text-muted" style="margin-top:.35rem;">Domain is required.</div>
+            @if (fieldError('domain', 'Domain is required.'); as msg) {
+              <div class="text-muted" style="margin-top:.35rem;">{{ msg }}</div>
             }
           </div>
         </div>
@@ -130,8 +130,8 @@
           <label class="toolbar-label">Description <span style="color:var(--color-secondary)">*</span></label>
           <textarea class="input" rows="7" formControlName="description"
             placeholder="Responsibilities, stack, team, benefits, process…"></textarea>
-          @if (c('description')?.touched && c('description')?.invalid) {
-            <div class="hint">Description is required (min 10 chars).</div>
+          @if (fieldError('description', 'Description is required (min 10 chars).'); as msg) {
+            <div class="hint">{{ msg }}</div>
           }
         </div>
       </section>
@@ -284,13 +284,31 @@
 
         <div formArrayName="requirements" class="req-list">
           @for (r of requirements().controls; track $index; let i = $index) {
-          <div class="req-item" [formGroupName]="i">
+          <div class="req-item"
+               [class.req-item--must]="r.get('mustHave')?.value"
+               [formGroupName]="i">
             <div class="req-top">
               <div class="req-meta">
                 <span class="pill">#{{ i + 1 }}</span>
                 <span class="text-muted">Requirement</span>
               </div>
-              <button class="btn btn-ghost" type="button" (click)="removeRequirement(i)">Remove</button>
+              <div class="req-actions">
+                <label class="must-toggle"
+                       [class.is-on]="r.get('mustHave')?.value"
+                       title="Auto-flag candidates that miss this requirement"
+                       [attr.aria-pressed]="r.get('mustHave')?.value">
+                  <input type="checkbox" formControlName="mustHave" hidden />
+                  <span class="must-toggle-dot"></span>
+                  <span class="must-toggle-label">
+                    @if (r.get('mustHave')?.value) {
+                      Must-have
+                    } @else {
+                      Nice-to-have
+                    }
+                  </span>
+                </label>
+                <button class="btn btn-ghost" type="button" (click)="removeRequirement(i)">Remove</button>
+              </div>
             </div>
 
             <div class="req-grid">
@@ -312,7 +330,11 @@
                    logic as add-job.html so create + edit stay in sync. -->
               <div class="field req-desc">
                 <label class="toolbar-label">
-                  {{ r.get('category')?.value === 'LANGUAGE' ? 'Language' : 'Description' }}
+                  @switch (r.get('category')?.value) {
+                    @case ('LANGUAGE')  { Language }
+                    @case ('EDUCATION') { Diploma name }
+                    @default            { Description }
+                  }
                   <span style="color:var(--color-secondary)">*</span>
                 </label>
                 @if (r.get('category')?.value === 'LANGUAGE') {
@@ -322,6 +344,9 @@
                       <option [value]="l">{{ l }}</option>
                     }
                   </select>
+                } @else if (r.get('category')?.value === 'EDUCATION') {
+                  <input class="input" type="text" formControlName="description"
+                    placeholder="e.g. Bachelor in Computer Science" />
                 } @else {
                   <input class="input" type="text" formControlName="description"
                     placeholder="e.g. Java, Bachelor in CS, …" />
@@ -344,28 +369,125 @@
 
               <!-- EDUCATION structured fields -->
               @if (r.get('category')?.value === 'EDUCATION') {
-                <div class="field">
-                  <label class="toolbar-label">Degree(s) accepted</label>
-                  <div class="degree-checkboxes">
-                    @for (opt of degreeOptions; track opt.value) {
-                      <label class="degree-check">
-                        <input type="checkbox"
-                               [checked]="isDegreeSelected(r, opt.value)"
-                               (change)="toggleDegree(r, opt.value, $any($event.target).checked)">
-                        <span>{{ opt.label }}</span>
+                <div class="edu-block">
+                  <div class="edu-block-header">
+                    <svg class="edu-block-icon" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M22 10 12 5 2 10l10 5 10-5z"/>
+                      <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                    </svg>
+                    <span class="edu-block-title">Education details</span>
+                  </div>
+
+                  <div class="edu-section"
+                       [class.edu-section--invalid]="needsDegreeSelection(r)">
+                    <div class="edu-section-head">
+                      <label class="edu-section-label">
+                        Degree(s) accepted
+                        <span style="color:var(--color-secondary)">*</span>
                       </label>
+                      <span class="edu-section-hint">Pick at least one - candidates with any of these qualify</span>
+                    </div>
+                    <div class="edu-chip-grid">
+                      @for (opt of degreeOptions; track opt.value) {
+                        <button type="button" class="edu-chip"
+                                [class.is-active]="isDegreeSelected(r, opt.value)"
+                                (click)="toggleDegree(r, opt.value, !isDegreeSelected(r, opt.value))">
+                          @if (isDegreeSelected(r, opt.value)) {
+                            <span class="edu-chip-check">✓</span>
+                          }
+                          <span>{{ opt.label }}</span>
+                        </button>
+                      }
+                    </div>
+                    @if (needsDegreeSelection(r)) {
+                      <div class="edu-error">
+                        Select at least one degree - an EDUCATION requirement with no degree is empty.
+                      </div>
                     }
                   </div>
-                  <small class="field-hint">Tick every degree that qualifies. Leave all unchecked = any degree accepted.</small>
+
+                  <div class="edu-row">
+                    <div class="field">
+                      <label class="toolbar-label">Institute</label>
+                      <input class="input" type="text" formControlName="institute"
+                        placeholder="e.g. INSAT, ENSI, ESPRIT (optional)" />
+                      <small class="field-hint">If set, candidates from this school match better.</small>
+                    </div>
+                    <div class="field">
+                      <label class="toolbar-label">Enrollment status</label>
+                      <select class="input" formControlName="enrollmentType">
+                        <option [ngValue]="null">Student or Graduate</option>
+                        <option value="STUDENT">Student (ongoing)</option>
+                        <option value="GRADUATE">Graduate (completed)</option>
+                        <option value="BOTH">Either</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <div class="field">
-                  <label class="toolbar-label">Enrollment</label>
-                  <select class="input" formControlName="enrollmentType">
-                    <option [ngValue]="null">Student or Graduate</option>
-                    <option value="STUDENT">Student (ongoing)</option>
-                    <option value="GRADUATE">Graduate (completed)</option>
-                    <option value="BOTH">Either</option>
-                  </select>
+              }
+
+              <!-- CERTIFICATION structured fields -->
+              @if (r.get('category')?.value === 'CERTIFICATION') {
+                <div class="cert-block">
+                  <div class="cert-block-header">
+                    <svg class="cert-block-icon" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="9" r="6"/>
+                      <path d="M9 13.5 7 21l5-3 5 3-2-7.5"/>
+                    </svg>
+                    <span class="cert-block-title">Certification details</span>
+                  </div>
+
+                  <div class="cert-row">
+                    <div class="field">
+                      <label class="toolbar-label">Issuing organization</label>
+                      <app-org-combobox
+                        formControlName="issuingOrg"
+                        [groups]="issuingOrgGroups"
+                        [orgs]="issuingOrgs"
+                        placeholder="Search organizations…"
+                        anyLabel="Any organization"
+                        (valueChange)="onIssuingOrgChange(r, $event)" />
+                      <small class="field-hint">
+                        If set, only certs from this org will count. Not listed? Pick <strong>Other / Custom</strong> and type the org name below.
+                      </small>
+                    </div>
+                  </div>
+
+                  @if (r.get('issuingOrg')?.value === 'OTHER') {
+                    <div class="cert-row">
+                      <div class="field">
+                        <label class="toolbar-label">Custom organization name <span style="color:var(--color-secondary)">*</span></label>
+                        <input class="input" type="text" formControlName="customIssuingOrg"
+                               placeholder="e.g. MongoDB University, SAP, ServiceNow" />
+                        <small class="field-hint">Only certs whose text mentions this name will count.</small>
+                      </div>
+                    </div>
+                  }
+
+                  <div class="cert-currency-row">
+                    <label class="cert-toggle"
+                           [class.is-on]="r.get('requireCurrent')?.value">
+                      <input type="checkbox" formControlName="requireCurrent"
+                             (change)="onRequireCurrentToggle(r, $any($event.target).checked)" hidden />
+                      <span class="cert-toggle-dot"></span>
+                      <span class="cert-toggle-text">
+                        <span class="cert-toggle-label">Must be current</span>
+                        <span class="cert-toggle-sub">Expired certs (past validity period) won't count.</span>
+                      </span>
+                    </label>
+
+                    @if (r.get('requireCurrent')?.value) {
+                      <div class="field cert-validity">
+                        <label class="toolbar-label">Validity (years)</label>
+                        <input class="input" type="number" min="1" max="20"
+                               formControlName="validityYears" placeholder="e.g. 3" />
+                      </div>
+                    }
+                  </div>
                 </div>
               }
 
@@ -374,10 +496,6 @@
                 <div class="field">
                   <label class="toolbar-label">Min years</label>
                   <input class="input" type="number" formControlName="minYears" placeholder="e.g. 2" />
-                </div>
-                <div class="field">
-                  <label class="toolbar-label">Max years</label>
-                  <input class="input" type="number" formControlName="maxYears" placeholder="e.g. 5" />
                 </div>
               }
 

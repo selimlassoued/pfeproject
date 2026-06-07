@@ -6,6 +6,7 @@ import Keycloak from 'keycloak-js';
 import { KeycloakAccountService } from '../services/keycloak-account-service';
 import { CandidateProfileService, CandidateLanguage } from '../services/candidate-profile.service';
 import { LanguageOptionsService, ALWAYS_SHOWN_LANGUAGES } from '../services/language-options.service';
+import { applyServerErrors, clearServerErrors, normalizeHttpError } from '../utils/http-error';
 import { CatalogService, CatalogItem } from '../services/catalog.service';
 import { SOFT_SKILLS } from '../services/soft-skills';
 
@@ -212,6 +213,7 @@ export class Onboarding implements OnInit {
   async finish() {
     this.saving = true;
     this.error  = undefined;
+    clearServerErrors(this.form);
     try {
       const raw = this.form.getRawValue();
       await this.profileService.save({
@@ -226,8 +228,10 @@ export class Onboarding implements OnInit {
         preferredJobType:         this.selectedJobTypes,
       });
       this.router.navigate(['/browse']);
-    } catch {
-      this.error = 'Failed to save. Please try again.';
+    } catch (e: any) {
+      const httpError = normalizeHttpError(e);
+      applyServerErrors(this.form, httpError.fieldErrors);
+      this.error = httpError.message || 'Failed to save. Please try again.';
     } finally {
       this.saving = false;
     }

@@ -42,8 +42,18 @@ export class NotificationSocketService {
   offerChanged$ = this.offer$.asObservable();
 
   constructor() {
+    // Use a webSocketFactory (instead of a fixed brokerURL string) so every
+    // reconnect reads the CURRENT keycloak.token. The token is appended as
+    // ?access_token= and a gateway filter promotes it to an Authorization
+    // Bearer header before Spring Security runs. Reading the token lazily
+    // here means refreshes - both background refreshes by keycloak-js and
+    // a fresh login - are picked up automatically on the next reconnect.
     this.client = new Client({
-      brokerURL: 'ws://localhost:8888/ws/notifications',
+      webSocketFactory: () => {
+        const token = (this.keycloak as any)?.token ?? '';
+        const sep = token ? `?access_token=${encodeURIComponent(token)}` : '';
+        return new WebSocket(`ws://localhost:8888/ws/notifications${sep}`);
+      },
       reconnectDelay: 5000,
     });
 

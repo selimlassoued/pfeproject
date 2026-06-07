@@ -1,5 +1,5 @@
 .hireai-nav {
-  background: rgba(11, 16, 38, 0.72) !important;
+  background: var(--navbar-bg) !important;
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-border);
   position: fixed;
@@ -9,6 +9,12 @@
   z-index: 9999;
 }
 
+/* Force every direct child of the navbar UL to vertically center,
+   so text nav-links, SVG icons, the bell button, and avatars all share
+   the same baseline regardless of their intrinsic height. */
+.hireai-nav .navbar-nav { align-items: center; }
+.hireai-nav .navbar-nav > .nav-item { display: flex; align-items: center; }
+
 .hireai-brand {
   font-family: var(--font-display);
   color: var(--color-cream) !important;
@@ -16,6 +22,25 @@
   display: inline-flex;
   align-items: baseline;
   gap: .6rem;
+}
+
+/* Logo sizing. The dark and light assets have different aspect ratios
+   (logo-light is wider — 3.2:1 vs logo's 2.7:1), so we cap BOTH dimensions
+   on each variant independently to make them feel visually balanced in
+   the navbar. !important defends against any Bootstrap / utility class
+   that might land a more specific rule on top later. */
+.hireai-logo {
+  height: auto !important;
+  width: auto !important;
+  max-height: 44px !important;
+  max-width: 140px !important;
+  display: block;
+  object-fit: contain;
+  transition: max-height .15s ease, max-width .15s ease;
+}
+:root[data-theme="light"] .hireai-logo {
+  max-height: 26px !important;
+  max-width: 90px !important;
 }
 
 .hireai-brand-sub {
@@ -30,13 +55,15 @@
   border-radius: var(--radius-pill);
   padding: 0.55rem 0.85rem !important;
   border: 1px solid transparent;
+  text-decoration: none !important;
   transition: background 200ms ease, border-color 200ms ease;
 }
 
 .hireai-link:hover,
 .hireai-link:focus {
-  background: rgba(121, 164, 233, 0.10);
+  background: var(--border-subtle);
   border-color: var(--color-border);
+  text-decoration: none !important;
 }
 
 /* Icon-only nav link (e.g. the interview calendar) */
@@ -49,7 +76,7 @@
 .nav-icon-link svg { width: 22px; height: 22px; }
 
 .hireai-dropdown {
-  background: rgba(11, 16, 38, 0.92) !important;
+  background: var(--surface-solid) !important;
   border: 1px solid var(--color-border) !important;
   border-radius: 14px;
   padding: .4rem;
@@ -65,7 +92,7 @@
 
 .hireai-dd-item:hover,
 .hireai-dd-btn:hover {
-  background: rgba(121, 164, 233, 0.12) !important;
+  background: var(--border-subtle) !important;
 }
 
 .hireai-dd-btn {
@@ -76,10 +103,12 @@
 }
 
 .hireai-toggler {
-  border-color: rgba(121, 164, 233, 0.35) !important;
+  border-color: var(--border-strong) !important;
 }
 
-.hireai-nav .navbar-toggler-icon {
+/* Invert the Bootstrap toggler icon in dark mode (it ships dark on white).
+   In light mode leave it as-is so it shows dark on the light navbar. */
+:root[data-theme="dark"] .hireai-nav .navbar-toggler-icon {
   filter: invert(1) grayscale(1);
 }
 .hireai-nav img {
@@ -88,5 +117,5 @@
       border-radius: 14px;
       object-fit: cover;
       box-shadow: var(--shadow-sm);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid var(--surface-3);
 }

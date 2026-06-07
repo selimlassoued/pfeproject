@@ -2,7 +2,7 @@
 .rank-cell { width: 3rem; text-align: center; }
 .rank-badge {
   display: inline-block; font-size: .75rem; font-weight: 700;
-  color: rgba(255,255,255,0.4);
+  color: var(--text-soft);
 }
 .rank-badge.rank-top { color: #fbbf24; }
 
@@ -82,15 +82,15 @@
 }
 
 .info-block{
-  border:1px solid rgba(121,164,233,0.18);
-  background: rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+  background: var(--surface-2);
   border-radius: var(--radius-xl);
   padding: .9rem;
 }
 
 .label{
   font-size:.85rem;
-  color: rgba(248,250,252,.72);
+  color: var(--text-muted);
 }
 
 .value{
@@ -108,7 +108,7 @@
 .divider{
   margin: 1.25rem 0;
   height:1px;
-  background: rgba(121,164,233,0.18);
+  background: var(--border);
 }
 
 .section-title{
@@ -160,8 +160,8 @@
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--color-secondary);
-  background: rgba(121,164,233,0.1);
-  border: 1px solid rgba(121,164,233,0.25);
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
   padding: 0.2rem 0.7rem;
 }
@@ -191,7 +191,7 @@
   transition: all 0.15s ease;
 }
 .apps-status-tab:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--surface-2);
   color: var(--color-text);
 }
 .apps-status-tab--active {
@@ -212,7 +212,7 @@
 
 /* Table wrapper */
 .apps-table-wrap {
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.035));
+  background: linear-gradient(180deg, var(--surface-3), rgba(255,255,255,0.035));
   border: 1px solid var(--color-border);
   border-radius: 1.75rem;
   overflow: hidden;
@@ -230,7 +230,7 @@
   border-collapse: collapse;
 }
 .apps-table thead tr {
-  border-bottom: 1px solid rgba(121,164,233,0.12);
+  border-bottom: 1px solid var(--border-subtle);
 }
 .apps-table th {
   padding: 0.75rem 1.25rem;
@@ -321,7 +321,7 @@
   z-index: 1000;
   width: min(480px, 92vw);
   background: var(--color-surface, #1a1f2e);
-  border: 1px solid rgba(121,164,233,0.18);
+  border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: 0 24px 64px rgba(0,0,0,0.55);
 }
@@ -331,17 +331,17 @@
 }
 .sl-modal-title { font-size: 1rem; font-weight: 800; color: var(--color-cream); margin: 0; }
 .sl-modal-close {
-  background: none; border: none; color: rgba(248,250,252,.45);
+  background: none; border: none; color: var(--text-soft);
   font-size: 1rem; cursor: pointer; padding: 0;
 }
 .sl-modal-close:hover { color: var(--color-cream); }
 .sl-modal-body { padding: 1.1rem 1.4rem; display: grid; gap: .9rem; }
-.sl-modal-desc { color: rgba(248,250,252,.65); font-size: .85rem; margin: 0; line-height: 1.55; }
+.sl-modal-desc { color: var(--text-muted); font-size: .85rem; margin: 0; line-height: 1.55; }
 .sl-modal-footer {
   display: flex; justify-content: flex-end; gap: .65rem;
   padding: 0 1.4rem 1.2rem;
 }
-.sl-label { font-size: .75rem; font-weight: 700; color: rgba(248,250,252,.5); text-transform: uppercase; letter-spacing: .06em; }
+.sl-label { font-size: .75rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .06em; }
 .sl-threshold-row { display: flex; justify-content: space-between; align-items: center; }
 .sl-threshold-value { font-size: 1.4rem; font-weight: 900; color: #fbbf24; }
 .sl-slider {
@@ -349,7 +349,7 @@
 }
 .sl-slider-labels {
   display: flex; justify-content: space-between;
-  font-size: .72rem; color: rgba(248,250,252,.35);
+  font-size: .72rem; color: var(--text-soft);
 }
 .sl-result {
   border-radius: 8px; padding: .7rem 1rem;
@@ -366,4 +366,183 @@
   background: rgba(251,191,36,.10);
   border: 1px solid rgba(251,191,36,.22);
   border-radius: 6px;
+}
+/* ─── Requirement cards ──────────────────────────────────────────────────── */
+/* Per-category colour tokens — used for left edge, badge, and chip accents.  */
+:host {
+  --req-skill-color: 121, 164, 233;
+  --req-experience-color: 251, 191, 36;
+  --req-language-color: 52, 211, 153;
+  --req-education-color: 167, 139, 250;
+  --req-certification-color: 244, 114, 182;
+}
+
+.req-grid {
+  display: grid;
+  gap: .65rem;
+  margin-top: .65rem;
+}
+
+.req-card {
+  position: relative;
+  padding: .9rem 1rem .85rem 1.4rem;       /* extra left pad to make room for the accent strip */
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+  border: 1px solid rgba(121,164,233,.18);
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+  overflow: hidden;                         /* clip the radial glow */
+}
+.req-card:hover {
+  border-color: rgba(121,164,233,.45);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+}
+
+/* Full-height left accent strip — much more visible than the partial bar before. */
+.req-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, rgba(var(--req-c, 121,164,233),.95), rgba(var(--req-c, 121,164,233),.55));
+}
+.req-card.req-skill         { --req-c: var(--req-skill-color); }
+.req-card.req-experience    { --req-c: var(--req-experience-color); }
+.req-card.req-language      { --req-c: var(--req-language-color); }
+.req-card.req-education     { --req-c: var(--req-education-color); }
+.req-card.req-certification { --req-c: var(--req-certification-color); }
+
+/* Must-have requirements get a brighter border + warm glow */
+.req-card--must {
+  border-color: rgba(251, 146, 60, .45);
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, .12);
+}
+.req-card--must:hover {
+  border-color: rgba(251, 146, 60, .7);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18),
+              0 0 0 1px rgba(251, 146, 60, .22);
+}
+
+/* "Must-have" pill in the card head */
+.req-must-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .2rem .6rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(251, 146, 60, .22), rgba(251, 146, 60, .1));
+  color: #b45309;
+  border: 1px solid rgba(251, 146, 60, .5);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+:root[data-theme="dark"] .req-must-badge { color: #fed7aa; }
+.req-must-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, .25);
+}
+
+/* Soft category-tinted glow on hover, top-right. Pure decoration. */
+.req-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(220px circle at 92% -10%, rgba(var(--req-c, 121,164,233), .10), transparent 70%);
+  pointer-events: none;
+  opacity: .65;
+  transition: opacity .18s ease;
+}
+.req-card:hover::after { opacity: 1; }
+
+.req-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: .5rem;
+}
+
+.req-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .3rem .65rem;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: rgba(var(--req-c, 121,164,233), .14);
+  color: rgba(var(--req-c, 121,164,233), 1);
+  border: 1px solid rgba(var(--req-c, 121,164,233), .35);
+  /* Slight glow so the chip reads as the primary tag of the card */
+  box-shadow: 0 0 0 3px rgba(var(--req-c, 121,164,233), .06);
+}
+
+.req-icon {
+  font-size: .95rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(var(--req-c, 121,164,233), .35));
+}
+
+.req-weight {
+  font-size: .68rem;
+  color: var(--text-muted);
+  padding: .2rem .55rem;
+  background: var(--surface-1);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+.req-desc {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.45;
+  margin: .15rem 0 .7rem;
+}
+
+.req-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  padding-top: .55rem;
+  border-top: 1px dashed rgba(255,255,255,.07);
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .4rem;
+  padding: .28rem .65rem;
+  border-radius: 8px;
+  background: rgba(var(--req-c, 121,164,233), .07);
+  border: 1px solid rgba(var(--req-c, 121,164,233), .18);
+  font-size: .78rem;
+  color: var(--text);
+  transition: background .15s ease, border-color .15s ease;
+}
+.meta-chip:hover {
+  background: rgba(var(--req-c, 121,164,233), .12);
+  border-color: rgba(var(--req-c, 121,164,233), .30);
+}
+.meta-key {
+  color: var(--text-soft);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: .62rem;
+}
+.meta-val {
+  color: var(--text);
+  font-weight: 700;
+  font-size: .82rem;
 }

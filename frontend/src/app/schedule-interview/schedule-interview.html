@@ -128,6 +128,9 @@
         <input id="si-deadline" type="datetime-local" class="form-input"
                [(ngModel)]="deadline" />
         <div class="si-hint">After this time, unconfirmed slots are released.</div>
+        @if (fieldErrors['deadline']) {
+          <div class="si-date-error">{{ fieldErrors['deadline'] }}</div>
+        }
       </div>
 
       <div class="form-block">
@@ -136,10 +139,21 @@
                   maxlength="500"
                   placeholder="e.g. Looking forward to our chat - feel free to pick any of these."
                   [(ngModel)]="message"></textarea>
+        @if (fieldErrors['message']) {
+          <div class="si-date-error">{{ fieldErrors['message'] }}</div>
+        }
       </div>
     }
 
-    <!-- Error -->
+    <!-- Field errors that don't have a dedicated input (e.g. proposedSlots) -->
+    @if (fieldErrors['proposedSlots']) {
+      <div class="form-error-box">{{ fieldErrors['proposedSlots'] }}</div>
+    }
+    @if (fieldErrors['scheduledAt']) {
+      <div class="form-error-box">{{ fieldErrors['scheduledAt'] }}</div>
+    }
+
+    <!-- Top-level error -->
     @if (error) {
       <div class="form-error-box">{{ error }}</div>
     }

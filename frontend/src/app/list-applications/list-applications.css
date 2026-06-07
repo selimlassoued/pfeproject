@@ -48,15 +48,15 @@
 .apps-error {
   padding: var(--space-6);
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(233, 121, 121, 0.25);
-  background: rgba(233, 121, 121, 0.10);
-  color: rgba(255, 220, 220, 0.95);
+  border: 1px solid rgba(233,121,121,0.25);
+  background: rgba(233,121,121,0.10);
+  color: rgba(255,220,220,0.95);
 }
 
 .apps-tableWrap {
   border-radius: var(--radius-2xl);
-  border: 1px solid rgba(121, 164, 233, 0.24);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
   backdrop-filter: blur(10px);
@@ -74,13 +74,13 @@
   font-family: var(--font-display);
   color: var(--color-cream);
   font-size: 0.95rem;
-  background: rgba(11, 16, 38, 0.55);
-  border-bottom: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
 }
 
 .apps-table tbody td {
   padding: 0.95rem 1rem;
-  border-bottom: 1px solid rgba(121, 164, 233, 0.14);
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--color-text);
   vertical-align: middle;
 }
@@ -90,7 +90,7 @@
 }
 
 .apps-table tbody tr:hover {
-  background: rgba(121, 164, 233, 0.06);
+  background: var(--border-subtle);
 }
 
 .apps-table tbody tr:last-child td {
@@ -100,7 +100,7 @@
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.88rem;
-  color: rgba(248, 250, 252, 0.92);
+  color: var(--text);
 }
 
 .sub-id {
@@ -109,50 +109,16 @@
   font-size: 0.82rem;
 }
 
-/* status pill */
-.app-status {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3rem 0.65rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(121, 164, 233, 0.25);
-  background: rgba(121, 164, 233, 0.1);
-  color: var(--color-secondary);
-  font-size: 0.85rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.app-status.applied { background: rgba(121, 164, 233, 0.1); }
-.app-status.under_review { background: rgba(121, 164, 233, 0.14); }
-.app-status.interview_phase {
-  background: rgba(255, 252, 229, 0.1);
-  color: var(--color-cream);
-  border-color: rgba(255, 252, 229, 0.18);
-}
-.app-status.offer {
-  background: rgba(121, 233, 170, 0.1);
-  border-color: rgba(121, 233, 170, 0.18);
-  color: rgba(200, 255, 230, 0.95);
-}
-.app-status.rejected {
-  background: rgba(233, 121, 121, 0.12);
-  border-color: rgba(233, 121, 121, 0.2);
-  color: rgba(255, 220, 220, 0.95);
-}
-.app-status.hired {
-  background: rgba(121, 233, 170, 0.14);
-  border-color: rgba(121, 233, 170, 0.22);
-  color: rgba(200, 255, 230, 1);
-}
+/* .app-status.* lives in styles.css now — one source of truth shared
+   with my-applications and any future page that uses the same pill. */
 
 .apps-empty {
   margin-top: var(--space-8);
   text-align: center;
   padding: var(--space-12);
-  border: 1px dashed rgba(121, 164, 233, 0.3);
+  border: 1px dashed var(--border-strong);
   border-radius: var(--radius-2xl);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-2);
   color: var(--color-text-muted);
 }
 
@@ -163,8 +129,8 @@
   justify-content:space-between;
   gap: var(--space-4);
   padding: .85rem 1rem;
-  border-top: 1px solid rgba(121, 164, 233, 0.18);
-  background: rgba(11, 16, 38, 0.35);
+  border-top: 1px solid var(--border);
+  background: var(--surface-1);
   backdrop-filter: blur(10px);
 }
 
@@ -189,7 +155,7 @@
 }
 
 .apps-pager-mid{
-  color: rgba(248,250,252,.78);
+  color: var(--text-muted);
   font-size: .92rem;
   font-weight: 700;
   white-space: nowrap;
@@ -211,8 +177,8 @@
   gap: .35rem;
   padding: .3rem .45rem;
   border-radius: 999px;
-  border: 1px solid rgba(121, 164, 233, 0.18);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
 }
 
 .apps-ellipsis{
@@ -221,7 +187,7 @@
   justify-content:center;
   width: 26px;
   height: 32px;
-  color: rgba(248,250,252,.55);
+  color: var(--text-soft);
   user-select: none;
   font-weight: 900;
   letter-spacing: .08em;
@@ -232,9 +198,9 @@
   height: 32px;
   padding: 0 .6rem;
   border-radius: 999px;
-  border: 1px solid rgba(121, 164, 233, 0.18);
-  background: rgba(255,255,255,0.02);
-  color: rgba(248,250,252,.88);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text);
   font-weight: 900;
   font-size: .88rem;
   cursor: pointer;
@@ -242,16 +208,16 @@
 }
 
 .apps-pageBtn:hover:not(:disabled){
-  background: rgba(121, 164, 233, 0.10);
-  border-color: rgba(121, 164, 233, 0.32);
+  background: var(--border-subtle);
+  border-color: var(--border-strong);
   transform: translateY(-1px);
 }
 
 .apps-pageBtn.active{
-  background: rgba(121, 164, 233, 0.18);
-  border-color: rgba(121, 164, 233, 0.45);
+  background: var(--border);
+  border-color: var(--border-prominent);
   color: var(--color-cream);
-  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.12);
+  box-shadow: 0 0 0 3px var(--border-subtle);
 }
 
 .apps-pageBtn:disabled{
@@ -324,9 +290,9 @@
   -moz-appearance: none;
   appearance: none;
 
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(248, 250, 252, 0.92);
-  border: 1px solid rgba(121, 164, 233, 0.22);
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 14px;
 
   padding: 0.7rem 2.4rem 0.7rem 0.9rem; /* room for arrow */
@@ -337,19 +303,19 @@
 /* hover/focus */
 .apps-page select.input:hover,
 .apps-pager-select:hover {
-  border-color: rgba(121, 164, 233, 0.35);
+  border-color: var(--border-strong);
 }
 
 .apps-page select.input:focus,
 .apps-pager-select:focus {
-  border-color: rgba(121, 164, 233, 0.55);
-  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.14);
+  border-color: rgba(121,164,233,0.55);
+  box-shadow: 0 0 0 3px var(--border-subtle);
 }
 
 /* Try to style the dropdown list (options) */
 .apps-page select option {
   background: #0b1026;  /* dark popup background */
-  color: rgba(248, 250, 252, 0.95);
+  color: var(--text);
 }
 
 /* Add a custom arrow */
@@ -378,8 +344,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(121,164,233,0.1);
-  border: 1px solid rgba(121,164,233,0.3);
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
   padding: 0.3rem 0.85rem;
   font-size: 0.76rem;
@@ -410,14 +376,20 @@
   border-radius: 99px;
   margin-bottom: .25rem;
 }
+/* Defaults = original dark-mode look. */
 .score-high    { background: rgba(72,187,120,.15); color: #48bb78; border: 1px solid rgba(72,187,120,.3); }
 .score-mid     { background: rgba(237,137,54,.15);  color: #ed8936; border: 1px solid rgba(237,137,54,.3); }
 .score-low     { background: rgba(252,129,129,.15); color: #fc8181; border: 1px solid rgba(252,129,129,.3); }
-.score-pending { color: rgba(255,255,255,.3); font-size: .85rem; }
+.score-pending { color: var(--text-soft); font-size: .85rem; }
+
+/* Light-mode overrides — saturated tints + deep readable text on white. */
+:root[data-theme="light"] .score-high { background: rgba(34,197,94,0.22); border-color: rgba(34,197,94,0.65); color: #15803d; }
+:root[data-theme="light"] .score-mid  { background: rgba(251,191,36,0.22); border-color: rgba(251,191,36,0.65); color: #92400e; }
+:root[data-theme="light"] .score-low  { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.65); color: #b91c1c; }
 
 .score-hint {
   font-size: .7rem;
-  color: rgba(255,255,255,.4);
+  color: var(--text-muted);
   line-height: 1.4;
   cursor: help;
   display: block;

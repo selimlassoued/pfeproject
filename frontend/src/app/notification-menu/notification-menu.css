@@ -1,7 +1,9 @@
 /* ── wrapper must be position:relative so dropdown + detail card are anchored ── */
 :host {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
 }
 
 /* ── Bell button ── */
@@ -17,7 +19,7 @@
   justify-content: center;
   transition: background 0.15s;
 }
-.notif-button:hover { background: rgba(121,164,233,0.1); }
+.notif-button:hover { background: var(--border-subtle); }
 .notif-icon { width: 21px; height: 21px; display: block; }
 .notif-badge {
   position: absolute;
@@ -40,7 +42,7 @@
   right: 0;
   width: 320px;
   background: linear-gradient(180deg, rgba(20,28,60,0.98), rgba(15,22,48,0.98));
-  border: 1px solid rgba(121,164,233,0.2);
+  border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.5);
   z-index: 1000;
@@ -58,7 +60,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.9rem 1.1rem 0.7rem;
-  border-bottom: 1px solid rgba(121,164,233,0.1);
+  border-bottom: 1px solid var(--border-subtle);
 }
 .notif-title {
   font-size: 0.8rem;
@@ -84,14 +86,14 @@
   padding: 2rem;
   text-align: center;
   font-size: 0.82rem;
-  color: rgba(248,250,252,0.25);
+  color: var(--text-soft);
 }
 
 /* ── Notification list ── */
 .notif-list { max-height: 360px; overflow-y: auto; }
 .notif-list::-webkit-scrollbar { width: 4px; }
 .notif-list::-webkit-scrollbar-track { background: transparent; }
-.notif-list::-webkit-scrollbar-thumb { background: rgba(121,164,233,0.2); border-radius: 4px; }
+.notif-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
 .notif-item {
   display: flex;
@@ -105,7 +107,7 @@
 }
 .notif-item:last-child { border-bottom: none; }
 .notif-item:hover { background: rgba(121,164,233,0.07); }
-.notif-item--active { background: rgba(121,164,233,0.1) !important; }
+.notif-item--active { background: var(--border-subtle) !important; }
 .notif-item--unread { background: rgba(121,164,233,0.04); }
 
 .notif-item-left {
@@ -128,7 +130,7 @@
 .notif-item-title {
   font-size: 0.79rem;
   font-weight: 500;
-  color: #e8f0fe;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -136,14 +138,14 @@
 .notif-item--unread .notif-item-title { font-weight: 700; color: #fff; }
 .notif-item-time {
   font-size: 0.65rem;
-  color: rgba(248,250,252,0.28);
+  color: var(--text-soft);
   margin-top: 0.15rem;
   font-family: monospace;
 }
 
 .notif-chevron {
   font-size: 0.9rem;
-  color: rgba(248,250,252,0.2);
+  color: var(--text-soft);
   transition: transform 0.18s ease;
   flex-shrink: 0;
 }
@@ -159,7 +161,7 @@
   right: 330px; /* sits to the left of the dropdown */
   width: 300px;
   background: linear-gradient(180deg, rgba(20,28,60,0.99), rgba(13,19,45,0.99));
-  border: 1px solid rgba(121,164,233,0.25);
+  border: 1px solid var(--border-strong);
   border-radius: 16px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.55);
   z-index: 1001;
@@ -188,7 +190,7 @@
 /* per-type colors */
 .ndc-type-USER_BLOCK                { color: #f87171; background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.3); }
 .ndc-type-USER_UNBLOCK              { color: #4ade80; background: rgba(74,222,128,0.12);  border-color: rgba(74,222,128,0.3); }
-.ndc-type-APPLICATION_STATUS_UPDATE { color: #79a4e9; background: rgba(121,164,233,0.12); border-color: rgba(121,164,233,0.3); }
+.ndc-type-APPLICATION_STATUS_UPDATE { color: #79a4e9; background: var(--border-subtle); border-color: var(--border-strong); }
 .ndc-type-JOB_UPDATED               { color: #fbbf24; background: rgba(251,191,36,0.12);  border-color: rgba(251,191,36,0.3); }
 .ndc-type-ROLE_UPDATE               { color: #a78bfa; background: rgba(167,139,250,0.12); border-color: rgba(167,139,250,0.3); }
 .ndc-type-INTERVIEW_INVITE          { color: #4ade80; background: rgba(74,222,128,0.12);  border-color: rgba(74,222,128,0.3); }
@@ -199,7 +201,7 @@
 .ndc-close {
   background: transparent;
   border: none;
-  color: rgba(248,250,252,0.3);
+  color: var(--text-soft);
   font-size: 0.75rem;
   cursor: pointer;
   padding: 0.1rem 0.3rem;
@@ -207,29 +209,29 @@
   transition: color 0.14s, background 0.14s;
   font-family: inherit;
 }
-.ndc-close:hover { color: #e8f0fe; background: rgba(255,255,255,0.07); }
+.ndc-close:hover { color: var(--text); background: var(--surface-3); }
 
 .ndc-title {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #e8f0fe;
+  color: var(--text);
   margin-bottom: 0.25rem;
   line-height: 1.35;
 }
 .ndc-time {
   font-size: 0.65rem;
-  color: rgba(248,250,252,0.28);
+  color: var(--text-soft);
   font-family: monospace;
   margin-bottom: 0.75rem;
 }
 .ndc-divider {
   height: 1px;
-  background: rgba(121,164,233,0.1);
+  background: var(--border-subtle);
   margin-bottom: 0.75rem;
 }
 .ndc-body {
   font-size: 0.79rem;
-  color: rgba(248,250,252,0.65);
+  color: var(--text-muted);
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -258,8 +260,8 @@
   width: 100%;
   padding: 0.45rem;
   border-radius: 8px;
-  border: 1px solid rgba(121,164,233,0.25);
-  background: rgba(121,164,233,0.08);
+  border: 1px solid var(--border-strong);
+  background: var(--border-subtle);
   color: var(--color-secondary, #79a4e9);
   font-size: 0.74rem;
   font-weight: 600;
@@ -268,8 +270,8 @@
   transition: all 0.14s;
 }
 .ndc-mark-btn:hover {
-  background: rgba(121,164,233,0.18);
-  border-color: rgba(121,164,233,0.45);
+  background: var(--border);
+  border-color: var(--border-prominent);
 }
 
 .ndc-read-badge {
@@ -287,3 +289,6 @@
   inset: 0;
   z-index: 999;
 }
+
+/* Light-mode overrides moved to styles.css (Angular view encapsulation
+   was preventing them from applying when defined in the component CSS). */

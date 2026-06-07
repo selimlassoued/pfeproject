@@ -7,6 +7,7 @@ import { RouterLink } from '@angular/router';
 import Keycloak from 'keycloak-js';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { loginWithCurrentTheme } from '../utils/keycloak-login';
 
 @Component({
   selector: 'app-hero',
@@ -76,7 +77,7 @@ export class Hero implements OnInit, OnDestroy {
    * Login with Keycloak
    */
   login(): void {
-    this.keycloak.login();
+    loginWithCurrentTheme(this.keycloak);
   }
 
   /**

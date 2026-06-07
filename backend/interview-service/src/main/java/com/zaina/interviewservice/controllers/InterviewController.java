@@ -14,13 +14,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
-import jakarta.servlet.http.HttpServletRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -40,31 +40,27 @@ public class InterviewController {
 
     @PostMapping
     public ResponseEntity<InterviewResponse> schedule(
-            @RequestBody ScheduleInterviewRequest request,
-            HttpServletRequest httpRequest) {
+            @jakarta.validation.Valid @RequestBody ScheduleInterviewRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        // ── Recruiter name from JWT (already logged-in user) ──────────────────
-        String auth = httpRequest.getHeader("Authorization");
-        if (auth != null && auth.startsWith("Bearer ")) {
-            try {
-                String token = auth.substring(7);
-                String payload = token.split("\\.")[1];
-                String decoded = new String(java.util.Base64.getUrlDecoder().decode(payload));
-                ObjectMapper mapper = new ObjectMapper();
-                Map<String, Object> claims = mapper.readValue(decoded, Map.class);
+        // Recruiter identity comes from the already-validated JWT (Spring
+        // OAuth2 resource-server decoded and verified the signature before
+        // dispatching this request). The previous version hand-decoded the
+        // Base64 payload, which trusted the token without validation.
+        if (jwt != null) {
+            String name = jwt.getClaimAsString("name");
+            if (name != null && !name.isBlank()) request.setRecruiterName(name);
 
-                if (claims.get("name") != null)
-                    request.setRecruiterName(claims.get("name").toString());
+            String email = jwt.getClaimAsString("email");
+            if (email != null && !email.isBlank()) request.setRecruiterEmail(email);
 
-                if (claims.get("email") != null)
-                    request.setRecruiterEmail(claims.get("email").toString());
-
-                // Also grab recruiterId from token if not already set
-                if (claims.get("sub") != null && request.getRecruiterId() == null)
-                    request.setRecruiterId(UUID.fromString(claims.get("sub").toString()));
-
-            } catch (Exception e) {
-                log.warn("Could not extract recruiter info from JWT: {}", e.getMessage());
+            String sub = jwt.getSubject();
+            if (sub != null && request.getRecruiterId() == null) {
+                try {
+                    request.setRecruiterId(UUID.fromString(sub));
+                } catch (IllegalArgumentException ex) {
+                    log.warn("JWT sub is not a UUID: {}", sub);
+                }
             }
         }
 
@@ -117,7 +113,7 @@ public class InterviewController {
     @PatchMapping("/{id}/consent")
     public ResponseEntity<InterviewResponse> updateConsent(
             @PathVariable UUID id,
-            @RequestBody ConsentUpdateRequest request) {
+            @jakarta.validation.Valid @RequestBody ConsentUpdateRequest request) {
         return ResponseEntity.ok(interviewService.updateConsent(id, request));
     }
 

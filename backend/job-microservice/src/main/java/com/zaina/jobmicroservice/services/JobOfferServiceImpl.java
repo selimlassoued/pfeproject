@@ -2,9 +2,12 @@ package com.zaina.jobmicroservice.services;
 
 import com.zaina.jobmicroservice.domain.entities.JobOffer;
 import com.zaina.jobmicroservice.domain.entities.JobRequirement;
+import com.zaina.jobmicroservice.dto.JobEmbeddingDto;
 import com.zaina.jobmicroservice.dto.JobOfferDto;
 import com.zaina.jobmicroservice.dto.JobRequirementDto;
 import com.zaina.jobmicroservice.dto.PageResponse;
+import com.zaina.jobmicroservice.dto.RequirementEmbeddingDto;
+import com.zaina.jobmicroservice.repos.JobRequirementRepo;
 import com.zaina.jobmicroservice.domain.enums.EmploymentType;
 import com.zaina.jobmicroservice.domain.enums.JobStatus;
 import com.zaina.jobmicroservice.messaging.AppEventMessage;
@@ -13,9 +16,12 @@ import com.zaina.jobmicroservice.repos.JobOfferRepo;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +33,7 @@ public class JobOfferServiceImpl implements JobOfferService {
 
     private final AppEventPublisher eventPublisher;
     private final JobOfferRepo jobOfferRepo;
+    private final JobRequirementRepo jobRequirementRepo;
     private final com.zaina.jobmicroservice.clients.ApplicationClient applicationClient;
 
     private boolean hasApplications(UUID jobId) {
@@ -41,7 +48,16 @@ public class JobOfferServiceImpl implements JobOfferService {
                 r.getDescription(),
                 r.getWeight(),
                 r.getMinYears(),
-                r.getMaxYears()
+                r.getSkillLevel(),
+                r.getDegreeLevel(),
+                r.getEnrollmentType(),
+                r.getInstitute(),
+                r.getLanguageLevel(),
+                r.getIssuingOrg(),
+                r.getCustomIssuingOrg(),
+                r.getRequireCurrent(),
+                r.getValidityYears(),
+                r.getMustHave()
         );
     }
 
@@ -148,7 +164,16 @@ public class JobOfferServiceImpl implements JobOfferService {
                         .description(r.getDescription())
                         .weight(r.getWeight())
                         .minYears(r.getMinYears())
-                        .maxYears(r.getMaxYears())
+                        .skillLevel(r.getSkillLevel())
+                        .degreeLevel(r.getDegreeLevel())
+                        .enrollmentType(r.getEnrollmentType())
+                        .institute(r.getInstitute())
+                        .languageLevel(r.getLanguageLevel())
+                        .issuingOrg(r.getIssuingOrg())
+                        .customIssuingOrg(r.getCustomIssuingOrg())
+                        .requireCurrent(Boolean.TRUE.equals(r.getRequireCurrent()))
+                        .validityYears(r.getValidityYears())
+                        .mustHave(Boolean.TRUE.equals(r.getMustHave()))
                         .build();
                 entity.addRequirement(req);
             }
@@ -254,7 +279,16 @@ public class JobOfferServiceImpl implements JobOfferService {
                         .description(r.getDescription())
                         .weight(r.getWeight())
                         .minYears(r.getMinYears())
-                        .maxYears(r.getMaxYears())
+                        .skillLevel(r.getSkillLevel())
+                        .degreeLevel(r.getDegreeLevel())
+                        .enrollmentType(r.getEnrollmentType())
+                        .institute(r.getInstitute())
+                        .languageLevel(r.getLanguageLevel())
+                        .issuingOrg(r.getIssuingOrg())
+                        .customIssuingOrg(r.getCustomIssuingOrg())
+                        .requireCurrent(Boolean.TRUE.equals(r.getRequireCurrent()))
+                        .validityYears(r.getValidityYears())
+                        .mustHave(Boolean.TRUE.equals(r.getMustHave()))
                         .build();
                 existing.addRequirement(req);
             }
@@ -387,5 +421,102 @@ public class JobOfferServiceImpl implements JobOfferService {
         eventPublisher.publish("notify.job", evt);
 
         return toDto(saved);
+    }
+
+    // ── Embedding cache ──────────────────────────────────────────────────────
+    // The Python cv-parser-service is the producer of these vectors. It calls
+    // GET on first match for a job to look for a cached vector, and PUTs the
+    // freshly-computed one back if none exists. Subsequent applicants for the
+    // same job get the cached vector and avoid the Ollama round-trip entirely.
+
+    @Override
+    @Transactional(readOnly = true)
+    public JobEmbeddingDto getEmbedding(UUID jobId) {
+        JobOffer job = jobOfferRepo.findById(jobId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found: " + jobId));
+        String raw = job.getEmbedding();
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        return new JobEmbeddingDto(parseVectorLiteral(raw), job.getEmbeddingModel());
+    }
+
+    @Override
+    public void saveEmbedding(UUID jobId, JobEmbeddingDto dto) {
+        if (dto == null || dto.getEmbedding() == null || dto.getEmbedding().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Embedding payload is empty");
+        }
+        if (dto.getEmbedding().size() != 768) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Embedding must have 768 dimensions, got " + dto.getEmbedding().size());
+        }
+        if (!jobOfferRepo.existsById(jobId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found: " + jobId);
+        }
+        // Native UPDATE with ::vector cast — JPA's generic UPDATE can't bind a
+        // varchar parameter to a vector column. Bypassing JPA dirty-checking
+        // for this column is intentional (see JobOffer entity for context).
+        jobOfferRepo.updateEmbedding(jobId, toVectorLiteral(dto.getEmbedding()), dto.getModel());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RequirementEmbeddingDto> getRequirementEmbeddings(UUID jobId) {
+        List<com.zaina.jobmicroservice.domain.entities.JobRequirement> reqs =
+                jobRequirementRepo.findByJobOffer_Id(jobId);
+        List<RequirementEmbeddingDto> out = new ArrayList<>();
+        for (var r : reqs) {
+            String raw = r.getEmbedding();
+            if (raw == null || raw.isBlank()) continue;
+            out.add(new RequirementEmbeddingDto(r.getId(), parseVectorLiteral(raw), r.getEmbeddingModel()));
+        }
+        return out;
+    }
+
+    @Override
+    public void saveRequirementEmbedding(UUID jobId, UUID requirementId, RequirementEmbeddingDto dto) {
+        if (dto == null || dto.getEmbedding() == null || dto.getEmbedding().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Embedding payload is empty");
+        }
+        if (dto.getEmbedding().size() != 768) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Embedding must have 768 dimensions, got " + dto.getEmbedding().size());
+        }
+        var req = jobRequirementRepo.findById(requirementId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Requirement not found: " + requirementId));
+        // Defensive ownership check — reject if the requirement doesn't belong
+        // to the job in the URL, prevents cross-job tampering.
+        if (req.getJobOffer() == null || !jobId.equals(req.getJobOffer().getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Requirement " + requirementId + " is not on job " + jobId);
+        }
+        jobRequirementRepo.updateEmbedding(requirementId, toVectorLiteral(dto.getEmbedding()), dto.getModel());
+    }
+
+    /** Convert a Java float list to pgvector's "[v0,v1,...]" string literal. */
+    private static String toVectorLiteral(List<Float> v) {
+        StringBuilder sb = new StringBuilder(v.size() * 12);
+        sb.append('[');
+        for (int i = 0; i < v.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append(v.get(i));
+        }
+        sb.append(']');
+        return sb.toString();
+    }
+
+    /** Parse pgvector's "[v0,v1,...]" string literal back into a Java float list. */
+    private static List<Float> parseVectorLiteral(String raw) {
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("[")) trimmed = trimmed.substring(1);
+        if (trimmed.endsWith("]"))   trimmed = trimmed.substring(0, trimmed.length() - 1);
+        String[] parts = trimmed.split(",");
+        List<Float> out = new ArrayList<>(parts.length);
+        for (String p : parts) {
+            String s = p.trim();
+            if (!s.isEmpty()) out.add(Float.parseFloat(s));
+        }
+        return out;
     }
 }

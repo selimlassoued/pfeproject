@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
 import { ApplicationService } from '../services/application.service';
 import { CvAnalysis } from '../model/cv-analysis.model';
+import { normalizeHttpError } from '../utils/http-error';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -62,7 +63,7 @@ export class CvAnalysisDrawer implements OnChanges {
               this.pending = false;
             },
             error: (err) => {
-              this.error = err?.error?.message || err?.message || 'Analysis not available yet.';
+              this.error = normalizeHttpError(err).message || 'Analysis not available yet.';
               this.loading = false;
               this.pending = false;
             },

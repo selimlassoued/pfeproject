@@ -15,6 +15,8 @@ import Swal from 'sweetalert2';
 import { firstValueFrom } from 'rxjs';
 import Keycloak from 'keycloak-js';
 import { inject } from '@angular/core';
+import { loginWithCurrentTheme } from '../utils/keycloak-login';
+import { matchesWordStart } from '../utils/suggestion-match';
 
 type SalaryRange = 'any' | 'specified' | '0-1000' | '1000-2000' | '2000-5000' | '5000+';
 
@@ -35,6 +37,10 @@ export class BrowseJobsComponent implements OnInit {
   employmentType = '';
   status = '';
   salaryRange: SalaryRange = 'any';
+
+  /** True after Enter in the search field — hides the datalist popup so
+   *  it stops covering the table during the rest of the search. */
+  suppressSearchSuggest = false;
 
   // Pagination
   currentPage = 0;
@@ -158,7 +164,7 @@ export class BrowseJobsComponent implements OnInit {
 
   applyOrView(jobId: string): void {
   if (this.isGuest) {
-    this.keycloak.login()
+    loginWithCurrentTheme(this.keycloak);
     return;
   }
   const appId = this.applicationIdFor(jobId);
@@ -236,8 +242,24 @@ export class BrowseJobsComponent implements OnInit {
   onQueryChange(e: Event): void {
     const v = (e.target as HTMLInputElement).value ?? '';
     this.query = v;
+    if (!v) this.suppressSearchSuggest = false;
     this.currentPage = 0; // Reset to first page
     this.fetchJobs();
+  }
+
+  /** Suggestions from the current page: job titles and locations.
+   *  Server pagination means we only see what's loaded, but that's the
+   *  most relevant set for "what can I refine to right now". */
+  get searchSuggestions(): string[] {
+    const q = this.query.trim().toLowerCase();
+    const s = new Set<string>();
+    for (const j of this.filteredJobs) {
+      const t = j.title?.trim();
+      if (t) s.add(t);
+    }
+    let out = Array.from(s).sort((a, b) => a.localeCompare(b));
+    if (q) out = out.filter(x => matchesWordStart(x, q));
+    return out.slice(0, 10);
   }
 
   onEmploymentTypeChange(e: Event): void {
@@ -332,6 +354,16 @@ export class BrowseJobsComponent implements OnInit {
     if (left === 0) return 'color:#f87171;';
     if (left === 1) return 'color:#fbbf24;';
     return 'color:#68d391;';
+  }
+
+  /** State label used as a data-attribute so light-mode CSS can override
+   *  the inline spots color with deeper, more readable values on white. */
+  spotsLeftLevel(job: JobOffer): 'full' | 'low' | 'ok' | '' {
+    const left = this.spotsLeft(job);
+    if (left == null) return '';
+    if (left === 0) return 'full';
+    if (left === 1) return 'low';
+    return 'ok';
   }
 
   badgeStyle(job: JobOffer): string {

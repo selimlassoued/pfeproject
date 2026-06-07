@@ -71,6 +71,9 @@
       <label for="resched-deadline">Other party must respond by</label>
       <input id="resched-deadline" type="datetime-local" class="resched-input"
              [(ngModel)]="deadline" />
+      @if (fieldErrors['deadline']) {
+        <div class="resched-date-error">{{ fieldErrors['deadline'] }}</div>
+      }
     </div>
 
     <div class="resched-field">
@@ -79,8 +82,14 @@
                 maxlength="500"
                 placeholder="e.g. Sorry, something came up - could we move it?"
                 [(ngModel)]="message"></textarea>
+      @if (fieldErrors['message']) {
+        <div class="resched-date-error">{{ fieldErrors['message'] }}</div>
+      }
     </div>
 
+    @if (fieldErrors['proposedSlots']) {
+      <div class="resched-error">{{ fieldErrors['proposedSlots'] }}</div>
+    }
     @if (error) { <div class="resched-error">{{ error }}</div> }
 
     <div class="resched-actions">

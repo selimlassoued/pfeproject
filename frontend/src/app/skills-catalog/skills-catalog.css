@@ -30,14 +30,14 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0 0 0.5rem;
-  background: linear-gradient(90deg, #fffce5 0%, #c8d8ff 100%);
+  background: linear-gradient(90deg, var(--text-display) 0%, #c8d8ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 .catalog-hero__sub {
   margin: 0;
-  color: rgba(248, 250, 252, 0.70);
+  color: var(--text-muted);
   line-height: 1.55;
   font-size: 0.92rem;
 }
@@ -56,8 +56,8 @@
   position: relative;
   padding: 1rem 1.1rem;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
   text-align: center;
   overflow: hidden;
 }
@@ -65,14 +65,14 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at top, rgba(121, 164, 233, 0.10), transparent 60%);
+  background: radial-gradient(ellipse at top, var(--border-subtle), transparent 60%);
   pointer-events: none;
 }
 .catalog-stat__value {
   position: relative;
   font-size: 1.85rem;
   font-weight: 800;
-  color: #fffce5;
+  color: var(--text-display);
   line-height: 1;
   letter-spacing: -0.02em;
 }
@@ -82,15 +82,15 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(248, 250, 252, 0.55);
+  color: var(--text-soft);
   font-weight: 700;
 }
 /* Per-stat accent - paints the radial glow in a distinct color. */
-.catalog-stat--demand::before     { background: radial-gradient(ellipse at top, rgba(255, 165, 60, 0.18), transparent 60%); }
+.catalog-stat--demand::before     { background: radial-gradient(ellipse at top, rgba(255,165,60,0.18), transparent 60%); }
 .catalog-stat--demand .catalog-stat__value     { color: #ffd09b; }
-.catalog-stat--universal::before  { background: radial-gradient(ellipse at top, rgba(180, 140, 230, 0.16), transparent 60%); }
+.catalog-stat--universal::before  { background: radial-gradient(ellipse at top, rgba(180,140,230,0.16), transparent 60%); }
 .catalog-stat--universal .catalog-stat__value  { color: #d8caf5; }
-.catalog-stat--manual::before     { background: radial-gradient(ellipse at top, rgba(120, 200, 140, 0.16), transparent 60%); }
+.catalog-stat--manual::before     { background: radial-gradient(ellipse at top, rgba(120,200,140,0.16), transparent 60%); }
 .catalog-stat--manual .catalog-stat__value     { color: #c5ecd1; }
 
 /* ── Add / search card ──────────────────────────────────────────────────── */
@@ -98,8 +98,8 @@
 .catalog-add {
   padding: 1.25rem 1.4rem;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--surface-3);
 }
 
 /* Search row: icon + input + button, all on one line. */
@@ -114,25 +114,25 @@
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(248, 250, 252, 0.5);
+  color: var(--text-soft);
   pointer-events: none;
 }
 .catalog-add__input {
   flex: 1;
   padding: 0.85rem 1rem 0.85rem 44px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.95);
+  background: var(--surface-2);
+  border: 1px solid var(--surface-4);
+  color: rgba(255,255,255,0.95);
   font-size: 0.95rem;
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 .catalog-add__input:focus {
   outline: none;
-  border-color: rgba(121, 164, 233, 0.65);
-  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.25);
+  border-color: rgba(121,164,233,0.65);
+  box-shadow: 0 0 0 3px var(--border-strong);
 }
-.catalog-add__input::placeholder { color: rgba(248, 250, 252, 0.4); }
+.catalog-add__input::placeholder { color: var(--text-soft); }
 .catalog-add__btn {
   padding: 0.85rem 1.4rem;
   border-radius: 12px;
@@ -144,7 +144,7 @@
   cursor: pointer;
   white-space: nowrap;
   transition: filter 120ms ease, transform 120ms ease;
-  box-shadow: 0 4px 12px rgba(74, 108, 183, 0.35);
+  box-shadow: 0 4px 12px rgba(74,108,183,0.35);
 }
 .catalog-add__btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
 .catalog-add__btn:disabled {
@@ -156,7 +156,7 @@
 .catalog-add__hint {
   margin: 0.6rem 0 0;
   font-size: 0.82rem;
-  color: rgba(248, 250, 252, 0.5);
+  color: var(--text-soft);
   font-style: italic;
 }
 
@@ -176,10 +176,10 @@
   height: 8px;
   border-radius: 50%;
 }
-.catalog-status--duplicate { color: rgba(255, 200, 130, 0.95); }
-.catalog-status--duplicate::before { background: rgba(220, 140, 70, 0.85); }
-.catalog-status--new       { color: rgba(140, 220, 170, 0.95); }
-.catalog-status--new::before { background: rgba(80, 180, 120, 0.85); }
+.catalog-status--duplicate { color: rgba(255,200,130,0.95); }
+.catalog-status--duplicate::before { background: rgba(220,140,70,0.85); }
+.catalog-status--new       { color: rgba(140,220,170,0.95); }
+.catalog-status--new::before { background: rgba(80,180,120,0.85); }
 
 /* ── Domain filter pills ───────────────────────────────────────────────── */
 
@@ -195,7 +195,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(248, 250, 252, 0.55);
+  color: var(--text-soft);
   margin-right: 0.4rem;
 }
 
@@ -231,8 +231,8 @@
 .catalog-table-card {
   padding: 1.4rem;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--surface-3);
 }
 .catalog-table-card__head {
   display: flex;
@@ -249,7 +249,7 @@
 }
 .catalog-table-card__filter-tag {
   font-size: 0.78rem;
-  color: rgba(248, 250, 252, 0.55);
+  color: var(--text-soft);
   font-weight: 500;
   margin-left: 0.4rem;
 }
@@ -263,35 +263,36 @@
 .catalog-table td {
   text-align: left;
   padding: 0.85rem 0.7rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--surface-3);
   vertical-align: middle;
 }
 .catalog-table th {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(248, 250, 252, 0.5);
+  color: var(--text-soft);
   font-weight: 700;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--surface-4);
 }
 .catalog-table__col-actions { width: 1%; white-space: nowrap; }
+.catalog-table__col-demand  { min-width: 84px; white-space: nowrap; }
 
 /* Row hover - subtle accent + cursor cue. In-demand rows get a stronger
    left-border so they stand out at a glance. */
 .catalog-row {
   transition: background 120ms ease;
 }
-.catalog-row:hover td { background: rgba(255, 255, 255, 0.02); }
+.catalog-row:hover td { background: var(--surface-1); }
 .catalog-row--in-demand td:first-child {
   position: relative;
-  border-left: 2px solid rgba(220, 140, 70, 0.7);
+  border-left: 2px solid rgba(220,140,70,0.7);
   padding-left: 0.6rem;
 }
 
 .skill-name {
   font-weight: 700;
   font-size: 0.96rem;
-  color: rgba(255, 255, 255, 0.94);
+  color: var(--text);
   letter-spacing: -0.005em;
 }
 
@@ -310,9 +311,9 @@
   color: rgba(var(--accent), 0.95);
 }
 .domain-chip--universal {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.55);
+  background: var(--surface-2);
+  border-color: rgba(255,255,255,0.15);
+  color: var(--text-soft);
   font-style: italic;
 }
 
@@ -327,17 +328,18 @@
   border: 1px solid transparent;
 }
 .source-tag--manual    {
-  background: rgba(168, 130, 255, 0.10);
-  border-color: rgba(168, 130, 255, 0.35);
-  color: rgba(220, 200, 255, 0.95);
+  background: rgba(168,130,255,0.10);
+  border-color: rgba(168,130,255,0.35);
+  color: rgba(220,200,255,0.95);
 }
 .source-tag--extracted {
-  background: rgba(121, 164, 233, 0.08);
-  border-color: rgba(121, 164, 233, 0.25);
-  color: rgba(180, 210, 255, 0.85);
+  background: var(--border-subtle);
+  border-color: var(--border-strong);
+  color: rgba(180,210,255,0.85);
 }
 
-/* Demand badge: pulsing dot + count, orange-amber. */
+/* Demand badge: pulsing dot + count, orange-amber. Keep on a single line
+   so "2 jobs" / "3 jobs" never wraps inside the badge. */
 .demand-badge {
   display: inline-flex;
   align-items: center;
@@ -346,21 +348,22 @@
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;
-  background: rgba(220, 140, 70, 0.10);
-  border: 1px solid rgba(220, 140, 70, 0.4);
-  color: rgba(255, 200, 130, 0.95);
+  background: rgba(220,140,70,0.10);
+  border: 1px solid rgba(220,140,70,0.4);
+  color: rgba(255,200,130,0.95);
+  white-space: nowrap;
 }
 .demand-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: rgba(255, 165, 60, 0.95);
-  box-shadow: 0 0 0 3px rgba(255, 165, 60, 0.18);
+  background: rgba(255,165,60,0.95);
+  box-shadow: 0 0 0 3px rgba(255,165,60,0.18);
   animation: demand-pulse 1.8s ease-in-out infinite;
 }
 @keyframes demand-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(255, 165, 60, 0.18); }
-  50%      { box-shadow: 0 0 0 6px rgba(255, 165, 60, 0.05); }
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255,165,60,0.18); }
+  50%      { box-shadow: 0 0 0 6px rgba(255,165,60,0.05); }
 }
 
 /* Compact icon buttons for Edit / Remove. Replace the wider btn-ghost so
@@ -375,27 +378,27 @@
   gap: 0.35rem;
   padding: 0.4rem 0.7rem;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  color: rgba(255, 255, 255, 0.78);
+  background: var(--surface-2);
+  border: 1px solid var(--surface-4);
+  color: rgba(255,255,255,0.78);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 120ms ease;
 }
 .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.22);
+  background: var(--surface-3);
+  border-color: rgba(255,255,255,0.22);
   color: #fff;
 }
-.icon-btn--edit:hover   { border-color: rgba(121, 164, 233, 0.55); color: #aac8ff; }
-.icon-btn--remove:hover { border-color: rgba(220,  80,  80, 0.55); color: #ffb3b3; }
+.icon-btn--edit:hover   { border-color: rgba(121,164,233,0.55); color: #aac8ff; }
+.icon-btn--remove:hover { border-color: rgba(220,80,80,0.55); color: #ffb3b3; }
 .icon-btn:disabled,
 .icon-btn:disabled:hover {
   opacity: 0.4;
   cursor: not-allowed;
-  border-color: rgba(255, 255, 255, 0.08);
-  color: rgba(248, 250, 252, 0.4);
+  border-color: var(--surface-3);
+  color: var(--text-soft);
   background: transparent;
 }
 
@@ -403,7 +406,7 @@
 .catalog-empty {
   padding: 3rem 1rem;
   text-align: center;
-  color: rgba(248, 250, 252, 0.55);
+  color: var(--text-soft);
 }
 .catalog-empty__icon {
   font-size: 2.2rem;
@@ -414,7 +417,7 @@
   margin: 0 0 0.3rem;
   font-size: 1rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-muted);
 }
 .catalog-empty__sub {
   margin: 0 auto;
@@ -430,7 +433,7 @@
   gap: 1rem;
   margin-top: 1.25rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--surface-3);
   flex-wrap: wrap;
 }
 
@@ -438,8 +441,8 @@
 .catalog-removed-card {
   padding: 1rem 1.2rem;
   border-radius: 14px;
-  background: rgba(220, 80, 80, 0.04);
-  border: 1px solid rgba(220, 80, 80, 0.18);
+  background: rgba(220,80,80,0.04);
+  border: 1px solid rgba(220,80,80,0.18);
 }
 .catalog-removed-card > summary {
   cursor: pointer;
@@ -447,13 +450,13 @@
   align-items: center;
   gap: 0.6rem;
   font-weight: 700;
-  color: rgba(255, 180, 180, 0.9);
+  color: rgba(255,180,180,0.9);
   list-style: none;
 }
 .catalog-removed-card > summary::-webkit-details-marker { display: none; }
 .catalog-removed-card > summary::before {
   content: '▸';
-  color: rgba(255, 180, 180, 0.6);
+  color: rgba(255,180,180,0.6);
   transition: transform 140ms ease;
 }
 .catalog-removed-card[open] > summary::before { transform: rotate(90deg); }
@@ -465,10 +468,10 @@
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: rgba(220, 80, 80, 0.15);
-  border: 1px solid rgba(220, 80, 80, 0.35);
+  background: rgba(220,80,80,0.15);
+  border: 1px solid rgba(220,80,80,0.35);
   font-size: 0.78rem;
-  color: rgba(255, 200, 200, 0.95);
+  color: rgba(255,200,200,0.95);
 }
 .catalog-removed-list {
   list-style: none;
@@ -484,12 +487,15 @@
   gap: 1rem;
   padding: 0.5rem 0.7rem;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-1);
 }
 .catalog-removed-name {
   flex: 1;
-  color: rgba(255, 180, 180, 0.75);
+  color: rgba(255,180,180,0.75);
   text-decoration: line-through;
 }
 
 .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.82rem; }
+
+/* Light-mode overrides live in styles.css (global) so they bypass Angular
+   ViewEncapsulation — same fix we did for notifications & stat-icons. */

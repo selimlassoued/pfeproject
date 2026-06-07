@@ -43,7 +43,20 @@ export interface ApplicationDto {
     evidence?: string | null;
     skillLevel?: 'BASIC' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | null;
     criticalGap?: boolean;
+    mustHave?: boolean;
+    mustHaveFailed?: boolean;
   }[];
+  // Must-have summary: true when at least one mustHave=true requirement is
+  // in the "missing" bucket. The recruiter UI uses this to render a red
+  // banner naming each failed must-have.
+  mustHaveFailed?: boolean;
+  failedMustHaves?: string[];
+  // Job-domain fit (0-100). When the recruiter set a domain on the job and
+  // the candidate's prior work matches it, this score reflects how strong
+  // the industry-fit signal is. domainMatchEvidence carries the matched
+  // keywords ("biat", "trading", ...) for the recruiter chip list.
+  domainFitScore?: number | null;
+  domainMatchEvidence?: string[];
   // Non-scoring advisory signals shown as banners on the application detail page.
   // Currently produced: 'distance_far' (ON_SITE job + candidate far from HQ),
   // 'name_mismatch' (CV / GitHub / LinkedIn names disagree).

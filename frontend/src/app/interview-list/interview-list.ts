@@ -4,6 +4,11 @@ import Keycloak from 'keycloak-js';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { matchesWordStart } from '../utils/suggestion-match';
+
+/** Max items shown in any datalist popup on this page. Keeps the popup
+ *  short even when the interview history is large. */
+const MAX_SUGGESTIONS = 10;
 
 @Component({
   selector: 'app-interview-list',
@@ -21,12 +26,25 @@ export class InterviewList implements OnInit {
   // Filter inputs (bound to the controls).
   searchCandidate = '';
   searchPosition = '';
+  recruiterFilter = '';
   statusFilter = '';
+
+  // True after the user presses Enter in the Position field — hides the
+  // <datalist> popup so it doesn't keep covering the table. Reset when
+  // the field is cleared so suggestions come back for the next search.
+  suppressPositionSuggest = false;
+  suppressCandidateSuggest = false;
+
+  // True when the current user is ADMIN or SUPERADMIN, so the template
+  // can show the recruiter filter (useless for RECRUITER who only sees
+  // their own interviews).
+  isAdminOrSuper = false;
 
   // Applied filters - committed only when "Search" is clicked, so the table
   // doesn't churn on every keystroke (mirrors the applications page).
   private appliedCandidate = '';
   private appliedPosition = '';
+  private appliedRecruiter = '';
   private appliedStatus = '';
 
   // Pagination.
@@ -41,8 +59,14 @@ export class InterviewList implements OnInit {
   ) {}
 
   ngOnInit() {
-    const recruiterId = this.keycloak.subject!;
-    this.interviewService.getByRecruiter(recruiterId).subscribe({
+    this.isAdminOrSuper =
+      this.keycloak.hasRealmRole('ADMIN') || this.keycloak.hasRealmRole('SUPERADMIN');
+
+    const source$ = this.isAdminOrSuper
+      ? this.interviewService.getAll()
+      : this.interviewService.getByRecruiter(this.keycloak.subject!);
+
+    source$.subscribe({
       next: (data) => {
         this.allInterviews = data.sort(
           (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
@@ -57,9 +81,22 @@ export class InterviewList implements OnInit {
   }
 
   // ── Filtering ───────────────────────────────────────────────────────────
+  onPositionChange(v: string) {
+    this.searchPosition = v;
+    if (!v) this.suppressPositionSuggest = false;
+    this.search();
+  }
+
+  onCandidateChange(v: string) {
+    this.searchCandidate = v;
+    if (!v) this.suppressCandidateSuggest = false;
+    this.search();
+  }
+
   search() {
     this.appliedCandidate = this.searchCandidate.trim().toLowerCase();
     this.appliedPosition  = this.searchPosition.trim().toLowerCase();
+    this.appliedRecruiter = this.recruiterFilter;
     this.appliedStatus    = this.statusFilter;
     this.pageIndex = 0;
   }
@@ -67,23 +104,84 @@ export class InterviewList implements OnInit {
   clearFilters() {
     this.searchCandidate = '';
     this.searchPosition = '';
+    this.recruiterFilter = '';
     this.statusFilter = '';
+    this.suppressPositionSuggest = false;
+    this.suppressCandidateSuggest = false;
     this.search();
   }
 
   get hasActiveFilters(): boolean {
-    return !!(this.appliedCandidate || this.appliedPosition || this.appliedStatus);
+    return !!(
+      this.appliedCandidate ||
+      this.appliedPosition ||
+      this.appliedRecruiter ||
+      this.appliedStatus
+    );
+  }
+
+  /** Up to MAX_SUGGESTIONS unique job titles that contain whatever the
+   *  user has typed so far. Feeds the position <datalist>. Capping keeps
+   *  the popup short even when the team has hundreds of postings. */
+  get positionOptions(): string[] {
+    const q = this.searchPosition.trim().toLowerCase();
+    const set = new Set<string>();
+    for (const iv of this.allInterviews) {
+      const t = iv.jobTitle?.trim();
+      if (t) set.add(t);
+    }
+    let out = Array.from(set).sort((a, b) => a.localeCompare(b));
+    if (q) out = out.filter(s => matchesWordStart(s, q));
+    return out.slice(0, MAX_SUGGESTIONS);
+  }
+
+  /** Up to MAX_SUGGESTIONS candidates matching whatever the user has
+   *  typed. Always "Name (email)" — candidates without a real email
+   *  are dropped as bad data. */
+  get candidateOptions(): string[] {
+    const q = this.searchCandidate.trim().toLowerCase();
+    const byEmail = new Map<string, string>();
+    for (const iv of this.allInterviews) {
+      const email = (iv.candidateEmail ?? '').trim();
+      if (!email.includes('@') || byEmail.has(email)) continue;
+      const name = (iv.candidateName ?? '').trim();
+      byEmail.set(email, name ? `${name} (${email})` : email);
+    }
+    let out = Array.from(byEmail.values()).sort((a, b) => a.localeCompare(b));
+    if (q) out = out.filter(s => matchesWordStart(s, q));
+    return out.slice(0, MAX_SUGGESTIONS);
+  }
+
+  /** Unique {id, label} recruiters across the loaded interviews. Used to
+   *  populate the recruiter dropdown for ADMIN/SUPERADMIN. */
+  get recruiterOptions(): { id: string; label: string }[] {
+    const seen = new Map<string, string>();
+    for (const iv of this.allInterviews) {
+      if (!iv.recruiterId || seen.has(iv.recruiterId)) continue;
+      const label = (iv.recruiterName?.trim() || iv.recruiterEmail || iv.recruiterId);
+      seen.set(iv.recruiterId, label);
+    }
+    return Array.from(seen.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }
 
   get filtered(): InterviewResponse[] {
     return this.allInterviews.filter(iv => {
       if (this.appliedStatus && iv.status !== this.appliedStatus) return false;
       if (this.appliedCandidate) {
-        const hay = ((iv.candidateName || '') + ' ' + (iv.candidateEmail || '')).toLowerCase();
+        const name  = iv.candidateName  || '';
+        const email = iv.candidateEmail || '';
+        // Include the "Name (email)" form so that clicking that exact
+        // suggestion still matches via substring search.
+        const hay = `${name} ${email} ${name} (${email})`.toLowerCase();
         if (!hay.includes(this.appliedCandidate)) return false;
       }
       if (this.appliedPosition &&
           !(iv.jobTitle || '').toLowerCase().includes(this.appliedPosition)) {
+        return false;
+      }
+      if (this.appliedRecruiter && iv.recruiterId !== this.appliedRecruiter) {
         return false;
       }
       return true;

@@ -377,8 +377,25 @@ public class InterviewService {
                 .build();
     }
 
+    /** Only these literals are allowed as the on-disk file prefix. The
+     *  request parameter "role" lands in a Path.resolve() call below, so
+     *  anything other than these would be a path-traversal vector (e.g.
+     *  role=../../tmp/x writes outside the recordings directory). */
+    private static final java.util.Set<String> ALLOWED_RECORDING_ROLES =
+            java.util.Set.of("recruiter", "candidate");
+
+    private static String validateRecordingRole(String role) {
+        if (role == null || !ALLOWED_RECORDING_ROLES.contains(role)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "role must be 'recruiter' or 'candidate'");
+        }
+        return role;
+    }
+
     public InterviewResponse saveRecording(UUID interviewId, MultipartFile file,
                                            String role, String joinedAt, String leftAt) {
+        role = validateRecordingRole(role);
         Interview interview = findById(interviewId);
 
         if (interview.getStatus() == InterviewStatus.CANCELLED) {
@@ -499,7 +516,9 @@ public class InterviewService {
     }
 
     public Path getRecordingPath(UUID interviewId, String role) {
-        return Path.of(recordingsDir).resolve(interviewId.toString()).resolve(role + ".webm");
+        return Path.of(recordingsDir)
+                .resolve(interviewId.toString())
+                .resolve(validateRecordingRole(role) + ".webm");
     }
 
     public String getJitsiToken(UUID interviewId, String userId,
@@ -599,7 +618,7 @@ public class InterviewService {
         Path candidateFile = dir.resolve("candidate.webm");
 
         if (!Files.exists(recruiterFile) || !Files.exists(candidateFile)) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT,
                     "Recording files missing — cannot retrigger analysis");
         }
 

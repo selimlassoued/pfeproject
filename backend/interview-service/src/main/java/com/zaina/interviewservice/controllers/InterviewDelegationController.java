@@ -26,7 +26,7 @@ public class InterviewDelegationController {
     @PostMapping("/{interviewId}/delegate")
     public ResponseEntity<DelegationResponse> propose(
             @PathVariable UUID interviewId,
-            @RequestBody CreateDelegationRequest req,
+            @jakarta.validation.Valid @RequestBody CreateDelegationRequest req,
             HttpServletRequest httpRequest) {
         UUID from = extractUserId(httpRequest);
         return ResponseEntity.ok(service.propose(interviewId, req, from));

@@ -3,6 +3,12 @@ package com.recrutment.gatewayserver.admin.restControllers;
 import com.recrutment.gatewayserver.admin.dto.PageResponse;
 import com.recrutment.gatewayserver.admin.service.AdminUsersService;
 import com.recrutment.gatewayserver.admin.dto.KcDtos.KcUser;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -59,15 +65,17 @@ public class AdminUsersController {
     // ── Create user — ADMIN creates RECRUITER, SUPERADMIN creates ADMIN/RECRUITER ──
 
     public record CreateUserRequest(
-            String firstName,
-            String lastName,
-            String email,
-            String role  // "RECRUITER" or "ADMIN"
+            @NotBlank @Size(max = 80)  String firstName,
+            @NotBlank @Size(max = 80)  String lastName,
+            @NotBlank @Email @Size(max = 120) String email,
+            @NotBlank @Pattern(regexp = "RECRUITER|ADMIN",
+                    message = "role must be RECRUITER or ADMIN")
+            String role
     ) {}
 
     @PostMapping("/users")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
-    public Mono<KcUser> createUser(@RequestBody CreateUserRequest req) {
+    public Mono<KcUser> createUser(@Valid @RequestBody CreateUserRequest req) {
         return getActorInfo().flatMap(info ->
                 service.createUser(
                         req.firstName(), req.lastName(), req.email(),
@@ -79,13 +87,13 @@ public class AdminUsersController {
 
     // ── Block / Unblock ───────────────────────────────────────────────────────
 
-    public record BlockUnblockRequest(String reason) {}
+    public record BlockUnblockRequest(@Size(max = 500) String reason) {}
 
     @PutMapping("/users/{id}/block")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public Mono<Void> blockUser(
             @PathVariable String id,
-            @RequestBody(required = false) BlockUnblockRequest request,
+            @Valid @RequestBody(required = false) BlockUnblockRequest request,
             @RequestHeader("Authorization") String authHeader) {
         String reason = request != null && request.reason() != null ? request.reason() : "Blocked by admin";
         return getActorUserId().flatMap(actorId -> service.blockUser(id, reason, actorId, authHeader));
@@ -95,7 +103,7 @@ public class AdminUsersController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public Mono<Void> unblockUser(
             @PathVariable String id,
-            @RequestBody(required = false) BlockUnblockRequest request,
+            @Valid @RequestBody(required = false) BlockUnblockRequest request,
             @RequestHeader("Authorization") String authHeader) {
         String reason = request != null && request.reason() != null ? request.reason() : "Unblocked by admin";
         return getActorUserId().flatMap(actorId -> service.unblockUser(id, reason, actorId, authHeader));
@@ -111,7 +119,10 @@ public class AdminUsersController {
 
     // ── Roles ─────────────────────────────────────────────────────────────────
 
-    public record UpdateRolesRequest(List<String> roles, String reason) {}
+    public record UpdateRolesRequest(
+            @NotNull List<@NotBlank String> roles,
+            @Size(max = 500) String reason
+    ) {}
 
     // ✅ delete
 //    @DeleteMapping("/users/{id}")
@@ -128,7 +139,7 @@ public class AdminUsersController {
 
     @PutMapping("/users/{id}/roles")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
-    public Mono<Void> updateUserRoles(@PathVariable String id, @RequestBody UpdateRolesRequest req) {
+    public Mono<Void> updateUserRoles(@PathVariable String id, @Valid @RequestBody UpdateRolesRequest req) {
         Set<String> requested = new HashSet<>(req.roles() == null ? List.of() : req.roles());
         String reason = req.reason() != null ? req.reason() : "Roles updated";
         return getActorInfo().flatMap(info ->

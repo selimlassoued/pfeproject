@@ -1,7 +1,6 @@
 package com.recrutment.notificationmicroservice.client;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -13,8 +12,12 @@ public class UserEmailClient {
 
     private final RestTemplate restTemplate;
 
-    @Value("${app.internal.gateway-base-url:http://gateway:8888}")
-    private String gatewayBaseUrl;
+    /**
+     * The /api/admin/internal/users/{id}/email endpoint is hosted IN the
+     * gateway service (AdminUsersController), not proxied. We address it
+     * by Eureka service id so the call goes through the load balancer.
+     */
+    private static final String GATEWAY = "http://GATEWAYSERVER";
 
     public String getEmailByUserId(String userId) {
         Map<String, String> profile = getUserProfile(userId);
@@ -25,7 +28,7 @@ public class UserEmailClient {
      * Returns map with email, firstName, lastName for greeting/sign-off in emails.
      */
     public Map<String, String> getUserProfile(String userId) {
-        String url = gatewayBaseUrl + "/api/admin/internal/users/{id}/email";
+        String url = GATEWAY + "/api/admin/internal/users/{id}/email";
         try {
             @SuppressWarnings("unchecked")
             Map<String, String> resp = restTemplate.getForObject(url, Map.class, userId);

@@ -19,7 +19,7 @@
 .profile-card {
   padding: 0;
   overflow: hidden;
-  border: 1px solid rgba(121,164,233,0.26);
+  border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-md);
 }
 
@@ -28,8 +28,8 @@
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-6) var(--space-8);
-  border-bottom: 1px solid rgba(121,164,233,0.18);
-  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
   flex-wrap: wrap;
 }
 
@@ -45,7 +45,7 @@
   font-size: 1.15rem;
   color: #fff;
   flex-shrink: 0;
-  box-shadow: 0 0 0 3px rgba(121,164,233,0.20);
+  box-shadow: 0 0 0 3px var(--border);
 }
 
 .profile-head-info { flex: 1; min-width: 0; }
@@ -80,8 +80,8 @@
 
 .profile-field {
   padding: var(--space-6) var(--space-8);
-  border-right: 1px solid rgba(121,164,233,0.12);
-  border-bottom: 1px solid rgba(121,164,233,0.12);
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .profile-field:nth-child(3n) { border-right: none; }
@@ -109,9 +109,9 @@
 
 @media (max-width: 780px) {
   .profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .profile-field:nth-child(3n) { border-right: 1px solid rgba(121,164,233,0.12); }
+  .profile-field:nth-child(3n) { border-right: 1px solid var(--border-subtle); }
   .profile-field:nth-child(2n) { border-right: none; }
-  .profile-field:nth-last-child(-n+3) { border-bottom: 1px solid rgba(121,164,233,0.12); }
+  .profile-field:nth-last-child(-n+3) { border-bottom: 1px solid var(--border-subtle); }
   .profile-field:nth-last-child(-n+2) { border-bottom: none; }
 }
 
@@ -122,9 +122,8 @@
 }
 
 /* Pills */
-.pill-role { background: rgba(121,164,233,0.14); border-color: rgba(121,164,233,0.35); }
-.pill-success { background: rgba(120,255,197,0.12); border-color: rgba(120,255,197,0.30); color: var(--color-cream); }
-.pill-danger { background: rgba(255,120,120,0.12); border-color: rgba(255,120,120,0.30); color: var(--color-cream); }
+.pill-role { background: var(--border-subtle); border-color: var(--border-strong); }
+/* .pill-success / .pill-danger live in styles.css now. */
 .pill-flagged { background: rgba(255,140,0,0.12); border-color: rgba(255,140,0,0.30); color: #ffa500; }
 
 /* Moderation banners */
@@ -135,8 +134,8 @@
 .moderation-banner--flagged { background: rgba(255,140,0,0.08); border: 1px solid rgba(255,140,0,0.25); }
 .moderation-banner--blocked { background: rgba(233,121,121,0.08); border: 1px solid rgba(233,121,121,0.25); }
 .moderation-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: .1rem; }
-.moderation-title { font-weight: 700; font-size: .9rem; color: rgba(248,250,252,0.92); margin-bottom: .2rem; }
-.moderation-desc { font-size: .82rem; color: rgba(248,250,252,0.55); }
+.moderation-title { font-weight: 700; font-size: .9rem; color: var(--text); margin-bottom: .2rem; }
+.moderation-desc { font-size: .82rem; color: var(--text-soft); }
 
 /* Buttons */
 .btn-warn {

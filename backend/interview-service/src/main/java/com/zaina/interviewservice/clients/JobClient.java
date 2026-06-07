@@ -7,8 +7,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(name = "job-client",
-        url = "${job.service.url:http://job-service:8082}")
+// Service id matches job-microservice's spring.application.name. Dropping
+// the explicit `url=` makes Feign resolve the call through Spring Cloud
+// LoadBalancer instead of a literal hostname.
+@FeignClient(name = "job-microservice")
 public interface JobClient {
 
     @GetMapping("/api/jobs/{jobId}")

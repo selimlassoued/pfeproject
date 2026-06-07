@@ -45,7 +45,14 @@
       <div class="field">
         <label class="toolbar-label">Search</label>
         <input class="input" type="text" [value]="query" (input)="onQueryChange($event)"
-          placeholder="Search by title, location, description…" />
+          (keyup.enter)="suppressSearchSuggest = true; $any($event.target).blur()"
+          [attr.list]="(suppressSearchSuggest || !query) ? null : 'jobs-search-options'"
+          placeholder="Search by title…" />
+        <datalist id="jobs-search-options">
+          @for (s of searchSuggestions; track s) {
+            <option [value]="s"></option>
+          }
+        </datalist>
       </div>
 
       <div class="field">
@@ -106,9 +113,11 @@
             </button>
           </div>
         }
-        <button class="btn btn-ghost" type="button" (click)="resetFilters()" [disabled]="!hasActiveFilters()">
-          Reset
-        </button>
+        @if (hasActiveFilters()) {
+          <button class="btn btn-ghost" type="button" (click)="resetFilters()">
+            Reset
+          </button>
+        }
       </div>
     </div>
   </div>
@@ -140,7 +149,7 @@
               @if (sortMode === 'match' && matchLabel(job)) {
                 <span class="pill" [style]="matchStyle(job)">{{ matchLabel(job) }}</span>
               }
-              <span class="pill" [style]="badgeStyle(job)">{{ badgeText(job) }}</span>
+              <span class="pill" [attr.data-job-status]="job.jobStatus" [style]="badgeStyle(job)">{{ badgeText(job) }}</span>
             </div>
           </div>
 
@@ -149,7 +158,9 @@
           <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
             <div class="text-muted">{{ salaryText(job) }}</div>
             @if (showAllJobs && job.jobStatus === 'PUBLISHED' && spotsLabel(job)) {
-              <span style="font-size:.78rem; font-weight:700; padding:.2rem .6rem; border-radius:999px; border:1px solid rgba(255,255,255,.1);"
+              <span class="job-spots-pill"
+                    [attr.data-spots-level]="spotsLeftLevel(job)"
+                    style="font-size:.78rem; font-weight:700; padding:.2rem .6rem; border-radius:999px; border:1px solid rgba(255,255,255,.1);"
                     [style]="spotsStyle(job)">
                 {{ spotsLabel(job) }}
               </span>

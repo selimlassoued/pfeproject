@@ -13,6 +13,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeoutException;
 
 @Component
 @RequiredArgsConstructor
@@ -77,12 +78,37 @@ public class AnalysisConsumer {
                     resp.hiringRecommendation());
 
         } catch (Exception e) {
+            // Log the full stack server-side so debugging is still possible,
+            // but persist only a clean user-facing message — the UI surfaces
+            // processingError verbatim and a raw reactor / framework string
+            // ("Did not observe any item or terminal signal within ... in
+            // 'flatMap'...") is gibberish to a recruiter.
             log.error("Analysis FAILED for interview {}: {}", msg.getInterviewId(), e.getMessage(), e);
             result.setProcessingStatus(ProcessingStatus.FAILED);
-            result.setProcessingError(e.getMessage());
+            result.setProcessingError(toUserMessage(e));
             result.setProcessedAt(LocalDateTime.now());
             interviewResultRepo.save(result);
         }
+    }
+
+    private static String toUserMessage(Throwable t) {
+        // Walk the cause chain — a reactor TimeoutException usually wraps
+        // (or is wrapped by) the operator detail; we want the innermost
+        // recognizable cause.
+        Throwable cur = t;
+        while (cur != null) {
+            String name = cur.getClass().getSimpleName();
+            if (cur instanceof TimeoutException || name.contains("Timeout")) {
+                return "Analysis took longer than the allowed window and was aborted. "
+                        + "This is usually a slow Ollama cold start or an overloaded host. "
+                        + "Retry from the interview detail page.";
+            }
+            if (name.contains("Connect") || name.contains("UnknownHost")) {
+                return "Could not reach the analysis service. Please retry in a moment.";
+            }
+            cur = cur.getCause();
+        }
+        return "Analysis failed. Please retry from the interview detail page.";
     }
 
 }

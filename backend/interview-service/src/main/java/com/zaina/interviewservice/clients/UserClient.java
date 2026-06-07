@@ -6,8 +6,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-@FeignClient(name = "user-client",
-        url = "${user.service.url:http://gateway:8888}")
+// The /api/admin/users endpoint is hosted in the gateway service
+// (AdminUsersController), so we point Feign at the gateway by its
+// Eureka service id. Dropping the explicit `url=` lets Feign resolve
+// through Spring Cloud LoadBalancer.
+@FeignClient(name = "gatewayserver", contextId = "userClient")
 public interface UserClient {
 
     @GetMapping("/api/admin/users/{userId}")

@@ -8,17 +8,38 @@
 
     <div class="interviews-filters">
       <input class="input" placeholder="Candidate name or email" [(ngModel)]="searchCandidate"
-             (keyup.enter)="search()" />
+             (ngModelChange)="onCandidateChange($event)"
+             (keyup.enter)="suppressCandidateSuggest = true; $any($event.target).blur()"
+             [attr.list]="(suppressCandidateSuggest || !searchCandidate) ? null : 'candidate-options'" />
+      <datalist id="candidate-options">
+        @for (c of candidateOptions; track c) {
+          <option [value]="c"></option>
+        }
+      </datalist>
       <input class="input" placeholder="Position" [(ngModel)]="searchPosition"
-             (keyup.enter)="search()" />
-      <select class="input" [(ngModel)]="statusFilter">
+             (ngModelChange)="onPositionChange($event)"
+             (keyup.enter)="suppressPositionSuggest = true; $any($event.target).blur()"
+             [attr.list]="(suppressPositionSuggest || !searchPosition) ? null : 'position-options'" />
+      <datalist id="position-options">
+        @for (p of positionOptions; track p) {
+          <option [value]="p"></option>
+        }
+      </datalist>
+      @if (isAdminOrSuper) {
+        <select class="input" [(ngModel)]="recruiterFilter" (ngModelChange)="search()">
+          <option value="">All recruiters</option>
+          @for (r of recruiterOptions; track r.id) {
+            <option [value]="r.id">{{ r.label }}</option>
+          }
+        </select>
+      }
+      <select class="input" [(ngModel)]="statusFilter" (ngModelChange)="search()">
         <option value="">All statuses</option>
         <option value="SCHEDULED">Scheduled</option>
         <option value="IN_PROGRESS">In progress</option>
         <option value="COMPLETED">Completed</option>
         <option value="CANCELLED">Cancelled</option>
       </select>
-      <button class="btn btn-primary" type="button" (click)="search()">Search</button>
     </div>
   </div>
 

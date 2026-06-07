@@ -57,7 +57,15 @@ public class SecurityConfig {
                         .pathMatchers("/actuator/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
 
                         // ── Admin — SUPERADMIN only: manage admins ────────────
-                        .pathMatchers(HttpMethod.GET, "/api/admin/internal/users/*/email").permitAll()
+                        // The /internal/users/{id}/email lookup is called by
+                        // other services (notification-microservice uses a
+                        // client_credentials token via HttpClientConfig). It
+                        // used to be permitAll, which let anyone enumerate
+                        // user PII by UUID. Now it requires *any* valid JWT
+                        // (user or service account), which keeps the
+                        // service-to-service flow working without exposing
+                        // emails to anonymous callers.
+                        .pathMatchers(HttpMethod.GET, "/api/admin/internal/users/*/email").authenticated()
                         .pathMatchers("/api/admin/users/*/roles").hasAnyRole("SUPERADMIN")
                         .pathMatchers("/api/admin/roles").hasAnyRole("SUPERADMIN")
 
@@ -73,8 +81,13 @@ public class SecurityConfig {
 
                         // ── Applications — public ─────────────────────────────
                         .pathMatchers(HttpMethod.GET, "/api/applications/check-github").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/applications/internal/job/*/candidate-ids").permitAll()
-                        .pathMatchers(HttpMethod.POST, "/api/applications/internal/**").permitAll()
+                        // /api/applications/internal/** is reached only by
+                        // service-to-service calls that target
+                        // http://application-microservice:8080 directly (see
+                        // AdminUsersService#applicationServiceUrl). Nothing
+                        // legitimate routes through the gateway, so we deny
+                        // any client request that tries to hit it.
+                        .pathMatchers("/api/applications/internal/**").denyAll()
 
                         // ── Applications — analysis ───────────────────────────
                         .pathMatchers(HttpMethod.GET, "/api/applications/*/analysis").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
@@ -136,10 +149,19 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.PATCH, "/api/notifications/**").hasRole("CANDIDATE")
 
                         // ── WebSocket ─────────────────────────────────────────
-                        .pathMatchers("/ws/notifications/**").permitAll()
+                        // NotificationSocketService (frontend) appends the
+                        // Keycloak token as ?access_token= on the upgrade
+                        // request; WebSocketTokenRelayFilter promotes it to
+                        // Authorization: Bearer before this rule runs, so
+                        // Spring's oauth2ResourceServer().jwt() validates the
+                        // handshake the same way it does for HTTP.
+                        .pathMatchers("/ws/notifications/**").authenticated()
 
                         // ── Audit ─────────────────────────────────────────────
-                        .pathMatchers("/api/audit/candidate/**").authenticated()
+                        // /api/audit/candidate/** used to be authenticated()
+                        // which let any candidate read another candidate's
+                        // moderation status / flagged-by list by changing the
+                        // UUID. Audit access is recruiter+ across the board.
                         .pathMatchers("/api/audit/**").hasAnyRole("ADMIN", "SUPERADMIN","RECRUITER")
 
                         // ── Everything else ───────────────────────────────────

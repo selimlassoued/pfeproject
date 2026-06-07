@@ -6,6 +6,8 @@ import { KeycloakAccountService } from '../services/keycloak-account-service';
 import { User } from '../model/user.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import Keycloak from 'keycloak-js';
+import { loginWithCurrentTheme } from '../utils/keycloak-login';
+import { applyServerErrors, clearServerErrors, normalizeHttpError } from '../utils/http-error';
 
 @Component({
   selector: 'app-profile',
@@ -96,7 +98,7 @@ export class Profile implements OnInit {
    * password before they can change a security setting like 2FA.
    */
   enableTwoFactor(): void {
-    this.keycloak.login({
+    loginWithCurrentTheme(this.keycloak, {
       action: 'CONFIGURE_TOTP',
       redirectUri: window.location.origin + '/profile',
       maxAge: 0,
@@ -108,6 +110,7 @@ export class Profile implements OnInit {
     this.saving  = true;
     this.error   = undefined;
     this.success  = undefined;
+    clearServerErrors(this.form);
     try {
       const raw    = this.form.getRawValue();
       const digits = (raw.phoneNational ?? '').replace(/\D/g, '');
@@ -124,10 +127,21 @@ export class Profile implements OnInit {
         this.snackBar.open('Username already taken!', 'Close', { duration: 5000, panelClass: ['error-snackbar'] });
         this.error = 'Username already taken.';
       } else {
-        this.error = 'Update failed.';
+        const httpError = normalizeHttpError(e);
+        applyServerErrors(this.form, httpError.fieldErrors);
+        this.error = httpError.message || 'Update failed.';
       }
     } finally {
       this.saving = false;
     }
+  }
+
+  /** Server message wins over a generic field-required default. */
+  fieldError(path: string, defaultMsg: string): string | null {
+    const ctl = this.form.get(path);
+    if (!ctl) return null;
+    if (ctl.errors?.['server']) return ctl.errors['server'] as string;
+    if (ctl.touched && ctl.invalid) return defaultMsg;
+    return null;
   }
 }

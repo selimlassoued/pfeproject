@@ -45,7 +45,7 @@
         </thead>
 
         <tbody>
-          @for (app of applications; track app.applicationId) {
+          @for (app of pagedApplications(); track app.applicationId) {
             <tr (click)="openDetails(app)"
                 style="cursor:pointer;">
 
@@ -79,6 +79,32 @@
         </tbody>
       </table>
     </div>
+
+    @if (totalPages() > 1) {
+      <nav class="pager" aria-label="Applications pagination">
+        <div class="pager-info">
+          Showing <strong>{{ rangeStart() }}-{{ rangeEnd() }}</strong>
+          of <strong>{{ applications.length }}</strong>
+        </div>
+        <div class="pager-controls">
+          <button type="button" class="pager-btn"
+                  [disabled]="currentPage === 0"
+                  (click)="prevPage()">← Prev</button>
+          @for (p of pageNumbers(); track $index) {
+            @if (p === '…') {
+              <span class="pager-ellipsis">…</span>
+            } @else {
+              <button type="button" class="pager-btn"
+                      [class.is-active]="p === currentPage"
+                      (click)="goToPage(p)">{{ $any(p) + 1 }}</button>
+            }
+          }
+          <button type="button" class="pager-btn"
+                  [disabled]="currentPage >= totalPages() - 1"
+                  (click)="nextPage()">Next →</button>
+        </div>
+      </nav>
+    }
   }
 
   @if (!loading && applications.length === 0) {

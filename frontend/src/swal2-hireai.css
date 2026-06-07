@@ -1,7 +1,8 @@
-/* ══════════════════════════════════════════════════════
-   SweetAlert2 - HireAI theme
-   Add this at the bottom of styles.css
-══════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   SweetAlert2 - HireAI theme (theme-aware via global CSS tokens)
+   All colours come from tokens defined in styles.css, which flip when
+   data-theme="light" is set on <html>.
+══════════════════════════════════════════════════════════════════════ */
 
 /* Overlay */
 .swal2-container {
@@ -10,25 +11,22 @@
 
 /* Popup */
 .swal2-popup {
-  background: linear-gradient(
-    160deg,
-    rgba(18, 24, 52, 0.97),
-    rgba(11, 16, 38, 0.99)
-  ) !important;
-  border: 1px solid rgba(121, 164, 233, 0.28) !important;
+  background: linear-gradient(160deg, var(--surface-3), var(--surface-2)) !important;
+  border: 1px solid var(--border-strong) !important;
   border-radius: 24px !important;
   box-shadow:
-    0 0 0 1px rgba(121,164,233,0.10),
-    0 24px 64px rgba(0, 0, 0, 0.55) !important;
+    0 0 0 1px var(--border-subtle),
+    var(--shadow-lg) !important;
   font-family: var(--font-body) !important;
-  color: var(--color-text) !important;
+  color: var(--text) !important;
   padding: 2rem 2rem 1.75rem !important;
+  backdrop-filter: blur(10px);
 }
 
 /* Title */
 .swal2-title {
   font-family: var(--font-display) !important;
-  color: var(--color-cream) !important;
+  color: var(--text-display) !important;
   font-size: 1.4rem !important;
   letter-spacing: -0.02em !important;
   padding: 0 0 0.5rem !important;
@@ -36,7 +34,7 @@
 
 /* HTML content */
 .swal2-html-container {
-  color: var(--color-text-muted) !important;
+  color: var(--text-muted) !important;
   font-size: 0.92rem !important;
   line-height: 1.6 !important;
   margin: 0.5rem 0 1rem !important;
@@ -46,10 +44,10 @@
 .swal2-input,
 .swal2-textarea,
 .swal2-select {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(121, 164, 233, 0.28) !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border-strong) !important;
   border-radius: 12px !important;
-  color: var(--color-text) !important;
+  color: var(--text) !important;
   font-family: var(--font-body) !important;
   font-size: 0.93rem !important;
   padding: 0.7rem 0.9rem !important;
@@ -62,27 +60,27 @@
 .swal2-textarea:focus,
 .swal2-select:focus {
   border-color: var(--color-secondary) !important;
-  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.25) !important;
+  box-shadow: 0 0 0 3px var(--border-focus) !important;
   outline: none !important;
 }
 
 .swal2-input::placeholder,
 .swal2-textarea::placeholder {
-  color: rgba(248, 250, 252, 0.35) !important;
+  color: var(--text-soft) !important;
 }
 
 /* Select options */
 .swal2-select option {
-  background: #0f1629 !important;
-  color: var(--color-text) !important;
+  background: var(--surface-solid) !important;
+  color: var(--text) !important;
 }
 
 /* Validation message */
 .swal2-validation-message {
-  background: rgba(233, 121, 121, 0.10) !important;
-  border: 1px solid rgba(233, 121, 121, 0.28) !important;
+  background: var(--tint-danger-bg) !important;
+  border: 1px solid var(--tint-danger-border) !important;
   border-radius: 10px !important;
-  color: rgba(255, 220, 220, 0.95) !important;
+  color: var(--tint-danger-text) !important;
   font-size: 0.85rem !important;
   margin-top: 0.5rem !important;
   padding: 0.5rem 0.85rem !important;
@@ -119,15 +117,15 @@
 }
 
 .swal2-confirm:focus {
-  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.4) !important;
+  box-shadow: 0 0 0 3px var(--border-focus) !important;
 }
 
 /* Cancel button */
 .swal2-cancel {
   background: transparent !important;
-  border: 1px solid rgba(121, 164, 233, 0.28) !important;
+  border: 1px solid var(--border-strong) !important;
   border-radius: var(--radius-pill) !important;
-  color: var(--color-text) !important;
+  color: var(--text) !important;
   font-family: var(--font-body) !important;
   font-size: 0.93rem !important;
   font-weight: 600 !important;
@@ -136,16 +134,16 @@
 }
 
 .swal2-cancel:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(121, 164, 233, 0.45) !important;
+  background: var(--surface-3) !important;
+  border-color: var(--border-prominent) !important;
 }
 
 /* Deny button (if used) */
 .swal2-deny {
-  background: rgba(233, 121, 121, 0.12) !important;
-  border: 1px solid rgba(233, 121, 121, 0.30) !important;
+  background: var(--tint-danger-bg) !important;
+  border: 1px solid var(--tint-danger-border) !important;
   border-radius: var(--radius-pill) !important;
-  color: rgba(255, 220, 220, 0.95) !important;
+  color: var(--tint-danger-text) !important;
   font-family: var(--font-body) !important;
   font-size: 0.93rem !important;
   font-weight: 700 !important;
@@ -159,36 +157,33 @@
 
 /* Icon */
 .swal2-icon {
-  border-color: rgba(121, 164, 233, 0.35) !important;
+  border-color: var(--border-strong) !important;
   margin: 0 auto 1rem !important;
   scale: 0.85;
 }
 
 .swal2-icon.swal2-success {
   border-color: rgba(74, 222, 128, 0.40) !important;
-  color: #4ade80 !important;
+  color: var(--color-success) !important;
 }
-
 .swal2-icon.swal2-success [class^='swal2-success-line'] {
-  background: #4ade80 !important;
+  background: var(--color-success) !important;
 }
-
 .swal2-icon.swal2-success .swal2-success-ring {
   border-color: rgba(74, 222, 128, 0.30) !important;
 }
 
 .swal2-icon.swal2-error {
   border-color: rgba(248, 113, 113, 0.40) !important;
-  color: #f87171 !important;
+  color: var(--color-danger) !important;
 }
-
 .swal2-icon.swal2-error [class^='swal2-x-mark-line'] {
-  background: #f87171 !important;
+  background: var(--color-danger) !important;
 }
 
 .swal2-icon.swal2-warning {
   border-color: rgba(251, 191, 36, 0.40) !important;
-  color: #fbbf24 !important;
+  color: var(--color-warning) !important;
 }
 
 .swal2-icon.swal2-info {
@@ -198,11 +193,11 @@
 
 /* Close button */
 .swal2-close {
-  color: var(--color-text-muted) !important;
+  color: var(--text-muted) !important;
   font-size: 1.4rem !important;
   transition: color 150ms ease !important;
 }
-.swal2-close:hover { color: var(--color-text) !important; }
+.swal2-close:hover { color: var(--text) !important; }
 
 /* Timer progress bar */
 .swal2-timer-progress-bar {
@@ -217,18 +212,18 @@
 
 /* ══ customClass aliases (used when buttonsStyling:false) ══ */
 .swal-hireai-popup {
-  background: linear-gradient(160deg, rgba(18,24,52,0.98), rgba(11,16,38,0.99)) !important;
-  border: 1px solid rgba(121,164,233,0.28) !important;
+  background: linear-gradient(160deg, var(--surface-3), var(--surface-2)) !important;
+  border: 1px solid var(--border-strong) !important;
   border-radius: 24px !important;
-  box-shadow: 0 0 0 1px rgba(121,164,233,0.10), 0 24px 64px rgba(0,0,0,0.55) !important;
+  box-shadow: 0 0 0 1px var(--border-subtle), var(--shadow-lg) !important;
   font-family: var(--font-body) !important;
-  color: var(--color-text) !important;
+  color: var(--text) !important;
   padding: 2rem 2rem 1.75rem !important;
 }
 
 .swal-hireai-title {
   font-family: var(--font-display) !important;
-  color: var(--color-cream) !important;
+  color: var(--text-display) !important;
   font-size: 1.35rem !important;
   letter-spacing: -0.02em !important;
   padding: 0 0 0.5rem !important;
@@ -241,7 +236,7 @@
 }
 
 .swal-hireai-confirm {
-  background: linear-gradient(135deg, #1e40bc, #79a4e9) !important;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)) !important;
   border: none !important;
   border-radius: 999px !important;
   color: #fff !important;
@@ -260,9 +255,9 @@
 
 .swal-hireai-cancel {
   background: transparent !important;
-  border: 1px solid rgba(121,164,233,0.28) !important;
+  border: 1px solid var(--border-strong) !important;
   border-radius: 999px !important;
-  color: var(--color-text) !important;
+  color: var(--text) !important;
   font-family: var(--font-body) !important;
   font-size: 0.93rem !important;
   font-weight: 600 !important;
@@ -271,15 +266,15 @@
   transition: background 200ms ease, border-color 200ms ease !important;
 }
 .swal-hireai-cancel:hover {
-  background: rgba(255,255,255,0.06) !important;
-  border-color: rgba(121,164,233,0.45) !important;
+  background: var(--surface-3) !important;
+  border-color: var(--border-prominent) !important;
 }
 
 .swal-hireai-validation {
-  background: rgba(233,121,121,0.10) !important;
-  border: 1px solid rgba(233,121,121,0.28) !important;
+  background: var(--tint-danger-bg) !important;
+  border: 1px solid var(--tint-danger-border) !important;
   border-radius: 10px !important;
-  color: rgba(255,220,220,0.95) !important;
+  color: var(--tint-danger-text) !important;
   font-size: 0.85rem !important;
   padding: 0.5rem 0.85rem !important;
   margin-top: 0.5rem !important;
@@ -295,20 +290,20 @@
   gap: 0.55rem;
   padding: 0.4rem 0.6rem;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.92);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  color: var(--text);
   font-size: 0.9rem;
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
 }
 .hireai-edit-domain:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(121, 164, 233, 0.45);
+  background: var(--surface-3);
+  border-color: var(--border-prominent);
 }
 .hireai-edit-domain input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: var(--color-secondary, #79a4e9);
+  accent-color: var(--color-secondary);
   margin: 0;
 }

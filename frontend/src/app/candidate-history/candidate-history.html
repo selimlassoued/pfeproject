@@ -1,0 +1,104 @@
+<section class="ch-page">
+  <div class="ch-container">
+
+    <div class="ch-topbar">
+      <button class="ch-back" type="button" (click)="back()">← Back to profile</button>
+    </div>
+
+    <header class="ch-header">
+      <div class="ch-avatar">{{ initials() }}</div>
+      <div class="ch-header-info">
+        <div class="ch-eyebrow">Candidate history</div>
+        <h2 class="ch-title">{{ candidateName() }}</h2>
+        @if (candidate?.email; as email) {
+          <div class="ch-email">{{ email }}</div>
+        }
+      </div>
+    </header>
+
+    @if (loading) {
+      <div class="ch-status ch-status-info">Loading applications…</div>
+    } @else if (loadError) {
+      <div class="ch-status ch-status-error">{{ loadError }}</div>
+    } @else {
+
+      <div class="ch-summary">
+        <div class="ch-summary-card">
+          <div class="ch-summary-label">Total applications</div>
+          <div class="ch-summary-value">{{ total() }}</div>
+        </div>
+        <div class="ch-summary-card">
+          <div class="ch-summary-label">Under review</div>
+          <div class="ch-summary-value">{{ countByStatus('UNDER_REVIEW') }}</div>
+        </div>
+        <div class="ch-summary-card">
+          <div class="ch-summary-label">Interview phase</div>
+          <div class="ch-summary-value">{{ countByStatus('INTERVIEW_PHASE') }}</div>
+        </div>
+        <div class="ch-summary-card">
+          <div class="ch-summary-label">Hired</div>
+          <div class="ch-summary-value">{{ countByStatus('HIRED') }}</div>
+        </div>
+      </div>
+
+      @if (applications.length === 0) {
+        <div class="ch-empty">
+          <div class="ch-empty-title">No applications yet</div>
+          <div class="ch-empty-sub">This candidate has not applied to any job.</div>
+        </div>
+      } @else {
+        <div class="ch-list">
+          @for (row of pagedApplications(); track row.applicationId) {
+            <button class="ch-row" type="button" (click)="openApplication(row)">
+              <div class="ch-row-main">
+                <div class="ch-row-title">{{ row.jobTitle || 'Untitled role' }}</div>
+                <div class="ch-row-sub">
+                  Applied {{ row.appliedAt | date:'mediumDate' }}
+                  @if (row.withdrawalReason) {
+                    <span class="ch-row-dot">•</span>
+                    <span class="ch-withdraw">Withdrew: {{ row.withdrawalReason }}</span>
+                  }
+                </div>
+              </div>
+              <div class="ch-row-aside">
+                @if (row.fitScore != null) {
+                  <span [class]="scoreClass(row.fitScore)">{{ row.fitScore }}%</span>
+                }
+                <span [class]="statusClass(row.status)">{{ row.status || '-' }}</span>
+                <span class="ch-arrow">→</span>
+              </div>
+            </button>
+          }
+        </div>
+
+        @if (totalPages() > 1) {
+          <nav class="pager" aria-label="Applications pagination">
+            <div class="pager-info">
+              Showing <strong>{{ rangeStart() }}-{{ rangeEnd() }}</strong>
+              of <strong>{{ applications.length }}</strong>
+            </div>
+            <div class="pager-controls">
+              <button type="button" class="pager-btn"
+                      [disabled]="currentPage === 0"
+                      (click)="prevPage()">← Prev</button>
+              @for (p of pageNumbers(); track $index) {
+                @if (p === '…') {
+                  <span class="pager-ellipsis">…</span>
+                } @else {
+                  <button type="button" class="pager-btn"
+                          [class.is-active]="p === currentPage"
+                          (click)="goToPage(p)">{{ $any(p) + 1 }}</button>
+                }
+              }
+              <button type="button" class="pager-btn"
+                      [disabled]="currentPage >= totalPages() - 1"
+                      (click)="nextPage()">Next →</button>
+            </div>
+          </nav>
+        }
+      }
+
+    }
+
+  </div>
+</section>

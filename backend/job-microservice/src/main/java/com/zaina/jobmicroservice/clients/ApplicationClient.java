@@ -16,7 +16,7 @@ public class ApplicationClient {
     private final RestTemplate restTemplate;
 
     public void rejectNonHiredForJob(UUID jobId) {
-        String url = "http://gateway:8888/api/applications/internal/job/" + jobId + "/reject-non-hired";
+        String url = "http://APPLICATION-MICROSERVICE/api/applications/internal/job/" + jobId + "/reject-non-hired";
         try {
             log.info("[ApplicationClient] POST {}", url);
             ResponseEntity<Void> resp = restTemplate.postForEntity(url, null, Void.class);
@@ -27,7 +27,7 @@ public class ApplicationClient {
     }
 
     public boolean hasApplications(UUID jobId) {
-        String url = "http://gateway:8888/api/applications/internal/job/" + jobId + "/candidate-ids";
+        String url = "http://APPLICATION-MICROSERVICE/api/applications/internal/job/" + jobId + "/candidate-ids";
         try {
             ResponseEntity<java.util.List> resp = restTemplate.getForEntity(url, java.util.List.class);
             return resp.getBody() != null && !resp.getBody().isEmpty();
@@ -38,7 +38,7 @@ public class ApplicationClient {
     }
 
     public void deleteApplicationsForJob(UUID jobId) {
-        String url = "http://gateway:8888/api/applications/internal/job/" + jobId;
+        String url = "http://APPLICATION-MICROSERVICE/api/applications/internal/job/" + jobId;
         try {
             log.info("[ApplicationClient] DELETE {}", url);
             restTemplate.delete(url);

@@ -37,7 +37,7 @@
 
 .users-card{
   padding: var(--space-10);
-  border: 1px solid rgba(121,164,233,0.26);
+  border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-md);
 }
 
@@ -47,7 +47,7 @@
   gap: var(--space-6);
   align-items:center;
   padding-bottom: var(--space-6);
-  border-bottom: 1px solid rgba(121,164,233,0.18);
+  border-bottom: 1px solid var(--border);
   margin-bottom: var(--space-6);
   flex-wrap: wrap;
 }
@@ -55,23 +55,23 @@
 .table-wrap{
   overflow:auto;
   border-radius: 16px;
-  border: 1px solid rgba(121,164,233,0.18);
+  border: 1px solid var(--border);
 }
 
 .users-table{
   width:100%;
   border-collapse: collapse;
   min-width: 960px;
-  background: rgba(255,255,255,0.02);
+  background: var(--surface-1);
 }
 
 .users-table thead th{
   text-align:left;
   font-weight: 800;
-  color: rgba(255,255,255,0.92);
+  color: var(--text);
   padding: 0.85rem 0.9rem;
-  border-bottom: 1px solid rgba(121,164,233,0.18);
-  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
 }
 
 /* Action column header - no label, fixed width */
@@ -82,7 +82,7 @@
 
 .users-table tbody td{
   padding: 0.85rem 0.9rem;
-  border-bottom: 1px solid rgba(121,164,233,0.12);
+  border-bottom: 1px solid var(--border-subtle);
   vertical-align: middle;
 }
 
@@ -109,18 +109,7 @@
 }
 
 
-/* status pills */
-.pill-success{
-  background: rgba(120, 255, 197, 0.10) !important;
-  border-color: rgba(120, 255, 197, 0.25) !important;
-  color: rgba(200,255,235,0.95) !important;
-}
-
-.pill-danger{
-  background: rgba(255, 120, 120, 0.10) !important;
-  border-color: rgba(255, 120, 120, 0.25) !important;
-  color: rgba(255,200,200,0.95) !important;
-}
+/* .pill-success / .pill-danger live in styles.css now. */
 
 /* =========================
    Pagination bar
@@ -132,8 +121,8 @@
   gap: var(--space-4);
   padding: .85rem 1rem;
   margin-top: var(--space-6);
-  border: 1px solid rgba(121, 164, 233, 0.18);
-  background: rgba(11, 16, 38, 0.35);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
   backdrop-filter: blur(10px);
   border-radius: 16px;
 }
@@ -154,7 +143,7 @@
 }
 
 .users-pager-mid{
-  color: rgba(248,250,252,.78);
+  color: var(--text);
   font-size: .92rem;
   font-weight: 800;
   white-space: nowrap;
@@ -170,12 +159,12 @@
   gap: .35rem;
   padding: .25rem .35rem;
   border-radius: 999px;
-  border: 1px solid rgba(121, 164, 233, 0.16);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
 }
 
 .users-ellipsis{
-  color: rgba(248,250,252,.55);
+  color: var(--text-soft);
   padding: 0 .25rem;
   user-select: none;
 }
@@ -185,9 +174,9 @@
   height: 32px;
   padding: 0 .55rem;
   border-radius: 999px;
-  border: 1px solid rgba(121, 164, 233, 0.18);
-  background: rgba(255,255,255,0.02);
-  color: rgba(248,250,252,.88);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text);
   font-weight: 900;
   font-size: .88rem;
   cursor: pointer;
@@ -195,16 +184,16 @@
 }
 
 .users-pageBtn:hover{
-  background: rgba(121, 164, 233, 0.10);
-  border-color: rgba(121, 164, 233, 0.30);
+  background: var(--border-subtle);
+  border-color: var(--border-strong);
   transform: translateY(-1px);
 }
 
 .users-pageBtn.active{
-  background: rgba(121, 164, 233, 0.16);
-  border-color: rgba(121, 164, 233, 0.40);
+  background: var(--border);
+  border-color: var(--border-prominent);
   color: var(--color-cream);
-  box-shadow: 0 0 0 3px rgba(121, 164, 233, 0.12);
+  box-shadow: 0 0 0 3px var(--border-subtle);
 }
 
 /* =========================
@@ -217,9 +206,9 @@
   height: 40px;
   padding: 0 .9rem;
   border-radius: 999px;
-  border: 1px solid rgba(121, 164, 233, 0.22);
-  background: rgba(255,255,255,0.04);
-  color: rgba(248, 250, 252, 0.95);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
   font-weight: 900;
   display:flex;
   align-items:center;
@@ -229,8 +218,8 @@
 }
 
 .rows-btn:hover{
-  border-color: rgba(121, 164, 233, 0.34);
-  background: rgba(121,164,233,0.08);
+  border-color: var(--border-prominent);
+  background: var(--border-subtle);
 }
 
 .rows-caret{
@@ -246,8 +235,8 @@
   min-width: 100%;
   z-index: 50;
   border-radius: 14px;
-  border: 1px solid rgba(121, 164, 233, 0.22);
-  background: rgba(11, 16, 38, 0.92);
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
   backdrop-filter: blur(12px);
   box-shadow: 0 18px 42px rgba(0,0,0,.35);
   padding: .35rem;
@@ -259,7 +248,7 @@
   border-radius: 12px;
   border: 1px solid transparent;
   background: transparent;
-  color: rgba(248, 250, 252, 0.92);
+  color: var(--text);
   font-weight: 900;
   cursor:pointer;
   display:flex;
@@ -268,28 +257,28 @@
 }
 
 .rows-item:hover{
-  background: rgba(121, 164, 233, 0.14);
-  border-color: rgba(121, 164, 233, 0.20);
+  background: var(--border-subtle);
+  border-color: var(--border);
 }
 
 .rows-item.active{
-  background: rgba(121, 164, 233, 0.22);
-  border-color: rgba(121, 164, 233, 0.38);
+  background: var(--border);
+  border-color: var(--border-prominent);
   color: var(--color-cream);
 }
 
 select {
-  background-color: #1b2236;
-  color: #f5f7ff;
+  background-color: var(--surface-solid);
+  color: var(--text);
 }
 
 select option {
-  background-color: #1b2236;
-  color: #f5f7ff;
+  background-color: var(--surface-solid);
+  color: var(--text);
 }
 
 select:hover {
-  border-color: rgba(121, 164, 233, 0.758);
+  border-color: var(--border-prominent);
 }
 
 /* responsive pager */

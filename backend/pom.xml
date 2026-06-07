@@ -2,53 +2,33 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.1</version>
-        <relativePath/> <!-- lookup parent from repository -->
-    </parent>
+
+    <!--
+        Aggregator pom for the HireAI backend.
+
+        Every service below has its own spring-boot-starter-parent and is
+        independently buildable; this pom just groups them so a single
+        `./mvnw package` at backend/ builds all jars before
+        `docker compose build` copies them into images.
+    -->
+
     <groupId>com.recrutment</groupId>
-    <artifactId>AI-Recrutment</artifactId>
+    <artifactId>hireai-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>AI-Recrutment</name>
-    <description>AI-Recrutment</description>
-    <url/>
-    <licenses>
-        <license/>
-    </licenses>
-    <developers>
-        <developer/>
-    </developers>
-    <scm>
-        <connection/>
-        <developerConnection/>
-        <tag/>
-        <url/>
-    </scm>
-    <properties>
-        <java.version>17</java.version>
-    </properties>
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
+    <packaging>pom</packaging>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <name>HireAI Backend</name>
+    <description>Aggregator for all HireAI Spring Boot microservices.</description>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
+    <modules>
+        <module>configserver</module>
+        <module>eurekaserver</module>
+        <module>gatewayserver</module>
+        <module>application-microservice</module>
+        <module>audit-service</module>
+        <module>interview-service</module>
+        <module>job-microservice</module>
+        <module>notification-microservice</module>
+    </modules>
 
 </project>

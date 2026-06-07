@@ -3,8 +3,14 @@
 .env.*
 !.env.example
 
-# Keycloak realm / users export (contains accounts & secrets)
+# Keycloak realm / users export (contains accounts, signing keys, client secrets)
 backend/keycloak-export/
+backend/keycloak-export-ai-recruitment/
+backend/keycloak-export-ai-recruitment.zip
+
+# JVM crash logs
+hs_err_pid*.log
+replay_pid*.log
 
 # Python
 venv/
