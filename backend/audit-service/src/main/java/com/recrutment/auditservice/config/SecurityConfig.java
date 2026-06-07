@@ -1,4 +1,4 @@
-package com.zaina.interviewservice.config;
+package com.recrutment.auditservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,18 +8,14 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Defense-in-depth security for interview-service.
+ * Defense-in-depth security for audit-service.
  *
- * The gateway already gates /api/interviews/** with role-aware rules, so
- * we mirror that with "any authenticated JWT" here rather than duplicate
- * the per-path role matrix. If the gateway is ever bypassed (someone hits
- * the service directly over the Docker network), this filter chain stops
- * anonymous access.
- *
- * Per-handler role and ownership checks (e.g. "the calling recruiter
- * owns this interview") live in the controllers and services. The point
- * of this config is to make sure those handlers only ever see callers
- * who hold a real Keycloak JWT.
+ * Authorization on the audit data itself comes from X-Actor-Roles, a
+ * header the gateway stamps from the validated JWT (see
+ * ActorUserIdGatewayFilter). This config makes sure no caller without
+ * a valid Keycloak token can reach the controller at all, even from
+ * inside the Docker network. The previous version had no security and
+ * was reachable from any service.
  */
 @Configuration
 @EnableWebSecurity
@@ -30,7 +26,6 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Spring Boot actuator probes for compose healthchecks.
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .anyRequest().authenticated()
                 )

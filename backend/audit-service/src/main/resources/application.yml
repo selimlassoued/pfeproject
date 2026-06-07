@@ -1,5 +1,7 @@
 spring:
   application:
     name: audit-service
+  # spring.security.oauth2.resourceserver.jwt.jwk-set-uri is provided by
+  # the centralized Spring Cloud Config repo (hireAI-config-repo).
   config:
     import: optional:configserver:${CONFIG_SERVICE_URL:http://config-server:9999}

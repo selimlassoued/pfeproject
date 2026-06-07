@@ -1,4 +1,4 @@
-package com.zaina.interviewservice.config;
+package com.zaina.jobmicroservice.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,18 +8,15 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Defense-in-depth security for interview-service.
+ * Defense-in-depth security for job-microservice.
  *
- * The gateway already gates /api/interviews/** with role-aware rules, so
- * we mirror that with "any authenticated JWT" here rather than duplicate
- * the per-path role matrix. If the gateway is ever bypassed (someone hits
- * the service directly over the Docker network), this filter chain stops
- * anonymous access.
+ * The gateway already enforces role-aware rules on /api/jobs/**. We
+ * mirror that here with "any authenticated JWT", so a caller that
+ * bypasses the gateway (Docker-network reach, debug port forward,
+ * misrouted call) still has to present a real Keycloak token.
  *
- * Per-handler role and ownership checks (e.g. "the calling recruiter
- * owns this interview") live in the controllers and services. The point
- * of this config is to make sure those handlers only ever see callers
- * who hold a real Keycloak JWT.
+ * Per-handler role / ownership checks live in the controllers and
+ * services; this config's job is to gate anonymous traffic.
  */
 @Configuration
 @EnableWebSecurity
@@ -30,7 +27,7 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Spring Boot actuator probes for compose healthchecks.
+                        // Compose healthcheck probe.
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .anyRequest().authenticated()
                 )
