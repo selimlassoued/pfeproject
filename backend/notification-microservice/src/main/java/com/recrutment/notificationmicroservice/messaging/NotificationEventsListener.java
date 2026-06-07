@@ -41,18 +41,61 @@ public class NotificationEventsListener {
                 notificationService.handleInterviewProposalDeclined(evt);
                 notificationService.pushInterviewListChange(evt);
             }
+            // Bell + STOMP + email — the candidate must act on these.
+            case "INTERVIEW_PROPOSAL_SENT" -> {
+                notificationService.handleInterviewProposalSent(evt);
+                notificationService.pushInterviewListChange(evt);
+            }
+            // Bell + STOMP + email — the other side must accept/decline.
+            case "INTERVIEW_RESCHEDULE_PROPOSED" -> {
+                notificationService.handleInterviewRescheduleProposed(evt);
+                notificationService.pushInterviewListChange(evt);
+            }
+            // Bell + STOMP + email — recruiter B must accept/decline.
+            case "INTERVIEW_DELEGATION_REQUESTED" -> {
+                notificationService.handleInterviewDelegationRequested(evt);
+                notificationService.pushInterviewListChange(evt);
+            }
+            // Bell + STOMP + email — proposer needs to know the request was rejected.
+            case "INTERVIEW_RESCHEDULE_DECLINED" -> {
+                notificationService.handleInterviewRescheduleDeclined(evt);
+                notificationService.pushInterviewListChange(evt);
+            }
+            // Bell + STOMP + email — recipient needs to know the request was withdrawn.
+            case "INTERVIEW_RESCHEDULE_CANCELLED" -> {
+                notificationService.handleInterviewRescheduleCancelled(evt);
+                notificationService.pushInterviewListChange(evt);
+            }
+            // Bell + STOMP + email — recruiter A learns the delegate said no.
+            case "INTERVIEW_DELEGATION_DECLINED" -> {
+                notificationService.handleInterviewDelegationDeclined(evt);
+                notificationService.pushInterviewListChange(evt);
+            }
+            // Bell + STOMP + email — recruiter B learns A pulled the delegation.
+            case "INTERVIEW_DELEGATION_CANCELLED" -> {
+                notificationService.handleInterviewDelegationCancelled(evt);
+                notificationService.pushInterviewListChange(evt);
+            }
+            // Job-level bell to every applicant when the recruiter closes the job.
+            case "JOB_CLOSED"        -> notificationService.handleJobClosed(evt);
+            // Candidate flag confirmation receipt to the actor (until we add
+            // an admin-broadcast list endpoint).
+            case "CANDIDATE_FLAGGED" -> notificationService.handleCandidateFlagged(evt);
             // Pure data pings - the navbar imminent-interview widget reloads on
             // any of these so it appears without a refresh.
             case "INTERVIEW_SCHEDULED",
                  "INTERVIEW_CANCELLED",
-                 "INTERVIEW_PROPOSAL_SENT",
                  "INTERVIEW_PROPOSAL_PICKED",
                  "INTERVIEW_PROPOSAL_CANCELLED",
                  "INTERVIEW_RESCHEDULE_CONFIRMED",
                  "INTERVIEW_DELEGATION_ACCEPTED"
                                             -> notificationService.pushInterviewListChange(evt);
-            // Live offer push - both candidate and recruiter UIs reload.
-            case "OFFER_CHANGED"             -> notificationService.pushOfferChange(evt);
+            // Live offer push: STOMP refresh on both sides + persistent bell
+            // on the side that has to act on the new status.
+            case "OFFER_CHANGED" -> {
+                notificationService.handleOfferChange(evt);
+                notificationService.pushOfferChange(evt);
+            }
             default -> { /* ignore */ }
         }
     }

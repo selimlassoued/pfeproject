@@ -10,6 +10,7 @@ import { JobOffer } from '../model/jobOffer.model';
 import { RequirementCategory } from '../model/jobRequirement.model';
 import { JobRequirement } from '../model/jobRequirement.model';
 import { getCanonicalLanguages, canonicalizeLanguage } from '../services/language-options.service';
+import { applyServerErrors, clearServerErrors, normalizeHttpError } from '../utils/http-error';
 import { DOMAIN_OPTIONS } from '../services/domains';
 import { OrgComboboxComponent } from '../org-combobox/org-combobox.component';
 
@@ -412,6 +413,7 @@ private readonly fb = inject(FormBuilder);
 
   async submit() {
     this.error = null;
+    clearServerErrors(this.form);
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -471,8 +473,9 @@ private readonly fb = inject(FormBuilder);
         await this.router.navigate(['/browse']);
       }
     } catch (e: any) {
-      if (e?.status) this.error = `Update failed (HTTP ${e.status}).`;
-      else this.error = 'Update failed.';
+      const httpError = normalizeHttpError(e);
+      applyServerErrors(this.form, httpError.fieldErrors);
+      this.error = httpError.message || 'Update failed.';
       console.error('updateJob error:', e);
     } finally {
       this.saving = false;
@@ -486,6 +489,15 @@ private readonly fb = inject(FormBuilder);
   // convenience for template
   c(path: string) {
     return this.form.get(path);
+  }
+
+  /** Server message takes priority over the client-validator default. */
+  fieldError(path: string, defaultMsg: string): string | null {
+    const ctl = this.form.get(path);
+    if (!ctl) return null;
+    if (ctl.errors?.['server']) return ctl.errors['server'] as string;
+    if (ctl.touched && ctl.invalid) return defaultMsg;
+    return null;
   }
 
   get status(): 'DRAFT' | 'PUBLISHED' {

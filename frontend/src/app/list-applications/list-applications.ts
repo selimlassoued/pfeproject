@@ -5,6 +5,7 @@ import { ApplicationDto } from '../model/application.dto';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { matchesWordStart } from '../utils/suggestion-match';
+import { normalizeHttpError } from '../utils/http-error';
 
 @Component({
   selector: 'app-list-applications',
@@ -116,7 +117,7 @@ export class ListApplications implements OnInit {
           this.loading      = false;
         },
         error: (err) => {
-          this.error   = err?.error?.message || 'Failed to load applications';
+          this.error   = normalizeHttpError(err).message || 'Failed to load applications';
           this.loading = false;
         },
       });

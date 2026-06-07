@@ -6,7 +6,6 @@ import com.recrutment.gatewayserver.admin.dto.KcDtos.KcUser;
 import com.recrutment.gatewayserver.messaging.AppEventMessage;
 import com.recrutment.gatewayserver.messaging.AppEventPublisher;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -24,7 +23,9 @@ public class AdminUsersService {
     private final AppEventPublisher eventPublisher;
     private final KeycloakAdminClient kc;
     private final WebClient webClient;
-    private final String applicationServiceUrl;
+
+    /** Eureka service id resolved by the @LoadBalanced WebClient.Builder. */
+    private static final String APPLICATION_SERVICE = "http://APPLICATION-MICROSERVICE";
 
     // SUPERADMIN can assign any role including ADMIN
     private static final Set<String> ALLOWED_BY_SUPERADMIN = Set.of("CANDIDATE", "RECRUITER", "ADMIN", "SUPERADMIN");
@@ -36,12 +37,11 @@ public class AdminUsersService {
     public AdminUsersService(
             KeycloakAdminClient kc,
             AppEventPublisher eventPublisher,
-            @Value("${app.application-service.url:http://application-microservice:8080}") String applicationServiceUrl
+            WebClient.Builder loadBalancedWebClientBuilder
     ) {
         this.kc = kc;
         this.eventPublisher = eventPublisher;
-        this.applicationServiceUrl = applicationServiceUrl;
-        this.webClient = WebClient.builder().build();
+        this.webClient = loadBalancedWebClientBuilder.build();
     }
 
     public Mono<List<KcUser>> listUsers(int first, int max, String search) {
@@ -262,9 +262,9 @@ public class AdminUsersService {
     // ── Dismiss signal ────────────────────────────────────────────────────────
 
     public Mono<Void> dismissCandidateSignal(String userId, String authHeader) {
-        log.info("Calling dismiss: {}/api/applications/internal/dismiss/{}", applicationServiceUrl, userId);
+        log.info("Calling dismiss: {}/api/applications/internal/dismiss/{}", APPLICATION_SERVICE, userId);
         return webClient.post()
-                .uri(applicationServiceUrl + "/api/applications/internal/dismiss/" + userId)
+                .uri(APPLICATION_SERVICE + "/api/applications/internal/dismiss/" + userId)
                 .header("Authorization", authHeader)
                 .retrieve()
                 .bodyToMono(Void.class)
@@ -278,7 +278,7 @@ public class AdminUsersService {
 
     private Mono<Void> cascadeBlockApplications(String userId, String authHeader) {
         return webClient.post()
-                .uri(applicationServiceUrl + "/api/applications/internal/block/" + userId)
+                .uri(APPLICATION_SERVICE + "/api/applications/internal/block/" + userId)
                 .header("Authorization", authHeader)
                 .retrieve()
                 .bodyToMono(Void.class)
@@ -290,7 +290,7 @@ public class AdminUsersService {
 
     private Mono<Void> cascadeUnblockApplications(String userId, String authHeader) {
         return webClient.post()
-                .uri(applicationServiceUrl + "/api/applications/internal/unblock/" + userId)
+                .uri(APPLICATION_SERVICE + "/api/applications/internal/unblock/" + userId)
                 .header("Authorization", authHeader)
                 .retrieve()
                 .bodyToMono(Void.class)

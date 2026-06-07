@@ -76,8 +76,8 @@
             placeholder="e.g. Frontend Developer"
             formControlName="title"
           />
-          @if (form.get('title')?.touched && form.get('title')?.invalid) {
-            <div class="text-muted" style="margin-top:.35rem;">Title is required.</div>
+          @if (fieldError('title', 'Title is required.'); as msg) {
+            <div class="text-muted" style="margin-top:.35rem;">{{ msg }}</div>
           }
         </div>
 
@@ -90,8 +90,8 @@
               <option value="HYBRID">Hybrid</option>
               <option value="REMOTE">Remote</option>
             </select>
-            @if (form.get('workArrangement')?.touched && form.get('workArrangement')?.invalid) {
-              <div class="text-muted" style="margin-top:.35rem;">Work arrangement is required.</div>
+            @if (fieldError('workArrangement', 'Work arrangement is required.'); as msg) {
+              <div class="text-muted" style="margin-top:.35rem;">{{ msg }}</div>
             }
           </div>
 
@@ -104,8 +104,8 @@
               <option value="CONTRACT">CONTRACT</option>
               <option value="INTERNSHIP">INTERNSHIP</option>
             </select>
-            @if (form.get('employmentType')?.touched && form.get('employmentType')?.invalid) {
-              <div class="text-muted" style="margin-top:.35rem;">Employment type is required.</div>
+            @if (fieldError('employmentType', 'Employment type is required.'); as msg) {
+              <div class="text-muted" style="margin-top:.35rem;">{{ msg }}</div>
             }
           </div>
 
@@ -120,8 +120,8 @@
                 <option [value]="d.value">{{ d.label }}</option>
               }
             </select>
-            @if (form.get('domain')?.touched && form.get('domain')?.invalid) {
-              <div class="text-muted" style="margin-top:.35rem;">Domain is required.</div>
+            @if (fieldError('domain', 'Domain is required.'); as msg) {
+              <div class="text-muted" style="margin-top:.35rem;">{{ msg }}</div>
             }
           </div>
         </div>
@@ -130,8 +130,8 @@
           <label class="toolbar-label">Description <span style="color:var(--color-secondary)">*</span></label>
           <textarea class="input" rows="7" formControlName="description"
             placeholder="Responsibilities, stack, team, benefits, process…"></textarea>
-          @if (c('description')?.touched && c('description')?.invalid) {
-            <div class="hint">Description is required (min 10 chars).</div>
+          @if (fieldError('description', 'Description is required (min 10 chars).'); as msg) {
+            <div class="hint">{{ msg }}</div>
           }
         </div>
       </section>

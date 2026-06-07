@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
+import { normalizeHttpError } from '../utils/http-error';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { InterviewService, InterviewResponse, ProposalResponse, ReschedRequestResponse } from '../services/interview-service';
@@ -121,7 +122,7 @@ export class MyApplicationDetail implements OnInit, OnDestroy {
         this.loadInterviews(data.applicationId);
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Failed to load application';
+        this.error = normalizeHttpError(err).message || 'Failed to load application';
         this.loading = false;
       },
     });
@@ -165,7 +166,7 @@ export class MyApplicationDetail implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.withdrawing.set(false);
-        this.error = err?.error?.message || 'Failed to withdraw application.';
+        this.error = normalizeHttpError(err).message || 'Failed to withdraw application.';
       },
     });
   }
@@ -233,7 +234,7 @@ export class MyApplicationDetail implements OnInit, OnDestroy {
       error: (err) => {
         this.acceptingReschedIdx = null;
         Swal.fire({ icon: 'error', title: 'Failed to accept',
-                    text: err?.error?.message || 'Please try again.' });
+                    text: normalizeHttpError(err).message || 'Please try again.' });
       },
     });
   }
@@ -324,7 +325,7 @@ export class MyApplicationDetail implements OnInit, OnDestroy {
       },
       error: (err) => {
         Swal.fire({ icon: 'error', title: 'Could not send',
-                    text: err?.error?.message || 'Please try again.' });
+                    text: normalizeHttpError(err).message || 'Please try again.' });
       },
     });
   }
@@ -357,7 +358,7 @@ export class MyApplicationDetail implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.pickingSlotIdx = null;
-        this.proposalError = err?.error?.message
+        this.proposalError = normalizeHttpError(err).message
           || 'Could not confirm that slot. Please try another.';
       },
     });
@@ -498,7 +499,7 @@ export class MyApplicationDetail implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.saving.set(false);
-        this.error = err?.error?.message || 'Failed to update application';
+        this.error = normalizeHttpError(err).message || 'Failed to update application';
       },
     });
   }

@@ -1,6 +1,7 @@
 package com.recrutment.notificationmicroservice.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -16,7 +17,13 @@ import java.util.Map;
 @Configuration
 public class HttpClientConfig {
 
+    /**
+     * Load-balanced so http://SERVICE-ID/path URIs are resolved through
+     * Eureka instead of routed through the gateway. The user-JWT-then-
+     * client-credentials interceptor chain stays as-is.
+     */
     @Bean
+    @LoadBalanced
     public RestTemplate restTemplate(
             @Value("${app.security.keycloak.token-url}") String tokenUrl,
             @Value("${app.security.keycloak.client-id}") String clientId,

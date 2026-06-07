@@ -28,8 +28,10 @@ public class ApplicationClient {
             headers.set("Authorization", authHeader);
         }
 
-        // Status goes as @RequestParam, not body
-        String url = "http://gateway:8888/api/applications/{id}/status?status={status}";
+        // Status goes as @RequestParam, not body.
+        // APPLICATION-MICROSERVICE is an Eureka service id resolved by
+        // the @LoadBalanced RestTemplate — call goes direct, no gateway.
+        String url = "http://APPLICATION-MICROSERVICE/api/applications/{id}/status?status={status}";
 
         restTemplate.exchange(
                 url,

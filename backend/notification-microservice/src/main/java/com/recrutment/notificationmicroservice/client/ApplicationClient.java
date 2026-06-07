@@ -1,7 +1,6 @@
 package com.recrutment.notificationmicroservice.client;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -17,11 +16,11 @@ public class ApplicationClient {
 
     private final RestTemplate restTemplate;
 
-    @Value("${app.internal.gateway-base-url:http://gateway:8888}")
-    private String gatewayBaseUrl;
+    /** Eureka service id, resolved by the @LoadBalanced RestTemplate. */
+    private static final String APPLICATION_SERVICE = "http://APPLICATION-MICROSERVICE";
 
     public List<String> findCandidateUserIdsByJob(UUID jobId) {
-        String url = gatewayBaseUrl + "/api/applications/internal/job/{jobId}/candidate-ids";
+        String url = APPLICATION_SERVICE + "/api/applications/internal/job/{jobId}/candidate-ids";
         try {
             List<String> ids = restTemplate.exchange(
                     url,

@@ -97,7 +97,7 @@ export class OfferPanel implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message || 'Failed to load offer.';
+        this.error = normalizeHttpError(err).message || 'Failed to load offer.';
       },
     });
   }
@@ -242,7 +242,7 @@ export class OfferPanel implements OnInit, OnDestroy {
         },
         error: (err) => {
           this.saving = false;
-          this.error = err?.error?.message || 'Failed to accept offer.';
+          this.error = normalizeHttpError(err).message || 'Failed to accept offer.';
         },
       });
     });
@@ -271,7 +271,7 @@ export class OfferPanel implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.saving = false;
-        this.error = err?.error?.message || 'Failed to decline offer.';
+        this.error = normalizeHttpError(err).message || 'Failed to decline offer.';
       },
     });
   }
@@ -297,7 +297,7 @@ export class OfferPanel implements OnInit, OnDestroy {
         },
         error: (err) => {
           this.saving = false;
-          this.error = err?.error?.message || 'Failed to withdraw offer.';
+          this.error = normalizeHttpError(err).message || 'Failed to withdraw offer.';
         },
       });
     });

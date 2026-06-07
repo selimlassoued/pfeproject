@@ -15,6 +15,10 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
+                // Compose healthcheck probes /actuator/health every 15s; the
+                // existing JWT chain would 401 anonymous probes and the
+                // container would flap to unhealthy. Keep these open.
+                .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                 .requestMatchers("/api/applications/internal/**").permitAll()
                 // Service-to-service: interview-service hits cv-summary on
                 // every schedule / retrigger. No user context exists for that

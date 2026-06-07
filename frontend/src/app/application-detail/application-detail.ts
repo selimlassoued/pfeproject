@@ -16,6 +16,7 @@ import { OfferService, OfferDto } from '../services/offer.service';
 import { NotificationSocketService } from '../services/notification-socket.service';
 import { SeenTrackerService } from '../services/seen-tracker.service';
 import { Subscription } from 'rxjs';
+import { normalizeHttpError } from '../utils/http-error';
 
 // Allowed status transitions - mirrors backend logic
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -130,7 +131,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
         }
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Failed to load application';
+        this.error = normalizeHttpError(err).message || 'Failed to load application';
         this.loading = false;
       },
     });
@@ -379,7 +380,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
         if (status === 'HIRED') this.checkQuotaAfterHire();
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Failed to update status';
+        this.error = normalizeHttpError(err).message || 'Failed to update status';
         this.updatingStatus = false;
       },
     });
@@ -440,7 +441,7 @@ export class ApplicationDetail implements OnInit, OnDestroy {
         }, 1500);
       },
       error: (err) => {
-        this.signalError = err?.error?.message || 'Failed to signal candidate';
+        this.signalError = normalizeHttpError(err).message || 'Failed to signal candidate';
         this.signaling = false;
       },
     });

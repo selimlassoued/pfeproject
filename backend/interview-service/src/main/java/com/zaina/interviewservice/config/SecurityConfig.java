@@ -31,7 +31,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         // Spring Boot actuator probes for compose healthchecks.
-                        .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {}));

@@ -7,8 +7,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(name = "application-cv-client",
-        url = "${application.service.url:http://application-service:8081}")
+// Service id matches application-microservice's spring.application.name.
+// LoadBalancer resolves the registration; no hardcoded host. contextId
+// disambiguates from any other Feign client targeting the same service.
+@FeignClient(name = "application-microservice", contextId = "applicationCvClient")
 public interface ApplicationCvClient {
 
     @GetMapping("/api/applications/{applicationId}/cv-summary")

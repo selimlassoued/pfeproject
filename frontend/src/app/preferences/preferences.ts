@@ -6,6 +6,7 @@ import { CandidateProfileService, CandidateLanguage } from '../services/candidat
 import { LanguageOptionsService, ALWAYS_SHOWN_LANGUAGES } from '../services/language-options.service';
 import { CatalogService, CatalogItem } from '../services/catalog.service';
 import { SOFT_SKILLS } from '../services/soft-skills';
+import { applyServerErrors, clearServerErrors, normalizeHttpError } from '../utils/http-error';
 
 const DOMAIN_SKILLS: Record<string, string[]> = {
   SOFTWARE_ENGINEERING: [
@@ -371,6 +372,7 @@ export class Preferences implements OnInit, OnDestroy {
     this.saving  = true;
     this.error   = undefined;
     if (!silent) this.success  = undefined;
+    clearServerErrors(this.form);
     try {
       const raw = this.form.getRawValue();
       await this.profileService.save({
@@ -406,7 +408,9 @@ export class Preferences implements OnInit, OnDestroy {
       // in the header indicator so the candidate knows their picks aren't
       // saved (otherwise the indicator would silently go from "Saving…" back
       // to hidden as if everything were fine).
-      this.error = 'Failed to save preferences.';
+      const httpError = normalizeHttpError(err);
+      applyServerErrors(this.form, httpError.fieldErrors);
+      this.error = httpError.message || 'Failed to save preferences.';
       console.error('[Preferences] save() failed', { silent, err });
     } finally {
       this.saving = false;

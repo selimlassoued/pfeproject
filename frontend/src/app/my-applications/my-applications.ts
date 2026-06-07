@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
+import { normalizeHttpError } from '../utils/http-error';
 import { InterviewService, ProposalResponse } from '../services/interview-service';
 import { NotificationSocketService } from '../services/notification-socket.service';
 import { Subscription } from 'rxjs';
@@ -86,7 +87,7 @@ export class MyApplications implements OnInit, OnDestroy {
         this.loading = false;
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Failed to load your applications';
+        this.error = normalizeHttpError(err).message || 'Failed to load your applications';
         this.loading = false;
       },
     });
@@ -185,7 +186,7 @@ export class MyApplications implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.withdrawingId = null;
-        this.error = err?.error?.message || 'Failed to withdraw application.';
+        this.error = normalizeHttpError(err).message || 'Failed to withdraw application.';
       },
     });
   }

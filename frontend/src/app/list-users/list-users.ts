@@ -16,6 +16,7 @@ import Keycloak from 'keycloak-js';
 import { UserService } from '../services/user-service';
 import { AdminUserRow } from '../model/admin_users.type';
 import { matchesWordStart } from '../utils/suggestion-match';
+import { normalizeHttpError } from '../utils/http-error';
 
 type EnabledFilter = 'ALL' | 'ENABLED' | 'DISABLED';
 type RoleFilter    = 'ALL' | string;
@@ -342,8 +343,16 @@ export class ListUsers implements OnInit, OnDestroy {
       });
       await this.load(true);
     } catch (e: any) {
-      const msg = e?.error?.message ?? e?.message ?? 'Failed to create user.';
-      await Swal.fire({ title: 'Error', text: msg, icon: 'error' });
+      const httpError = normalizeHttpError(e);
+      // If the backend sent field-level errors, list them under the
+      // main message so the recruiter sees exactly which field failed.
+      const fieldList = Object.entries(httpError.fieldErrors)
+        .map(([field, msg]) => `<li><strong>${field}</strong>: ${msg}</li>`)
+        .join('');
+      const html = fieldList
+        ? `<p style="margin:0 0 .5rem 0">${httpError.message}</p><ul style="text-align:left;margin:0;padding-left:1.25rem">${fieldList}</ul>`
+        : `<p style="margin:0">${httpError.message}</p>`;
+      await Swal.fire({ title: 'Error', html, icon: 'error' });
     } finally {
       this.acting = false;
     }

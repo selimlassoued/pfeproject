@@ -19,7 +19,11 @@ public class UserClient {
     }
 
     public KcUser getUser(String id) {
-        String url = "http://gateway:8888/api/admin/users/" + id;
+        // The /api/admin/users endpoint is hosted IN the gateway service
+        // (AdminUsersController), not proxied through it. We still call
+        // GATEWAYSERVER via load balancer instead of a raw hostname so
+        // the call survives scaling and Eureka registration changes.
+        String url = "http://GATEWAYSERVER/api/admin/users/" + id;
 
         try {
             log.info("[UserClient] GET {}", url);

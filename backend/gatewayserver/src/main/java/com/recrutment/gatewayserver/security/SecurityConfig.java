@@ -149,18 +149,13 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.PATCH, "/api/notifications/**").hasRole("CANDIDATE")
 
                         // ── WebSocket ─────────────────────────────────────────
-                        // TODO(security): require auth. Doing so needs:
-                        //   1. NotificationSocketService (frontend) to append
-                        //      ?access_token=${keycloak.token} to the brokerURL,
-                        //   2. a TokenRelayGatewayFilter on this route that
-                        //      promotes the query param to a Bearer header.
-                        // Without those, locking this to authenticated() kills
-                        // every WS connection from the SPA. Left permitAll for
-                        // now; downstream notification-microservice still scopes
-                        // each user destination to the authenticated principal,
-                        // so the practical leak is the metadata that someone
-                        // is connecting, not message contents.
-                        .pathMatchers("/ws/notifications/**").permitAll()
+                        // NotificationSocketService (frontend) appends the
+                        // Keycloak token as ?access_token= on the upgrade
+                        // request; WebSocketTokenRelayFilter promotes it to
+                        // Authorization: Bearer before this rule runs, so
+                        // Spring's oauth2ResourceServer().jwt() validates the
+                        // handshake the same way it does for HTTP.
+                        .pathMatchers("/ws/notifications/**").authenticated()
 
                         // ── Audit ─────────────────────────────────────────────
                         // /api/audit/candidate/** used to be authenticated()

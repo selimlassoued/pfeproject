@@ -28,7 +28,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         // Compose healthcheck probe.
-                        .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {}));

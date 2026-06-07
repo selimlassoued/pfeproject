@@ -18,6 +18,7 @@ import { ReschedulePicker } from '../reschedule-picker/reschedule-picker';
 import { SeenTrackerService } from '../services/seen-tracker.service';
 import { NotificationSocketService } from '../services/notification-socket.service';
 import { Subscription } from 'rxjs';
+import { normalizeHttpError } from '../utils/http-error';
 
 /**
  * Dedicated page for managing everything around an application's interviews:
@@ -96,7 +97,7 @@ export class ApplicationInterviewsPage implements OnInit, OnDestroy {
         this.seen.markSeen(data.applicationId, 'interviews');
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Failed to load application';
+        this.error = normalizeHttpError(err).message || 'Failed to load application';
         this.loading = false;
       },
     });
@@ -187,7 +188,7 @@ export class ApplicationInterviewsPage implements OnInit, OnDestroy {
       error: (err) => {
         this.acceptingReschedIdx = null;
         Swal.fire({ icon: 'error', title: 'Failed to accept',
-                    text: err?.error?.message || 'Please try again.' });
+                    text: normalizeHttpError(err).message || 'Please try again.' });
       },
     });
   }
@@ -303,7 +304,7 @@ export class ApplicationInterviewsPage implements OnInit, OnDestroy {
       error: (err) => {
         this.delegating = false;
         Swal.fire({ icon: 'error', title: 'Failed to send',
-                    text: err?.error?.message || 'Please try again.' });
+                    text: normalizeHttpError(err).message || 'Please try again.' });
       },
     });
   }
@@ -324,7 +325,7 @@ export class ApplicationInterviewsPage implements OnInit, OnDestroy {
       error: (err) => {
         this.acceptingDelegationId = null;
         Swal.fire({ icon: 'error', title: 'Failed to accept',
-                    text: err?.error?.message || 'Please try again.' });
+                    text: normalizeHttpError(err).message || 'Please try again.' });
       },
     });
   }
