@@ -37,14 +37,16 @@ public class NotificationEventsListener {
                 notificationService.pushInterviewListChange(evt);
             }
             case "INTERVIEW_JOIN_REQUEST" -> notificationService.handleInterviewJoinRequest(evt);
-            case "INTERVIEW_PROPOSAL_DECLINED" -> notificationService.handleInterviewProposalDeclined(evt);
+            case "INTERVIEW_PROPOSAL_DECLINED" -> {
+                notificationService.handleInterviewProposalDeclined(evt);
+                notificationService.pushInterviewListChange(evt);
+            }
             // Pure data pings - the navbar imminent-interview widget reloads on
             // any of these so it appears without a refresh.
             case "INTERVIEW_SCHEDULED",
                  "INTERVIEW_CANCELLED",
                  "INTERVIEW_PROPOSAL_SENT",
                  "INTERVIEW_PROPOSAL_PICKED",
-                 "INTERVIEW_PROPOSAL_DECLINED",
                  "INTERVIEW_PROPOSAL_CANCELLED",
                  "INTERVIEW_RESCHEDULE_CONFIRMED",
                  "INTERVIEW_DELEGATION_ACCEPTED"

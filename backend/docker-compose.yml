@@ -184,13 +184,17 @@ services:
     container_name: job-microservice
     networks:
       - ai-recruitment-network
-    ports:
-      - "8082:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://job-db:5432/jobdb
       - SPRING_DATASOURCE_USERNAME=${JOB_DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${JOB_DB_PASSWORD}
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health | grep UP || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
     depends_on:
       job-db:
         condition: service_healthy
@@ -204,8 +208,6 @@ services:
     container_name: cv-parser-service
     networks:
       - ai-recruitment-network
-    ports:
-      - "8085:8085"
     extra_hosts:
       - "host.docker.internal:host-gateway"  # ← pour accéder à Ollama sur Windows
     environment:
@@ -222,6 +224,16 @@ services:
       - SKILL_INTEL_CACHE=/data/skill_intel_cache.json
     volumes:
       - skill_intel_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8085/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      job-microservice:
+        condition: service_healthy
+
   application-db:
     # pgvector image = stock postgres:16 + the `vector` extension preinstalled.
     # Needed so the skill_catalog_entry table can store the 768-dim embedding
@@ -255,6 +267,12 @@ services:
       - SPRING_DATASOURCE_USERNAME=${APP_DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${APP_DB_PASSWORD}
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health | grep UP || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
     depends_on:
       application-db:
         condition: service_healthy
@@ -262,8 +280,8 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      cv-parser-service: # ← ajoute ça
-        condition: service_started
+      cv-parser-service:
+        condition: service_healthy
 
   audit-db:
     image: postgres:16
@@ -290,6 +308,12 @@ services:
     environment:
       - CONFIG_SERVICE_URL=http://config-server:9999
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health | grep UP || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
     depends_on:
       audit-db:
         condition: service_healthy
@@ -342,8 +366,6 @@ services:
     container_name: interview-service
     networks:
       - ai-recruitment-network
-    ports:
-      - "8086:8086"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://interview-db:5432/interviewdb
       - SPRING_DATASOURCE_USERNAME=${INTERVIEW_DB_USER}
@@ -359,6 +381,12 @@ services:
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
       - APPLICATION_SERVICE_URL=http://application-microservice:8080
       - JOB_SERVICE_URL=http://job-microservice:8080
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health | grep UP || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
     depends_on:
       interview-db:
         condition: service_healthy
@@ -380,6 +408,12 @@ services:
 
     networks:
       - ai-recruitment-network
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   analysis-service:
     build:
@@ -411,8 +445,15 @@ services:
     volumes:
       - recordings:/recordings       # shared with interview-service
       - whisper_cache:/root/.cache/whisper   # persists downloaded models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     networks:
       - ai-recruitment-network
 
@@ -437,6 +478,12 @@ services:
       - APP_SECURITY_KEYCLOAK_CLIENT_ID=${BACKEND_CLIENT_ID}
       - APP_SECURITY_KEYCLOAK_CLIENT_SECRET=${KC_BACKEND_CLIENT_SECRET}
 
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/actuator/health | grep UP || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
     depends_on:
       notification-db:
         condition: service_healthy
