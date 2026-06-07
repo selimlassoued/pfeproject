@@ -15,8 +15,12 @@ const isAccessAllowed = async (
 
 
 
+  // No role / allowedRoles configured on the route means "any
+  // authenticated user." Returning false here used to send legitimate
+  // logged-in users to /forbidden whenever a route was protected purely
+  // for login (no role filter), which was wrong.
   if (!requiredRole && !allowedRoles) {
-    return false;
+    return authenticated;
   }
 
   const hasRequiredRole = (role: string): boolean =>

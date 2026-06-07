@@ -11,6 +11,7 @@ import {
   OfferService,
 } from '../services/offer.service';
 import { NotificationSocketService } from '../services/notification-socket.service';
+import { normalizeHttpError } from '../utils/http-error';
 
 type Mode = 'RECRUITER' | 'CANDIDATE';
 
@@ -37,6 +38,10 @@ export class OfferPanel implements OnInit, OnDestroy {
   loading = true;
   saving = false;
   error: string | null = null;
+  /** Server-side validation errors keyed by field name. Populated from
+   *  the backend's GlobalExceptionHandler `details` map so the template
+   *  can render each message next to the input it concerns. */
+  fieldErrors: Record<string, string> = {};
 
   readonly contractTypes: ContractType[] = ['CDI', 'CDD', 'INTERNSHIP', 'ALTERNANCE', 'FREELANCE'];
 
@@ -145,6 +150,7 @@ export class OfferPanel implements OnInit, OnDestroy {
     };
     this.saving = true;
     this.error = null;
+    this.fieldErrors = {};
     this.offerService.create(this.applicationId, req).subscribe({
       next: (offer) => {
         this.offer = offer;
@@ -154,7 +160,9 @@ export class OfferPanel implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.saving = false;
-        this.error = err?.error?.message || 'Failed to send offer.';
+        const httpError = normalizeHttpError(err);
+        this.error = httpError.message || 'Failed to send offer.';
+        this.fieldErrors = httpError.fieldErrors;
       },
     });
   }
@@ -188,6 +196,7 @@ export class OfferPanel implements OnInit, OnDestroy {
     };
     this.saving = true;
     this.error = null;
+    this.fieldErrors = {};
     this.offerService.revise(this.applicationId, req).subscribe({
       next: (offer) => {
         this.offer = offer;
@@ -197,7 +206,9 @@ export class OfferPanel implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.saving = false;
-        this.error = err?.error?.message || 'Failed to post revision.';
+        const httpError = normalizeHttpError(err);
+        this.error = httpError.message || 'Failed to post revision.';
+        this.fieldErrors = httpError.fieldErrors;
       },
     });
   }

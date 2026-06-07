@@ -9,16 +9,16 @@
   margin-bottom: 1rem;
 }
 .of-breadcrumb-back {
-  color: rgba(248,250,252,.78);
+  color: var(--text-muted);
   font-weight: 700;
   text-decoration: none;
   transition: color 140ms ease, transform 140ms ease;
 }
 .of-breadcrumb-back:hover {
-  color: rgba(248,250,252,.95);
+  color: var(--text);
   transform: translateX(-2px);
 }
-.of-breadcrumb-sep { color: rgba(248,250,252,.35); }
+.of-breadcrumb-sep { color: var(--text-soft); }
 .of-breadcrumb-here { color: var(--color-cream); font-weight: 700; }
 
 .of-page-head { margin-bottom: 1.5rem; }

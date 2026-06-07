@@ -80,7 +80,7 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface-1);
-  color: rgba(248,250,252,.85);
+  color: var(--text);
   font-weight: 900;
   font-size: .85rem;
 }
@@ -114,7 +114,7 @@
 }
 
 .cad-meta-k { color: var(--color-text-muted); font-size: .82rem; margin-bottom: .2rem; }
-.cad-meta-v { color: rgba(248,250,252,.92); font-weight: 800; font-size: .95rem; }
+.cad-meta-v { color: var(--text); font-weight: 800; font-size: .95rem; }
 
 .cad-hero-right {
   display: flex;
@@ -175,10 +175,10 @@
 .cad-progress {
   border-radius: 18px;
   border: 1px solid var(--border);
-  background: rgba(11,16,38,0.35);
+  background: var(--surface-1);
   padding: .9rem .95rem;
 }
-.cad-progress-title { color: rgba(248,250,252,.9); font-weight: 900; margin-bottom: .6rem; }
+.cad-progress-title { color: var(--text); font-weight: 900; margin-bottom: .6rem; }
 
 .cad-steps { display: grid; gap: .55rem; }
 
@@ -199,7 +199,7 @@
 }
 .cad-step.active .dot { border-color: rgba(121,164,233,0.75); background: var(--border-strong); }
 .cad-step.done .dot   { border-color: rgba(121,164,233,0.60); background: var(--border); }
-.cad-step .label      { font-weight: 900; color: rgba(248,250,252,.9); }
+.cad-step .label      { font-weight: 900; color: var(--text); }
 .cad-step.danger .dot { border-color: rgba(233,121,121,0.35); }
 .cad-step.danger.active .dot { border-color: rgba(233,121,121,0.75); background: rgba(233,121,121,0.28); }
 
@@ -233,7 +233,7 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.1rem;
-  background: rgba(11,16,38,0.55);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -243,7 +243,7 @@
 
 .cad-kv { display: grid; gap: .2rem; }
 .cad-k  { color: var(--color-text-muted); font-size: .85rem; }
-.cad-v  { color: rgba(248,250,252,.92); font-weight: 800; }
+.cad-v  { color: var(--text); font-weight: 800; }
 
 .cad-chip {
   border-radius: 999px;
@@ -259,7 +259,7 @@
 .cad-url { color: var(--color-secondary); text-decoration: none; font-weight: 800; word-break: break-word; }
 .cad-url:hover { text-decoration: underline; }
 
-.cad-hint { color: rgba(248,250,252,.65); font-size: .9rem; line-height: 1.4; }
+.cad-hint { color: var(--text-muted); font-size: .9rem; line-height: 1.4; }
 
 /* CV block */
 .cad-cv { gap: 1rem; }
@@ -273,11 +273,11 @@
   font-weight: 950;
   border: 1px solid var(--border);
   background: var(--border-subtle);
-  color: rgba(248,250,252,.92);
+  color: var(--text);
 }
 .cad-file-info { display: grid; gap: .2rem; }
-.cad-file-name { color: rgba(248,250,252,.95); font-weight: 900; }
-.cad-file-type { color: rgba(248,250,252,.65); font-size: .9rem; }
+.cad-file-name { color: var(--text); font-weight: 900; }
+.cad-file-type { color: var(--text-muted); font-size: .9rem; }
 
 .cad-divider { height: 1px; background: var(--border-subtle); }
 
@@ -301,10 +301,10 @@
   align-items: center;
   gap: 1rem;
   padding: .9rem 1rem;
-  background: rgba(11,16,38,0.40);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border-subtle);
 }
-.cad-edit-title { color: rgba(248,250,252,.95); font-weight: 900; }
+.cad-edit-title { color: var(--text); font-weight: 900; }
 .cad-edit-sub   { margin-top: .15rem; color: var(--color-text-muted); font-size: .9rem; }
 .cad-edit-body  { padding: 1rem; }
 .cad-edit-form  { display: grid; gap: .9rem; }
@@ -312,7 +312,7 @@
 .cad-field { display: grid; gap: .4rem; }
 .cad-label { color: var(--color-text-muted); font-size: .9rem; font-weight: 800; }
 .cad-field-err { color: rgba(255,220,220,.95); font-size: .85rem; font-weight: 700; }
-.cad-filepick  { color: rgba(248,250,252,.72); font-size: .9rem; }
+.cad-filepick  { color: var(--text-muted); font-size: .9rem; }
 
 .cad-edit-actions {
   display: flex;
@@ -463,7 +463,7 @@
 }
 
 .cad-iv-meta strong {
-  color: rgba(248,250,252,0.9);
+  color: var(--text);
 }
 
 .cad-iv-consent {
@@ -523,7 +523,7 @@
   padding: 2rem;
   border-radius: var(--radius-2xl);
   border: 1px solid var(--border-strong);
-  background: rgba(11,16,38,0.96);
+  background: var(--surface-solid);
   box-shadow: 0 24px 60px rgba(0,0,0,0.5);
   display: flex;
   flex-direction: column;
@@ -550,7 +550,7 @@
 }
 
 .cad-consent-body {
-  color: rgba(248,250,252,0.82);
+  color: var(--text);
   font-size: 0.95rem;
   line-height: 1.6;
   margin: 0;

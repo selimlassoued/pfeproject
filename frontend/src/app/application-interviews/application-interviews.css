@@ -10,11 +10,11 @@
   margin-bottom: 1rem;
 }
 .iv-breadcrumb-back{
-  color: rgba(248,250,252,.78); font-weight: 700; text-decoration: none;
+  color: var(--text-muted); font-weight: 700; text-decoration: none;
   transition: color 140ms ease, transform 140ms ease;
 }
-.iv-breadcrumb-back:hover{ color: rgba(248,250,252,.95); transform: translateX(-2px); }
-.iv-breadcrumb-sep{ color: rgba(248,250,252,.35); }
+.iv-breadcrumb-back:hover{ color: var(--text); transform: translateX(-2px); }
+.iv-breadcrumb-sep{ color: var(--text-soft); }
 .iv-breadcrumb-here{ color: var(--color-cream); font-weight: 700; }
 
 .iv-page-head{
@@ -147,7 +147,7 @@
 
 .interview-date {
   font-size: 0.85rem;
-  color: rgba(248,250,252,0.8);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -258,7 +258,7 @@
 /* Dark dropdown options - the native list is white by default */
 .interview-invite-select option {
   background: #141c3c;
-  color: #e8f0fe;
+  color: var(--text);
 }
 .interview-invite-select option:disabled {
   color: var(--text-soft);

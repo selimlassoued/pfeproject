@@ -102,7 +102,7 @@
   text-align: left;
   font-family: var(--font-display);
   color: var(--color-cream);
-  background: rgba(11,16,38,0.55);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -134,36 +134,7 @@
   color: var(--color-text-muted);
 }
 
-/* STATUS */
-.interview-status {
-  padding: 0.3rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  border: 1px solid var(--border-strong);
-}
-
-/* Per-status colours - class is the lowercased status (getStatusClass). */
-.interview-status.scheduled {
-  background: var(--border-subtle);
-  color: var(--color-secondary);
-}
-
-.interview-status.in_progress {
-  background: rgba(245,198,116,0.14);
-  color: #f5c674;
-  border-color: rgba(245,198,116,0.30);
-}
-
-.interview-status.completed {
-  background: rgba(121,233,170,0.12);
-  color: rgba(200,255,230,0.95);
-}
-
-.interview-status.cancelled {
-  background: rgba(233,121,121,0.12);
-  color: rgba(255,220,220,0.95);
-}
+/* .interview-status.* lives in styles.css now — one source of truth. */
 
 /* Actions cell - buttons sit in one row, wrap on narrow screens. */
 .interviews-actions {
@@ -190,7 +161,7 @@
   gap: var(--space-4);
   padding: 0.85rem 1rem;
   border-top: 1px solid var(--border);
-  background: rgba(11,16,38,0.35);
+  background: var(--surface-1);
 }
 
 .interviews-pager-left,
@@ -208,7 +179,7 @@
 }
 
 .interviews-pager-mid {
-  color: rgba(248,250,252,0.78);
+  color: var(--text-muted);
   font-size: 0.92rem;
   font-weight: 700;
   white-space: nowrap;
@@ -244,7 +215,7 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface-1);
-  color: rgba(248,250,252,0.88);
+  color: var(--text);
   font-weight: 900;
   font-size: 0.88rem;
   cursor: pointer;
@@ -282,13 +253,13 @@
   -moz-appearance: none;
   appearance: none;
   background: var(--surface-2);
-  color: rgba(248,250,252,0.92);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.7rem 2.4rem 0.7rem 0.9rem;
   background-image:
-    linear-gradient(45deg, transparent 50%, rgba(248,250,252,0.75) 50%),
-    linear-gradient(135deg, rgba(248,250,252,0.75) 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
   background-position:
     calc(100% - 18px) calc(50% - 3px),
     calc(100% - 12px) calc(50% - 3px);
@@ -298,7 +269,7 @@
 
 .interviews-page select option {
   background: #0b1026;
-  color: rgba(248,250,252,0.95);
+  color: var(--text);
 }
 
 .interviews-pager-select { min-width: 92px; }

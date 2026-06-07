@@ -87,7 +87,7 @@
         @if ((job()!.requirements?.length ?? 0) > 0) {
           <div class="req-grid">
             @for (r of job()!.requirements; track $index) {
-              <div class="req-card req-{{ r.category?.toLowerCase() }}"
+              <div class="req-card req-{{ r.category.toLowerCase() }}"
                    [class.req-card--must]="r.mustHave">
                 <div class="req-head">
                   <span class="req-badge">

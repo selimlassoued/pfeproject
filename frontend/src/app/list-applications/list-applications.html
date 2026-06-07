@@ -8,8 +8,25 @@
     <div class="apps-filters">
       <input class="input" placeholder="Application ID"  [(ngModel)]="applicationId" />
       <input class="input" placeholder="Job ID"          [(ngModel)]="jobId" />
-      <input class="input" placeholder="Job title"       [(ngModel)]="jobTitle" />
-      <input class="input" placeholder="Candidate name"  [(ngModel)]="candidateName" />
+      <input class="input" placeholder="Job title"
+             [ngModel]="jobTitle" (ngModelChange)="onJobTitleChange($event)"
+             (keyup.enter)="suppressJobTitleSuggest = true; $any($event.target).blur()"
+             [attr.list]="(suppressJobTitleSuggest || !jobTitle) ? null : 'apps-job-title-options'" />
+      <datalist id="apps-job-title-options">
+        @for (t of jobTitleOptions; track t) {
+          <option [value]="t"></option>
+        }
+      </datalist>
+
+      <input class="input" placeholder="Candidate name"
+             [ngModel]="candidateName" (ngModelChange)="onCandidateChange($event)"
+             (keyup.enter)="suppressCandidateSuggest = true; $any($event.target).blur()"
+             [attr.list]="(suppressCandidateSuggest || !candidateName) ? null : 'apps-candidate-options'" />
+      <datalist id="apps-candidate-options">
+        @for (c of candidateOptions; track c) {
+          <option [value]="c"></option>
+        }
+      </datalist>
 
       <select class="input" [(ngModel)]="status">
         <option value="">All statuses</option>

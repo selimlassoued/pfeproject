@@ -74,7 +74,7 @@
   font-family: var(--font-display);
   color: var(--color-cream);
   font-size: 0.95rem;
-  background: rgba(11,16,38,0.55);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -100,7 +100,7 @@
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.88rem;
-  color: rgba(248,250,252,0.92);
+  color: var(--text);
 }
 
 .sub-id {
@@ -109,42 +109,8 @@
   font-size: 0.82rem;
 }
 
-/* status pill */
-.app-status {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3rem 0.65rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-strong);
-  background: var(--border-subtle);
-  color: var(--color-secondary);
-  font-size: 0.85rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.app-status.applied { background: var(--border-subtle); }
-.app-status.under_review { background: var(--border-subtle); }
-.app-status.interview_phase {
-  background: rgba(255,252,229,0.1);
-  color: var(--color-cream);
-  border-color: rgba(255,252,229,0.18);
-}
-.app-status.offer {
-  background: rgba(121,233,170,0.1);
-  border-color: rgba(121,233,170,0.18);
-  color: rgba(200,255,230,0.95);
-}
-.app-status.rejected {
-  background: rgba(233,121,121,0.12);
-  border-color: rgba(233,121,121,0.2);
-  color: rgba(255,220,220,0.95);
-}
-.app-status.hired {
-  background: rgba(121,233,170,0.14);
-  border-color: rgba(121,233,170,0.22);
-  color: rgba(200,255,230,1);
-}
+/* .app-status.* lives in styles.css now — one source of truth shared
+   with my-applications and any future page that uses the same pill. */
 
 .apps-empty {
   margin-top: var(--space-8);
@@ -164,7 +130,7 @@
   gap: var(--space-4);
   padding: .85rem 1rem;
   border-top: 1px solid var(--border);
-  background: rgba(11,16,38,0.35);
+  background: var(--surface-1);
   backdrop-filter: blur(10px);
 }
 
@@ -189,7 +155,7 @@
 }
 
 .apps-pager-mid{
-  color: rgba(248,250,252,.78);
+  color: var(--text-muted);
   font-size: .92rem;
   font-weight: 700;
   white-space: nowrap;
@@ -221,7 +187,7 @@
   justify-content:center;
   width: 26px;
   height: 32px;
-  color: rgba(248,250,252,.55);
+  color: var(--text-soft);
   user-select: none;
   font-weight: 900;
   letter-spacing: .08em;
@@ -234,7 +200,7 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface-1);
-  color: rgba(248,250,252,.88);
+  color: var(--text);
   font-weight: 900;
   font-size: .88rem;
   cursor: pointer;
@@ -325,7 +291,7 @@
   appearance: none;
 
   background: var(--surface-2);
-  color: rgba(248,250,252,0.92);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: 14px;
 
@@ -349,7 +315,7 @@
 /* Try to style the dropdown list (options) */
 .apps-page select option {
   background: #0b1026;  /* dark popup background */
-  color: rgba(248,250,252,0.95);
+  color: var(--text);
 }
 
 /* Add a custom arrow */
@@ -410,14 +376,20 @@
   border-radius: 99px;
   margin-bottom: .25rem;
 }
+/* Defaults = original dark-mode look. */
 .score-high    { background: rgba(72,187,120,.15); color: #48bb78; border: 1px solid rgba(72,187,120,.3); }
 .score-mid     { background: rgba(237,137,54,.15);  color: #ed8936; border: 1px solid rgba(237,137,54,.3); }
 .score-low     { background: rgba(252,129,129,.15); color: #fc8181; border: 1px solid rgba(252,129,129,.3); }
-.score-pending { color: rgba(255,255,255,.3); font-size: .85rem; }
+.score-pending { color: var(--text-soft); font-size: .85rem; }
+
+/* Light-mode overrides — saturated tints + deep readable text on white. */
+:root[data-theme="light"] .score-high { background: rgba(34,197,94,0.22); border-color: rgba(34,197,94,0.65); color: #15803d; }
+:root[data-theme="light"] .score-mid  { background: rgba(251,191,36,0.22); border-color: rgba(251,191,36,0.65); color: #92400e; }
+:root[data-theme="light"] .score-low  { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.65); color: #b91c1c; }
 
 .score-hint {
   font-size: .7rem;
-  color: rgba(255,255,255,.4);
+  color: var(--text-muted);
   line-height: 1.4;
   cursor: help;
   display: block;

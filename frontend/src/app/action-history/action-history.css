@@ -62,7 +62,7 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 0.78rem; font-weight: 700; color: #fff; flex-shrink: 0;
 }
-.chip-name { font-size: 0.84rem; font-weight: 600; color: #e8f0fe; }
+.chip-name { font-size: 0.84rem; font-weight: 600; color: var(--text); }
 .chip-meta { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.1rem; }
 .chip-role {
   font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
@@ -90,7 +90,7 @@
 .log-count { color: var(--color-secondary); }
 .range-badge {
   font-size: 0.62rem; font-weight: 600; text-transform: none; letter-spacing: 0.03em;
-  color: rgba(248,250,252,0.35); background: var(--surface-3);
+  color: var(--text-soft); background: var(--surface-3);
   border: 1px solid var(--color-border); border-radius: var(--radius-pill);
   padding: 0.1rem 0.5rem;
 }
@@ -142,29 +142,29 @@
 .log-info { min-width: 0; }
 .log-main-line {
   display: flex; align-items: center; gap: 0.4rem;
-  font-size: 0.82rem; font-weight: 500; color: #e8f0fe;
+  font-size: 0.82rem; font-weight: 500; color: var(--text);
   margin-bottom: 0.15rem; flex-wrap: wrap;
 }
 .log-actor  { color: var(--color-secondary); font-weight: 600; }
-.log-arrow  { color: rgba(248,250,252,0.28); font-size: 0.7rem; }
-.log-target { color: #e8f0fe; }
+.log-arrow  { color: var(--text-soft); font-size: 0.7rem; }
+.log-target { color: var(--text); }
 .log-reason {
-  font-size: 0.75rem; color: rgba(252,248,248,0.5); font-style: italic;
+  font-size: 0.75rem; color: var(--text-soft); font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .log-right {
   display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; flex-shrink: 0;
 }
-.log-time { font-size: 0.67rem; color: rgba(252,248,248,0.28); font-family: monospace; text-align: right; white-space: nowrap; }
+.log-time { font-size: 0.67rem; color: var(--text-soft); font-family: monospace; text-align: right; white-space: nowrap; }
 .log-chevron {
-  font-size: 1rem; color: rgba(248,250,252,0.25);
+  font-size: 1rem; color: var(--text-soft);
   transition: transform 0.2s ease; display: inline-block; line-height: 1;
 }
 .log-chevron--open { transform: rotate(90deg); color: var(--color-secondary); }
 
 .log-detail {
-  background: rgba(11,16,38,0.6);
+  background: var(--surface-2);
   border-top: 1px solid var(--border-subtle);
   padding: 1rem 1.25rem 1.1rem;
   animation: fadeUp 0.2s ease both;
@@ -181,11 +181,11 @@
   font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.1em; color: rgba(121,164,233,0.55); margin-bottom: 0.25rem;
 }
-.ld-value  { font-size: 0.8rem; color: #e8f0fe; }
+.ld-value  { font-size: 0.8rem; color: var(--text); }
 .ld-name   { display: block; font-weight: 500; }
-.ld-sub    { display: block; font-size: 0.66rem; color: rgba(252,248,248,0.35); margin-top: 0.1rem; }
-.ld-mono   { font-family: monospace; font-size: 0.72rem; color: rgba(252,248,248,0.55); word-break: break-all; }
-.ld-reason { font-style: italic; color: rgba(252,248,248,0.7); }
+.ld-sub    { display: block; font-size: 0.66rem; color: var(--text-soft); margin-top: 0.1rem; }
+.ld-mono   { font-family: monospace; font-size: 0.72rem; color: var(--text-soft); word-break: break-all; }
+.ld-reason { font-style: italic; color: var(--text-muted); }
 
 .ld-changes-title {
   font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
@@ -225,6 +225,45 @@
 }
 .ld-simple { color: rgba(252,248,252,0.55); font-family: monospace; font-size: 0.7rem; word-break: break-all; }
 
+/* Light-mode: deepen the red/green so before/after diff rows are clearly
+   readable against the white card. Tailwind 600 family instead of 400. */
+:host-context([data-theme="light"]) .ld-changes-title {
+  color: #475569;
+}
+:host-context([data-theme="light"]) .ld-changes {
+  background: #ffffff;
+  border: 1px solid rgba(30, 64, 188, 0.16);
+}
+:host-context([data-theme="light"]) .ld-change-row {
+  border-bottom: 1px solid rgba(30, 64, 188, 0.08);
+}
+:host-context([data-theme="light"]) .ld-change-row--header {
+  background: rgba(30, 64, 188, 0.05);
+}
+:host-context([data-theme="light"]) .ld-change-key {
+  color: #1e40bc;
+}
+:host-context([data-theme="light"]) .ld-change-before {
+  color: #b91c1c;
+}
+:host-context([data-theme="light"]) .ld-change-after {
+  color: #15803d;
+}
+:host-context([data-theme="light"]) .ld-old {
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.30);
+  opacity: 1;
+}
+:host-context([data-theme="light"]) .ld-new {
+  color: #15803d;
+  background: rgba(22, 163, 74, 0.10);
+  border-color: rgba(22, 163, 74, 0.35);
+}
+:host-context([data-theme="light"]) .ld-simple {
+  color: #475569;
+}
+
 .empty-state {
   padding: 2.5rem; text-align: center;
   color: rgba(248,250,252,0.22); font-size: 0.85rem;
@@ -240,9 +279,9 @@
   color: var(--color-text-muted); font-size: 0.72rem; font-weight: 600;
   cursor: pointer; font-family: var(--font-body); transition: all 0.14s ease;
 }
-.pg-btn:hover:not(:disabled) { background: var(--border-subtle); border-color: var(--border-prominent); color: #e8f0fe; }
+.pg-btn:hover:not(:disabled) { background: var(--border-subtle); border-color: var(--border-prominent); color: var(--text); }
 .pg-btn:disabled { opacity: 0.28; cursor: default; }
-.pg-info { font-size: 0.7rem; color: rgba(248,250,252,0.28); font-family: monospace; }
+.pg-info { font-size: 0.7rem; color: var(--text-soft); font-family: monospace; }
 
 .placeholder {
   display: flex; flex-direction: column; align-items: center;
@@ -251,3 +290,22 @@
 }
 .placeholder-icon { font-size: 2.5rem; opacity: 0.3; }
 .placeholder-text { font-size: 0.85rem; color: rgba(248,250,252,0.22); }
+
+/* Light-mode: replace the dark empty-state box with a soft brand-tinted
+   card and readable muted text. */
+:host-context([data-theme="light"]) .placeholder {
+  background: rgba(30, 64, 188, 0.04);
+  border: 1px dashed rgba(30, 64, 188, 0.22);
+  border-radius: var(--radius-2xl);
+  padding: 4rem 2rem;
+}
+:host-context([data-theme="light"]) .placeholder-text {
+  color: #475569 !important;
+  font-weight: 500;
+}
+:host-context([data-theme="light"]) .placeholder-icon {
+  opacity: 0.55;
+}
+:host-context([data-theme="light"]) .empty-state {
+  color: #475569;
+}

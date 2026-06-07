@@ -84,6 +84,15 @@
   color: rgba(255,220,220,0.95);
   font-size: 0.85rem;
 }
+.offer-field-error {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: rgba(252,165,165,0.95);
+  font-weight: 500;
+}
+:host-context([data-theme="light"]) .offer-field-error {
+  color: #b91c1c;
+}
 
 /* ── Offer summary card ──────────────────────────────────────────────── */
 .offer-card {

@@ -15,6 +15,7 @@ import Keycloak from 'keycloak-js';
 
 import { UserService } from '../services/user-service';
 import { AdminUserRow } from '../model/admin_users.type';
+import { matchesWordStart } from '../utils/suggestion-match';
 
 type EnabledFilter = 'ALL' | 'ENABLED' | 'DISABLED';
 type RoleFilter    = 'ALL' | string;
@@ -41,6 +42,10 @@ export class ListUsers implements OnInit, OnDestroy {
   enabledFilter: EnabledFilter = 'ALL';
   roleFilter:    RoleFilter    = 'ALL';
   rolesOptions:  string[]      = [];
+
+  /** Set to true on Enter in the search box so the datalist popup
+   *  stops covering the table. Reset when the field is cleared. */
+  suppressSearchSuggest = false;
 
   apiMax = 200;
   pageIndex    = 0;
@@ -78,7 +83,7 @@ export class ListUsers implements OnInit, OnDestroy {
     }
 
     this.refreshKey$
-      .pipe(debounceTime(350), distinctUntilChanged(), takeUntil(this.destroy$))
+      .pipe(debounceTime(200), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe(() => { this.pageIndex = 0; this.load(); });
 
     this.load();
@@ -97,7 +102,34 @@ export class ListUsers implements OnInit, OnDestroy {
   @HostListener('document:keydown.escape')
   onEsc() { this.rowsOpen = false; }
 
-  onSearchChange(v: string) { this.search = v; this.emitRefresh(); }
+  onSearchChange(v: string) {
+    this.search = v;
+    if (!v) this.suppressSearchSuggest = false;
+    this.emitRefresh();
+  }
+
+  /** Up to 10 suggestions matching whatever the user has typed.
+   *  Label is "Name (email)" when both exist, else falls back to name
+   *  or username. Cap keeps the popup short on large user lists. */
+  get searchSuggestions(): string[] {
+    const q = this.search.trim().toLowerCase();
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const u of this.all) {
+      const name = `${u.firstName || ''} ${u.lastName || ''}`.trim();
+      const id   = u.username || '';
+      const email = u.email || '';
+      const label = name && email ? `${name} (${email})`
+                  : name ? name
+                  : email || id;
+      if (!label || seen.has(label)) continue;
+      seen.add(label);
+      out.push(label);
+    }
+    let result = out.sort((a, b) => a.localeCompare(b));
+    if (q) result = result.filter(s => matchesWordStart(s, q));
+    return result.slice(0, 10);
+  }
   onFiltersChange() {
     // RECRUITER cannot change role filter - always CANDIDATE
     if (this.isRecruiter() && !this.isAdmin() && !this.isSuperAdmin()) {
@@ -105,7 +137,11 @@ export class ListUsers implements OnInit, OnDestroy {
     }
     this.emitRefresh();
   }
-  refresh()                  { this.pageIndex = 0; this.load(true); }
+  refresh()                  {
+    this.pageIndex = 0;
+    this.suppressSearchSuggest = false;
+    this.load(true);
+  }
   toggleRows()               { this.rowsOpen = !this.rowsOpen; }
 
   setPageSize(size: number) {
@@ -156,6 +192,8 @@ export class ListUsers implements OnInit, OnDestroy {
   }
 
   private applyFiltersAndPaginate() {
+    const q = this.search.trim().toLowerCase();
+
     this.filtered = (this.all ?? []).filter(u => {
       const enabledOk =
         this.enabledFilter === 'ALL'      ? true :
@@ -175,7 +213,11 @@ export class ListUsers implements OnInit, OnDestroy {
       // Never show the logged-in user themselves
       const notSelf = u.id !== this.currentUserId;
 
-      return enabledOk && roleOk && visibilityOk && notSelf;
+      const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim();
+      const hay = `${u.username || ''} ${fullName} ${u.email || ''} ${fullName} (${u.email || ''})`.toLowerCase();
+      const searchOk = !q || hay.includes(q);
+
+      return enabledOk && roleOk && visibilityOk && notSelf && searchOk;
     });
 
     this.totalElements = this.filtered.length;

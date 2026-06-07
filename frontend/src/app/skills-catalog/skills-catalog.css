@@ -56,7 +56,7 @@
   position: relative;
   padding: 1rem 1.1rem;
   border-radius: 14px;
-  background: rgba(255,255,255,0.035);
+  background: var(--surface-1);
   border: 1px solid var(--surface-3);
   text-align: center;
   overflow: hidden;
@@ -275,6 +275,7 @@
   border-bottom: 1px solid var(--surface-4);
 }
 .catalog-table__col-actions { width: 1%; white-space: nowrap; }
+.catalog-table__col-demand  { min-width: 84px; white-space: nowrap; }
 
 /* Row hover - subtle accent + cursor cue. In-demand rows get a stronger
    left-border so they stand out at a glance. */
@@ -337,7 +338,8 @@
   color: rgba(180,210,255,0.85);
 }
 
-/* Demand badge: pulsing dot + count, orange-amber. */
+/* Demand badge: pulsing dot + count, orange-amber. Keep on a single line
+   so "2 jobs" / "3 jobs" never wraps inside the badge. */
 .demand-badge {
   display: inline-flex;
   align-items: center;
@@ -349,6 +351,7 @@
   background: rgba(220,140,70,0.10);
   border: 1px solid rgba(220,140,70,0.4);
   color: rgba(255,200,130,0.95);
+  white-space: nowrap;
 }
 .demand-dot {
   width: 6px;
@@ -493,3 +496,6 @@
 }
 
 .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.82rem; }
+
+/* Light-mode overrides live in styles.css (global) so they bypass Angular
+   ViewEncapsulation — same fix we did for notifications & stat-icons. */

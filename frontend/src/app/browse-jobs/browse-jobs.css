@@ -47,8 +47,8 @@
   flex-wrap: wrap;
 }
 select {
-  background-color: #1b2236;
-  color: #f5f7ff;
+  background-color: var(--surface-solid);
+  color: var(--text);
 }
 
 .sort-toggle {
@@ -72,8 +72,8 @@ select {
 .sort-btn--active { background: var(--border); color: #fff; }
 
 select option {
-  background-color: #1b2236;   /* dropdown background */
-  color: #f5f7ff;              /* dropdown text */
+  background-color: var(--surface-solid);   /* dropdown background */
+  color: var(--text);              /* dropdown text */
 }
 select:hover {
   border-color: rgba(121,164,233,0.758);

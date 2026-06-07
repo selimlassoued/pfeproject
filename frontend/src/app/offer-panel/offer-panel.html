@@ -38,11 +38,14 @@
               <option value="USD">USD</option>
             </select>
           </div>
+          @if (fieldErrors['salary']) { <div class="offer-field-error">{{ fieldErrors['salary'] }}</div> }
+          @if (fieldErrors['currency']) { <div class="offer-field-error">{{ fieldErrors['currency'] }}</div> }
         </div>
 
         <div class="offer-field">
           <label>Start date <span class="offer-required">*</span></label>
           <input type="date" [(ngModel)]="form.startDate" />
+          @if (fieldErrors['startDate']) { <div class="offer-field-error">{{ fieldErrors['startDate'] }}</div> }
         </div>
 
         <div class="offer-field">
@@ -50,17 +53,20 @@
           <select [(ngModel)]="form.contractType">
             @for (t of contractTypes; track t) { <option [value]="t">{{ t }}</option> }
           </select>
+          @if (fieldErrors['contractType']) { <div class="offer-field-error">{{ fieldErrors['contractType'] }}</div> }
         </div>
 
         <div class="offer-field">
           <label>Candidate must respond by <span class="offer-required">*</span></label>
           <input type="datetime-local" [(ngModel)]="form.expiresAt" />
+          @if (fieldErrors['expiresAt']) { <div class="offer-field-error">{{ fieldErrors['expiresAt'] }}</div> }
         </div>
 
         <div class="offer-field offer-field--span">
           <label>Message (optional)</label>
           <textarea rows="3" maxlength="800" [(ngModel)]="form.message"
                     placeholder="e.g. We're excited to have you join our team. The salary includes…"></textarea>
+          @if (fieldErrors['message']) { <div class="offer-field-error">{{ fieldErrors['message'] }}</div> }
         </div>
       </div>
 

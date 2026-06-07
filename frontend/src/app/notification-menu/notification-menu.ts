@@ -153,6 +153,21 @@ export class NotificationsMenu implements OnInit, OnDestroy {
     }
   }
 
+  /** Map every notification type to one of a small set of visual categories.
+   *  Used by the template to pick the right SVG icon and the CSS to apply
+   *  the right tinted background per category (sky / indigo / emerald / red
+   *  / violet etc. — same palette as the dashboard). */
+  categoryOf(type: string): 'interview' | 'job' | 'application' | 'user-block' | 'user-unblock' | 'role' | 'default' {
+    if (!type) return 'default';
+    if (type.startsWith('INTERVIEW_')) return 'interview';
+    if (type.startsWith('JOB_'))       return 'job';
+    if (type === 'APPLICATION_STATUS_UPDATE') return 'application';
+    if (type === 'USER_BLOCK')   return 'user-block';
+    if (type === 'USER_UNBLOCK') return 'user-unblock';
+    if (type === 'ROLE_UPDATE')  return 'role';
+    return 'default';
+  }
+
   getTypeLabel(type: string): string {
     switch (type) {
       case 'USER_BLOCK':                return 'Account Blocked';

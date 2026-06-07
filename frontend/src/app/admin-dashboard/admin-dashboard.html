@@ -156,6 +156,7 @@
           <button
             class="filter-btn"
             [class.active]="activeFilter === f.key"
+            [attr.data-filter]="f.key"
             [style.--fcolor]="f.color"
             (click)="setFilter(f.key)">
             {{ f.label }}
@@ -200,6 +201,8 @@
                 }
 
                 <span class="event-pill"
+                  [attr.data-event]="log.eventType"
+                  [style.--fcolor]="getEventMeta(log.eventType).color"
                   [style.color]="getEventMeta(log.eventType).color"
                   [style.border-color]="getEventMeta(log.eventType).color + '40'"
                   [style.background]="getEventMeta(log.eventType).bg">
@@ -242,6 +245,8 @@
                     <div class="ld-item">
                       <div class="ld-label">Event</div>
                       <span class="event-pill event-pill--sm"
+                        [attr.data-event]="log.eventType"
+                        [style.--fcolor]="getEventMeta(log.eventType).color"
                         [style.color]="getEventMeta(log.eventType).color"
                         [style.border-color]="getEventMeta(log.eventType).color + '40'"
                         [style.background]="getEventMeta(log.eventType).bg">
@@ -348,7 +353,7 @@
         </div>
         @if (!statsLoading) {
           @for (item of BREAKDOWN; track item.key) {
-            <div class="breakdown-item">
+            <div class="breakdown-item" [attr.data-bkey]="item.key">
               <div class="breakdown-header">
                 <span class="breakdown-label">{{ item.label }}</span>
                 <span class="breakdown-val" [style.color]="item.color">

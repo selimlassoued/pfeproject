@@ -11,7 +11,7 @@
 .skill-val-list { display: flex; flex-direction: column; gap: .6rem; margin-top: .4rem; }
 .skill-val-item { background: var(--surface-2); border-radius: 8px; padding: .6rem .8rem; }
 .skill-val-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .25rem; }
-.skill-val-name { font-size: .85rem; font-weight: 600; color: rgba(248,250,252,0.9); }
+.skill-val-name { font-size: .85rem; font-weight: 600; color: var(--text); }
 .skill-val-confidence { font-size: .7rem; font-weight: 700; padding: .15rem .45rem; border-radius: 99px; }
 .conf-high { background: rgba(72,187,120,.15); color: #48bb78; border: 1px solid rgba(72,187,120,.3); }
 .conf-med  { background: rgba(251,191,36,.15);  color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
@@ -38,7 +38,7 @@
   right: 0;
   height: 100vh;
   width: min(560px, 100vw);
-  background: rgba(11,16,38,0.97);
+  background: var(--surface-solid);
   border-left: 1px solid var(--border);
   z-index: 1001;
   display: flex;
@@ -106,7 +106,7 @@
 
 .drawer-position {
   font-size: 0.82rem;
-  color: var(--color-text-muted, rgba(248,250,252,0.6));
+  color: var(--color-text-muted, var(--text-muted));
 }
 
 .drawer-close {
@@ -155,7 +155,7 @@
   justify-content: center;
   gap: 1rem;
   flex: 1;
-  color: var(--color-text-muted, rgba(248,250,252,0.6));
+  color: var(--color-text-muted, var(--text-muted));
   font-size: 0.9rem;
 }
 
@@ -252,7 +252,7 @@
 .section-label-yellow{ color: rgba(255,220,100,0.8); border-color: rgba(255,220,100,0.12); }
 
 .drawer-summary {
-  color: rgba(248,250,252,0.8);
+  color: var(--text-muted);
   font-size: 0.88rem;
   line-height: 1.6;
   margin: 0;
@@ -271,7 +271,7 @@
 }
 .ev-label {
   font-size: 0.78rem;
-  color: rgba(248,250,252,0.6);
+  color: var(--text-muted);
 }
 .ev-badge {
   padding: 0.18rem 0.55rem;
@@ -348,7 +348,7 @@
   border: 1px solid var(--border);
   background: var(--surface-2);
 }
-.lang-name  { font-size: 0.82rem; color: rgba(248,250,252,0.9); font-weight: 600; }
+.lang-name  { font-size: 0.82rem; color: var(--text); font-weight: 600; }
 .lang-level { font-size: 0.75rem; color: var(--text-soft); }
 
 /* ── Timeline ── */
@@ -374,7 +374,7 @@
   height: 10px;
   border-radius: 50%;
   background: #79a4e9;
-  border: 2px solid rgba(11,16,38,0.9);
+  border: 2px solid var(--surface-solid);
   flex-shrink: 0;
   margin-top: 0.35rem;
   box-shadow: 0 0 0 3px rgba(121,164,233,0.15);
@@ -383,7 +383,7 @@
 .timeline-dot-vol { background: #79e9aa; box-shadow: 0 0 0 3px rgba(121,233,170,0.15); }
 
 .timeline-body { flex: 1; }
-.timeline-title { font-size: 0.88rem; font-weight: 700; color: rgba(248,250,252,0.95); margin-bottom: 0.2rem; }
+.timeline-title { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 0.2rem; }
 .timeline-sub   { font-size: 0.8rem;  color: var(--text-soft); margin-bottom: 0.4rem; }
 .timeline-duration { color: var(--text-soft); }
 .timeline-desc  { font-size: 0.8rem; color: var(--text-muted); line-height: 1.55; margin: 0.35rem 0 0.5rem; }
@@ -417,7 +417,7 @@
   gap: 0.5rem;
   margin-bottom: 0.25rem;
 }
-.hack-title { font-size: 0.85rem; font-weight: 700; color: rgba(248,250,252,0.92); }
+.hack-title { font-size: 0.85rem; font-weight: 700; color: var(--text); }
 .hack-rank  {
   font-size: 0.72rem;
   font-weight: 700;
@@ -429,13 +429,13 @@
   white-space: nowrap;
 }
 .hack-date { font-size: 0.75rem; color: var(--text-soft); margin-bottom: 0.35rem; }
-.hack-desc { font-size: 0.78rem; color: rgba(248,250,252,0.6); line-height: 1.55; margin: 0; }
+.hack-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.55; margin: 0; }
 
 /* ── Awards ── */
 .awards-list { display: flex; flex-direction: column; gap: 0.4rem; }
 .award-item {
   font-size: 0.82rem;
-  color: rgba(248,250,252,0.8);
+  color: var(--text-muted);
   padding: 0.4rem 0.75rem;
   border-radius: 10px;
   background: rgba(255,220,100,0.06);
@@ -446,7 +446,7 @@
 .insights-list { display: flex; flex-direction: column; gap: 0.4rem; }
 .insight-item {
   font-size: 0.82rem;
-  color: rgba(248,250,252,0.75);
+  color: var(--text-muted);
   display: flex;
   gap: 0.5rem;
   line-height: 1.5;
@@ -535,7 +535,7 @@
   align-items: center;
   gap: 0.1rem;
 }
-.github-stat-val  { font-size: 0.88rem; font-weight: 700; color: rgba(248,250,252,0.9); }
+.github-stat-val  { font-size: 0.88rem; font-weight: 700; color: var(--text); }
 .github-stat-lbl  { font-size: 0.68rem; color: var(--text-soft); }
 
 /* Consistent repos row */
@@ -698,7 +698,7 @@
   align-items: center;
   gap: 0.1rem;
 }
-.linkedin-stat-val  { font-size: 0.88rem; font-weight: 700; color: rgba(248,250,252,0.9); }
+.linkedin-stat-val  { font-size: 0.88rem; font-weight: 700; color: var(--text); }
 .linkedin-stat-lbl  { font-size: 0.68rem; color: var(--text-soft); }
 
 .linkedin-activity-high   { color: #79e9aa; }
@@ -769,7 +769,7 @@
 }
 .verification-label-confirmed { color: rgba(121,233,170,0.8); }
 .verification-label-likely    { color: rgba(255,220,100,0.8); }
-.verification-label-none      { color: rgba(248,250,252,0.35); }
+.verification-label-none      { color: var(--text-soft); }
 
 /* Confirmed = green */
 .pill-verified-confirmed {
@@ -805,7 +805,114 @@
   border-radius: 999px;
   border: 1px solid var(--surface-4);
   background: var(--surface-2);
-  color: rgba(248,250,252,0.35);
+  color: var(--text-soft);
   font-size: 0.72rem;
   font-weight: 600;
+}
+
+/* =========================================================================
+   LIGHT MODE OVERRIDES
+   -------------------------------------------------------------------------
+   The drawer was designed dark-mode-first with bright pastels (yellow
+   #ffd060, light-green #79e9aa, light-red #fc8181). Those vanish on the
+   white card. Each rule below deepens the same hue into a Tailwind-600
+   family so the badge reads cleanly while preserving the semantic color.
+   ========================================================================= */
+
+/* Education / honor / mention badges (yellow family) */
+:host-context([data-theme="light"]) .mention-badge {
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.30);
+  color: #b45309;
+}
+
+/* GitHub "consistent activity" repo pills + language pills (green family) */
+:host-context([data-theme="light"]) .consistent-repo-pill,
+:host-context([data-theme="light"]) .pill-github-lang {
+  background: rgba(5, 150, 105, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.30);
+  color: #047857;
+}
+
+/* Confidence chips: high / med / low */
+:host-context([data-theme="light"]) .conf-high {
+  background: rgba(5, 150, 105, 0.10);
+  border: 1px solid rgba(5, 150, 105, 0.30);
+  color: #047857;
+}
+:host-context([data-theme="light"]) .conf-med {
+  background: rgba(217, 119, 6, 0.10);
+  border: 1px solid rgba(217, 119, 6, 0.30);
+  color: #b45309;
+}
+:host-context([data-theme="light"]) .conf-low {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.30);
+  color: #b91c1c;
+}
+
+/* Evidence chips on the AI verdict */
+:host-context([data-theme="light"]) .ev-high {
+  background: rgba(5, 150, 105, 0.10);
+  border: 1px solid rgba(5, 150, 105, 0.30);
+  color: #047857;
+}
+:host-context([data-theme="light"]) .ev-medium {
+  background: rgba(217, 119, 6, 0.10);
+  border: 1px solid rgba(217, 119, 6, 0.30);
+  color: #b45309;
+}
+
+/* Seniority pills under the candidate name */
+:host-context([data-theme="light"]) .seniority-intern {
+  background: rgba(30, 64, 188, 0.08);
+  border-color: rgba(30, 64, 188, 0.30);
+  color: #1e40bc;
+}
+:host-context([data-theme="light"]) .seniority-junior {
+  background: rgba(5, 150, 105, 0.08);
+  border-color: rgba(5, 150, 105, 0.30);
+  color: #047857;
+}
+:host-context([data-theme="light"]) .seniority-mid {
+  background: rgba(217, 119, 6, 0.08);
+  border-color: rgba(217, 119, 6, 0.30);
+  color: #b45309;
+}
+:host-context([data-theme="light"]) .seniority-senior {
+  background: rgba(190, 24, 93, 0.08);
+  border-color: rgba(190, 24, 93, 0.30);
+  color: #9d174d;
+}
+
+/* Section labels (small ALL-CAPS markers above tables) */
+:host-context([data-theme="light"]) .section-label-red {
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.18);
+}
+:host-context([data-theme="light"]) .section-label-yellow {
+  color: #b45309;
+  border-color: rgba(217, 119, 6, 0.18);
+}
+
+/* Strength / weakness summary bullets */
+:host-context([data-theme="light"]) .sw-weakness {
+  color: #b91c1c;
+}
+
+/* Inline insight icons / dots */
+:host-context([data-theme="light"]) .insight-dot,
+:host-context([data-theme="light"]) .chip-link {
+  color: #1e40bc;
+}
+:host-context([data-theme="light"]) .insight-item.insight-warn {
+  color: #b45309;
+}
+
+/* Drawer error block (if a CV analysis itself fails) */
+:host-context([data-theme="light"]) .drawer-error-title {
+  color: #991b1b;
+}
+:host-context([data-theme="light"]) .drawer-error-msg {
+  color: #b91c1c;
 }

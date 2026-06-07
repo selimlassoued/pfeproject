@@ -11,6 +11,7 @@ import { JobRequirement } from '../model/jobRequirement.model';
 import { getCanonicalLanguages } from '../services/language-options.service';
 import { DOMAIN_OPTIONS } from '../services/domains';
 import { OrgComboboxComponent } from '../org-combobox/org-combobox.component';
+import { applyServerErrors, clearServerErrors, normalizeHttpError } from '../utils/http-error';
 
 /** Group-level validator: when a requirement's category is EDUCATION, at least
  *  one degree chip must be selected. Without it, the requirement says nothing
@@ -348,6 +349,7 @@ export class AddJob{
 
   async submit() {
     this.error = null;
+    clearServerErrors(this.form);
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -368,8 +370,13 @@ export class AddJob{
       await firstValueFrom(this.jobService.createJob(payload));
       await this.router.navigate(['/browse']);
     } catch (e: any) {
-      if (e?.status) this.error = `Create failed (HTTP ${e.status}).`;
-      else this.error = 'Create failed.';
+      const httpError = normalizeHttpError(e);
+      // Push per-field server messages onto the controls so existing
+      // template-level @if (c('title')?.errors) blocks surface them
+      // alongside the Angular validators that already render below
+      // each input.
+      applyServerErrors(this.form, httpError.fieldErrors);
+      this.error = httpError.message || 'Create failed.';
       console.error('createJob error:', e);
     } finally {
       this.saving = false;
@@ -382,6 +389,21 @@ export class AddJob{
 
   c(path: string) {
     return this.form.get(path);
+  }
+
+  /**
+   * Best error message to show next to a control. Prefers a server-side
+   * message (from applyServerErrors) when one exists, otherwise falls
+   * back to the supplied client-validator default. Returns null when the
+   * control is untouched or valid so the existing @if-as-msg blocks can
+   * suppress the row entirely.
+   */
+  fieldError(path: string, defaultMsg: string): string | null {
+    const ctl = this.form.get(path);
+    if (!ctl) return null;
+    if (ctl.errors?.['server']) return ctl.errors['server'] as string;
+    if (ctl.touched && ctl.invalid) return defaultMsg;
+    return null;
   }
 
   isDuplicate = false;

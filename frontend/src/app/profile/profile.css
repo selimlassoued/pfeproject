@@ -128,6 +128,13 @@
   font-weight: 800;
 }
 
+:host-context([data-theme="light"]) .hint{
+  color: #475569 !important;
+}
+:host-context([data-theme="light"]) .hint-strong{
+  color: #1e40bc !important;
+}
+
 .card-footer{
   margin-top: var(--space-10);
   padding-top: var(--space-6);

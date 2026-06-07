@@ -24,9 +24,16 @@
             type="text"
             [ngModel]="search"
             (ngModelChange)="onSearchChange($event)"
+            (keyup.enter)="suppressSearchSuggest = true; $any($event.target).blur()"
+            [attr.list]="(suppressSearchSuggest || !search) ? null : 'users-search-options'"
             placeholder="Search by username / name / email…"
             style="min-width: 260px;"
           />
+          <datalist id="users-search-options">
+            @for (s of searchSuggestions; track s) {
+              <option [value]="s"></option>
+            }
+          </datalist>
 
           <select class="input" [(ngModel)]="enabledFilter" (ngModelChange)="onFiltersChange()">
             <option value="ALL">All statuses</option>
@@ -58,7 +65,6 @@
           </button>
         }
 
-        <button class="btn btn-ghost" type="button" (click)="refresh()">Refresh</button>
       </div>
     </header>
 

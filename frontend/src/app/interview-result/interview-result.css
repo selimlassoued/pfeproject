@@ -32,7 +32,7 @@
   border: 0;
   background: transparent;
   padding: 0;
-  color: rgba(248,250,252,0.78);
+  color: var(--text-muted);
   font-weight: 800;
   cursor: pointer;
   font-size: 0.9rem;
@@ -42,9 +42,9 @@
   font-family: var(--font-body);
   transition: color 160ms ease, transform 160ms ease;
 }
-.ir-back:hover { color: rgba(248,250,252,0.95); transform: translateX(-2px); }
+.ir-back:hover { color: var(--text); transform: translateX(-2px); }
 
-.ir-breadcrumb-sep { color: rgba(248,250,252,0.35); font-size: 0.9rem; }
+.ir-breadcrumb-sep { color: var(--text-soft); font-size: 0.9rem; }
 .ir-breadcrumb     { color: var(--color-text-muted); font-size: 0.9rem; }
 
 .ir-title {
@@ -123,7 +123,7 @@
 
 .ir-card-head {
   padding: 1rem 1.25rem;
-  background: rgba(11,16,38,0.55);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -220,7 +220,7 @@
 
 /* ─── Summary text ─────────────────────────────────────────────────────── */
 .ir-summary-text {
-  color: rgba(248,250,252,0.88);
+  color: var(--text);
   line-height: 1.7;
   font-size: 0.96rem;
   margin: 0;
@@ -276,7 +276,7 @@
   line-height: 1.7;
   white-space: pre-wrap;
   color: var(--text-muted);
-  background: rgba(11,16,38,0.55);
+  background: var(--surface-2);
   padding: 1.1rem 1.3rem;
   max-height: 480px;
   overflow-y: auto;

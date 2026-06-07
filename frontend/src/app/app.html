@@ -2,7 +2,8 @@
   <div class="container-fluid">
     <!-- Brand -->
     <a class="navbar-brand hireai-brand" routerLink="/">
-      <img src="logo.png" alt="HireAI Logo" class="hireai-logo" />
+      <img [src]="currentTheme() === 'light' ? 'logo-light.png' : 'logo.png'"
+           alt="HireAI Logo" class="hireai-logo" />
     </a>
 
     <button
@@ -123,7 +124,7 @@
 
         <!-- Interview calendar - staff only -->
         @if (authenticated && !isCandidate()) {
-          <li class="nav-item">
+          <li class="nav-item d-flex align-items-center">
             <a class="nav-link hireai-link nav-icon-link" routerLink="/calendar"
                title="Interview calendar" aria-label="Interview calendar">
               <svg viewBox="0 0 24 24" fill="none" stroke="#79a4e9" stroke-width="2"
@@ -144,7 +145,7 @@
 
         <!-- Notifications - all signed-in users -->
         @if (authenticated) {
-          <li class="nav-item">
+          <li class="nav-item d-flex align-items-center">
             <app-notification-menu></app-notification-menu>
           </li>
         }

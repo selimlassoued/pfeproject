@@ -71,7 +71,7 @@
   padding: .4rem .7rem;
   border: 1px solid var(--border);
   background: var(--surface-1);
-  color: rgba(248,250,252,.85);
+  color: var(--text);
 }
 
 .ad2-status{
@@ -100,7 +100,7 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--border-subtle);
-  color: rgba(248,250,252,.9);
+  color: var(--text);
   font-weight: 900;
   font-size: .8rem;
 }
@@ -133,7 +133,7 @@
   align-items:center;
   gap:1rem;
   padding: 1rem 1.1rem;
-  background: rgba(11,16,38,0.55);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -194,13 +194,13 @@
 }
 
 .ad2-name{
-  color: rgba(248,250,252,.95);
+  color: var(--text);
   font-weight: 900;
   font-size: 1.05rem;
 }
 
 .ad2-muted{
-  color: rgba(248,250,252,.72);
+  color: var(--text-muted);
   font-size: .9rem;
 }
 
@@ -215,12 +215,12 @@
   font-size: .85rem;
 }
 .ad2-v{
-  color: rgba(248,250,252,.92);
+  color: var(--text);
   font-weight: 800;
 }
 
 .ad2-jobTitle{
-  color: rgba(248,250,252,.98);
+  color: var(--text);
   font-size: 1.2rem;
   font-weight: 950;
 }
@@ -264,7 +264,7 @@
 
 .ad2-step .label{
   font-weight: 900;
-  color: rgba(248,250,252,.9);
+  color: var(--text);
 }
 
 .ad2-note{

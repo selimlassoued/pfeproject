@@ -4,6 +4,7 @@ import { ApplicationService } from '../services/application.service';
 import { ApplicationDto } from '../model/application.dto';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { matchesWordStart } from '../utils/suggestion-match';
 
 @Component({
   selector: 'app-list-applications',
@@ -22,6 +23,11 @@ export class ListApplications implements OnInit {
   jobTitle      = '';
   candidateName = '';
   status        = '';
+
+  // Suppress datalist popup once Enter is hit so it doesn't keep
+  // hovering over the table during the rest of the search session.
+  suppressJobTitleSuggest = false;
+  suppressCandidateSuggest = false;
 
   pageIndex = 0;
   pageSize  = 10;
@@ -49,6 +55,41 @@ export class ListApplications implements OnInit {
   search() {
     this.pageIndex = 0;
     this.load();
+  }
+
+  onJobTitleChange(v: string) {
+    this.jobTitle = v;
+    if (!v) this.suppressJobTitleSuggest = false;
+  }
+  onCandidateChange(v: string) {
+    this.candidateName = v;
+    if (!v) this.suppressCandidateSuggest = false;
+  }
+
+  /** Suggestions derived from the currently-loaded page. Server-side
+   *  pagination means we can't see everything, but repeats on this
+   *  page are still worth offering. */
+  get jobTitleOptions(): string[] {
+    const q = this.jobTitle.trim().toLowerCase();
+    const s = new Set<string>();
+    for (const a of this.applications) {
+      const t = a.jobTitle?.trim();
+      if (t) s.add(t);
+    }
+    let out = Array.from(s).sort((x, y) => x.localeCompare(y));
+    if (q) out = out.filter(t => matchesWordStart(t, q));
+    return out.slice(0, 10);
+  }
+  get candidateOptions(): string[] {
+    const q = this.candidateName.trim().toLowerCase();
+    const s = new Set<string>();
+    for (const a of this.applications) {
+      const n = a.candidateName?.trim();
+      if (n) s.add(n);
+    }
+    let out = Array.from(s).sort((x, y) => x.localeCompare(y));
+    if (q) out = out.filter(n => matchesWordStart(n, q));
+    return out.slice(0, 10);
   }
 
   load() {

@@ -23,7 +23,7 @@
   border: 0;
   background: transparent;
   padding: 0;
-  color: rgba(248,250,252,0.78);
+  color: var(--text-muted);
   font-weight: 800;
   cursor: pointer;
   font-size: 0.9rem;
@@ -33,9 +33,9 @@
   font-family: var(--font-body);
   transition: color 160ms ease, transform 160ms ease;
 }
-.as-back:hover { color: rgba(248,250,252,0.95); transform: translateX(-2px); }
+.as-back:hover { color: var(--text); transform: translateX(-2px); }
 
-.as-breadcrumb-sep { color: rgba(248,250,252,0.35); font-size: 0.9rem; }
+.as-breadcrumb-sep { color: var(--text-soft); font-size: 0.9rem; }
 .as-breadcrumb     { color: var(--color-text-muted); font-size: 0.9rem; }
 
 .as-title {
@@ -76,7 +76,7 @@
 
 .as-card-head {
   padding: 1rem 1.25rem;
-  background: rgba(11,16,38,0.55);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -216,7 +216,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(11,16,38,0.55);
+  background: var(--surface-2);
   margin-bottom: 0.55rem;
   font-family: var(--font-display);
   font-size: 1.35rem;
@@ -227,12 +227,12 @@
   width: 82px;
   height: 82px;
   font-size: 1.55rem;
-  background: radial-gradient(circle at top left, var(--border), rgba(11,16,38,0.65) 75%);
+  background: radial-gradient(circle at top left, var(--border), var(--surface-2) 75%);
   box-shadow: 0 4px 22px rgba(30,64,188,0.35);
 }
 
 .as-stage-label {
-  color: rgba(248,250,252,0.92);
+  color: var(--text);
   font-weight: 800;
   font-size: 0.86rem;
 }
@@ -336,7 +336,7 @@
 
 .as-iv-status {
   font-weight: 700;
-  color: rgba(248,250,252,0.92);
+  color: var(--text);
   font-size: 0.9rem;
 }
 .as-iv-status.is-failed { color: #e8889a; }
@@ -412,7 +412,7 @@
 
 .as-dim-label {
   font-weight: 800;
-  color: rgba(248,250,252,0.92);
+  color: var(--text);
   font-size: 0.9rem;
 }
 

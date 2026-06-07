@@ -61,7 +61,7 @@
   font-family: var(--font-display);
   color: var(--color-cream);
   font-size: .95rem;
-  background: rgba(11,16,38,0.55);
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -85,32 +85,8 @@
   text-align: right;
 }
 
-/* Withdraw button in table row */
-.btn-withdraw-row{
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-  padding: .38rem .7rem;
-  border-radius: 999px;
-  border: 1px solid rgba(233,121,121,0.28);
-  background: rgba(233,121,121,0.08);
-  color: rgba(255,220,220,0.88);
-  font-size: .82rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
-}
-.btn-withdraw-row:hover{
-  background: rgba(233,121,121,0.16);
-  border-color: rgba(233,121,121,0.45);
-  transform: translateY(-1px);
-}
-.btn-withdraw-row:disabled{
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
+/* .btn-withdraw-row and .app-status.* live in styles.css now — one source
+   of truth across my-applications + list-applications. */
 
 .sub-id{
   margin-top: .3rem;
@@ -121,28 +97,8 @@
 .mono{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: .88rem;
-  color: rgba(248,250,252,0.92);
+  color: var(--text);
 }
-
-.app-status{
-  display: inline-flex;
-  align-items: center;
-  padding: .32rem .7rem;
-  border-radius: var(--radius-pill, 999px);
-  border: 1px solid var(--border-strong);
-  background: var(--border-subtle);
-  color: var(--color-secondary);
-  font-size: .85rem;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.app-status.applied        { background: var(--border-subtle); }
-.app-status.under_review   { background: var(--border-subtle); }
-.app-status.interview_phase{ background: rgba(255,252,229,0.10); color: var(--color-cream); border-color: rgba(255,252,229,0.18); }
-.app-status.offer          { background: rgba(121,233,170,0.10); border-color: rgba(121,233,170,0.18); color: rgba(200,255,230,0.95); }
-.app-status.rejected       { background: rgba(233,121,121,0.12); border-color: rgba(233,121,121,0.20); color: rgba(255,220,220,0.95); }
-.app-status.hired          { background: rgba(121,233,170,0.14); border-color: rgba(121,233,170,0.22); color: rgba(200,255,230,1); }
 
 .apps-empty{
   margin-top: var(--space-8, 2rem);
@@ -210,9 +166,9 @@
 }
 .pager-info {
   font-size: .82rem;
-  color: rgba(248, 250, 252, .6);
+  color: var(--text-muted);
 }
-.pager-info strong { color: rgba(248, 250, 252, .92); font-weight: 700; }
+.pager-info strong { color: var(--text); font-weight: 700; }
 
 .pager-controls {
   display: flex;
@@ -225,9 +181,9 @@
   min-width: 36px;
   height: 36px;
   padding: 0 .65rem;
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid rgba(121, 164, 233, .22);
-  color: rgba(248, 250, 252, .85);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--text);
   border-radius: 8px;
   font-size: .82rem;
   font-weight: 600;
@@ -235,8 +191,8 @@
   transition: background .15s ease, border-color .15s ease, transform .15s ease;
 }
 .pager-btn:hover:not(:disabled):not(.is-active) {
-  background: rgba(121, 164, 233, .12);
-  border-color: rgba(121, 164, 233, .5);
+  background: var(--border-subtle);
+  border-color: var(--border-prominent);
 }
 .pager-btn:disabled {
   opacity: .35;
@@ -250,7 +206,7 @@
 }
 .pager-ellipsis {
   padding: 0 .35rem;
-  color: rgba(248, 250, 252, .5);
+  color: var(--text-soft);
   font-weight: 700;
   user-select: none;
 }

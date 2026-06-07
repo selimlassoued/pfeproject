@@ -90,7 +90,7 @@
 
 .label{
   font-size:.85rem;
-  color: rgba(248,250,252,.72);
+  color: var(--text-muted);
 }
 
 .value{
@@ -331,17 +331,17 @@
 }
 .sl-modal-title { font-size: 1rem; font-weight: 800; color: var(--color-cream); margin: 0; }
 .sl-modal-close {
-  background: none; border: none; color: rgba(248,250,252,.45);
+  background: none; border: none; color: var(--text-soft);
   font-size: 1rem; cursor: pointer; padding: 0;
 }
 .sl-modal-close:hover { color: var(--color-cream); }
 .sl-modal-body { padding: 1.1rem 1.4rem; display: grid; gap: .9rem; }
-.sl-modal-desc { color: rgba(248,250,252,.65); font-size: .85rem; margin: 0; line-height: 1.55; }
+.sl-modal-desc { color: var(--text-muted); font-size: .85rem; margin: 0; line-height: 1.55; }
 .sl-modal-footer {
   display: flex; justify-content: flex-end; gap: .65rem;
   padding: 0 1.4rem 1.2rem;
 }
-.sl-label { font-size: .75rem; font-weight: 700; color: rgba(248,250,252,.5); text-transform: uppercase; letter-spacing: .06em; }
+.sl-label { font-size: .75rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .06em; }
 .sl-threshold-row { display: flex; justify-content: space-between; align-items: center; }
 .sl-threshold-value { font-size: 1.4rem; font-weight: 900; color: #fbbf24; }
 .sl-slider {
@@ -349,7 +349,7 @@
 }
 .sl-slider-labels {
   display: flex; justify-content: space-between;
-  font-size: .72rem; color: rgba(248,250,252,.35);
+  font-size: .72rem; color: var(--text-soft);
 }
 .sl-result {
   border-radius: 8px; padding: .7rem 1rem;
@@ -431,7 +431,7 @@
   padding: .2rem .6rem;
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(251, 146, 60, .22), rgba(251, 146, 60, .1));
-  color: #fed7aa;
+  color: #b45309;
   border: 1px solid rgba(251, 146, 60, .5);
   font-size: .68rem;
   font-weight: 700;
@@ -439,6 +439,7 @@
   text-transform: uppercase;
   line-height: 1;
 }
+:root[data-theme="dark"] .req-must-badge { color: #fed7aa; }
 .req-must-dot {
   width: 6px;
   height: 6px;
@@ -492,9 +493,9 @@
 
 .req-weight {
   font-size: .68rem;
-  color: rgba(248,250,252,.6);
+  color: var(--text-muted);
   padding: .2rem .55rem;
-  background: rgba(255,255,255,.04);
+  background: var(--surface-1);
   border: 1px solid rgba(255,255,255,.09);
   border-radius: 999px;
   font-weight: 600;
@@ -502,7 +503,7 @@
 }
 
 .req-desc {
-  color: rgba(248,250,252,.96);
+  color: var(--text);
   font-size: 1rem;
   font-weight: 500;
   line-height: 1.45;
@@ -526,7 +527,7 @@
   background: rgba(var(--req-c, 121,164,233), .07);
   border: 1px solid rgba(var(--req-c, 121,164,233), .18);
   font-size: .78rem;
-  color: rgba(248,250,252,.92);
+  color: var(--text);
   transition: background .15s ease, border-color .15s ease;
 }
 .meta-chip:hover {
@@ -534,14 +535,14 @@
   border-color: rgba(var(--req-c, 121,164,233), .30);
 }
 .meta-key {
-  color: rgba(248,250,252,.5);
+  color: var(--text-soft);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .06em;
   font-size: .62rem;
 }
 .meta-val {
-  color: rgba(248,250,252,.98);
+  color: var(--text);
   font-weight: 700;
   font-size: .82rem;
 }

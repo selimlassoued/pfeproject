@@ -123,8 +123,7 @@
 
 /* Pills */
 .pill-role { background: var(--border-subtle); border-color: var(--border-strong); }
-.pill-success { background: rgba(120,255,197,0.12); border-color: rgba(120,255,197,0.30); color: var(--color-cream); }
-.pill-danger { background: rgba(255,120,120,0.12); border-color: rgba(255,120,120,0.30); color: var(--color-cream); }
+/* .pill-success / .pill-danger live in styles.css now. */
 .pill-flagged { background: rgba(255,140,0,0.12); border-color: rgba(255,140,0,0.30); color: #ffa500; }
 
 /* Moderation banners */
@@ -135,7 +134,7 @@
 .moderation-banner--flagged { background: rgba(255,140,0,0.08); border: 1px solid rgba(255,140,0,0.25); }
 .moderation-banner--blocked { background: rgba(233,121,121,0.08); border: 1px solid rgba(233,121,121,0.25); }
 .moderation-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: .1rem; }
-.moderation-title { font-weight: 700; font-size: .9rem; color: rgba(248,250,252,0.92); margin-bottom: .2rem; }
+.moderation-title { font-weight: 700; font-size: .9rem; color: var(--text); margin-bottom: .2rem; }
 .moderation-desc { font-size: .82rem; color: var(--text-soft); }
 
 /* Buttons */
