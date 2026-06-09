@@ -308,6 +308,32 @@
                 <option value="CERTIFICATION">CERTIFICATION</option>
                 <option value="LANGUAGE">LANGUAGE</option>
               </select>
+
+              <!-- HARD / SOFT sub-toggle - only shown when SKILL is the
+                   selected category. Drives skillType, which the backend
+                   uses to route the match against the right catalog (HARD
+                   skills resolve via the 5-layer cascade, SOFT skills via
+                   the read-only synonym+embedding lookup). Default is HARD
+                   on a fresh row so the recruiter never sees an unpicked
+                   state. -->
+              @if (r.get('category')?.value === 'SKILL') {
+                <div class="skill-type-toggle" role="radiogroup" aria-label="Skill type">
+                  <button type="button" role="radio"
+                          class="skill-type-toggle__btn"
+                          [class.skill-type-toggle__btn--active]="r.get('skillType')?.value === 'HARD'"
+                          [attr.aria-checked]="r.get('skillType')?.value === 'HARD'"
+                          (click)="r.get('skillType')?.setValue('HARD')">
+                    Hard skill
+                  </button>
+                  <button type="button" role="radio"
+                          class="skill-type-toggle__btn"
+                          [class.skill-type-toggle__btn--active]="r.get('skillType')?.value === 'SOFT'"
+                          [attr.aria-checked]="r.get('skillType')?.value === 'SOFT'"
+                          (click)="r.get('skillType')?.setValue('SOFT')">
+                    Soft skill
+                  </button>
+                </div>
+              }
             </div>
 
             <!-- Description: free-text for most categories, strict dropdown
@@ -333,14 +359,42 @@
               } @else if (r.get('category')?.value === 'EDUCATION') {
                 <input class="input" type="text" formControlName="description"
                   placeholder="e.g. Bachelor in Computer Science" />
+              } @else if (r.get('category')?.value === 'SKILL'
+                          && r.get('skillType')?.value === 'HARD') {
+                <!-- Autocomplete from the HARD skill catalog. [attr.list]
+                     instead of `list=...{{i}}` because Angular's strict
+                     template checker treats interpolated `list` as a
+                     property binding, and HTMLInputElement only declares
+                     `list` as an attribute. -->
+                <input class="input" type="text" formControlName="description"
+                  [attr.list]="'hard-skill-options-' + i"
+                  placeholder="e.g. Java, Kafka, PostgreSQL" autocomplete="off" />
+                <datalist [id]="'hard-skill-options-' + i">
+                  @for (s of hardSkillSuggestions; track s) {
+                    <option [value]="s"></option>
+                  }
+                </datalist>
+              } @else if (r.get('category')?.value === 'SKILL'
+                          && r.get('skillType')?.value === 'SOFT') {
+                <input class="input" type="text" formControlName="description"
+                  [attr.list]="'soft-skill-options-' + i"
+                  placeholder="e.g. Communication, Leadership, Teamwork" autocomplete="off" />
+                <datalist [id]="'soft-skill-options-' + i">
+                  @for (s of softSkillSuggestions; track s) {
+                    <option [value]="s"></option>
+                  }
+                </datalist>
               } @else {
                 <input class="input" type="text" formControlName="description"
                   placeholder="e.g. Java, Bachelor in CS, …" />
               }
             </div>
 
-            <!-- SKILL level dropdown -->
-            @if (r.get('category')?.value === 'SKILL') {
+            <!-- Required level: only applies to HARD skills. Soft skills
+                 have no proficiency tier in our model - a candidate either
+                 communicates well or doesn't. -->
+            @if (r.get('category')?.value === 'SKILL'
+                 && r.get('skillType')?.value === 'HARD') {
               <div class="field">
                 <label class="toolbar-label">Required level</label>
                 <select class="input" formControlName="skillLevel">

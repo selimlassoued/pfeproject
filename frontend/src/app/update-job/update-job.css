@@ -83,6 +83,39 @@
   color: var(--text-muted);
 }
 
+/* HARD / SOFT toggle under the SKILL category. Identical to add-job's
+   .skill-type-toggle so the two screens are visually one widget. */
+.skill-type-toggle {
+  display: inline-flex;
+  margin-top: 0.5rem;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  width: fit-content;
+  gap: 2px;
+}
+.skill-type-toggle__btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+.skill-type-toggle__btn:hover:not(.skill-type-toggle__btn--active) {
+  color: var(--text);
+}
+.skill-type-toggle__btn--active {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(30,64,188,0.22);
+}
+
 .addjob-row2{
   display:grid;
   grid-template-columns: 1fr 1fr;

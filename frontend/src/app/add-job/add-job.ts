@@ -3,8 +3,10 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormArray, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterLink, NavigationExtras } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import Swal from 'sweetalert2';
 
 import { JobService } from '../services/job.service';
+import { CatalogService, CatalogItem } from '../services/catalog.service';
 import { JobOffer } from '../model/jobOffer.model';
 import { RequirementCategory } from '../model/jobRequirement.model';
 import { JobRequirement } from '../model/jobRequirement.model';
@@ -32,6 +34,7 @@ function educationDegreeRequiredValidator(group: AbstractControl): ValidationErr
 export class AddJob{
   private readonly fb = inject(FormBuilder);
   private readonly jobService = inject(JobService);
+  private readonly catalogService = inject(CatalogService);
   private readonly router = inject(Router);
 
   saving = false;
@@ -44,6 +47,13 @@ export class AddJob{
     'CERTIFICATION',
     'LANGUAGE',
   ];
+
+  /** Catalog autocomplete sources, populated on init. Filtered by type so
+   *  the description field suggests the right names once the recruiter
+   *  picks SKILL → HARD or SKILL → SOFT. Powers the <datalist> in the
+   *  template. */
+  hardSkillSuggestions: string[] = [];
+  softSkillSuggestions: string[] = [];
 
   // Canonical language names for LANGUAGE-category requirements. Used by the
   // strict dropdown in the template so the recruiter can't store a typo or a
@@ -171,12 +181,19 @@ export class AddJob{
   }
 
   addRequirement(preset?: Partial<JobRequirement>) {
+    // For a SKILL row default skillType to HARD so the recruiter doesn't
+    // see an empty toggle - they can flip to SOFT in one click. Legacy
+    // rows without a skillType also default to HARD on edit.
+    const defaultSkillType = preset?.category === 'SKILL'
+      ? (preset?.skillType ?? 'HARD')
+      : null;
     const group = this.fb.group({
       category:       [preset?.category      ?? 'SKILL', [Validators.required]],
       description:    [preset?.description   ?? '',      [Validators.required, Validators.minLength(2)]],
       weight:         [preset?.weight        ?? null],
       minYears:       [preset?.minYears      ?? null],
       skillLevel:     [preset?.skillLevel     ?? null],
+      skillType:      [defaultSkillType],
       degreeLevel:    [preset?.degreeLevel    ?? null],
       enrollmentType: [preset?.enrollmentType ?? null],
       institute:      [preset?.institute      ?? null],
@@ -311,22 +328,34 @@ export class AddJob{
   private buildPayload(): Omit<JobOffer, 'id'> {
     const v = this.form.getRawValue();
 
-    const reqs: JobRequirement[] = (v.requirements ?? []).map((r: any) => ({
-      category:       r.category,
-      description:    r.description,
-      weight:         this.customizeWeights ? (r.weight ?? null) : null,
-      minYears:       r.minYears      ?? null,
-      skillLevel:     r.skillLevel     ?? null,
-      degreeLevel:    r.degreeLevel    ?? null,
-      enrollmentType: r.enrollmentType ?? null,
-      institute:      (r.institute && String(r.institute).trim()) || null,
-      languageLevel:  r.languageLevel  ?? null,
-      issuingOrg:       r.issuingOrg       ?? null,
-      customIssuingOrg: (r.customIssuingOrg && String(r.customIssuingOrg).trim()) || null,
-      requireCurrent:   !!r.requireCurrent,
-      validityYears:    r.validityYears    ?? null,
-      mustHave:         !!r.mustHave,
-    }));
+    const reqs: JobRequirement[] = (v.requirements ?? []).map((r: any) => {
+      // skillType only applies when category=SKILL. Non-skill categories
+      // store null so the backend doesn't carry meaningless sub-type data
+      // on EDUCATION / LANGUAGE / etc. rows.
+      const isSkill = r.category === 'SKILL';
+      const skillType: 'HARD' | 'SOFT' | null = isSkill
+        ? (r.skillType === 'SOFT' ? 'SOFT' : 'HARD')
+        : null;
+      return {
+        category:       r.category,
+        description:    r.description,
+        weight:         this.customizeWeights ? (r.weight ?? null) : null,
+        minYears:       r.minYears      ?? null,
+        // SOFT skills have no proficiency tier - drop skillLevel even if
+        // the form value got stuck on something from a previous HARD pick.
+        skillLevel:     skillType === 'SOFT' ? null : (r.skillLevel ?? null),
+        skillType,
+        degreeLevel:    r.degreeLevel    ?? null,
+        enrollmentType: r.enrollmentType ?? null,
+        institute:      (r.institute && String(r.institute).trim()) || null,
+        languageLevel:  r.languageLevel  ?? null,
+        issuingOrg:       r.issuingOrg       ?? null,
+        customIssuingOrg: (r.customIssuingOrg && String(r.customIssuingOrg).trim()) || null,
+        requireCurrent:   !!r.requireCurrent,
+        validityYears:    r.validityYears    ?? null,
+        mustHave:         !!r.mustHave,
+      };
+    });
 
     return {
       title: (v.title ?? '').trim(),
@@ -368,6 +397,39 @@ export class AddJob{
     this.saving = true;
     try {
       await firstValueFrom(this.jobService.createJob(payload));
+
+      // Auto-enrich the SOFT catalog with any newly-mentioned soft skills.
+      // Why this runs AFTER createJob and not before: the job save is the
+      // hard requirement; enrichment is a nice-to-have that shouldn't be
+      // able to block (or abort) the recruiter's primary action. Worst
+      // case the Ollama call fails - we swallow it, log, and move on; the
+      // job is already saved and the next visit to the Skills Catalog
+      // page can fix any missing synonyms by hand.
+      try {
+        const added = await this.catalogService
+          .enrichNewSoftSkillsFromRequirements(payload.requirements ?? []);
+        if (added.length > 0) {
+          await Swal.fire({
+            icon: 'success',
+            title: `Catalog updated`,
+            html:
+              `<p>Added ${added.length} new soft skill${added.length > 1 ? 's' : ''} ` +
+              `to the catalog with AI-suggested synonyms:</p>` +
+              `<p style="margin-top:0.6rem;font-weight:600;color:#1e40bc;">` +
+                `${added.join(', ')}` +
+              `</p>` +
+              `<p style="margin-top:0.6rem;font-size:0.85rem;">` +
+                `Edit them anytime from the Skills Catalog admin page.` +
+              `</p>`,
+            timer: 3800,
+            timerProgressBar: true,
+            showConfirmButton: false,
+          });
+        }
+      } catch (e) {
+        console.warn('[add-job] soft-skill enrichment failed:', e);
+      }
+
       await this.router.navigate(['/browse']);
     } catch (e: any) {
       const httpError = normalizeHttpError(e);
@@ -409,6 +471,22 @@ export class AddJob{
   isDuplicate = false;
 
   ngOnInit() {
+    // Catalog autocomplete sources. Loaded once on init; the form's <datalist>
+    // for the Description field reads from these arrays so the recruiter sees
+    // existing skill names while typing (avoids "Java" vs "java" vs "JAVA"
+    // typos, and helps them discover what's already curated).
+    this.catalogService.getSnapshot().then(snap => {
+      const skills: CatalogItem[] = snap.skills ?? [];
+      this.hardSkillSuggestions = skills
+        .filter(s => s.type === 'HARD')
+        .map(s => s.displayName)
+        .sort((a, b) => a.localeCompare(b));
+      this.softSkillSuggestions = skills
+        .filter(s => s.type === 'SOFT')
+        .map(s => s.displayName)
+        .sort((a, b) => a.localeCompare(b));
+    }).catch(() => { /* degraded silently - the input still works as free text */ });
+
     const state = this.router.getCurrentNavigation()?.extras?.state ?? history.state;
     const dup = state?.['duplicate'];
     if (dup) {
@@ -436,6 +514,7 @@ export class AddJob{
           weight:         null,
           minYears:       r.minYears,
           skillLevel:     r.skillLevel,
+          skillType:      r.skillType ?? null,
           degreeLevel:    r.degreeLevel,
           enrollmentType: r.enrollmentType,
           institute:      r.institute ?? null,

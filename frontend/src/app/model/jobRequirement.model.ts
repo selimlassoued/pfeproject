@@ -6,6 +6,9 @@ export type RequirementCategory =
   | 'LANGUAGE';
 
 export type SkillLevel = 'BASIC' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
+// SKILL sub-type. Drives which catalog the matcher consults. Recruiter picks
+// HARD or SOFT at requirement-creation time. Null on legacy rows = treat as HARD.
+export type SkillType = 'HARD' | 'SOFT';
 // A single selectable degree value. ENGINEER (ingénieur, bac+5) ranks with MASTER.
 // TRAINING = vocational / short professional training ("formation" in FR).
 export type DegreeLevel = 'BAC' | 'BTS_DUT' | 'TRAINING' | 'LICENCE_BACHELOR' | 'ENGINEER' | 'MASTER' | 'PHD';
@@ -18,6 +21,9 @@ export interface JobRequirement {
   weight?: number | null;
   minYears?: number | null;
   skillLevel?: SkillLevel | null;
+  // SKILL: "HARD" or "SOFT". Null = legacy/HARD. Mirrors the JobRequirement
+  // entity's skillType column on the backend.
+  skillType?: SkillType | null;
   // Comma-separated list of accepted degrees, e.g. "LICENCE_BACHELOR,ENGINEER,MASTER".
   // Empty/null = any degree accepted. Recruiter multi-select.
   degreeLevel?: string | null;

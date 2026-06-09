@@ -18,6 +18,8 @@ public class JobRequirementDto {
 
     /** SKILL: BASIC / INTERMEDIATE / ADVANCED / EXPERT, or null = "Any level". */
     private String skillLevel;
+    /** SKILL: "HARD" or "SOFT". Null on legacy rows = treat as HARD. */
+    private String skillType;
     /** EDUCATION: comma-joined enum tokens (BAC, LICENCE_BACHELOR, MASTER, ...). */
     private String degreeLevel;
     /** EDUCATION: STUDENT / GRADUATE / BOTH, or null = "Either". */

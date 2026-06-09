@@ -34,6 +34,17 @@ public class JobRequirement {
 
     private String skillLevel;
 
+    /**
+     * SKILL: "HARD" or "SOFT". Drives which catalog the matcher consults and
+     * whether skillLevel matters (soft skills have no proficiency tiers).
+     *
+     * Backward-compatible: null on legacy rows means "treat as HARD" (which
+     * is what the old single-bucket SKILL behavior implicitly was, since the
+     * matcher always looked at the technical-skill catalog before this
+     * field existed).
+     */
+    private String skillType;
+
     private String degreeLevel;
     private String enrollmentType;   // STUDENT / GRADUATE / BOTH
     private String institute;        // EDUCATION: name of the school/university (optional)

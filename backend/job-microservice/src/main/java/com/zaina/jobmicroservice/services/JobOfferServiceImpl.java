@@ -49,6 +49,7 @@ public class JobOfferServiceImpl implements JobOfferService {
                 r.getWeight(),
                 r.getMinYears(),
                 r.getSkillLevel(),
+                r.getSkillType(),
                 r.getDegreeLevel(),
                 r.getEnrollmentType(),
                 r.getInstitute(),
@@ -165,6 +166,7 @@ public class JobOfferServiceImpl implements JobOfferService {
                         .weight(r.getWeight())
                         .minYears(r.getMinYears())
                         .skillLevel(r.getSkillLevel())
+                        .skillType(r.getSkillType())
                         .degreeLevel(r.getDegreeLevel())
                         .enrollmentType(r.getEnrollmentType())
                         .institute(r.getInstitute())
@@ -280,6 +282,7 @@ public class JobOfferServiceImpl implements JobOfferService {
                         .weight(r.getWeight())
                         .minYears(r.getMinYears())
                         .skillLevel(r.getSkillLevel())
+                        .skillType(r.getSkillType())
                         .degreeLevel(r.getDegreeLevel())
                         .enrollmentType(r.getEnrollmentType())
                         .institute(r.getInstitute())

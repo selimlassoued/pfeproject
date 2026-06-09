@@ -323,11 +323,32 @@
                   <option value="CERTIFICATION">CERTIFICATION</option>
                   <option value="LANGUAGE">LANGUAGE</option>
                 </select>
+
+                <!-- HARD / SOFT sub-toggle (SKILL only). Same widget as
+                     add-job.html so the two stay visually identical. -->
+                @if (r.get('category')?.value === 'SKILL') {
+                  <div class="skill-type-toggle" role="radiogroup" aria-label="Skill type">
+                    <button type="button" role="radio"
+                            class="skill-type-toggle__btn"
+                            [class.skill-type-toggle__btn--active]="r.get('skillType')?.value === 'HARD'"
+                            [attr.aria-checked]="r.get('skillType')?.value === 'HARD'"
+                            (click)="r.get('skillType')?.setValue('HARD')">
+                      Hard skill
+                    </button>
+                    <button type="button" role="radio"
+                            class="skill-type-toggle__btn"
+                            [class.skill-type-toggle__btn--active]="r.get('skillType')?.value === 'SOFT'"
+                            [attr.aria-checked]="r.get('skillType')?.value === 'SOFT'"
+                            (click)="r.get('skillType')?.setValue('SOFT')">
+                      Soft skill
+                    </button>
+                  </div>
+                }
               </div>
 
               <!-- Description: free-text for most categories, strict dropdown
-                   for LANGUAGE so values stay canonical in the DB. Same widget
-                   logic as add-job.html so create + edit stay in sync. -->
+                   for LANGUAGE so values stay canonical in the DB. Catalog-
+                   backed datalist for SKILL → HARD and SKILL → SOFT. -->
               <div class="field req-desc">
                 <label class="toolbar-label">
                   @switch (r.get('category')?.value) {
@@ -347,14 +368,35 @@
                 } @else if (r.get('category')?.value === 'EDUCATION') {
                   <input class="input" type="text" formControlName="description"
                     placeholder="e.g. Bachelor in Computer Science" />
+                } @else if (r.get('category')?.value === 'SKILL'
+                            && r.get('skillType')?.value === 'HARD') {
+                  <input class="input" type="text" formControlName="description"
+                    [attr.list]="'hard-skill-options-upd-' + i"
+                    placeholder="e.g. Java, Kafka, PostgreSQL" autocomplete="off" />
+                  <datalist [id]="'hard-skill-options-upd-' + i">
+                    @for (s of hardSkillSuggestions; track s) {
+                      <option [value]="s"></option>
+                    }
+                  </datalist>
+                } @else if (r.get('category')?.value === 'SKILL'
+                            && r.get('skillType')?.value === 'SOFT') {
+                  <input class="input" type="text" formControlName="description"
+                    [attr.list]="'soft-skill-options-upd-' + i"
+                    placeholder="e.g. Communication, Leadership, Teamwork" autocomplete="off" />
+                  <datalist [id]="'soft-skill-options-upd-' + i">
+                    @for (s of softSkillSuggestions; track s) {
+                      <option [value]="s"></option>
+                    }
+                  </datalist>
                 } @else {
                   <input class="input" type="text" formControlName="description"
                     placeholder="e.g. Java, Bachelor in CS, …" />
                 }
               </div>
 
-              <!-- SKILL level -->
-              @if (r.get('category')?.value === 'SKILL') {
+              <!-- Required level: only applies to HARD skills. -->
+              @if (r.get('category')?.value === 'SKILL'
+                   && r.get('skillType')?.value === 'HARD') {
                 <div class="field">
                   <label class="toolbar-label">Required level</label>
                   <select class="input" formControlName="skillLevel">

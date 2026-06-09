@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 import { JobService } from '../services/job.service';
 import { ApplicationService } from '../services/application.service';
+import { CatalogService, CatalogItem } from '../services/catalog.service';
 import { JobOffer } from '../model/jobOffer.model';
 import { RequirementCategory } from '../model/jobRequirement.model';
 import { JobRequirement } from '../model/jobRequirement.model';
@@ -34,6 +35,7 @@ export class UpdateJob implements OnInit{
 private readonly fb = inject(FormBuilder);
   private readonly jobService = inject(JobService);
   private readonly appService = inject(ApplicationService);
+  private readonly catalogService = inject(CatalogService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -49,6 +51,12 @@ private readonly fb = inject(FormBuilder);
     'CERTIFICATION',
     'LANGUAGE',
   ];
+
+  /** Catalog autocomplete sources, populated on init. Filtered by type so
+   *  the description field suggests HARD names when the recruiter picks
+   *  SKILL → HARD, and SOFT names when they pick SKILL → SOFT. */
+  hardSkillSuggestions: string[] = [];
+  softSkillSuggestions: string[] = [];
 
   // Canonical language names - drives the strict dropdown for LANGUAGE-
   // category requirements. Same list used on add-job and on the candidate
@@ -120,6 +128,21 @@ private readonly fb = inject(FormBuilder);
   }
 
   ngOnInit(): void {
+    // Catalog autocomplete sources for the description <datalist>. Loaded
+    // in parallel with the job fetch so the recruiter sees suggestions as
+    // soon as they pick SKILL → HARD/SOFT.
+    this.catalogService.getSnapshot().then(snap => {
+      const skills: CatalogItem[] = snap.skills ?? [];
+      this.hardSkillSuggestions = skills
+        .filter(s => s.type === 'HARD')
+        .map(s => s.displayName)
+        .sort((a, b) => a.localeCompare(b));
+      this.softSkillSuggestions = skills
+        .filter(s => s.type === 'SOFT')
+        .map(s => s.displayName)
+        .sort((a, b) => a.localeCompare(b));
+    }).catch(() => { /* degraded silently - free-text still works */ });
+
     this.jobId = this.route.snapshot.paramMap.get('id');
     if (this.jobId) {
       this.loadJob();
@@ -182,6 +205,9 @@ private readonly fb = inject(FormBuilder);
         ...req,
         description,
         skillLevel:     (req as any).skillLevel     ?? null,
+        // skillType comes from the new backend field. Legacy SKILL rows
+        // without a skillType default to HARD in addRequirement's mapping.
+        skillType:      (req as any).skillType      ?? null,
         degreeLevel:    (req as any).degreeLevel    ?? null,
         enrollmentType: (req as any).enrollmentType ?? null,
         institute:      (req as any).institute      ?? null,
@@ -249,12 +275,18 @@ private readonly fb = inject(FormBuilder);
   }
 
   addRequirement(preset?: Partial<JobRequirement>) {
+    // Pre-fill skillType on SKILL rows so the HARD/SOFT toggle always has
+    // a selection. Legacy SKILL rows without skillType default to HARD.
+    const defaultSkillType = preset?.category === 'SKILL'
+      ? (preset?.skillType ?? 'HARD')
+      : null;
     const group = this.fb.group({
       category:       [preset?.category      ?? 'SKILL', [Validators.required]],
       description:    [preset?.description   ?? '',      [Validators.required, Validators.minLength(2)]],
       weight:         [preset?.weight        ?? null],
       minYears:       [preset?.minYears      ?? null],
       skillLevel:     [preset?.skillLevel     ?? null],
+      skillType:      [defaultSkillType],
       degreeLevel:    [preset?.degreeLevel    ?? null],
       enrollmentType: [preset?.enrollmentType ?? null],
       institute:      [(preset as any)?.institute     ?? null],
@@ -375,22 +407,30 @@ private readonly fb = inject(FormBuilder);
   private buildPayload(): Omit<JobOffer, 'id'> {
     const v = this.form.getRawValue();
 
-    const reqs: JobRequirement[] = (v.requirements ?? []).map((r: any) => ({
-      category:       r.category,
-      description:    r.description,
-      weight:         this.customizeWeights ? (r.weight ?? null) : null,
-      minYears:       r.minYears      ?? null,
-      skillLevel:     r.skillLevel     ?? null,
-      degreeLevel:    r.degreeLevel    ?? null,
-      enrollmentType: r.enrollmentType ?? null,
-      institute:      (r.institute && String(r.institute).trim()) || null,
-      languageLevel:  (r as any).languageLevel  ?? null,
-      issuingOrg:       r.issuingOrg       ?? null,
-      customIssuingOrg: (r.customIssuingOrg && String(r.customIssuingOrg).trim()) || null,
-      requireCurrent:   !!r.requireCurrent,
-      validityYears:    r.validityYears    ?? null,
-      mustHave:         !!r.mustHave,
-    }));
+    const reqs: JobRequirement[] = (v.requirements ?? []).map((r: any) => {
+      const isSkill = r.category === 'SKILL';
+      const skillType: 'HARD' | 'SOFT' | null = isSkill
+        ? (r.skillType === 'SOFT' ? 'SOFT' : 'HARD')
+        : null;
+      return {
+        category:       r.category,
+        description:    r.description,
+        weight:         this.customizeWeights ? (r.weight ?? null) : null,
+        minYears:       r.minYears      ?? null,
+        // SOFT skills have no proficiency tier - drop any stale value.
+        skillLevel:     skillType === 'SOFT' ? null : (r.skillLevel ?? null),
+        skillType,
+        degreeLevel:    r.degreeLevel    ?? null,
+        enrollmentType: r.enrollmentType ?? null,
+        institute:      (r.institute && String(r.institute).trim()) || null,
+        languageLevel:  (r as any).languageLevel  ?? null,
+        issuingOrg:       r.issuingOrg       ?? null,
+        customIssuingOrg: (r.customIssuingOrg && String(r.customIssuingOrg).trim()) || null,
+        requireCurrent:   !!r.requireCurrent,
+        validityYears:    r.validityYears    ?? null,
+        mustHave:         !!r.mustHave,
+      };
+    });
 
     return {
       title: (v.title ?? '').trim(),
@@ -449,6 +489,31 @@ private readonly fb = inject(FormBuilder);
     this.saving = true;
     try {
       await firstValueFrom(this.jobService.updateJob(this.jobId!, payload, reason));
+
+      // Same enrichment as add-job: any SOFT skill requirement that wasn't
+      // in the catalog before this edit gets added with AI synonyms. Runs
+      // AFTER the job save so an Ollama hiccup can't roll back the edit.
+      try {
+        const added = await this.catalogService
+          .enrichNewSoftSkillsFromRequirements(payload.requirements ?? []);
+        if (added.length > 0) {
+          await Swal.fire({
+            icon: 'success',
+            title: 'Catalog updated',
+            html:
+              `<p>Added ${added.length} new soft skill${added.length > 1 ? 's' : ''} ` +
+              `to the catalog with AI-suggested synonyms:</p>` +
+              `<p style="margin-top:0.6rem;font-weight:600;color:#1e40bc;">` +
+                `${added.join(', ')}` +
+              `</p>`,
+            timer: 3500,
+            timerProgressBar: true,
+            showConfirmButton: false,
+          });
+        }
+      } catch (e) {
+        console.warn('[update-job] soft-skill enrichment failed:', e);
+      }
 
       // Ask recruiter if they want to re-score all existing applications
       const rematchResult = await Swal.fire({

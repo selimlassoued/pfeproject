@@ -140,6 +140,11 @@ public class JobClient {
         @JsonAlias({"skillLevel", "skill_level"})
         private String skillLevel;
 
+        /** SKILL: "HARD" or "SOFT". Null on legacy rows = treat as HARD.
+         *  Drives which catalog the cv-parser matcher consults. */
+        @JsonAlias({"skillType", "skill_type"})
+        private String skillType;
+
         @JsonAlias({"degreeLevel", "degree_level"})
         private String degreeLevel;
 
