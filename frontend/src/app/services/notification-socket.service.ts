@@ -45,28 +45,73 @@ export class NotificationSocketService {
     // Use a webSocketFactory (instead of a fixed brokerURL string) so every
     // reconnect reads the CURRENT keycloak.token. The token is appended as
     // ?access_token= and a gateway filter promotes it to an Authorization
-    // Bearer header before Spring Security runs. Reading the token lazily
-    // here means refreshes - both background refreshes by keycloak-js and
-    // a fresh login - are picked up automatically on the next reconnect.
+    // Bearer header before Spring Security runs.
+    //
+    // CRITICAL: the access token Keycloak issues is short-lived (~5 min). If
+    // the WebSocket dropped and the reconnect loop reads keycloak.token, it
+    // would get whatever Keycloak last fetched, which is usually stale after
+    // 5 minutes idle. HTTP requests are fine because the HTTP interceptor
+    // refreshes per-request, but the WS path skips that interceptor entirely.
+    //
+    // So we refresh in beforeConnect: keycloak.updateToken(60) refreshes
+    // when the token has < 60 seconds of life remaining (or is already
+    // expired - it uses the refresh_token to get a new access_token). The
+    // factory below then reads the freshly-set keycloak.token value.
+    //
+    // We also stamp the token into the STOMP CONNECT frame as a connectHeader
+    // so the notification-microservice StompAuthInterceptor (which reads
+    // accessor.getFirstNativeHeader("Authorization") on CONNECT) can stamp
+    // the JWT subject onto the session principal even if the upgrade-time
+    // Authorization header gets dropped by the gateway proxy.
     this.client = new Client({
+      beforeConnect: async () => {
+        console.info('[notif-ws] beforeConnect: refreshing token...');
+        try {
+          const refreshed = await (this.keycloak as any).updateToken(60);
+          console.info('[notif-ws] token refresh result, refreshed=' + refreshed);
+        } catch (e) {
+          // Refresh failed (refresh_token also expired, network down, etc.).
+          // Let the connect attempt go through with whatever we have - the
+          // gateway will return 401 if the token is invalid and the user
+          // will be redirected to re-login on the next navigation.
+          console.warn('[notif-ws] updateToken threw - proceeding anyway', e);
+        }
+        const token = (this.keycloak as any)?.token ?? '';
+        console.info('[notif-ws] post-refresh token length=' + token.length
+                   + ' parsed_exp=' + (this.keycloak as any)?.tokenParsed?.exp);
+        this.client.connectHeaders = token
+          ? { Authorization: `Bearer ${token}` }
+          : {};
+      },
       webSocketFactory: () => {
         const token = (this.keycloak as any)?.token ?? '';
         const sep = token ? `?access_token=${encodeURIComponent(token)}` : '';
-        return new WebSocket(`ws://localhost:8888/ws/notifications${sep}`);
+        const url = `ws://localhost:8888/ws/notifications${sep}`;
+        console.info('[notif-ws] opening WebSocket, url length=' + url.length);
+        const ws = new WebSocket(url);
+        ws.addEventListener('open',  () => console.info('[notif-ws] WS open'));
+        ws.addEventListener('close', (e) => console.warn('[notif-ws] WS close', e.code, e.reason, 'clean=' + e.wasClean));
+        ws.addEventListener('error', () => console.warn('[notif-ws] WS error event'));
+        return ws;
       },
       reconnectDelay: 5000,
     });
 
     this.client.onConnect = () => {
+      console.info('[notif-ws] STOMP CONNECTED frame received');
       this.subscribeWhenUserIdAvailable();
     };
 
     this.client.onStompError = (frame: IFrame) => {
-      console.error('STOMP error', frame.headers['message'], frame.body);
+      console.error('[notif-ws] STOMP error', frame.headers['message'], frame.body);
     };
 
     this.client.onWebSocketError = (evt: Event) => {
-      console.error('WebSocket error', evt);
+      console.error('[notif-ws] @stomp WebSocket error', evt);
+    };
+
+    this.client.onWebSocketClose = (evt: CloseEvent) => {
+      console.warn('[notif-ws] @stomp WebSocket close', evt.code, evt.reason, 'clean=' + evt.wasClean);
     };
 
     this.client.activate();

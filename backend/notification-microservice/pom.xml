@@ -71,6 +71,15 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Exposes /actuator/health used by docker-compose healthcheck.
+             Without this, the healthcheck returned 404 and Docker marked the
+             container unhealthy, which made the gateway route around it and
+             broke /ws/notifications WebSocket connections. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>

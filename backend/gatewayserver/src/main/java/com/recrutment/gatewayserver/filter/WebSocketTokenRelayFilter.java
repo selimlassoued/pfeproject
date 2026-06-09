@@ -1,12 +1,12 @@
 package com.recrutment.gatewayserver.filter;
 
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -25,17 +25,23 @@ import java.util.List;
  * Authorization header is already present, so HTTP routes are
  * unaffected.
  *
- * Runs BEFORE Spring Security so the bearer is in place by the time the
- * authorization rules in SecurityConfig evaluate the request.
+ * IMPORTANT: this is a Spring WebFlux WebFilter (NOT a Spring Cloud
+ * Gateway GlobalFilter). GlobalFilters run AFTER Spring Security in
+ * WebFlux, which means any /ws/notifications/** request would be
+ * rejected by Security with 401 BEFORE the filter had a chance to
+ * promote the query token. A WebFilter at HIGHEST_PRECEDENCE runs
+ * before the Spring Security WebFilter (which sits at order -100 via
+ * WebHttpHandlerBuilder), so the Authorization header is in place by
+ * the time Security inspects the request.
  */
 @Component
-public class WebSocketTokenRelayFilter implements GlobalFilter, Ordered {
+public class WebSocketTokenRelayFilter implements WebFilter, Ordered {
 
     private static final String WS_PATH_PREFIX = "/ws/notifications";
     private static final String ACCESS_TOKEN_PARAM = "access_token";
 
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
         if (path == null || !path.startsWith(WS_PATH_PREFIX)) {
@@ -61,8 +67,9 @@ public class WebSocketTokenRelayFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        // -100 puts this comfortably before Spring Security
-        // (SecurityWebFiltersOrder.AUTHENTICATION is 0).
-        return -100;
+        // Must run BEFORE Spring Security's WebFilter. Spring Security adds
+        // its filter at a relatively high precedence; HIGHEST_PRECEDENCE
+        // guarantees we run first.
+        return Ordered.HIGHEST_PRECEDENCE;
     }
 }

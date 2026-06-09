@@ -1,0 +1,60 @@
+@startuml
+title Semantic matching - candidate vs job offer
+
+skinparam activity {
+  BackgroundColor #F4F8FF
+  BorderColor #2C5AA0
+  DiamondBackgroundColor #FFF6E0
+  DiamondBorderColor #B8860B
+}
+
+start
+:load inputs
+(cv_analysis, requirements, scoring_weights);
+:get cached job vector + requirement vectors;
+:build candidate vector from CV text;
+
+partition "Skills score (weight 0.40)" {
+  while (more required skills?) is (yes)
+    :take next required skill;
+    if (skill declared in CV? (direct)) then (yes)
+      :Mode 1 DIRECT
+      0.9 * source_confidence
+      + 0.1 * (skill vs CV cosine);
+    elseif (related skill via pgvector >= 0.63? (proxy)) then (yes)
+      :Mode 2 PROXY
+      blend proxy score + description similarity;
+    else (semantic only)
+      :Mode 3 SEMANTIC
+      normalized cosine
+      (floor 0.35 / ceil 0.78);
+    endif
+    :apply recency + duration + qualifier curve;
+  endwhile (no)
+  :skills_ratio = weighted avg / 100;
+}
+
+partition "Semantic alignment (weight 0.35)" {
+  :req_semantic = weighted avg of requirement cosines;
+  :semantic_signal = 0.7 * req_semantic + 0.3 * global_sim;
+}
+
+partition "Experience (weight 0.15)" {
+  :experience_score = min(cand_years / req_years, 1);
+}
+
+partition "Seniority (weight 0.10)" {
+  :seniority_score = 1.0 if level met else 0.5;
+}
+
+:job_fit_score = round(100 *
+(0.40 * skills_ratio
++ 0.35 * semantic_signal
++ 0.15 * experience_score
++ 0.10 * seniority_score));
+
+:recommendation
+(HIRE / INTERVIEW / REVIEW / REJECT);
+stop
+
+@enduml

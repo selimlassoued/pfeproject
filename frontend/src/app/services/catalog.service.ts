@@ -38,6 +38,9 @@ export interface CatalogItem {
   source: 'EXTRACTED' | 'MANUAL';
   type: 'HARD' | 'SOFT';              // drives which chip grid renders it
   domains: string[];                  // SOFTWARE_ENGINEERING / ... ; [] = universal
+  synonyms: string[];                 // recruiter-curated paraphrases; primary
+                                      // use: SOFT skills. exact lookup on this
+                                      // list is the fast path for /match-soft-skill
 }
 
 export interface CatalogSnapshot {
@@ -59,6 +62,7 @@ interface ManualEntry {
   removed: boolean;
   type?: 'HARD' | 'SOFT';
   domains?: string[];
+  synonyms?: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -66,7 +70,13 @@ export class CatalogService {
   private snapshotCache: CatalogSnapshot | null = null;
   private inFlight: Promise<CatalogSnapshot> | null = null;
 
-  private readonly cvParserUrl = 'http://localhost:8085/api/cv-parser/extract-catalog';
+  // cv-parser-service's port 8085 isn't exposed to the host and isn't in
+  // Eureka, so we don't gateway-route to it directly. Instead the application-
+  // microservice exposes /api/applications/skill-catalog/extract as a thin
+  // passthrough - the call goes through the gateway via `lb://` like every
+  // other backend call, and application-microservice forwards to cv-parser on
+  // the private Docker network. One ingress, one auth chain, no exposed ports.
+  private readonly cvParserUrl = 'http://localhost:8888/api/applications/skill-catalog/extract';
   private readonly catalogUrl  = 'http://localhost:8888/api/applications/skill-catalog';
 
   constructor(private http: HttpClient, private jobService: JobService) {}
@@ -95,6 +105,7 @@ export class CatalogService {
             source: 'EXTRACTED' as const,
             type: 'HARD' as const,
             domains: [] as string[],
+            synonyms: [] as string[],
           })),
         };
       });
@@ -161,6 +172,8 @@ export class CatalogService {
         source: 'EXTRACTED',
         type: 'HARD',          // extracted from SKILL-category job requirements
         domains: e.domains || [],
+        synonyms: [],          // extracted rows have no synonyms until a
+                               // recruiter edits them
       });
     }
     for (const m of manualEntries) {
@@ -168,16 +181,11 @@ export class CatalogService {
       const key = m.name.toLowerCase();
       const existing = skillMap.get(key);
       if (existing) {
-        // Both extracted AND manual rows exist. The manual row is the
-        // recruiter's curated source of truth - its domain list REPLACES the
-        // extracted union (so a recruiter can actually REMOVE a domain tag
-        // without it being added back by the next extraction). We keep the
-        // EXTRACTED source label so the recruiter still knows the skill came
-        // from a job, only swap source to MANUAL when there's no extraction.
         skillMap.set(key, {
           ...existing,
           type: m.type || existing.type,
           domains: m.domains && m.domains.length > 0 ? m.domains : existing.domains,
+          synonyms: m.synonyms && m.synonyms.length > 0 ? m.synonyms : existing.synonyms,
         });
       } else {
         skillMap.set(key, {
@@ -188,6 +196,7 @@ export class CatalogService {
           source: 'MANUAL',
           type: m.type || 'HARD',
           domains: m.domains || [],
+          synonyms: m.synonyms || [],
         });
       }
     }
@@ -206,13 +215,12 @@ export class CatalogService {
         source: 'EXTRACTED',
         type: 'HARD',
         domains: [],
+        synonyms: [],
       });
     }
     for (const e of extracted.languages) {
       const key = e.name.toLowerCase();
       const existing = langMap.get(key);
-      // If this language is in the always-shown set, only override
-      // currentDemandCount/firstSeenAt if they're actually populated.
       if (existing && existing.firstSeenAt === null) {
         langMap.set(key, {
           ...existing,
@@ -229,6 +237,7 @@ export class CatalogService {
           source: 'EXTRACTED',
           type: 'HARD',
           domains: e.domains || [],
+          synonyms: [],
         });
       }
     }
@@ -278,11 +287,41 @@ export class CatalogService {
 
   // ── Recruiter-only mutations (used by the admin page) ─────────────────────
 
-  async addManual(name: string, opts?: { type?: 'HARD' | 'SOFT'; domains?: string[] }): Promise<void> {
+  async addManual(name: string, opts?: {
+    type?: 'HARD' | 'SOFT';
+    domains?: string[];
+    synonyms?: string[];
+  }): Promise<void> {
     const body: Record<string, unknown> = { name };
-    if (opts?.type)    body['type']    = opts.type;
-    if (opts?.domains) body['domains'] = opts.domains;
+    if (opts?.type)     body['type']     = opts.type;
+    if (opts?.domains)  body['domains']  = opts.domains;
+    if (opts?.synonyms) body['synonyms'] = opts.synonyms;
     await firstValueFrom(this.http.post(this.catalogUrl, body));
+    this.invalidate();
+  }
+
+  /** Ask the LLM for paraphrases of a soft skill name. The recruiter then
+   *  accepts / edits / rejects the list before saving. Returns [] on hiccup. */
+  async suggestSynonyms(name: string, type: 'HARD' | 'SOFT' = 'SOFT'): Promise<string[]> {
+    try {
+      const resp = await firstValueFrom(this.http.post<{ synonyms?: string[] }>(
+        `${this.catalogUrl}/suggest-synonyms`,
+        { name, type },
+      ));
+      return Array.isArray(resp?.synonyms) ? resp.synonyms : [];
+    } catch (err) {
+      console.warn('[CatalogService] suggestSynonyms failed:', err);
+      return [];
+    }
+  }
+
+  /** Replace the synonym list on an existing skill. PATCH semantics: empty
+   *  list explicitly clears all synonyms. */
+  async updateSkillSynonyms(name: string, synonyms: string[]): Promise<void> {
+    await firstValueFrom(this.http.patch(
+      `${this.catalogUrl}/${encodeURIComponent(name)}`,
+      { synonyms },
+    ));
     this.invalidate();
   }
 
@@ -309,6 +348,80 @@ export class CatalogService {
       { domains },
     ));
     this.invalidate();
+  }
+
+  /**
+   * Post-job-save hook: detect any SOFT skill requirements that aren't in
+   * the catalog yet, add them with AI-suggested synonyms, and return the
+   * list that was added.
+   *
+   * Why this matters: a soft skill the recruiter typed into a job
+   * (e.g. "Negotiation") needs a backing row in skill_catalog_entry so
+   * the /match-soft-skill resolver can find it - otherwise the matcher
+   * has nothing to compare CV phrasings against. Without synonyms it can
+   * still resolve via embedding similarity, but cosine on abstract
+   * concepts caps around 0.70 and we lose paraphrase recall.
+   *
+   * Skips:
+   *   - non-SKILL requirements
+   *   - SKILL requirements where skillType is HARD (they go through a
+   *     different flow - the candidate-CV upload triggers /resolve which
+   *     grows the HARD catalog automatically)
+   *   - blank descriptions
+   *   - names already in the catalog (case-insensitive by canonical key)
+   *
+   * Fails-soft on per-skill errors (one Ollama hiccup shouldn't prevent
+   * the others from being added). Returns the displayName list of skills
+   * actually persisted so the caller can show a toast.
+   */
+  async enrichNewSoftSkillsFromRequirements(
+    requirements: Array<{ category?: string; skillType?: string | null;
+                          description?: string | null }>,
+  ): Promise<string[]> {
+    const softReqs = (requirements || []).filter(r =>
+      r?.category === 'SKILL' && r?.skillType === 'SOFT'
+      && typeof r.description === 'string' && r.description.trim().length > 0,
+    );
+    if (softReqs.length === 0) return [];
+
+    // Force a fresh snapshot so we don't redundantly create a row a
+    // concurrent admin add just landed.
+    this.invalidate();
+    const snap = await this.getSnapshot();
+    const existing = new Set(
+      snap.skills.filter(s => s.type === 'SOFT').map(s => s.name.toLowerCase()),
+    );
+
+    // Dedupe within this batch too - the recruiter could put the same
+    // soft skill on two requirements with different levels of detail.
+    const queued: string[] = [];
+    const seen = new Set<string>();
+    for (const r of softReqs) {
+      const name = (r.description as string).trim();
+      const key  = name.toLowerCase();
+      if (existing.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      queued.push(name);
+    }
+    if (queued.length === 0) return [];
+
+    const added: string[] = [];
+    for (const name of queued) {
+      try {
+        const synonyms = await this.suggestSynonyms(name, 'SOFT');
+        await this.addManual(name, {
+          type: 'SOFT',
+          synonyms: synonyms.length > 0 ? synonyms : undefined,
+        });
+        added.push(name);
+      } catch (e) {
+        console.warn('[CatalogService] enrichNewSoftSkills failed for', name, e);
+      }
+    }
+    // addManual already invalidates the cache; explicit invalidate is
+    // harmless and keeps intent obvious.
+    if (added.length > 0) this.invalidate();
+    return added;
   }
 
   /** Returns just the display names of tombstoned skills - used by the

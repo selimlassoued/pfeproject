@@ -1,0 +1,63 @@
+@startuml
+title Job offer embedding and skill check workflow
+
+skinparam activity {
+  BackgroundColor #F4F8FF
+  BorderColor #2C5AA0
+  DiamondBackgroundColor #FFF6E0
+  DiamondBorderColor #B8860B
+}
+skinparam partition {
+  BorderColor #2C5AA0
+}
+
+start
+:Job offer created
+(title, description, requirements);
+
+:Build the job text;
+
+if (Job embedding already
+in the vector database?) then (yes)
+  :Reuse the stored job vector;
+else (no)
+  :Generate embedding
+  (nomic-embed-text, 768 numbers);
+  :Save the job vector
+  in the vector database;
+endif
+
+partition "For each requirement" {
+  while (More requirements?) is (yes)
+    if (Requirement embedding
+    already stored?) then (yes)
+      :Reuse stored requirement vector;
+    else (no)
+      :Generate requirement embedding;
+      :Save the requirement vector;
+    endif
+  endwhile (no)
+}
+
+partition "For each skill in the requirements" {
+  while (More skills?) is (yes)
+    :Generate the skill embedding;
+    :Search the vector database
+    for the most similar existing skill
+    (pgvector similarity search);
+    if (Similar skill found
+    above the threshold?) then (yes)
+      :Reuse the existing skill
+      (same skill, different wording);
+    else (no)
+      :Add a NEW skill
+      with its embedding vector;
+    endif
+  endwhile (no)
+}
+
+:All vectors stored,
+ready for candidate matching;
+stop
+
+@enduml

@@ -497,5 +497,256 @@
 
 .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.82rem; }
 
+/* ── HARD / SOFT toggle ─────────────────────────────────────────────── */
+.catalog-type-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 1.25rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  width: fit-content;
+}
+.catalog-type-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.catalog-type-toggle__btn:hover { color: var(--text); }
+.catalog-type-toggle__btn--active {
+  background: linear-gradient(135deg, rgba(121,164,233,0.22), rgba(168,132,226,0.22));
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(168,132,226,0.18);
+}
+.catalog-type-toggle__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.catalog-type-toggle__btn:not(.catalog-type-toggle__btn--active) .catalog-type-toggle__count {
+  background: rgba(255,255,255,0.06);
+}
+
+/* SOFT-specific hint under the search bar (replaces domain pills) */
+.catalog-add__hint--soft {
+  color: rgba(200,210,230,0.78);
+  background: rgba(168,132,226,0.06);
+  border-left: 3px solid rgba(168,132,226,0.5);
+  padding: 0.6rem 0.9rem;
+  border-radius: 0 8px 8px 0;
+  margin-top: 0.7rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
 /* Light-mode overrides live in styles.css (global) so they bypass Angular
    ViewEncapsulation — same fix we did for notifications & stat-icons. */
+:root[data-theme="light"] .catalog-type-toggle {
+  background: #f3f5fc;
+  border-color: rgba(99,102,241,0.15);
+}
+:root[data-theme="light"] .catalog-type-toggle__btn {
+  color: #475569;
+}
+:root[data-theme="light"] .catalog-type-toggle__btn:hover {
+  color: #1a1f3a;
+}
+:root[data-theme="light"] .catalog-type-toggle__btn--active {
+  background: linear-gradient(135deg, #5060f0, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(99,102,241,0.25);
+}
+:root[data-theme="light"] .catalog-type-toggle__btn:not(.catalog-type-toggle__btn--active) .catalog-type-toggle__count {
+  background: rgba(99,102,241,0.10);
+  color: #4338ca;
+}
+:root[data-theme="light"] .catalog-type-toggle__btn--active .catalog-type-toggle__count {
+  background: rgba(255,255,255,0.22);
+  color: #fff;
+}
+
+:root[data-theme="light"] .catalog-add__hint--soft {
+  color: #4b5563;
+  background: rgba(99,102,241,0.06);
+  border-left-color: rgba(99,102,241,0.45);
+}
+
+/* ── Synonym editor (SOFT add form) ──────────────────────────────────────── */
+.catalog-syn-editor {
+  margin-top: 0.9rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(168,132,226,0.30);
+  border-radius: 10px;
+  /* Solid-ish panel so the inner controls stand out from the page background
+     instead of bleeding into it. */
+  background: rgba(30,27,75,0.55);
+}
+.catalog-syn-editor__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+.catalog-syn-editor__label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #f1f5f9;
+  text-transform: none;
+}
+.catalog-syn-editor__suggest {
+  padding: 0.45rem 0.95rem;
+  border-radius: 8px;
+  border: 1px solid rgba(168,132,226,0.65);
+  background: linear-gradient(135deg, rgba(168,132,226,0.35), rgba(124,99,196,0.45));
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.20);
+}
+.catalog-syn-editor__suggest:hover:not(:disabled) {
+  filter: brightness(1.15);
+  box-shadow: 0 4px 12px rgba(99,102,241,0.32);
+}
+.catalog-syn-editor__suggest:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.catalog-syn-editor__suggest:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+}
+.catalog-syn-editor__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+.catalog-syn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(168,132,226,0.28);
+  border: 1px solid rgba(168,132,226,0.55);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #f3e8ff;
+}
+.catalog-syn-chip__x {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+  transition: color 0.12s ease;
+}
+.catalog-syn-chip__x:hover {
+  color: #ff8a8a;
+}
+.catalog-syn-editor__input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(168,132,226,0.35);
+  background: #0f172a;
+  color: #f1f5f9;
+  font-size: 0.88rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.catalog-syn-editor__input::placeholder {
+  color: rgba(203,213,225,0.55);
+}
+.catalog-syn-editor__input:focus {
+  outline: none;
+  border-color: rgba(168,132,226,0.85);
+  box-shadow: 0 0 0 3px rgba(168,132,226,0.22);
+}
+.catalog-syn-editor__hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.78rem;
+  color: rgba(203,213,225,0.78);
+  line-height: 1.45;
+}
+
+/* ── Synonym cell in the SOFT table ──────────────────────────────────────── */
+.catalog-syn-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-width: 360px;
+}
+.catalog-syn-cell__chip {
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(168,132,226,0.22);
+  border: 1px solid rgba(168,132,226,0.45);
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: #f3e8ff;
+  white-space: nowrap;
+}
+.catalog-syn-cell__more {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(148,163,184,0.12);
+  font-size: 0.74rem;
+  color: rgba(180,190,210,0.85);
+  cursor: help;
+}
+
+/* Swal-injected synonym chips (used in the editSynonyms dialog) */
+.hireai-syn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(168,132,226,0.18);
+  border: 1px solid rgba(168,132,226,0.4);
+  font-size: 0.78rem;
+  color: #e2e8f0;
+}
+.hireai-syn-chip__x {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+.hireai-syn-chip__x:hover {
+  color: #ff7b7b;
+}
+
+/* Light-mode overrides for the synonym editor live in src/styles.css. They
+   need to bypass Angular's ViewEncapsulation (which strips ":root" selectors
+   from component-scoped CSS) AND beat the dark-mode rules above on
+   specificity, so they use the global stylesheet + !important pattern that
+   the rest of this app already uses for app-status / interview-status. */

@@ -1,0 +1,50 @@
+@startuml
+title Application 2 - CV parsing + GitHub skill extraction and embedding
+
+skinparam activity {
+  BackgroundColor #F4F8FF
+  BorderColor #2C5AA0
+  DiamondBackgroundColor #FFF6E0
+  DiamondBorderColor #B8860B
+}
+
+|Candidate / API|
+start
+:candidate applies
+(upload CV, optional GitHub URL);
+
+|CV Parser Service|
+:extract text from CV (PDF / DOCX);
+
+fork
+  :LLM parse CV
+  (skills, experience, projects, seniority);
+fork again
+  :enrich from GitHub
+  (repo languages, frameworks, tech_stats
+  with last_used_year and years);
+end fork
+
+:merge CV skills + GitHub skills
+(attach recency and duration);
+
+while (more extracted skills?) is (yes)
+  :take next skill;
+
+  |Skill Catalog (pgvector)|
+  :Resolve skill vector
+  (call "Resolve Skill Vector" sub-activity);
+  note right
+    same dedup path as the job offer:
+    embed -> pgvector NN search ->
+    merge with existing or create NEW skill
+  end note
+
+endwhile (no)
+
+|CV Parser Service|
+:store candidate skill vectors
+(cached for semantic matching);
+stop
+
+@enduml

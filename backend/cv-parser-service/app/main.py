@@ -181,6 +181,276 @@ async def are_skills_same(payload: dict):
         return {"same": False, "reason": f"llm error: {e.__class__.__name__}", "model": ANALYSIS_MODEL}
 
 
+@app.post("/api/cv-parser/skills/suggest-synonyms")
+async def suggest_synonyms(payload: dict):
+    """Generate candidate synonyms / aliases for a skill name.
+
+    Primary use: SOFT skills (Leadership, Communication, ...) where CV
+    phrasing varies wildly and the embedding model (nomic-embed-text) caps
+    out around cosine 0.70 on abstract concepts. The recruiter adds the
+    canonical name once, this endpoint proposes paraphrases, and the
+    /match-soft-skill resolver does an exact-string short-circuit against
+    the curated synonym list before paying the embedding round-trip.
+
+    The recruiter accepts, edits, or rejects the suggestions before saving:
+    we never auto-commit to the catalog.
+
+    Request:  { "name": "Leadership", "type": "SOFT" }
+    Response: { "synonyms": ["team lead", "people management", ...] }
+    """
+    name = (payload or {}).get("name", "")
+    if not isinstance(name, str) or not name.strip():
+        raise HTTPException(status_code=400, detail="name is required")
+    skill_type = (payload or {}).get("type", "SOFT")
+    if not isinstance(skill_type, str) or skill_type.upper() not in ("HARD", "SOFT"):
+        skill_type = "SOFT"
+
+    import json as _json
+    from app.semantic_matcher import ollama_client, ANALYSIS_MODEL
+
+    # Examples explicitly bias the LLM toward the kinds of paraphrases that
+    # actually show up in CV prose ("team lead", "communicates well") rather
+    # than dictionary-style synonyms ("guidance" for "leadership").
+    if skill_type.upper() == "SOFT":
+        examples = (
+            'Examples of CV-style paraphrases:\n'
+            '- "Leadership"   -> ["team lead", "people management", "directing teams", "led a team", "managing people"]\n'
+            '- "Communication" -> ["strong communicator", "verbal skills", "communicates well", "written communication", "interpersonal skills"]\n'
+            '- "Teamwork"     -> ["team player", "collaborates well", "cross-functional collaboration", "works well in teams"]\n'
+        )
+    else:
+        examples = (
+            'Examples of variant spellings:\n'
+            '- "Node.js" -> ["nodejs", "node js", "node"]\n'
+            '- "Next.js" -> ["nextjs", "next js"]\n'
+            '- "PostgreSQL" -> ["postgres", "psql", "postgre sql"]\n'
+        )
+
+    prompt = (
+        f"Generate paraphrases for the skill \"{name.strip()}\" "
+        f"(type: {skill_type.upper()}).\n\n"
+        f"{examples}\n"
+        "Return 5-8 lowercase paraphrases as they would appear in a candidate's "
+        "CV — NOT dictionary synonyms, NOT definitions. Each one must be a phrase "
+        "a person would actually write about themselves. Skip anything that's a "
+        "different skill, a job title, or a company name.\n\n"
+        "Reply with STRICT JSON: {\"synonyms\": [\"phrase1\", \"phrase2\", ...]}"
+    )
+
+    try:
+        resp = ollama_client.chat(
+            model=ANALYSIS_MODEL,
+            format="json",
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.2},
+        )
+        content = resp.get("message", {}).get("content") if isinstance(resp, dict) \
+                  else getattr(resp.message, "content", "")
+        data = _json.loads(content) if content else {}
+        raw = data.get("synonyms", [])
+        out: list[str] = []
+        seen: set[str] = set()
+        canonical_lc = name.strip().lower()
+        if isinstance(raw, list):
+            for item in raw:
+                if not isinstance(item, str):
+                    continue
+                norm = item.strip().lower()
+                if not norm or norm == canonical_lc or norm in seen:
+                    continue
+                if len(norm) > 80:
+                    continue
+                seen.add(norm)
+                out.append(norm)
+                if len(out) >= 8:
+                    break
+        return {"synonyms": out, "model": ANALYSIS_MODEL}
+    except Exception as e:
+        return {"synonyms": [], "error": f"{e.__class__.__name__}", "model": ANALYSIS_MODEL}
+
+
+@app.post("/api/cv-parser/skill-classify")
+async def classify_skill(payload: dict):
+    """Validate AND properly format a skill name claimed to be HARD or SOFT.
+
+    One LLM call does four jobs:
+      1. Validate the input is a real skill (not a job title, company, garbage)
+      2. Verify the caller's expected_type matches what the LLM thinks
+      3. Produce the canonical display name
+      4. Identify what other skills this one implies
+
+    The caller ALWAYS knows what type they expect at call time:
+      - Job-requirement form: recruiter picked HARD/SOFT category before typing
+      - CV parser: extracts hard skills and soft skills into separate fields
+      - Preferences page: chip grids are split by type
+    So `expected_type` should always be provided. The LLM biases toward agreement
+    and only overrides when highly confident the caller made a mistake (e.g.,
+    a recruiter accidentally typed "Leadership" in a HARD requirement section).
+
+    Request shape:
+      { "text": "...", "expected_type": "HARD" | "SOFT" }
+
+    Reply shape:
+      {
+        "type":         "HARD" | "SOFT" | "INVALID",
+        "display_name": "<canonical casing>",
+        "implies":      [<canonical lowercase skill names this is built on>],
+        "reason":       "<one short sentence>"
+      }
+    """
+    text = (payload or {}).get("text", "")
+    if not isinstance(text, str) or not text.strip():
+        raise HTTPException(status_code=400, detail="text is required")
+
+    raw_expected = (payload or {}).get("expected_type", "")
+    expected_type = ""
+    if isinstance(raw_expected, str):
+        normed = raw_expected.strip().upper()
+        if normed in ("HARD", "SOFT"):
+            expected_type = normed
+
+    import json as _json
+    from app.semantic_matcher import ollama_client, ANALYSIS_MODEL
+
+    cleaned = " ".join(text.strip().split())
+
+    expected_block = (
+        (f"CALLER'S CLAIM: this was entered as a {expected_type} skill. "
+         f"Bias toward agreeing - only override to a different type if you are HIGHLY "
+         f"confident the caller made a mistake (e.g. they typed 'Leadership' into a "
+         f"HARD-skill requirement section). Otherwise return type={expected_type}.\n\n")
+        if expected_type else
+        "CONTEXT: this was entered as a skill on a job posting or candidate profile.\n\n"
+    )
+
+    prompt = (
+        "You validate AND properly format skill names for a recruitment database.\n\n"
+        f"Skill name: \"{cleaned}\"\n\n"
+        + expected_block +
+        "Do THREE things in one response.\n\n"
+        "=== 1) CLASSIFY ===\n\n"
+        "HARD = technical skill: programming language, framework, library, tool, technical\n"
+        "       concept, or domain knowledge. When a bare short word could be a known\n"
+        "       tech framework (\"node\", \"express\", \"next\", \"react\", \"vue\", \"spring\",\n"
+        "       \"django\", \"rails\", \"r\", \"c\", \"go\", \"rust\", \"astro\", \"bun\",\n"
+        "       \"svelte\", \"remix\", \"deno\"), classify as HARD.\n\n"
+        "SOFT = universal interpersonal or behavioral ability. Recognize ALL of these as SOFT:\n"
+        "       communication, teamwork, leadership, mentoring, mentorship, collaboration,\n"
+        "       problem solving, critical thinking, creativity, creative thinking,\n"
+        "       attention to detail, time management, organization, planning,\n"
+        "       adaptability, flexibility, resilience, work ethic, initiative,\n"
+        "       emotional intelligence, empathy, active listening, conflict resolution,\n"
+        "       cross-cultural collaboration, public speaking, presentation skills,\n"
+        "       writing skills, decision making, analytical thinking, negotiation,\n"
+        "       customer service, stakeholder management, project management methodology.\n\n"
+        "INVALID = NOT a skill. Strict examples:\n"
+        "   - Job titles: \"software engineer\", \"director\", \"senior developer\", \"ceo\"\n"
+        "   - Company names alone: \"microsoft\", \"google\", \"oracle corp\"\n"
+        "   - Random text: \"xyz123\", \"asdfgh\", \"hello world\"\n"
+        "   - Colors, body parts, foods, places, animals\n"
+        "   - Sentences or descriptions: \"i am good at...\"\n"
+        "   - Pure punctuation or single random letters: \".\", \"-\"\n\n"
+        "=== 2) DISPLAY_NAME ===\n\n"
+        "The canonical capitalization used by the community. Examples:\n"
+        "   JavaScript, TypeScript, iOS, macOS, GraphQL, scikit-learn (lowercase),\n"
+        "   .NET, C++, C#, jQuery, PostgreSQL, MySQL, MongoDB, Spring Boot,\n"
+        "   Node.js, Next.js, Express.js, React, Vue.js, Angular\n\n"
+        "Rules:\n"
+        "   - For bare framework names use conventional form: \"node\" -> \"Node.js\"\n"
+        "   - Title-case ordinary multi-word skills: \"data analysis\" -> \"Data Analysis\"\n"
+        "   - Soft skills are simple title case: \"communication\" -> \"Communication\"\n"
+        "   - NEVER add parenthetical explanations (no \"(CRM)\", no \"(framework)\")\n"
+        "   - NEVER add words not in the input (no \"engineering\", no \"developer\")\n"
+        "   - Preserve special characters (dots, hyphens, slashes, plus signs)\n"
+        "   - When INVALID, return a tidied version of the input as-is\n\n"
+        "=== 3) IMPLIES ===\n\n"
+        "A list of OTHER skills (canonical lowercase form) that this skill is built on\n"
+        "or strongly implies the candidate knows. Used by the matcher to credit candidates\n"
+        "for related skills they may not have listed explicitly.\n\n"
+        "Examples:\n"
+        "   \"node\"        -> implies [\"javascript\"]\n"
+        "   \"next\"        -> implies [\"react\", \"javascript\"]\n"
+        "   \"nuxt\"        -> implies [\"vue\", \"javascript\"]\n"
+        "   \"spring boot\" -> implies [\"java\"]\n"
+        "   \"django\"      -> implies [\"python\"]\n"
+        "   \"rails\"       -> implies [\"ruby\"]\n"
+        "   \"tensorflow\"  -> implies [\"python\"]\n"
+        "   \"react\"       -> implies [\"javascript\"]\n"
+        "   \"vue\"         -> implies [\"javascript\"]\n"
+        "   \"typescript\"  -> implies [\"javascript\"]\n"
+        "   \"swift\"       -> implies []     (no parent technology)\n"
+        "   \"java\"        -> implies []     (base language)\n"
+        "   \"communication\" -> implies []   (soft skills have no implies)\n"
+        "   \"docker\"      -> implies [\"linux\"]\n"
+        "   \"kubernetes\"  -> implies [\"docker\", \"linux\"]\n\n"
+        "Rules:\n"
+        "   - 0 to 3 entries\n"
+        "   - Lowercase canonical names only (no display casing)\n"
+        "   - Use bare names without .js suffix (\"react\" not \"react.js\")\n"
+        "   - SOFT and INVALID skills: return empty list []\n"
+        "   - Base languages (Java, Python, Go, Rust, C): return empty list []\n"
+        "   - Only include skills you are highly confident the candidate uses if they use this skill\n\n"
+        "Reply with STRICT JSON: "
+        "{\"type\": \"HARD\"|\"SOFT\"|\"INVALID\", "
+        "\"display_name\": \"<name>\", "
+        "\"implies\": [...], "
+        "\"reason\": \"<one short sentence>\"}"
+    )
+
+    try:
+        resp = ollama_client.chat(
+            model=ANALYSIS_MODEL,
+            format="json",
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.0},
+        )
+        content = resp.get("message", {}).get("content") if isinstance(resp, dict) \
+                  else getattr(resp.message, "content", "")
+        data = _json.loads(content) if content else {}
+        raw_type = str(data.get("type", "")).strip().upper()
+        if raw_type not in ("HARD", "SOFT", "INVALID"):
+            raw_type = "INVALID"
+        display = str(data.get("display_name", "")).strip()
+        if not display:
+            # LLM forgot the display name - fall back to the cleaned input.
+            display = cleaned
+        reason = str(data.get("reason", "")).strip()[:200]
+        # Parse implies: list of canonical lowercase skill names.
+        raw_implies = data.get("implies", [])
+        implies: list[str] = []
+        if isinstance(raw_implies, list):
+            for item in raw_implies:
+                if isinstance(item, str):
+                    cleaned_item = item.strip().lower()
+                    # Defensive: drop empty entries, self-references, and obvious garbage.
+                    if cleaned_item and cleaned_item != cleaned and len(cleaned_item) <= 60:
+                        implies.append(cleaned_item)
+                if len(implies) >= 3:  # cap at 3 entries
+                    break
+        # SOFT and INVALID skills should have no implies, even if the LLM returned some.
+        if raw_type != "HARD":
+            implies = []
+        return {
+            "type": raw_type,
+            "display_name": display,
+            "implies": implies,
+            "reason": reason,
+            "model": ANALYSIS_MODEL,
+        }
+    except Exception as e:
+        # Fail-open: if the LLM errors out, treat the input as a valid HARD skill
+        # and return a title-cased fallback display name so the catalog still gets
+        # a reasonable entry.
+        fallback = " ".join(w[:1].upper() + w[1:] if w else w for w in cleaned.split())
+        return {
+            "type": "HARD",
+            "display_name": fallback,
+            "implies": [],
+            "reason": f"llm unavailable: {e.__class__.__name__}; bypassing validation",
+            "model": ANALYSIS_MODEL,
+        }
+
+
 @app.post("/api/cv-parser/embed-text")
 async def embed_text(payload: dict):
     """Embed an arbitrary string and return the 768-dim vector.
@@ -372,12 +642,13 @@ class ExtractCatalogRequest(_BaseModel):
     jobs: list[CatalogJob] = []
 
 class CatalogItem(_BaseModel):
-    name:                 str            # canonical lowercase key
-    display_name:         str            # pretty form for UI
-    first_seen_at:        Optional[str]  # ISO 8601 of earliest job mentioning it
-    current_demand_count: int            # # of PUBLISHED jobs currently mentioning it
-    source:               str = "EXTRACTED"
-    domains:              list[str] = [] # all distinct job-domains that mentioned this skill
+    name:                  str            # canonical lowercase key
+    display_name:          str            # pretty form for UI
+    first_seen_at:         Optional[str]  # ISO 8601 of earliest job mentioning it
+    current_demand_count:  int            # # of PUBLISHED jobs currently mentioning it
+    lifetime_demand_count: int = 0        # # of non-DRAFT jobs that EVER mentioned it (never decreases)
+    source:                str = "EXTRACTED"
+    domains:               list[str] = [] # all distinct job-domains that mentioned this skill
 
 class ExtractCatalogResponse(_BaseModel):
     skills:    list[CatalogItem]
@@ -398,16 +669,28 @@ async def extract_catalog(req: ExtractCatalogRequest):
 
     Scan rule (matches our agreed design):
       • Include PUBLISHED and CLOSED jobs in the catalog (history persists)
-      • Skip DRAFT — those are private working drafts and may contain typos
+      • Skip DRAFT - those are private working drafts and may contain typos
       • Skills come from category=SKILL/TECHNICAL/TECHNOLOGY/COMPÉTENCE
       • Languages come from category=LANGUAGE/LANGUE/LANGUAGES, alias-matched
         against LANGUAGE_ALIASES so "Italien" and "Italian" both surface as
         canonical "Italian"
 
     For each item we report:
-      • first_seen_at — earliest job createdAt that mentions it (drives ⭐NEW)
-      • current_demand_count — number of PUBLISHED jobs currently mentioning
-        it (drives 🔥 in-demand)
+      • first_seen_at         - earliest job createdAt that mentions it (drives NEW badge)
+      • current_demand_count  - number of PUBLISHED jobs currently mentioning it
+                                (drives ranking and the "in-demand" visual)
+      • lifetime_demand_count - number of non-DRAFT jobs that EVER mentioned it,
+                                never decreases when a job closes
+                                (drives Preferences VISIBILITY: skills with
+                                lifetime > 0 have at some point been required by
+                                a recruiter and earn a slot on the chip grid;
+                                skills with lifetime = 0 only appear on candidate
+                                CVs and stay searchable but hidden from the grid)
+
+    Frontend Preferences logic:
+      filter: lifetime_demand_count > 0
+      sort:   current_demand_count DESC, lifetime_demand_count DESC, name ASC
+      opacity by current_demand_count: high=strong, low=faded, dormant=very faded
     """
     # Lazy imports — these modules are heavy and we want them out of the cold
     # path of unrelated endpoints.
@@ -437,17 +720,23 @@ async def extract_catalog(req: ExtractCatalogRequest):
         "Urdu":       ["urdu"],
     }
 
-    # Two passes: build firstSeenAt + currentDemandCount per name.
-    # firstSeenAt uses ALL non-draft jobs (so closed jobs keep their history).
-    # currentDemandCount uses only PUBLISHED jobs (so closed jobs lose 🔥).
-    # domains accumulates every distinct domain whose jobs mentioned this
-    # skill — drives the candidate-side per-domain chip-grid filter.
-    skill_first_seen: dict[str, str] = {}
-    skill_display:    dict[str, str] = {}
-    skill_demand:     dict[str, int] = {}
+    # Counters per skill / language:
+    #
+    #   first_seen        - earliest job createdAt that mentioned it (drives "NEW" badge)
+    #   demand (current)  - # of PUBLISHED jobs currently mentioning it (drives ranking)
+    #   lifetime          - # of ANY non-DRAFT job that EVER mentioned it (drives visibility
+    #                       on Preferences: lifetime > 0 means "a recruiter has at any point
+    #                       asked for this skill" - skills only seen in candidate CVs never
+    #                       get bumped here, so they stay out of the chip grid)
+    #   domains           - distinct job-domains that mentioned the skill (filters)
+    skill_first_seen: dict[str, str]      = {}
+    skill_display:    dict[str, str]      = {}
+    skill_demand:     dict[str, int]      = {}
+    skill_lifetime:   dict[str, int]      = {}
     skill_domains:    dict[str, set[str]] = {}
-    lang_first_seen:  dict[str, str] = {}
-    lang_demand:      dict[str, int] = {}
+    lang_first_seen:  dict[str, str]      = {}
+    lang_demand:      dict[str, int]      = {}
+    lang_lifetime:    dict[str, int]      = {}
     lang_domains:     dict[str, set[str]] = {}
 
     SKILL_CATS = {"SKILL", "TECHNICAL", "TECHNOLOGY", "COMPÉTENCE"}
@@ -479,6 +768,8 @@ async def extract_catalog(req: ExtractCatalogRequest):
                     # Display name: prefer first-cased form we saw
                     if key not in skill_display:
                         skill_display[key] = tok.title() if tok.islower() else tok
+                    # Lifetime: every non-DRAFT job counts, never decreases.
+                    skill_lifetime[key] = skill_lifetime.get(key, 0) + 1
                     if is_published:
                         skill_demand[key] = skill_demand.get(key, 0) + 1
                     if job_domain:
@@ -491,6 +782,7 @@ async def extract_catalog(req: ExtractCatalogRequest):
                         prev = lang_first_seen.get(canonical)
                         if prev is None or job_ts < prev:
                             lang_first_seen[canonical] = job_ts
+                        lang_lifetime[canonical] = lang_lifetime.get(canonical, 0) + 1
                         if is_published:
                             lang_demand[canonical] = lang_demand.get(canonical, 0) + 1
                         if job_domain:
@@ -502,6 +794,7 @@ async def extract_catalog(req: ExtractCatalogRequest):
             display_name=skill_display.get(key, key.title()),
             first_seen_at=skill_first_seen.get(key),
             current_demand_count=skill_demand.get(key, 0),
+            lifetime_demand_count=skill_lifetime.get(key, 0),
             source="EXTRACTED",
             domains=sorted(skill_domains.get(key, set())),
         )
@@ -513,6 +806,7 @@ async def extract_catalog(req: ExtractCatalogRequest):
             display_name=name,
             first_seen_at=lang_first_seen.get(name),
             current_demand_count=lang_demand.get(name, 0),
+            lifetime_demand_count=lang_lifetime.get(name, 0),
             source="EXTRACTED",
             domains=sorted(lang_domains.get(name, set())),
         )

@@ -132,6 +132,27 @@ public class SkillCatalogEntry {
     private List<String> implies = new ArrayList<>();
 
     /**
+     * Recruiter-curated synonyms / aliases for this skill — alternative phrasings
+     * that should resolve to this canonical entry without going through the
+     * embedding layer.
+     *
+     * Primary use: SOFT skills. "leadership" might list ["team lead",
+     * "people management", "directing teams", "managing people"]. When CV
+     * text says "team lead", /match-soft-skill checks this map first and
+     * returns the canonical "leadership" with score=1.0 — no embedder, no
+     * gray-band guessing. Catches the paraphrase failures that cosine
+     * similarity (capped around 0.70 for abstract concepts) misses.
+     *
+     * Stored as JSON text via the existing StringListConverter, lowercase-
+     * normalized at write time so lookups are case-insensitive without
+     * runtime work.
+     */
+    @Convert(converter = StringListConverter.class)
+    @Column(name = "synonyms", columnDefinition = "text")
+    @Builder.Default
+    private List<String> synonyms = new ArrayList<>();
+
+    /**
      * When the matcher (or admin) last touched this row. Different from
      * `first_seen_at` — that's set once at creation. This bumps every time
      * the embedding is read or the skill appears on a job/CV at match time.

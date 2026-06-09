@@ -114,6 +114,13 @@ public class SecurityConfig {
                         // recruiter-only (add / patch / delete / restore).
                         .pathMatchers(HttpMethod.GET,    "/api/applications/skill-catalog/**").authenticated()
                         .pathMatchers(HttpMethod.GET,    "/api/applications/skill-catalog").authenticated()
+                        // /extract is a passthrough to cv-parser-service that
+                        // reads from the job list and returns aggregate
+                        // counts. Candidates need it for their Preferences
+                        // page just like recruiters need it for the admin
+                        // page, so authenticated (not recruiter-only). Has to
+                        // sit BEFORE the catch-all POST rule below.
+                        .pathMatchers(HttpMethod.POST,   "/api/applications/skill-catalog/extract").authenticated()
                         .pathMatchers(HttpMethod.POST,   "/api/applications/skill-catalog/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
                         .pathMatchers(HttpMethod.POST,   "/api/applications/skill-catalog").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")
                         .pathMatchers(HttpMethod.PATCH,  "/api/applications/skill-catalog/**").hasAnyRole("RECRUITER", "ADMIN", "SUPERADMIN")

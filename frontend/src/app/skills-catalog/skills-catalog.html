@@ -10,10 +10,34 @@
       <h2 class="catalog-hero__title">Skills Catalog</h2>
       <p class="catalog-hero__sub">
         The universe of skills candidates can declare on their Preferences page.
-        Auto-populated from your job postings - you can pre-add skills, fix typos,
-        or re-classify domains. Removing a skill never touches candidate profiles
-        that already declared it.
+        Auto-populated from your job postings - you can pre-add HARD or SOFT
+        skills, fix typos, or re-classify domains. Removing a skill never
+        touches candidate profiles that already declared it.
       </p>
+
+      <!-- Type toggle: switch between curating HARD (technical) and SOFT
+           (interpersonal) skills. Each view is its own tab - filters and
+           stats refer to whichever side is currently active. -->
+      <div class="catalog-type-toggle" role="tablist" aria-label="Skill type">
+        <button type="button"
+                role="tab"
+                class="catalog-type-toggle__btn"
+                [class.catalog-type-toggle__btn--active]="viewType === 'HARD'"
+                [attr.aria-selected]="viewType === 'HARD'"
+                (click)="setViewType('HARD')">
+          <span class="catalog-type-toggle__label">Hard skills</span>
+          <span class="catalog-type-toggle__count">{{ hardSkillsCount }}</span>
+        </button>
+        <button type="button"
+                role="tab"
+                class="catalog-type-toggle__btn"
+                [class.catalog-type-toggle__btn--active]="viewType === 'SOFT'"
+                [attr.aria-selected]="viewType === 'SOFT'"
+                (click)="setViewType('SOFT')">
+          <span class="catalog-type-toggle__label">Soft skills</span>
+          <span class="catalog-type-toggle__count">{{ softSkillsCount }}</span>
+        </button>
+      </div>
     </div>
 
     <!-- Stat cards - small KPI strip on the right of the hero. Each card is
@@ -50,7 +74,9 @@
         <line x1="21" y1="21" x2="16.5" y2="16.5"></line>
       </svg>
       <input class="catalog-add__input" type="text"
-             placeholder="Search the catalog or type a new skill (e.g. Kafka, Confluence)…"
+             [placeholder]="viewType === 'HARD'
+               ? 'Search HARD skills or type a new one (e.g. Kafka, Confluence)…'
+               : 'Search SOFT skills or type a new one (e.g. Empathy, Mentoring)…'"
              [(ngModel)]="newSkillInput"
              (ngModelChange)="onInputChange()"
              (keyup.enter)="addSkill()"
@@ -76,38 +102,89 @@
       }
     }
 
-    <!-- Domain filter pills - clicking toggles. Same checked-set is used to
-         (a) filter the table and (b) tag a new skill on Add. Visually pill-
-         shaped now so they read as filters, not form controls. -->
-    <div class="catalog-domain-filter">
-      <span class="catalog-domain-filter__label">Domain:</span>
-      <button type="button"
-              class="domain-pill"
-              [class.domain-pill--active]="newSkillDomains.length === 0"
-              (click)="newSkillDomains = []; onInputChange()">
-        All
-      </button>
-      @for (d of domainOptions; track d.value) {
+    @if (viewType === 'HARD') {
+      <!-- Domain filter pills are ONLY meaningful for HARD skills. SOFT skills
+           are universal across industries (communication is needed by every
+           role), so the pills are hidden in the SOFT view. -->
+      <div class="catalog-domain-filter">
+        <span class="catalog-domain-filter__label">Domain:</span>
         <button type="button"
                 class="domain-pill"
-                [class.domain-pill--active]="isNewDomainSelected(d.value)"
-                [style.--accent]="accentFor(d.value)"
-                (click)="toggleNewDomain(d.value)">
-          {{ d.label }}
+                [class.domain-pill--active]="newSkillDomains.length === 0"
+                (click)="newSkillDomains = []; onInputChange()">
+          All
         </button>
-      }
-    </div>
+        @for (d of domainOptions; track d.value) {
+          <button type="button"
+                  class="domain-pill"
+                  [class.domain-pill--active]="isNewDomainSelected(d.value)"
+                  [style.--accent]="accentFor(d.value)"
+                  (click)="toggleNewDomain(d.value)">
+            {{ d.label }}
+          </button>
+        }
+      </div>
 
-    @if (newSkillDomains.length === 0 && !newSkillInput.trim()) {
-      <p class="catalog-add__hint">
-        Pick one or more domains to filter the table below. Domains you select
-        here also tag any new skill you add.
+      @if (newSkillDomains.length === 0 && !newSkillInput.trim()) {
+        <p class="catalog-add__hint">
+          Pick one or more domains to filter the table below. Domains you
+          select here also tag any new skill you add.
+        </p>
+      }
+      @if (newSkillDomains.length > 0 && !newSkillInput.trim()) {
+        <p class="catalog-add__hint">
+          Showing skills tagged with the selected domain(s), plus universal skills.
+        </p>
+      }
+    } @else {
+      <p class="catalog-add__hint catalog-add__hint--soft">
+        Soft skills are universal - they apply to candidates in every industry,
+        so there's no domain tag here. Add canonical names like "Communication"
+        or "Mentoring"; the matcher will credit candidates whose CVs phrase
+        them differently ("strong communication skills", "led junior devs").
       </p>
-    }
-    @if (newSkillDomains.length > 0 && !newSkillInput.trim()) {
-      <p class="catalog-add__hint">
-        Showing skills tagged with the selected domain(s), plus universal skills.
-      </p>
+
+      <!-- ── Synonyms editor (SOFT only) ───────────────────────────────────
+           CV prose varies wildly ("team lead" / "people management" / "led a
+           team" all mean Leadership). The embedding model caps around cosine
+           0.70 on abstract concepts so paraphrases miss. The recruiter adds
+           a curated synonym list here; /match-soft-skill does an exact-string
+           short-circuit against the list BEFORE paying the embedding cost,
+           pushing soft-skill match accuracy from ~85% toward ~92%. -->
+      <div class="catalog-syn-editor">
+        <div class="catalog-syn-editor__head">
+          <span class="catalog-syn-editor__label">Synonyms / paraphrases</span>
+          <button type="button"
+                  class="catalog-syn-editor__suggest"
+                  [disabled]="suggestingSynonyms || !newSkillInput.trim()"
+                  (click)="suggestSynonyms()"
+                  title="Ask the AI to propose paraphrases for the skill name above">
+            @if (suggestingSynonyms) { Asking AI… } @else { ✨ Suggest with AI }
+          </button>
+        </div>
+
+        @if (newSkillSynonyms.length > 0) {
+          <div class="catalog-syn-editor__chips">
+            @for (syn of newSkillSynonyms; track syn) {
+              <span class="catalog-syn-chip">
+                {{ syn }}
+                <button type="button"
+                        class="catalog-syn-chip__x"
+                        (click)="removeSynonym(syn)"
+                        title="Remove">&times;</button>
+              </span>
+            }
+          </div>
+        }
+
+        <input class="catalog-syn-editor__input"
+               type="text"
+               placeholder="e.g. team lead, people management — press Enter or comma to add"
+               [(ngModel)]="synonymInput"
+               (keydown.enter)="$event.preventDefault(); addSynonymFromInput()"
+               (keydown.,)="$event.preventDefault(); addSynonymFromInput()"
+               [disabled]="saving" />
+      </div>
     }
   </div>
 
@@ -133,12 +210,17 @@
         </h3>
       </div>
 
-      @if (activeSkills.length === 0) {
+      @if (typeFiltered.length === 0) {
         <div class="catalog-empty">
           <div class="catalog-empty__icon">∅</div>
-          <p class="catalog-empty__title">The catalog is empty</p>
+          <p class="catalog-empty__title">No {{ viewType === 'HARD' ? 'hard' : 'soft' }} skills yet</p>
           <p class="catalog-empty__sub">
-            Post a job with skill requirements, or type a skill name above to pre-add one.
+            @if (viewType === 'HARD') {
+              Post a job with technical requirements, or type a skill name above to pre-add one.
+            } @else {
+              Add interpersonal abilities like "Communication", "Leadership", or
+              "Mentoring" so candidates' CV phrasing has something to match against.
+            }
           </p>
         </div>
       } @else if (filteredSkills.length === 0) {
@@ -158,7 +240,8 @@
           <thead>
             <tr>
               <th>Skill</th>
-              <th>Domains</th>
+              @if (viewType === 'HARD') { <th>Domains</th> }
+              @if (viewType === 'SOFT') { <th>Synonyms</th> }
               <th>Source</th>
               <th class="catalog-table__col-demand">Demand</th>
               <th>Added</th>
@@ -171,19 +254,42 @@
                 <td>
                   <span class="skill-name">{{ item.displayName }}</span>
                 </td>
-                <td>
-                  @if (item.domains.length === 0) {
-                    <span class="domain-chip domain-chip--universal" title="Shown to candidates in every domain">
-                      Universal
-                    </span>
-                  } @else {
-                    @for (d of item.domains; track d) {
-                      <span class="domain-chip" [style.--accent]="accentFor(d)">
-                        {{ domainLabel(d) }}
+                @if (viewType === 'HARD') {
+                  <td>
+                    @if (item.domains.length === 0) {
+                      <span class="domain-chip domain-chip--universal" title="Shown to candidates in every domain">
+                        Universal
+                      </span>
+                    } @else {
+                      @for (d of item.domains; track d) {
+                        <span class="domain-chip" [style.--accent]="accentFor(d)">
+                          {{ domainLabel(d) }}
+                        </span>
+                      }
+                    }
+                  </td>
+                }
+                @if (viewType === 'SOFT') {
+                  <td>
+                    @if (item.synonyms && item.synonyms.length > 0) {
+                      <div class="catalog-syn-cell">
+                        @for (syn of item.synonyms.slice(0, 4); track syn) {
+                          <span class="catalog-syn-cell__chip">{{ syn }}</span>
+                        }
+                        @if (item.synonyms.length > 4) {
+                          <span class="catalog-syn-cell__more"
+                                [title]="item.synonyms.slice(4).join(', ')">
+                            +{{ item.synonyms.length - 4 }} more
+                          </span>
+                        }
+                      </div>
+                    } @else {
+                      <span class="text-muted" title="No paraphrases yet - candidates' CV phrasing only matches via embedding similarity">
+                        none
                       </span>
                     }
-                  }
-                </td>
+                  </td>
+                }
                 <td>
                   @if (item.source === 'MANUAL') {
                     <span class="source-tag source-tag--manual" title="Added manually via this page">Manual</span>
@@ -204,14 +310,26 @@
                 <td class="mono text-muted">{{ formatDate(item.firstSeenAt) }}</td>
                 <td>
                   <div class="catalog-row-actions">
-                    <button class="icon-btn icon-btn--edit" (click)="editSkill(item)" title="Edit domains">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 20h9"></path>
-                        <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                      </svg>
-                      Edit
-                    </button>
+                    @if (viewType === 'HARD') {
+                      <button class="icon-btn icon-btn--edit" (click)="editSkill(item)" title="Edit domains">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 20h9"></path>
+                          <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        Edit
+                      </button>
+                    }
+                    @if (viewType === 'SOFT') {
+                      <button class="icon-btn icon-btn--edit" (click)="editSynonyms(item)" title="Edit synonyms / paraphrases">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 20h9"></path>
+                          <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        Synonyms
+                      </button>
+                    }
                     <button class="icon-btn icon-btn--remove"
                             [disabled]="item.currentDemandCount > 0"
                             [title]="item.currentDemandCount > 0

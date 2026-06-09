@@ -53,4 +53,20 @@ public class RestClientConfig {
     public RestTemplate plainRestTemplate() {
         return new RestTemplate(); // sans JWT — pour services internes
     }
+
+    /**
+     * Non-load-balanced RestTemplate for callers that need to talk to a
+     * service which is NOT registered with Eureka. The two @LoadBalanced
+     * templates above treat every hostname in a URI as a Spring Cloud
+     * service ID and resolve it via the load balancer registry, which
+     * throws "No instances available" for raw hostnames.
+     *
+     * cv-parser-service is a Python/FastAPI sidecar that doesn't carry a
+     * Eureka client, so calls into it have to use this template with the
+     * raw docker-network hostname (http://cv-parser-service:8085).
+     */
+    @Bean("directRestTemplate")
+    public RestTemplate directRestTemplate() {
+        return new RestTemplate();
+    }
 }

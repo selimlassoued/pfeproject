@@ -28,4 +28,11 @@ public class SkillResolveRequest {
     private List<Float> embedding;
     /** Embedding model identifier. Required so we don't auto-merge across models. */
     private String embeddingModel;
+    /**
+     * What the caller expects this skill to be: "HARD" or "SOFT" (or null to skip
+     * the type validation step). When set, the resolve endpoint asks the LLM to
+     * classify the skill and returns INVALID if the LLM says it's not a real skill,
+     * or TYPE_MISMATCH if the LLM disagrees with the caller's expected type.
+     */
+    private String expectedType;
 }

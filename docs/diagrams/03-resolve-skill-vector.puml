@@ -1,0 +1,60 @@
+@startuml
+title Resolve Skill Vector - shared pgvector dedup sub-activity
+
+skinparam activity {
+  BackgroundColor #F4F8FF
+  BorderColor #2C5AA0
+  DiamondBackgroundColor #FFF6E0
+  DiamondBorderColor #B8860B
+}
+
+start
+:normalize skill name (lowercase, trim);
+:exact lookup in skill_catalog_entry (findById);
+
+if (exact name exists and not removed?) then (yes)
+  :action = EXACT
+  reuse stored vector;
+  stop
+else (no)
+endif
+
+:embed skill text via Ollama
+(nomic-embed-text, 768-dim);
+
+:pgvector nearest-neighbour search
+SELECT 1 - (embedding <=> CAST(:vec AS vector)) AS score
+ORDER BY embedding <=> :vec
+LIMIT k;
+
+:top = best candidate
+(score = cosine similarity in [0,1]);
+
+if (top.score >= 0.95 ?) then (auto-merge)
+  :action = AUTO_MERGE
+  reuse existing skill;
+  stop
+elseif (top.score >= 0.90 ?) then (0.90 - 0.95 gray band)
+  :ask LLM qwen2.5:7b
+  "are these the same skill?";
+  if (LLM says same?) then (yes)
+    :action = AUTO_MERGE
+    reuse existing skill;
+    stop
+  else (no)
+  endif
+elseif (top.score >= 0.85 ?) then (0.85 - 0.90)
+  :flag REVIEW for admin
+  ("did you mean ...?");
+else (< 0.85)
+endif
+
+:create new SkillCatalogEntry
+(name, displayName, source);
+:persist embedding via native UPDATE
+SET embedding = CAST(:vec AS vector),
+embedding_model = 'nomic-embed-text';
+:action = NEW;
+stop
+
+@enduml

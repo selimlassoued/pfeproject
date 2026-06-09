@@ -1084,3 +1084,98 @@ select.ng-invalid.ng-dirty:focus,
 :root[data-theme="light"] .hint-strong {
   color: #1e40bc !important;
 }
+
+/* ── Skills Catalog: synonym editor (light mode) ─────────────────────────────
+   Dark-mode styles live in skills-catalog.css. The component file can't
+   carry its own `:root[data-theme="light"]` rules because Angular's
+   ViewEncapsulation rewrites attribute selectors at the host. Putting the
+   light overrides here (global stylesheet) + !important is the same fix the
+   app already uses for app-status, interview-status, hint, etc. The goal is
+   a clean light card that matches the rest of the page chrome, NOT a darker
+   inset panel.                                                              */
+:root[data-theme="light"] .catalog-syn-editor {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04) !important;
+}
+:root[data-theme="light"] .catalog-syn-editor__label {
+  color: #1e293b !important;
+  font-weight: 700 !important;
+}
+:root[data-theme="light"] .catalog-syn-editor__suggest {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  border: 1px solid transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.22) !important;
+}
+:root[data-theme="light"] .catalog-syn-editor__suggest:hover:not(:disabled) {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.30) !important;
+}
+:root[data-theme="light"] .catalog-syn-editor__suggest:disabled {
+  background: #e5e7eb !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+}
+:root[data-theme="light"] .catalog-syn-editor__input {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  color: #0f172a !important;
+}
+:root[data-theme="light"] .catalog-syn-editor__input::placeholder {
+  color: #94a3b8 !important;
+}
+:root[data-theme="light"] .catalog-syn-editor__input:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15) !important;
+}
+:root[data-theme="light"] .catalog-syn-editor__hint {
+  color: #64748b !important;
+}
+/* Chips: both the in-editor chips (catalog-syn-chip) and the table-cell
+   chips (catalog-syn-cell__chip) get the same treatment so the SOFT view
+   feels coherent across the add form and the listing below. */
+:root[data-theme="light"] .catalog-syn-chip,
+:root[data-theme="light"] .catalog-syn-cell__chip {
+  background: rgba(139,92,246,0.10) !important;
+  border: 1px solid rgba(139,92,246,0.30) !important;
+  color: #6d28d9 !important;
+  font-weight: 600 !important;
+}
+:root[data-theme="light"] .catalog-syn-chip__x {
+  color: #94a3b8 !important;
+}
+:root[data-theme="light"] .catalog-syn-chip__x:hover {
+  color: #dc2626 !important;
+}
+:root[data-theme="light"] .catalog-syn-cell__more {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+/* The "Soft skills are universal..." italic hint above the synonym editor.
+   The component-CSS light override (color: #4b5563 on rgba(99,102,241,0.06))
+   combined with italic font-style reads as washed-out against the page
+   background. Bump both the text and the band so it feels like part of the
+   page chrome, not a ghost of it. */
+:root[data-theme="light"] .catalog-add__hint--soft {
+  color: #1e293b !important;
+  background: rgba(99,102,241,0.10) !important;
+  border-left: 3px solid #6366f1 !important;
+  font-style: normal !important;
+  font-weight: 500 !important;
+}
+
+/* Disabled state of the ✨ Suggest with AI button in light mode. The
+   component's disabled rule (opacity: 0.45 + grayscale filter) on top of
+   the light-mode gradient renders as a barely-visible pinkish ghost.
+   Replace with an honest "disabled button" look so the recruiter sees the
+   button exists but knows it isn't actionable yet. */
+:root[data-theme="light"] .catalog-syn-editor__suggest:disabled {
+  background: #e5e7eb !important;
+  color: #64748b !important;
+  border: 1px solid #d1d5db !important;
+  filter: none !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}

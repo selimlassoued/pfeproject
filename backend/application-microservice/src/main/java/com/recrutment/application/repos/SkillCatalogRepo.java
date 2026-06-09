@@ -46,6 +46,20 @@ public interface SkillCatalogRepo extends JpaRepository<SkillCatalogEntry, Strin
     List<SkillCatalogEntry> findActiveByTypeWithEmbedding(@Param("type") String type);
 
     /**
+     * All active catalog rows of a given type, regardless of embedding state.
+     * Used by /match-soft-skill's synonym short-circuit: we need the synonyms
+     * column for every active SOFT row even on rows that haven't been embedded
+     * yet. With ~10-50 SOFT rows in the catalog this is a cheap full scan;
+     * if it ever grows we can swap for an indexed `synonyms @> ARRAY[?]`
+     * query but TEXT-via-StringListConverter doesn't let Postgres do that.
+     */
+    @Query(value = "SELECT * FROM skill_catalog_entry " +
+                   "WHERE type = :type AND removed = false " +
+                   "ORDER BY first_seen_at ASC",
+           nativeQuery = true)
+    List<SkillCatalogEntry> findActiveByType(@Param("type") String type);
+
+    /**
      * Persist the cached embedding for a skill. Native SQL with an explicit
      * ::vector cast — Hibernate's generic UPDATE can't bind a varchar parameter
      * to a vector column. Bumps last_seen_at in the same statement.
@@ -83,6 +97,58 @@ public interface SkillCatalogRepo extends JpaRepository<SkillCatalogEntry, Strin
     List<Object[]> findNearestSkills(@Param("vec") String vec,
                                      @Param("exclude_name") String excludeName,
                                      @Param("max_results") int maxResults);
+
+    /**
+     * Type-aware variant: only search within rows whose type matches (HARD or SOFT).
+     * Used by the resolve endpoint when the caller knows what they expect so we
+     * don't merge a hard skill into a soft skill or vice versa.
+     */
+    @Query(value = "SELECT name, display_name, " +
+                   "       (1.0 - (embedding <=> CAST(:vec AS vector))) AS score " +
+                   "FROM skill_catalog_entry " +
+                   "WHERE embedding IS NOT NULL " +
+                   "  AND removed = false " +
+                   "  AND type = :type " +
+                   "  AND name <> :exclude_name " +
+                   "ORDER BY embedding <=> CAST(:vec AS vector) " +
+                   "LIMIT :max_results",
+           nativeQuery = true)
+    List<Object[]> findNearestSkillsByType(@Param("vec") String vec,
+                                           @Param("type") String type,
+                                           @Param("exclude_name") String excludeName,
+                                           @Param("max_results") int maxResults);
+
+    /**
+     * Lexical typo detection via PostgreSQL's fuzzystrmatch.levenshtein().
+     *
+     * Catches single-character typos that embeddings score too low to merge
+     * (e.g. "doker" vs "docker" embeds at 0.41 but is 1 edit away).
+     *
+     * Guards:
+     *   - Length guard: candidate length within 2 chars of input - prevents
+     *     "js" being merged into "as" or "cs".
+     *   - Distance <= 2: catches single insert/delete/substitute and double
+     *     errors, but not genuinely different words.
+     *   - Minimum input length 4: very short strings (like "go") would be
+     *     within distance 2 of everything else; require a few chars to risk it.
+     *
+     * Type filter optional - pass null to search across both HARD and SOFT.
+     */
+    @Query(value = "SELECT name, display_name, " +
+                   "       levenshtein(name, :input) AS dist " +
+                   "FROM skill_catalog_entry " +
+                   "WHERE removed = false " +
+                   "  AND length(:input) >= 4 " +
+                   "  AND abs(length(name) - length(:input)) <= 2 " +
+                   "  AND length(name) >= 4 " +
+                   "  AND name <> :input " +
+                   "  AND (:type IS NULL OR type = :type) " +
+                   "  AND levenshtein(name, :input) <= 2 " +
+                   "ORDER BY levenshtein(name, :input) ASC, length(name) ASC " +
+                   "LIMIT 1",
+           nativeQuery = true)
+    List<Object[]> findNearestByLevenshtein(@Param("input") String input,
+                                            @Param("type") String type);
 
     /** Touch the last_seen_at without changing anything else. */
     @Modifying

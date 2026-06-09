@@ -51,18 +51,31 @@ import java.util.Set;
  */
 @RestController
 @RequestMapping("/api/applications/skill-catalog")
-@RequiredArgsConstructor
 @Slf4j
 public class SkillCatalogController {
 
     private final SkillCatalogRepo repo;
-    /** Plain RestTemplate (no JWT propagation) for internal service-to-service
-     *  calls to cv-parser-service during backfill. */
-    @Qualifier("plainRestTemplate")
+    /** Non-load-balanced RestTemplate for talking to cv-parser-service. The
+     *  default @LoadBalanced templates resolve hostnames as Eureka service IDs;
+     *  cv-parser-service isn't in Eureka so they throw "No instances
+     *  available". This bean uses the raw docker-network hostname directly.
+     *
+     *  NOTE: explicit constructor (no @RequiredArgsConstructor) so the
+     *  @Qualifier annotation actually reaches the constructor parameter -
+     *  Lombok doesn't propagate @Qualifier from field to constructor arg by
+     *  default, which silently wires the load-balanced bean and breaks the
+     *  cv-parser passthrough.
+     */
     private final RestTemplate plainRestTemplate;
 
     @Value("${cv.parser.url:http://cv-parser-service:8085}")
     private String cvParserUrl;
+
+    public SkillCatalogController(SkillCatalogRepo repo,
+                                  @Qualifier("directRestTemplate") RestTemplate plainRestTemplate) {
+        this.repo = repo;
+        this.plainRestTemplate = plainRestTemplate;
+    }
 
     /**
      * Returns manual catalog entries.
@@ -92,8 +105,96 @@ public class SkillCatalogController {
                 e.getSource(),
                 e.isRemoved(),
                 e.getType() != null ? e.getType() : "HARD",
-                e.getDomains() != null ? e.getDomains() : new ArrayList<>()
+                e.getDomains() != null ? e.getDomains() : new ArrayList<>(),
+                e.getSynonyms() != null ? e.getSynonyms() : new ArrayList<>()
         )).toList());
+    }
+
+    /**
+     * Browser-facing passthrough to cv-parser-service /extract-catalog.
+     *
+     * cv-parser-service is a Python/FastAPI sidecar that doesn't register with
+     * Eureka and doesn't expose its port to the host, so the gateway can't
+     * `lb://` it. Rather than carve out a special direct-hostname route in the
+     * gateway (breaking the "everything is lb://" pattern), we proxy the call
+     * here: the frontend hits /api/applications/skill-catalog/extract through
+     * the gateway like any other call, this controller forwards the same
+     * payload to cv-parser-service over the Docker private network, and the
+     * response is streamed back unchanged. Same security rules as the rest of
+     * /api/applications/skill-catalog/** (authenticated read), no new gateway
+     * routes, no exposed ports.
+     */
+    @PostMapping("/extract")
+    public ResponseEntity<Map<String, Object>> extractCatalog(@RequestBody Map<String, Object> jobsPayload) {
+        String url = cvParserUrl + "/api/cv-parser/extract-catalog";
+        try {
+            @SuppressWarnings("unchecked")
+            ResponseEntity<Map> response = plainRestTemplate.postForEntity(url, jobsPayload, Map.class);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> body = response.getBody() != null ? response.getBody() : Map.of();
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            log.error("[SkillCatalogController] extract-catalog passthrough failed: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "cv-parser-service unreachable: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Ask Qwen (via cv-parser-service) for candidate synonyms for a soft-skill
+     * canonical name. The admin UI calls this when the recruiter clicks
+     * "Suggest synonyms" on the add form; the recruiter then accepts / edits /
+     * rejects them before saving. We do NOT auto-attach the suggestions —
+     * the recruiter is always the final author of what enters the catalog.
+     *
+     * Returns: { "synonyms": ["team lead", "people management", ...] }
+     * Empty list on LLM hiccup so the UI can still save without synonyms.
+     */
+    @PostMapping("/suggest-synonyms")
+    public ResponseEntity<Map<String, Object>> suggestSynonyms(@RequestBody Map<String, Object> body) {
+        Object rawName = body == null ? null : body.get("name");
+        if (!(rawName instanceof String name) || name.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
+        }
+        String type = body.get("type") instanceof String t ? t : "SOFT";
+
+        String url = cvParserUrl + "/api/cv-parser/skills/suggest-synonyms";
+        try {
+            @SuppressWarnings("unchecked")
+            ResponseEntity<Map> response = plainRestTemplate.postForEntity(
+                    url, Map.of("name", name.trim(), "type", type), Map.class);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> resp = response.getBody() != null
+                    ? response.getBody() : Map.of("synonyms", List.of());
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            log.warn("[suggest-synonyms] LLM call failed for '{}': {}", name, e.getMessage());
+            return ResponseEntity.ok(Map.of("synonyms", List.of()));
+        }
+    }
+
+    /**
+     * Normalize a synonyms payload from JSON into the storage shape:
+     * trimmed, lowercased, whitespace-collapsed, deduped, no empties. Used by
+     * POST and PATCH so the storage invariant is set in ONE place — the
+     * /match-soft-skill short-circuit relies on it.
+     */
+    @SuppressWarnings("unchecked")
+    private static List<String> parseSynonymsList(Object raw) {
+        if (raw == null) return new ArrayList<>();
+        List<String> result = new ArrayList<>();
+        java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>();
+        java.util.function.Consumer<String> add = s -> {
+            if (s == null) return;
+            String norm = s.trim().toLowerCase().replaceAll("\\s+", " ");
+            if (!norm.isEmpty() && seen.add(norm)) result.add(norm);
+        };
+        if (raw instanceof List<?> list) {
+            for (Object o : list) if (o instanceof String s) add.accept(s);
+        } else if (raw instanceof String s) {
+            for (String part : s.split(",")) add.accept(part);
+        }
+        return result;
     }
 
     /**
@@ -130,6 +231,12 @@ public class SkillCatalogController {
             for (String d : s.split(",")) if (!d.isBlank()) domains.add(d.trim());
         }
 
+        // Synonyms — recruiter-curated alternative phrasings (primary use:
+        // SOFT skills). Normalized to lowercase + collapsed whitespace at
+        // write time so /match-soft-skill can do a cheap case-insensitive
+        // exact lookup without per-request normalization.
+        List<String> synonyms = parseSynonymsList(body.get("synonyms"));
+
         Optional<SkillCatalogEntry> existing = repo.findById(key);
         SkillCatalogEntry entry = existing.orElseGet(() -> SkillCatalogEntry.builder()
                 .name(key)
@@ -158,6 +265,17 @@ public class SkillCatalogController {
         merged.addAll(domains);
         entry.setDomains(new ArrayList<>(merged));
 
+        // Synonyms: union with what was there (so a recruiter who edits the
+        // skill later doesn't accidentally wipe prior synonyms by not
+        // re-supplying them). PATCH /{name} below is the explicit REPLACE
+        // semantics when the recruiter wants to drop synonyms.
+        if (!synonyms.isEmpty()) {
+            Set<String> mergedSyn = new LinkedHashSet<>(
+                    entry.getSynonyms() == null ? new ArrayList<>() : entry.getSynonyms());
+            mergedSyn.addAll(synonyms);
+            entry.setSynonyms(new ArrayList<>(mergedSyn));
+        }
+
         SkillCatalogEntry saved = repo.save(entry);
         return ResponseEntity.ok(new SkillCatalogDto(
                 saved.getName(),
@@ -167,7 +285,8 @@ public class SkillCatalogController {
                 saved.getSource(),
                 saved.isRemoved(),
                 saved.getType(),
-                saved.getDomains()
+                saved.getDomains(),
+                saved.getSynonyms() != null ? saved.getSynonyms() : new ArrayList<>()
         ));
     }
 
@@ -226,13 +345,25 @@ public class SkillCatalogController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Skill name is required.");
         }
 
+        // PATCH lets the recruiter touch domains and/or synonyms. Only the
+        // fields actually present in the body are updated — that way the UI
+        // can send `{"synonyms": [...]}` without nuking the existing domains
+        // by omitting them. REPLACE semantics within each field (recruiter
+        // is the source of truth here).
+        boolean hasDomains  = body.containsKey("domains");
+        boolean hasSynonyms = body.containsKey("synonyms");
+
         List<String> domains = new ArrayList<>();
-        Object rawDomains = body.get("domains");
-        if (rawDomains instanceof List<?> list) {
-            for (Object o : list) {
-                if (o instanceof String s && !s.isBlank()) domains.add(s.trim());
+        if (hasDomains) {
+            Object rawDomains = body.get("domains");
+            if (rawDomains instanceof List<?> list) {
+                for (Object o : list) {
+                    if (o instanceof String s && !s.isBlank()) domains.add(s.trim());
+                }
             }
         }
+
+        List<String> synonyms = hasSynonyms ? parseSynonymsList(body.get("synonyms")) : List.of();
 
         SkillCatalogEntry entry = repo.findById(key).orElseGet(() -> SkillCatalogEntry.builder()
                 .name(key)
@@ -240,7 +371,8 @@ public class SkillCatalogController {
                 .firstSeenAt(Instant.now())
                 .source("EXTRACTED")  // skill exists in jobs but not yet in this table
                 .build());
-        entry.setDomains(domains);  // REPLACE, not union — recruiter has full control
+        if (hasDomains)  entry.setDomains(domains);     // REPLACE
+        if (hasSynonyms) entry.setSynonyms(synonyms);   // REPLACE
         SkillCatalogEntry saved = repo.save(entry);
 
         return ResponseEntity.ok(new SkillCatalogDto(
@@ -251,7 +383,8 @@ public class SkillCatalogController {
                 saved.getSource(),
                 saved.isRemoved(),
                 saved.getType() != null ? saved.getType() : "HARD",
-                saved.getDomains() != null ? saved.getDomains() : new ArrayList<>()
+                saved.getDomains() != null ? saved.getDomains() : new ArrayList<>(),
+                saved.getSynonyms() != null ? saved.getSynonyms() : new ArrayList<>()
         ));
     }
 
@@ -275,14 +408,166 @@ public class SkillCatalogController {
     // store for everything-about-a-skill so the matcher reads from one place
     // and writes back as it computes new facts.
 
-    /** Auto-merge above this cosine similarity — silently collapse, no LLM call. */
-    private static final double AUTO_MERGE_THRESHOLD = 0.95;
-    /** Gray band [LLM_TIEBREAK_THRESHOLD, AUTO_MERGE_THRESHOLD): consult qwen2.5:7b. */
-    private static final double LLM_TIEBREAK_THRESHOLD = 0.90;
-    /** Below this we don't bother — embedding says too different. */
-    private static final double REVIEW_THRESHOLD     = 0.85;
+    /**
+     * Auto-merge above this cosine similarity - silently collapse, no LLM call.
+     * Empirically calibrated against a labeled dataset of 139 skill pairs: SAME
+     * pairs cluster around median 0.72, p90 0.88; RELATED max 0.81. 0.93 catches
+     * the high-confidence merges while staying above the RELATED max.
+     */
+    private static final double AUTO_MERGE_THRESHOLD = 0.93;
+    /**
+     * Gray band [LLM_TIEBREAK_THRESHOLD, AUTO_MERGE_THRESHOLD): ask qwen2.5:7b
+     * "are these the same skill?". The LLM is much better at disambiguating
+     * borderline pairs (spring vs spring boot, react vs react native) than any
+     * fixed threshold. Cached per pair so repeat resolves are free.
+     *
+     * Below this floor, we don't bother asking - embedding is too distant for
+     * the LLM to plausibly say "same".
+     */
+    private static final double LLM_TIEBREAK_THRESHOLD = 0.75;
     /** How many nearest neighbours to return on each resolve call. */
     private static final int    SUGGESTION_LIMIT     = 5;
+
+    /**
+     * Minimum cosine similarity required for the CV-soft-skill match endpoint
+     * to return a hit. Below this we return null so the candidate doesn't get
+     * credited for a soft skill they didn't actually express.
+     *
+     * Empirically calibrated for nomic-embed-text on short soft-skill text:
+     *   "Strong communication" vs catalog "Communication"  ~ 0.80-0.85
+     *   "Great team player"    vs catalog "Teamwork"       ~ 0.75-0.80
+     *   "Built ML models"      vs catalog "Communication"  ~ 0.40
+     *   "Cooking"              vs catalog anything         ~ 0.30
+     *
+     * 0.70 is the sweet spot: high enough to be confident, low enough to
+     * catch real variant phrasings recruiters wouldn't anticipate.
+     */
+    private static final double SOFT_MATCH_THRESHOLD = 0.70;
+
+    /**
+     * Common technical-skill abbreviations that the embedding model cannot reliably
+     * disambiguate (k8s vs kubernetes embeds at ~0.48 cosine - way below any
+     * threshold despite being obviously the same skill to a human).
+     *
+     * Map: short form -> canonical full name. The canonical form must either
+     * already exist in the catalog or will be silently created on first use.
+     *
+     * Curated list - add entries here when you observe duplicates accumulating
+     * because of an abbreviation we missed.
+     */
+    private static final java.util.Map<String, String> ABBREVIATIONS = java.util.Map.ofEntries(
+            // Cloud / infra
+            java.util.Map.entry("k8s",   "kubernetes"),
+            java.util.Map.entry("aws",   "amazon web services"),
+            java.util.Map.entry("gcp",   "google cloud platform"),
+            java.util.Map.entry("azure", "microsoft azure"),
+            java.util.Map.entry("ec2",   "amazon ec2"),
+            java.util.Map.entry("s3",    "amazon s3"),
+            java.util.Map.entry("rds",   "amazon rds"),
+            java.util.Map.entry("ecs",   "amazon ecs"),
+            java.util.Map.entry("eks",   "amazon eks"),
+            java.util.Map.entry("ci/cd", "continuous integration"),
+            // Languages
+            java.util.Map.entry("js",    "javascript"),
+            java.util.Map.entry("ts",    "typescript"),
+            java.util.Map.entry("py",    "python"),
+            java.util.Map.entry("go",    "golang"),
+            java.util.Map.entry("rb",    "ruby"),
+            java.util.Map.entry("cpp",   "c++"),
+            java.util.Map.entry("csharp","c#"),
+            java.util.Map.entry("fsharp","f#"),
+            // AI / ML / data
+            java.util.Map.entry("ml",    "machine learning"),
+            java.util.Map.entry("dl",    "deep learning"),
+            java.util.Map.entry("ai",    "artificial intelligence"),
+            java.util.Map.entry("nlp",   "natural language processing"),
+            java.util.Map.entry("cv",    "computer vision"),
+            java.util.Map.entry("rl",    "reinforcement learning"),
+            java.util.Map.entry("genai", "generative ai"),
+            java.util.Map.entry("llm",   "large language models"),
+            // Concepts
+            java.util.Map.entry("oop",   "object oriented programming"),
+            java.util.Map.entry("fp",    "functional programming"),
+            java.util.Map.entry("tdd",   "test driven development"),
+            java.util.Map.entry("bdd",   "behavior driven development"),
+            java.util.Map.entry("ddd",   "domain driven design"),
+            java.util.Map.entry("solid", "solid principles"),
+            java.util.Map.entry("orm",   "object relational mapping"),
+            java.util.Map.entry("mvc",   "model view controller"),
+            java.util.Map.entry("api",   "rest api"),
+            // Tooling
+            java.util.Map.entry("npm",   "node package manager"),
+            java.util.Map.entry("yarn",  "yarn package manager"),
+            java.util.Map.entry("vscode","visual studio code"),
+            java.util.Map.entry("vs code","visual studio code"),
+            java.util.Map.entry("idea",  "intellij idea"),
+            java.util.Map.entry("git hub","github"),
+            java.util.Map.entry("git lab","gitlab"),
+            java.util.Map.entry("gh actions","github actions"),
+            // Frameworks / libraries - CONSISTENT RULE: canonical is the bare name.
+            // display_name keeps the .js form ("Node.js") for the UI.
+            // Every typing variant maps to the same bare canonical.
+            java.util.Map.entry("sklearn",   "scikit-learn"),
+            java.util.Map.entry("tf",        "tensorflow"),
+            java.util.Map.entry("pt",        "pytorch"),
+            // React family
+            java.util.Map.entry("react.js",  "react"),
+            java.util.Map.entry("reactjs",   "react"),
+            // Vue family
+            java.util.Map.entry("vue.js",    "vue"),
+            java.util.Map.entry("vuejs",     "vue"),
+            // Node family - was inconsistent, fixed: bare canonical
+            java.util.Map.entry("node.js",   "node"),
+            java.util.Map.entry("nodejs",    "node"),
+            // Next family - was inconsistent, fixed
+            java.util.Map.entry("next.js",   "next"),
+            java.util.Map.entry("nextjs",    "next"),
+            // Nuxt family - was inconsistent, fixed
+            java.util.Map.entry("nuxt.js",   "nuxt"),
+            java.util.Map.entry("nuxtjs",    "nuxt"),
+            // Express family
+            java.util.Map.entry("express.js","express"),
+            java.util.Map.entry("expressjs", "express"),
+            // PostgreSQL family
+            java.util.Map.entry("postgres",  "postgresql"),
+            java.util.Map.entry("postgre",   "postgresql")
+    );
+
+    /**
+     * Last-resort fallback for proper display naming when the LLM is unavailable.
+     *
+     * The PRIMARY mechanism for getting a proper display name is the LLM call
+     * inside classifySkillWithLlm() - the model knows every framework, library,
+     * acronym and convention including ones invented after this code was written.
+     * That's vastly more robust than any hardcoded list.
+     *
+     * This map only kicks in when the LLM call fails (Ollama down, network issue)
+     * AND the title-case default would produce something obviously wrong. Keep it
+     * small - it's a safety net, not a primary source of truth.
+     */
+    private static final java.util.Map<String, String> SPECIAL_DISPLAY_NAMES = java.util.Map.ofEntries(
+            java.util.Map.entry("javascript",   "JavaScript"),
+            java.util.Map.entry("typescript",   "TypeScript"),
+            java.util.Map.entry("ios",          "iOS"),
+            java.util.Map.entry("macos",        "macOS"),
+            java.util.Map.entry("c++",          "C++"),
+            java.util.Map.entry("c#",           "C#"),
+            java.util.Map.entry("scikit-learn", "scikit-learn"),
+            java.util.Map.entry("postgresql",   "PostgreSQL"),
+            java.util.Map.entry("mysql",        "MySQL"),
+            java.util.Map.entry("mongodb",      "MongoDB"),
+            java.util.Map.entry("graphql",      "GraphQL"),
+            java.util.Map.entry("html",         "HTML"),
+            java.util.Map.entry("css",          "CSS"),
+            java.util.Map.entry("sql",          "SQL"),
+            java.util.Map.entry("nosql",        "NoSQL"),
+            java.util.Map.entry("api",          "API"),
+            java.util.Map.entry("rest api",     "REST API"),
+            java.util.Map.entry("aws",          "AWS"),
+            java.util.Map.entry("gcp",          "GCP"),
+            java.util.Map.entry("ci/cd",        "CI/CD"),
+            java.util.Map.entry(".net",         ".NET")
+    );
 
     /**
      * In-memory cache of pair verdicts: key = "a||b" (sorted), value = same?.
@@ -383,54 +668,136 @@ public class SkillCatalogController {
     }
 
     /**
-     * Dedup-aware skill resolution.
+     * Dedup-aware, type-aware skill resolution.
      *
-     * The caller (cv-parser-service or admin UI) sends a raw skill input
-     * with its already-computed embedding. The endpoint runs the standard
-     * three-layer pipeline:
-     *   1. Normalize the input
-     *   2. Exact PK lookup against the catalog
-     *   3. Embedding cosine similarity against existing entries
-     * and returns an action + the matched skill if any.
+     * The caller sends a raw skill input + its already-computed embedding +
+     * the expected type (HARD or SOFT). The endpoint runs a five-layer cascade:
      *
-     * Thresholds:
-     *   ≥ 0.95 → AUTO_MERGE   (collapse onto the suggested entry silently)
-     *   ≥ 0.85 → REVIEW       (surface "did you mean?" prompt, don't apply)
-     *   <  0.85 → NEW          (caller can safely add as a new catalog row)
+     *   1. EXACT        - PK lookup against the catalog
+     *   2. ABBREVIATION - hardcoded short-form -> canonical map (k8s -> kubernetes)
+     *   3. LEVENSHTEIN  - edit-distance lookup for typos (doker -> docker)
+     *   4. EMBEDDING    - pgvector cosine NN search restricted by type
+     *   5. CLASSIFY     - before creating NEW, ask the LLM to validate the skill
+     *
+     * Thresholds (empirically calibrated, see threshold_calibration.py):
+     *   >= 0.93        -> AUTO_MERGE                  (silent, no LLM call)
+     *   0.75 - 0.93    -> LLM tiebreaker -> AUTO_MERGE or NEW
+     *   <  0.75        -> classify -> NEW / INVALID / TYPE_MISMATCH
+     *
+     * No REVIEW band: the system never blocks on a "did you mean?" prompt.
+     * The LLM is more reliable than a UI question and works the same way for
+     * interactive forms and background CV-parser flows.
      */
     @PostMapping("/resolve")
     public ResponseEntity<SkillResolveResponse> resolve(@RequestBody SkillResolveRequest req) {
         if (req == null || req.getInput() == null || req.getInput().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "input is required");
         }
-        String normalized = req.getInput().trim().toLowerCase();
+        String normalized = normalizeSkillName(req.getInput());
+        String expectedType = normalizeExpectedType(req.getExpectedType());
 
-        // Step 1: exact PK lookup wins immediately.
+        // ── Layer 1: EXACT PK lookup ────────────────────────────────────────
         Optional<SkillCatalogEntry> exact = repo.findById(normalized);
         if (exact.isPresent() && !exact.get().isRemoved()) {
             SkillCatalogEntry e = exact.get();
             repo.touchLastSeen(normalized, Instant.now());
-            return ResponseEntity.ok(new SkillResolveResponse(
+            String existingDisplay = e.getDisplayName() != null ? e.getDisplayName() : e.getName();
+            SkillResolveResponse out = new SkillResolveResponse(
                     SkillResolveResponse.Action.EXACT,
                     normalized,
                     e.getName(),
-                    e.getDisplayName() != null ? e.getDisplayName() : e.getName(),
+                    existingDisplay,
                     1.0,
                     List.of()
-            ));
+            );
+            out.setMergeReason("EXACT");
+            out.setSuggestedDisplayName(existingDisplay);
+            return ResponseEntity.ok(out);
         }
 
-        // Step 2: nearest-neighbour search needs a vector.
-        if (req.getEmbedding() == null || req.getEmbedding().size() != 768) {
-            // Caller didn't provide one — return NEW with no suggestion.
-            return ResponseEntity.ok(new SkillResolveResponse(
-                    SkillResolveResponse.Action.NEW, normalized,
-                    null, null, null, List.of()
-            ));
+        // ── Layer 2: ABBREVIATION dictionary ────────────────────────────────
+        String canonical = ABBREVIATIONS.get(normalized);
+        if (canonical != null) {
+            Optional<SkillCatalogEntry> canonicalEntry = repo.findById(canonical);
+            if (canonicalEntry.isPresent() && !canonicalEntry.get().isRemoved()) {
+                SkillCatalogEntry e = canonicalEntry.get();
+                repo.touchLastSeen(canonical, Instant.now());
+                log.info("[skill-resolve] ABBREVIATION '{}' -> '{}'", normalized, canonical);
+                String existingDisplay = e.getDisplayName() != null ? e.getDisplayName() : e.getName();
+                SkillResolveResponse out = new SkillResolveResponse(
+                        SkillResolveResponse.Action.AUTO_MERGE,
+                        normalized,
+                        e.getName(),
+                        existingDisplay,
+                        1.0,
+                        List.of()
+                );
+                out.setMergeReason("ABBREVIATION");
+                out.setSuggestedDisplayName(existingDisplay);
+                return ResponseEntity.ok(out);
+            }
+            // Canonical not yet in catalog - rewrite the normalized form so the
+            // downstream embedding/levenshtein layers search for the canonical.
+            // The caller, on receiving a NEW response, will create the canonical
+            // form rather than the abbreviation - and the suggestedDisplayName
+            // below is computed from the canonical, not from the original input.
+            log.info("[skill-resolve] ABBREVIATION '{}' rewritten to '{}' (canonical not in catalog)",
+                    normalized, canonical);
+            normalized = canonical;
         }
 
-        String vecLit = toVectorLiteral(req.getEmbedding());
-        List<Object[]> rows = repo.findNearestSkills(vecLit, normalized, SUGGESTION_LIMIT);
+        // ── Layer 3: LEVENSHTEIN typo check ─────────────────────────────────
+        try {
+            List<Object[]> lex = repo.findNearestByLevenshtein(normalized, expectedType);
+            if (!lex.isEmpty()) {
+                Object[] m = lex.get(0);
+                String n  = (String) m[0];
+                String dn = (String) m[1];
+                int dist  = ((Number) m[2]).intValue();
+                repo.touchLastSeen(n, Instant.now());
+                log.info("[skill-resolve] LEVENSHTEIN '{}' -> '{}' (distance {})",
+                        normalized, n, dist);
+                String existingDisplay = dn != null ? dn : n;
+                SkillResolveResponse out = new SkillResolveResponse(
+                        SkillResolveResponse.Action.AUTO_MERGE,
+                        normalized,
+                        n,
+                        existingDisplay,
+                        1.0 - (dist * 0.1),
+                        List.of()
+                );
+                out.setMergeReason("LEVENSHTEIN");
+                out.setSuggestedDisplayName(existingDisplay);
+                return ResponseEntity.ok(out);
+            }
+        } catch (Exception e) {
+            // fuzzystrmatch extension might not be installed yet on dev DBs.
+            log.warn("[skill-resolve] Levenshtein query failed (extension missing?): {}",
+                    e.getMessage());
+        }
+
+        // ── Layer 4: EMBEDDING + pgvector search ────────────────────────────
+        // Lazy embedding: if the caller didn't include one, fetch it from
+        // cv-parser-service NOW that we actually need it. This avoids wasting
+        // ~50ms per skill when Layers 1-3 already resolved the input - which is
+        // the typical case (EXACT/ABBREVIATION/LEVENSHTEIN catches ~80%+ of
+        // real-world inputs after the catalog warms up).
+        List<Float> embedding = req.getEmbedding();
+        if (embedding == null || embedding.size() != 768) {
+            embedding = fetchEmbeddingFromCvParser(normalized);
+            if (embedding == null) {
+                // cv-parser unreachable - skip Layer 4, hand off to Layer 5.
+                log.warn("[skill-resolve] no embedding available for '{}'; "
+                       + "skipping pgvector layer", normalized);
+                return ResponseEntity.ok(classifyAndDecide(normalized, expectedType,
+                        SkillResolveResponse.Action.NEW, null, null, null, List.of()));
+            }
+        }
+
+        String vecLit = toVectorLiteral(embedding);
+        List<Object[]> rows = expectedType != null
+                ? repo.findNearestSkillsByType(vecLit, expectedType, normalized, SUGGESTION_LIMIT)
+                : repo.findNearestSkills(vecLit, normalized, SUGGESTION_LIMIT);
         List<SkillResolveResponse.Suggestion> suggestions = new ArrayList<>();
         for (Object[] row : rows) {
             String n  = (String) row[0];
@@ -440,23 +807,22 @@ public class SkillCatalogController {
         }
 
         if (suggestions.isEmpty()) {
-            return ResponseEntity.ok(new SkillResolveResponse(
-                    SkillResolveResponse.Action.NEW, normalized,
-                    null, null, null, suggestions
-            ));
+            return ResponseEntity.ok(classifyAndDecide(normalized, expectedType,
+                    SkillResolveResponse.Action.NEW, null, null, null, suggestions));
         }
 
         SkillResolveResponse.Suggestion top = suggestions.get(0);
         SkillResolveResponse.Action action;
+        String mergeReason = null;
 
         if (top.getScore() >= AUTO_MERGE_THRESHOLD) {
-            // High-confidence: silent auto-merge, no LLM call needed.
             action = SkillResolveResponse.Action.AUTO_MERGE;
+            mergeReason = "EMBEDDING";
         } else if (top.getScore() >= LLM_TIEBREAK_THRESHOLD) {
-            // 0.90-0.95 gray band: ask qwen2.5:7b whether these are the same skill.
-            // The LLM is much better than fixed thresholds at telling React from
-            // React Native, Spring from Spring Boot, etc. Cached so the same pair
-            // never goes back to the LLM within this JVM lifetime.
+            // Gray band: ask qwen2.5:7b whether these are the same skill.
+            // Replaces the old REVIEW "did you mean?" prompt - the LLM gives a
+            // more reliable answer than a user-facing dialog and works the
+            // same way for interactive forms and background CV parsing.
             Boolean cached = pairVerdictCache.get(pairKey(normalized, top.getName()));
             boolean same;
             if (cached != null) {
@@ -465,29 +831,246 @@ public class SkillCatalogController {
                 same = askLlmIsSameSkill(normalized, top.getName());
                 pairVerdictCache.put(pairKey(normalized, top.getName()), same);
             }
-            action = same ? SkillResolveResponse.Action.AUTO_MERGE
-                          : SkillResolveResponse.Action.NEW;
-        } else if (top.getScore() >= REVIEW_THRESHOLD) {
-            // 0.85-0.90: too distant for the LLM to plausibly say "same" — skip
-            // the call. Surface as REVIEW so admins can periodically batch-clean.
-            action = SkillResolveResponse.Action.REVIEW;
+            if (same) {
+                action = SkillResolveResponse.Action.AUTO_MERGE;
+                mergeReason = "LLM";
+            } else {
+                action = SkillResolveResponse.Action.NEW;
+            }
         } else {
             action = SkillResolveResponse.Action.NEW;
         }
 
-        // Bump the matched entry's recency when we auto-merge — it just got used.
         if (action == SkillResolveResponse.Action.AUTO_MERGE) {
             repo.touchLastSeen(top.getName(), Instant.now());
         }
 
-        return ResponseEntity.ok(new SkillResolveResponse(
+        // ── Layer 5: CLASSIFY (only when about to create NEW) ──────────────
+        if (action == SkillResolveResponse.Action.NEW) {
+            return ResponseEntity.ok(classifyAndDecide(normalized, expectedType,
+                    action, top.getName(), top.getDisplayName(), top.getScore(), suggestions));
+        }
+
+        // EXACT / AUTO_MERGE - trust the matched entry's existing display name.
+        String matchedDisplay = action == SkillResolveResponse.Action.NEW
+                ? null : top.getDisplayName();
+        SkillResolveResponse out = new SkillResolveResponse(
                 action,
                 normalized,
                 action == SkillResolveResponse.Action.NEW ? null : top.getName(),
-                action == SkillResolveResponse.Action.NEW ? null : top.getDisplayName(),
+                matchedDisplay,
                 top.getScore(),
                 suggestions
-        ));
+        );
+        out.setMergeReason(mergeReason);
+        out.setSuggestedDisplayName(matchedDisplay);
+        return ResponseEntity.ok(out);
+    }
+
+    /**
+     * Run the LLM classifier on a skill that would otherwise be created NEW.
+     * Returns INVALID if the LLM says it's not a real skill, TYPE_MISMATCH if
+     * the LLM says it's a real skill but of the wrong type, or NEW if the LLM
+     * confirms the expected type (or if no expectedType was provided).
+     */
+    private SkillResolveResponse classifyAndDecide(
+            String normalized,
+            String expectedType,
+            SkillResolveResponse.Action defaultAction,
+            String matchedName,
+            String matchedDisplay,
+            Double topScore,
+            List<SkillResolveResponse.Suggestion> suggestions
+    ) {
+        // Always call the LLM for NEW: it validates (HARD/SOFT/INVALID),
+        // catches TYPE_MISMATCH, AND returns a properly-cased display name.
+        // One call, three outputs - cheaper than maintaining a hardcoded list
+        // of every possible skill and their conventional capitalizations.
+        ClassifyResult cls = classifySkillWithLlm(normalized, expectedType);
+
+        // Prefer the LLM's display name. Fall back to local title-case helper
+        // when the LLM was unavailable (cls.displayName is null).
+        String suggestedDisplay = cls.displayName != null && !cls.displayName.isBlank()
+                ? cls.displayName
+                : toProperDisplayName(normalized);
+
+        SkillResolveResponse out = new SkillResolveResponse(
+                defaultAction, normalized, matchedName, matchedDisplay,
+                topScore, suggestions
+        );
+        out.setClassifiedType(cls.type);
+        out.setClassifyReason(cls.reason);
+        out.setSuggestedDisplayName(suggestedDisplay);
+        out.setSuggestedImplies(cls.implies);
+
+        // INVALID always wins regardless of expectedType - we never want
+        // garbage in the catalog (job titles, company names, etc.).
+        if ("INVALID".equals(cls.type)) {
+            out.setAction(SkillResolveResponse.Action.INVALID);
+            log.info("[skill-resolve] INVALID '{}': {}", normalized, cls.reason);
+            return out;
+        }
+
+        // TYPE_MISMATCH only matters when the caller declared an expected type.
+        if (expectedType != null && !cls.type.equals(expectedType)) {
+            out.setAction(SkillResolveResponse.Action.TYPE_MISMATCH);
+            log.info("[skill-resolve] TYPE_MISMATCH '{}': expected {}, llm says {}",
+                    normalized, expectedType, cls.type);
+        }
+        return out;
+    }
+
+    /**
+     * Convert a free-form type string ("hard", " SOFT ", null) to the canonical
+     * uppercase HARD/SOFT - or null if the caller did not provide one.
+     */
+    private static String normalizeExpectedType(String raw) {
+        if (raw == null) return null;
+        String t = raw.trim().toUpperCase();
+        if (t.equals("HARD") || t.equals("SOFT")) return t;
+        return null;
+    }
+
+    /**
+     * Catalog normalization for skill names. Used as the catalog primary key.
+     *
+     * Three operations:
+     *   1. trim - remove leading/trailing whitespace
+     *   2. lowercase - case-insensitive matching
+     *   3. collapse runs of whitespace into a single space - so "spring   boot"
+     *      and "spring boot" produce the same PK
+     *
+     * The result is what we look up in the catalog and store in the `name` column.
+     */
+    private static String normalizeSkillName(String raw) {
+        if (raw == null) return "";
+        return raw.trim().toLowerCase().replaceAll("\\s+", " ");
+    }
+
+    /**
+     * Compute a clean, properly-cased display name for a normalized input.
+     *
+     *   - Check the SPECIAL_DISPLAY_NAMES map first - covers known special casings
+     *     like "javascript" -> "JavaScript", "ios" -> "iOS", "scikit-learn" -> "scikit-learn".
+     *   - Otherwise apply default title-casing: capitalize the first letter of each
+     *     word (split on space, hyphen, dot, slash) and lowercase the rest.
+     *
+     * This protects the catalog from accumulating ugly variants when a user
+     * types in all caps or all lowercase. The caller stores `suggestedDisplayName`
+     * from the response, not whatever the user typed verbatim.
+     */
+    private static String toProperDisplayName(String normalized) {
+        if (normalized == null || normalized.isBlank()) return "";
+        String s = normalized.trim().toLowerCase().replaceAll("\\s+", " ");
+        String special = SPECIAL_DISPLAY_NAMES.get(s);
+        if (special != null) return special;
+
+        StringBuilder out = new StringBuilder(s.length());
+        boolean capitalizeNext = true;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (Character.isWhitespace(c) || c == '-' || c == '/') {
+                out.append(c);
+                capitalizeNext = true;
+            } else if (capitalizeNext) {
+                out.append(Character.toUpperCase(c));
+                capitalizeNext = false;
+            } else {
+                out.append(c);
+            }
+        }
+        return out.toString();
+    }
+
+    /** Result of the LLM classification call. Carries type + proper display name + implies + reason. */
+    private static final class ClassifyResult {
+        final String type;
+        final String displayName;   // proper casing from the LLM (or null on failure)
+        final List<String> implies; // skills this one is built on (lowercase canonical)
+        final String reason;
+        ClassifyResult(String type, String displayName, List<String> implies, String reason) {
+            this.type = type;
+            this.displayName = displayName;
+            this.implies = implies != null ? implies : List.of();
+            this.reason = reason;
+        }
+    }
+
+    /**
+     * Lazy embedding fetch. Called only when the cascade reaches Layer 4 and
+     * the caller did not include a precomputed vector in the request. Talks to
+     * cv-parser-service /embed-text which wraps Ollama nomic-embed-text.
+     *
+     * Returns null on any failure - the cascade then falls through to Layer 5
+     * (classify) without the pgvector search step.
+     */
+    @SuppressWarnings("unchecked")
+    private List<Float> fetchEmbeddingFromCvParser(String text) {
+        try {
+            String url = cvParserUrl + "/api/cv-parser/embed-text";
+            Map<String, Object> body = Map.of("text", text);
+            Map<String, Object> resp = plainRestTemplate.postForObject(url, body, Map.class);
+            if (resp == null || !(resp.get("embedding") instanceof List<?> raw)) return null;
+            if (raw.size() != 768) {
+                log.warn("[skill-resolve] embedder returned wrong dim {} for '{}'",
+                        raw.size(), text);
+                return null;
+            }
+            List<Float> vec = new ArrayList<>(raw.size());
+            for (Object o : raw) {
+                if (o instanceof Number n) vec.add(n.floatValue());
+                else return null;
+            }
+            return vec;
+        } catch (Exception e) {
+            log.warn("[skill-resolve] embed-text call failed for '{}': {}", text, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Ask cv-parser-service to classify the skill name AND return its proper
+     * display name + skills it implies in one call. The LLM knows every framework,
+     * library, acronym and naming convention.
+     *
+     * Fails open: if the LLM is unavailable, returns HARD with a null displayName
+     * and an empty implies list so the caller can fall back gracefully.
+     */
+    @SuppressWarnings("unchecked")
+    private ClassifyResult classifySkillWithLlm(String text, String expectedType) {
+        try {
+            String url = cvParserUrl + "/api/cv-parser/skill-classify";
+            java.util.Map<String, Object> body = new java.util.HashMap<>();
+            body.put("text", text);
+            if (expectedType != null) body.put("expected_type", expectedType);
+            Map<String, Object> resp = plainRestTemplate.postForObject(url, body, Map.class);
+            if (resp == null) return new ClassifyResult("HARD", null, List.of(), "no response");
+            String type = resp.get("type") instanceof String s ? s.toUpperCase() : "HARD";
+            if (!type.equals("HARD") && !type.equals("SOFT") && !type.equals("INVALID")) {
+                type = "HARD";
+            }
+            String display = resp.get("display_name") instanceof String s ? s.trim() : null;
+            if (display != null && display.isEmpty()) display = null;
+            String reason = resp.get("reason") instanceof String s ? s : "";
+            // Parse implies list - lowercase canonical skill names.
+            List<String> implies = new ArrayList<>();
+            Object rawImplies = resp.get("implies");
+            if (rawImplies instanceof List<?> rawList) {
+                for (Object item : rawList) {
+                    if (item instanceof String s && !s.isBlank()) {
+                        String cleaned = s.trim().toLowerCase().replaceAll("\\s+", " ");
+                        if (!cleaned.isEmpty() && !cleaned.equals(text) && implies.size() < 3) {
+                            implies.add(cleaned);
+                        }
+                    }
+                }
+            }
+            return new ClassifyResult(type, display, implies, reason);
+        } catch (Exception e) {
+            log.warn("[skill-resolve] classify call failed for '{}': {}", text, e.getMessage());
+            return new ClassifyResult("HARD", null, List.of(),
+                    "classifier unavailable: " + e.getClass().getSimpleName());
+        }
     }
 
     // ─── Vector ↔ string helpers ─────────────────────────────────────────────
@@ -591,6 +1174,114 @@ public class SkillCatalogController {
         String dname = (String) row[1];
         double score = ((Number) row[2]).doubleValue();
         return ResponseEntity.ok(new NearestSkillResponse(name, dname != null ? dname : name, score));
+    }
+
+    /**
+     * Match free-form CV text against the EXISTING soft-skill catalog.
+     *
+     * Hard and soft skills have different naming dynamics. Recruiters write
+     * canonical hard-skill names ("React", "Spring Boot") that candidate CVs
+     * mostly mirror with minor variants. The 5-layer /resolve cascade
+     * canonicalizes all those variants into a single catalog row, and CV
+     * extraction is allowed to grow the hard-skill catalog with NEW entries.
+     *
+     * Soft skills are different. Recruiters write clean canonical names
+     * ("Communication", "Leadership") but CV text is free-form prose
+     * ("strong written communication", "great team player", "I'm an
+     * empathetic listener"). Letting all that prose enter the catalog
+     * would pollute it with sentences and synonyms that aren't really
+     * skill names.
+     *
+     * So the system treats soft skills asymmetrically:
+     *   - Recruiters add canonical soft-skill names via job requirements
+     *     and the admin Skills Catalog page - these grow the catalog.
+     *   - CV-extracted soft-skill TEXT calls THIS endpoint - we embed the
+     *     text, find the closest catalog entry via pgvector cosine NN
+     *     restricted to type=SOFT, and return it only if similarity is
+     *     above SOFT_MATCH_THRESHOLD. No new entries are ever created.
+     *
+     * Returns:
+     *   - 200 + {name, displayName, score} when a confident match exists
+     *   - 204 when no catalog entry is close enough
+     *
+     * Embedding is fetched lazily from cv-parser-service - the caller doesn't
+     * need to compute it upfront.
+     */
+    @PostMapping("/match-soft-skill")
+    public ResponseEntity<NearestSkillResponse> matchSoftSkill(@RequestBody java.util.Map<String, Object> body) {
+        Object rawText = body == null ? null : body.get("text");
+        if (!(rawText instanceof String s) || s.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "text is required");
+        }
+        String cleaned = s.trim().toLowerCase().replaceAll("\\s+", " ");
+
+        // ── Layer 0: recruiter-curated synonym short-circuit ─────────────
+        // Before paying the embedding round-trip, scan the active SOFT
+        // catalog and check whether `cleaned` exactly matches any entry's
+        // canonical name OR any of its synonyms. Catches the paraphrase
+        // failures cosine similarity caps out on ("team lead" → leadership,
+        // "communicates well" → communication). Score reported as 1.0
+        // because this is a deterministic dictionary hit, not a probabilistic
+        // match — the recruiter explicitly told us these are the same.
+        List<SkillCatalogEntry> softRows = repo.findActiveByType("SOFT");
+        for (SkillCatalogEntry row : softRows) {
+            if (cleaned.equals(row.getName())) {
+                repo.touchLastSeen(row.getName(), Instant.now());
+                log.info("[match-soft-skill] '{}' -> '{}' (exact name)", cleaned, row.getName());
+                return ResponseEntity.ok(new NearestSkillResponse(
+                        row.getName(),
+                        row.getDisplayName() != null ? row.getDisplayName() : row.getName(),
+                        1.0));
+            }
+            if (row.getSynonyms() != null) {
+                for (String syn : row.getSynonyms()) {
+                    if (syn != null && cleaned.equals(syn.trim().toLowerCase())) {
+                        repo.touchLastSeen(row.getName(), Instant.now());
+                        log.info("[match-soft-skill] '{}' -> '{}' (synonym hit '{}')",
+                                cleaned, row.getName(), syn);
+                        return ResponseEntity.ok(new NearestSkillResponse(
+                                row.getName(),
+                                row.getDisplayName() != null ? row.getDisplayName() : row.getName(),
+                                1.0));
+                    }
+                }
+            }
+        }
+
+        // Lazy fetch embedding via cv-parser-service - the caller doesn't deal with Ollama.
+        List<Float> embedding = fetchEmbeddingFromCvParser(cleaned);
+        if (embedding == null) {
+            log.warn("[match-soft-skill] embedder unavailable for '{}'", cleaned);
+            return ResponseEntity.noContent().build();
+        }
+
+        // pgvector NN search restricted to type=SOFT. Reuse the existing
+        // findNearestSkillsByType repo method that powers Layer 4 of /resolve.
+        List<Object[]> rows = repo.findNearestSkillsByType(
+                toVectorLiteral(embedding), "SOFT", "", 1);
+        if (rows.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        Object[] top = rows.get(0);
+        String name        = (String) top[0];
+        String displayName = (String) top[1];
+        double score       = ((Number) top[2]).doubleValue();
+
+        if (score < SOFT_MATCH_THRESHOLD) {
+            log.info("[match-soft-skill] no confident match for '{}' "
+                   + "(closest='{}' score={})", cleaned, name, score);
+            return ResponseEntity.noContent().build();
+        }
+
+        // Touch the matched entry's last_seen_at so admins can see soft-skill
+        // demand from CVs even though we never auto-insert.
+        repo.touchLastSeen(name, Instant.now());
+
+        log.info("[match-soft-skill] '{}' -> '{}' (score {})",
+                cleaned, name, score);
+        return ResponseEntity.ok(new NearestSkillResponse(
+                name, displayName != null ? displayName : name, score));
     }
 
     // ─── LLM tiebreaker for the resolve gray band ────────────────────────────

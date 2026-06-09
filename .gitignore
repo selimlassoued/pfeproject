@@ -25,3 +25,7 @@ node_modules/
 # Builds
 dist/
 target/
+
+# Build artifacts that shouldn't be in git
+docs/diagrams/plantuml.jar
+backend/cv-parser-service/threshold_calibration_cache.json

@@ -39,12 +39,20 @@ export class SkillsCatalog implements OnInit {
   removedNames: string[] = [];
 
   newSkillInput = '';
-  // The Skills Catalog only curates HARD skills - soft skills stay as the
-  // universal hardcoded list on the candidate Preferences page (deliberately
-  // not editable here). This constant exists so the API contract still gets
-  // an explicit type value.
-  readonly newSkillType = 'HARD' as const;
+  // The Skills Catalog now curates BOTH HARD and SOFT skills.
+  // viewType drives what the table shows AND what type new entries get when added.
+  // SOFT skills are universal across industries, so the domain filter is hidden
+  // when viewing them.
+  viewType: 'HARD' | 'SOFT' = 'HARD';
   newSkillDomains: string[] = [];
+
+  // ── Synonym editor (SOFT skills only) ───────────────────────────────────
+  // Recruiter-curated paraphrases that short-circuit the embedding cascade
+  // in /match-soft-skill. Built up via the chip input below + the Suggest
+  // button (which calls the LLM via cv-parser-service for candidates).
+  newSkillSynonyms: string[] = [];
+  synonymInput = '';
+  suggestingSynonyms = false;
 
   // ── Pagination state ────────────────────────────────────────────────────
   readonly pageSize = 10;
@@ -55,10 +63,19 @@ export class SkillsCatalog implements OnInit {
   readonly domainLabel = domainLabel;
 
   // ── Derived stats for the header banner ─────────────────────────────────
-  get totalSkillsCount(): number     { return this.activeSkills.length; }
-  get inDemandCount(): number        { return this.activeSkills.filter(s => s.currentDemandCount > 0).length; }
-  get universalCount(): number       { return this.activeSkills.filter(s => s.domains.length === 0).length; }
-  get manualCount(): number          { return this.activeSkills.filter(s => s.source === 'MANUAL').length; }
+  // All counts are filtered by the current viewType so the numbers always
+  // reflect what's actually shown in the table below.
+  get typeFiltered(): CatalogItem[] {
+    return this.activeSkills.filter(s => s.type === this.viewType);
+  }
+  get totalSkillsCount(): number     { return this.typeFiltered.length; }
+  get inDemandCount(): number        { return this.typeFiltered.filter(s => s.currentDemandCount > 0).length; }
+  get universalCount(): number       { return this.typeFiltered.filter(s => s.domains.length === 0).length; }
+  get manualCount(): number          { return this.typeFiltered.filter(s => s.source === 'MANUAL').length; }
+  /** Cross-type totals for the type toggle badge - tells the recruiter how
+   *  many entries exist on the OTHER tab so they can spot empty/light state. */
+  get hardSkillsCount(): number      { return this.activeSkills.filter(s => s.type === 'HARD').length; }
+  get softSkillsCount(): number      { return this.activeSkills.filter(s => s.type === 'SOFT').length; }
 
   /**
    * Maps each canonical domain code to a stable accent color used for chip
@@ -109,9 +126,14 @@ export class SkillsCatalog implements OnInit {
    */
   get filteredSkills(): CatalogItem[] {
     const q = this.newSkillInput.trim().toLowerCase();
-    const domainFilter = this.newSkillDomains;
+    // Domain filter only applies when viewing HARD skills - SOFT skills are
+    // universal, so the domain pills are hidden in the UI when viewType=SOFT.
+    const domainFilter = this.viewType === 'SOFT' ? [] : this.newSkillDomains;
 
     return this.activeSkills.filter(s => {
+      // 0. Type filter - separate tab for HARD vs SOFT.
+      if (s.type !== this.viewType) return false;
+
       // 1. Text filter - skip rows that don't match the search box (when set).
       if (q && !s.name.toLowerCase().includes(q) &&
               !s.displayName.toLowerCase().includes(q)) {
@@ -130,6 +152,88 @@ export class SkillsCatalog implements OnInit {
 
       return true;
     });
+  }
+
+  /**
+   * Switch between the HARD and SOFT views. Resets all in-progress filter and
+   * pagination state because they don't translate across tabs - someone who
+   * typed "kaf" looking for Kafka shouldn't see the SOFT search apply to that
+   * query when they switch tabs.
+   */
+  setViewType(t: 'HARD' | 'SOFT'): void {
+    if (this.viewType === t) return;
+    this.viewType = t;
+    this.newSkillInput = '';
+    this.newSkillDomains = [];
+    this.newSkillSynonyms = [];
+    this.synonymInput = '';
+    this.currentPage = 0;
+  }
+
+  // ── Synonym chip input helpers ──────────────────────────────────────────
+
+  /** Add the current text in the chip input to the pending synonyms list.
+   *  Normalizes (lowercase + trim + collapse whitespace) and dedupes. Bound
+   *  to Enter on the input. Splits on comma so the recruiter can paste
+   *  "team lead, people management, directing" and get three chips. */
+  addSynonymFromInput(): void {
+    const raw = this.synonymInput;
+    if (!raw || !raw.trim()) return;
+    const parts = raw.split(',');
+    for (const part of parts) {
+      const norm = part.trim().toLowerCase().replace(/\s+/g, ' ');
+      if (!norm) continue;
+      if (norm === this.newSkillInput.trim().toLowerCase()) continue;
+      if (!this.newSkillSynonyms.includes(norm)) {
+        this.newSkillSynonyms.push(norm);
+      }
+    }
+    this.synonymInput = '';
+  }
+
+  removeSynonym(syn: string): void {
+    this.newSkillSynonyms = this.newSkillSynonyms.filter(s => s !== syn);
+  }
+
+  /** Ask Qwen (via cv-parser-service) to propose synonyms for the canonical
+   *  name currently in the input. Recruiter reviews the suggestions as chips
+   *  and edits/removes any they disagree with before saving. */
+  async suggestSynonyms(): Promise<void> {
+    const name = this.newSkillInput.trim();
+    if (!name) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Type a skill name first',
+        text: 'Enter the canonical name above, then click Suggest to get paraphrases.',
+        timer: 2000, showConfirmButton: false,
+      });
+      return;
+    }
+    this.suggestingSynonyms = true;
+    try {
+      const suggested = await this.catalogService.suggestSynonyms(name, this.viewType);
+      let added = 0;
+      for (const s of suggested) {
+        const norm = s.trim().toLowerCase();
+        if (!norm || norm === name.toLowerCase()) continue;
+        if (!this.newSkillSynonyms.includes(norm)) {
+          this.newSkillSynonyms.push(norm);
+          added++;
+        }
+      }
+      if (added === 0) {
+        Swal.fire({
+          icon: 'info',
+          title: 'No new suggestions',
+          text: 'The LLM did not return any paraphrases beyond what you already have.',
+          timer: 2200, showConfirmButton: false,
+        });
+      }
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to suggest synonyms.' });
+    } finally {
+      this.suggestingSynonyms = false;
+    }
   }
 
   /** Slice of filteredSkills for the current page. */
@@ -151,8 +255,13 @@ export class SkillsCatalog implements OnInit {
   get isDuplicate(): boolean {
     const q = this.newSkillInput.trim().toLowerCase();
     if (!q) return false;
+    // Only consider duplicates within the SAME viewType - a HARD skill and a
+    // SOFT skill can share a name in theory (e.g. "leadership" could be both
+    // a soft trait and a domain knowledge tag). In practice the LLM
+    // classifier will reject the wrong-type one, but the UI doesn't preempt.
     return this.activeSkills.some(s =>
-      s.name.toLowerCase() === q || s.displayName.toLowerCase() === q,
+      s.type === this.viewType &&
+      (s.name.toLowerCase() === q || s.displayName.toLowerCase() === q),
     );
   }
 
@@ -203,9 +312,67 @@ export class SkillsCatalog implements OnInit {
     }
   }
 
+  /**
+   * Detect compound skill names like "Communication & Public Speaking" or
+   * "Initiative and Ownership". Returns the two parts if the name is a
+   * compound, null otherwise. Splits on " & " or " and " (case-insensitive)
+   * but only when both halves are non-empty after trimming - this avoids
+   * false positives like "C&C" or trailing "& Co".
+   *
+   * Why this matters: each soft skill should have its own synonym universe
+   * and its own job-requirement footprint. A row called
+   * "Communication & Public Speaking" lumps the two together so the matcher
+   * can't credit a candidate for one without the other and the synonym
+   * list mixes paraphrases from two unrelated concepts.
+   */
+  private splitCompoundName(name: string): { left: string; right: string } | null {
+    const match = name.match(/^(.+?)\s+(?:&|and)\s+(.+)$/i);
+    if (!match) return null;
+    const left  = match[1].trim();
+    const right = match[2].trim();
+    if (!left || !right) return null;
+    return { left, right };
+  }
+
   async addSkill(): Promise<void> {
     const name = this.newSkillInput.trim();
     if (!name) return;
+
+    // Compound-name guard: "Communication & Public Speaking" / "Initiative
+    // and Ownership" should be two separate catalog rows. Offer to auto-
+    // split. Recruiter can also force-add as-is via the third button
+    // (rare - e.g. "DevOps & CI/CD" might genuinely be one practice).
+    const compound = this.splitCompoundName(name);
+    if (compound) {
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: 'Looks like two skills',
+        html:
+          `<p>"<strong>${name}</strong>" reads as two skills joined together.</p>` +
+          `<p style="margin-top:0.5rem;font-size:0.9rem;">Each one deserves its own row so:</p>` +
+          `<ul style="text-align:left;margin:0.5rem auto;max-width:24rem;font-size:0.88rem;">` +
+            `<li>each gets its own AI-suggested synonyms</li>` +
+            `<li>recruiters can require just one on a job posting</li>` +
+            `<li>candidates' CV phrases credit the right competency</li>` +
+          `</ul>` +
+          `<p style="margin-top:0.75rem;font-size:0.92rem;">Add as:</p>` +
+          `<p style="font-weight:600;color:#1e40bc;">${compound.left} &nbsp;+&nbsp; ${compound.right}</p>`,
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Split into two',
+        denyButtonText: 'Add as-is anyway',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+      });
+
+      if (result.isDismissed) return;          // Cancel
+      if (result.isConfirmed) {                // Split into two
+        await this.addPair(compound.left, compound.right);
+        return;
+      }
+      // result.isDenied → fall through and add the compound as-is (escape hatch)
+    }
+
     // Block duplicates with a clear error. The recruiter could land here via:
     //   • the Add button (still clickable so the action gives explicit feedback)
     //   • pressing Enter from the keyboard
@@ -233,12 +400,21 @@ export class SkillsCatalog implements OnInit {
     }
     this.saving = true;
     try {
+      // SOFT skills are universal across industries - never tag with domains.
+      // The viewType drives both type and the domains-or-empty decision.
+      const domains = this.viewType === 'SOFT' ? [] : this.newSkillDomains;
+      // Flush any half-typed text in the synonym input before sending so the
+      // recruiter doesn't lose unsubmitted chips.
+      if (this.synonymInput.trim()) this.addSynonymFromInput();
       await this.catalogService.addManual(name, {
-        type:    this.newSkillType,
-        domains: this.newSkillDomains,
+        type:    this.viewType,
+        domains,
+        synonyms: this.newSkillSynonyms.length > 0 ? this.newSkillSynonyms : undefined,
       });
-      this.newSkillInput   = '';
-      this.newSkillDomains = [];
+      this.newSkillInput    = '';
+      this.newSkillDomains  = [];
+      this.newSkillSynonyms = [];
+      this.synonymInput     = '';
       this.currentPage = 0;
       await this.load();
       Swal.fire({
@@ -249,6 +425,79 @@ export class SkillsCatalog implements OnInit {
       });
     } catch {
       Swal.fire({ icon: 'error', title: 'Failed to add skill.' });
+    } finally {
+      this.saving = false;
+    }
+  }
+
+  /**
+   * Add two skills at once - used when the compound-name guard splits
+   * "Foo & Bar" into "Foo" + "Bar". Each row is created via the same
+   * MANUAL flow as a single add, then auto-populated with AI synonyms so
+   * the recruiter gets a useful starting point without two extra clicks.
+   *
+   * Failures on either half are surfaced together (we don't half-commit -
+   * if the first one creates and the second errors, we still tell the user
+   * about both outcomes so they can retry just the missing one).
+   */
+  private async addPair(left: string, right: string): Promise<void> {
+    this.saving = true;
+    const created: string[] = [];
+    const failed: string[] = [];
+    try {
+      for (const part of [left, right]) {
+        // Skip if it already exists - avoids the duplicate-error path.
+        const dupe = this.activeSkills.some(s =>
+          s.type === this.viewType &&
+          (s.name.toLowerCase() === part.toLowerCase() ||
+           s.displayName.toLowerCase() === part.toLowerCase()),
+        );
+        if (dupe) {
+          failed.push(`${part} (already exists)`);
+          continue;
+        }
+        try {
+          // Ask the AI for synonyms BEFORE creating the row, so the row
+          // lands with its synonym list already populated. Empty array on
+          // LLM hiccup (we still create the row).
+          const synonyms = await this.catalogService.suggestSynonyms(part, this.viewType);
+          await this.catalogService.addManual(part, {
+            type:     this.viewType,
+            domains:  this.viewType === 'SOFT' ? [] : this.newSkillDomains,
+            synonyms: synonyms.length > 0 ? synonyms : undefined,
+          });
+          created.push(part);
+        } catch {
+          failed.push(part);
+        }
+      }
+      this.newSkillInput    = '';
+      this.newSkillDomains  = [];
+      this.newSkillSynonyms = [];
+      this.synonymInput     = '';
+      this.currentPage = 0;
+      await this.load();
+
+      // Combined feedback - whichever path the recruiter ends up in, they
+      // see what landed and what didn't.
+      if (created.length === 2 && failed.length === 0) {
+        Swal.fire({
+          icon: 'success',
+          title: `Added "${created[0]}" and "${created[1]}"`,
+          html: `<p>Each one got AI-suggested synonyms. Use the Synonyms button to edit.</p>`,
+          timer: 2000, showConfirmButton: false,
+        });
+      } else if (created.length > 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Partially added',
+          html:
+            `<p>Created: <strong>${created.join(', ')}</strong></p>` +
+            `<p style="margin-top:0.4rem;">Skipped: <strong>${failed.join(', ')}</strong></p>`,
+        });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Failed to add either skill' });
+      }
     } finally {
       this.saving = false;
     }
@@ -315,6 +564,143 @@ export class SkillsCatalog implements OnInit {
       });
     } catch {
       Swal.fire({ icon: 'error', title: 'Failed to update domains.' });
+    }
+  }
+
+  /**
+   * Edit the synonyms list on an existing SOFT skill. Opens a dialog where
+   * the recruiter can review the chips, remove any, type new ones, or click
+   * Suggest to ask the LLM for more. On Save we PATCH with the full
+   * replacement list (empty list explicitly clears).
+   */
+  async editSynonyms(item: CatalogItem): Promise<void> {
+    const initial = [...(item.synonyms || [])];
+    const renderChip = (s: string) => `
+      <span class="hireai-syn-chip" data-syn="${s}">
+        ${s}
+        <button type="button" class="hireai-syn-chip__x" data-remove="${s}" title="Remove">&times;</button>
+      </span>
+    `;
+
+    const result = await Swal.fire({
+      title: `Synonyms for "${item.displayName}"`,
+      // All styling lives in swal2-hireai.css under the .hireai-syn-* classes
+      // so the dialog adapts cleanly to both dark and light themes. Avoid
+      // inline style="..." on these elements - they hardcode colors and
+      // override the theme-aware rules.
+      html: `
+        <p class="hireai-syn-intro">
+          Paraphrases that should resolve to <strong>${item.displayName}</strong>
+          when a candidate's CV uses them. Press Enter or comma to add a chip.
+          Click <em>Suggest</em> to ask the AI for more.
+        </p>
+        <div id="hireai-syn-chips" class="hireai-syn-host">
+          ${initial.map(renderChip).join('')}
+        </div>
+        <div class="hireai-syn-input-row">
+          <input id="hireai-syn-input" type="text"
+                 class="hireai-syn-input"
+                 placeholder="Type a paraphrase + Enter" />
+          <button type="button" id="hireai-syn-suggest"
+                  class="hireai-syn-suggest">
+            Suggest
+          </button>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Save',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true,
+      focusConfirm: false,
+      didOpen: () => {
+        const chipsHost  = document.getElementById('hireai-syn-chips');
+        const inputEl    = document.getElementById('hireai-syn-input') as HTMLInputElement | null;
+        const suggestBtn = document.getElementById('hireai-syn-suggest');
+        if (!chipsHost || !inputEl || !suggestBtn) return;
+
+        const getChips = () => Array.from(chipsHost.querySelectorAll<HTMLElement>('[data-syn]'))
+          .map(el => el.getAttribute('data-syn') || '');
+        const setChips = (list: string[]) => {
+          const seen = new Set<string>();
+          const deduped = list.filter(s => {
+            const n = (s || '').trim().toLowerCase();
+            if (!n || seen.has(n)) return false;
+            seen.add(n);
+            return true;
+          });
+          chipsHost.innerHTML = deduped.map(renderChip).join('');
+          chipsHost.querySelectorAll<HTMLButtonElement>('[data-remove]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const v = btn.getAttribute('data-remove');
+              setChips(getChips().filter(s => s !== v));
+            });
+          });
+        };
+        setChips(initial);
+
+        const submit = () => {
+          const raw = inputEl.value || '';
+          const parts = raw.split(',');
+          const cur = getChips();
+          for (const p of parts) {
+            const n = p.trim().toLowerCase().replace(/\s+/g, ' ');
+            if (n && n !== item.name.toLowerCase() && !cur.includes(n)) cur.push(n);
+          }
+          inputEl.value = '';
+          setChips(cur);
+        };
+        inputEl.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ',') {
+            ev.preventDefault();
+            submit();
+          }
+        });
+
+        suggestBtn.addEventListener('click', async () => {
+          (suggestBtn as HTMLButtonElement).disabled = true;
+          (suggestBtn as HTMLButtonElement).innerText = 'Asking AI…';
+          try {
+            const suggested = await this.catalogService.suggestSynonyms(item.displayName, item.type);
+            const cur = getChips();
+            const canonicalLc = item.name.toLowerCase();
+            for (const s of suggested) {
+              const n = (s || '').trim().toLowerCase();
+              if (n && n !== canonicalLc && !cur.includes(n)) cur.push(n);
+            }
+            setChips(cur);
+          } finally {
+            (suggestBtn as HTMLButtonElement).disabled = false;
+            (suggestBtn as HTMLButtonElement).innerText = 'Suggest';
+          }
+        });
+      },
+      preConfirm: () => {
+        const chipsHost = document.getElementById('hireai-syn-chips');
+        if (!chipsHost) return [];
+        return Array.from(chipsHost.querySelectorAll<HTMLElement>('[data-syn]'))
+          .map(el => el.getAttribute('data-syn') || '')
+          .filter(s => s.length > 0);
+      },
+    });
+
+    if (!result.isConfirmed) return;
+    const newSynonyms = (result.value || []) as string[];
+
+    const changed = newSynonyms.length !== initial.length ||
+                    newSynonyms.some(s => !initial.includes(s));
+    if (!changed) return;
+
+    try {
+      await this.catalogService.updateSkillSynonyms(item.name, newSynonyms);
+      await this.load();
+      Swal.fire({
+        icon: 'success',
+        title: 'Synonyms updated',
+        timer: 1200,
+        showConfirmButton: false,
+      });
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Failed to update synonyms.' });
     }
   }
 

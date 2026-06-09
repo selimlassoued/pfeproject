@@ -1348,3 +1348,339 @@
   color: var(--text-soft);
   padding: .4rem 0;
 }
+
+/* ── Light mode overrides (dark mode stays untouched) ─────────────────── */
+
+/* Page + breadcrumb */
+:root[data-theme="light"] .ad-title { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-subtitle,
+:root[data-theme="light"] .ad-breadcrumb,
+:root[data-theme="light"] .ad-breadcrumb-sep { color: #4b5563 !important; }
+:root[data-theme="light"] .ad-back { color: #4b5563 !important; }
+:root[data-theme="light"] .ad-back:hover { color: #1a1f3a !important; }
+
+/* Status pill - INTERVIEW_PHASE */
+:root[data-theme="light"] .ad-status {
+  background: rgba(99, 102, 241, 0.10) !important;
+  color: #3730a3 !important;
+  border-color: rgba(99, 102, 241, 0.32) !important;
+}
+:root[data-theme="light"] .ad-status.applied,
+:root[data-theme="light"] .ad-status.under_review {
+  background: rgba(99, 102, 241, 0.10) !important;
+  color: #3730a3 !important;
+}
+:root[data-theme="light"] .ad-status.interview_phase {
+  background: rgba(99, 102, 241, 0.12) !important;
+  color: #4338ca !important;
+  border-color: rgba(99, 102, 241, 0.38) !important;
+}
+:root[data-theme="light"] .ad-status.offer {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #166534 !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+}
+:root[data-theme="light"] .ad-status.hired {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #14532d !important;
+  border-color: rgba(34, 197, 94, 0.42) !important;
+}
+:root[data-theme="light"] .ad-status.rejected {
+  background: rgba(248, 113, 113, 0.10) !important;
+  color: #b91c1c !important;
+  border-color: rgba(248, 113, 113, 0.32) !important;
+}
+:root[data-theme="light"] .ad-status.flagged {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #92400e !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+:root[data-theme="light"] .ad-status.blocked {
+  background: rgba(248, 113, 113, 0.15) !important;
+  color: #991b1b !important;
+  border-color: rgba(248, 113, 113, 0.40) !important;
+}
+
+/* Block titles (Interviews / Offer / Job headers) */
+:root[data-theme="light"] .ad-block-title,
+:root[data-theme="light"] .interview-section-title,
+:root[data-theme="light"] .offer-section-title { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-block-sub { color: #4b5563 !important; }
+
+/* Summary cards (Interviews / Offer at top) */
+:root[data-theme="light"] .ad-summary-title { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-summary-line { color: #1f2937 !important; }
+:root[data-theme="light"] .ad-summary-line strong { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-summary-line-muted { color: #4b5563 !important; }
+:root[data-theme="light"] .ad-summary-cta { color: #1e40bc !important; }
+:root[data-theme="light"] .ad-summary-spinner { color: #4b5563 !important; }
+
+/* Summary badges */
+:root[data-theme="light"] .ad-summary-badge-info,
+:root[data-theme="light"] .ad-summary-badge-status-sent,
+:root[data-theme="light"] .ad-summary-badge-status-negotiating {
+  background: rgba(99, 102, 241, 0.10) !important;
+  border-color: rgba(99, 102, 241, 0.32) !important;
+  color: #3730a3 !important;
+}
+:root[data-theme="light"] .ad-summary-badge-warn {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .ad-summary-badge-status-accepted {
+  background: rgba(34, 197, 94, 0.14) !important;
+  border-color: rgba(34, 197, 94, 0.38) !important;
+  color: #166534 !important;
+}
+:root[data-theme="light"] .ad-summary-badge-status-declined,
+:root[data-theme="light"] .ad-summary-badge-status-expired,
+:root[data-theme="light"] .ad-summary-badge-status-withdrawn {
+  background: rgba(248, 113, 113, 0.12) !important;
+  border-color: rgba(248, 113, 113, 0.35) !important;
+  color: #b91c1c !important;
+}
+
+/* Left card - avatar circle + name */
+:root[data-theme="light"] .ad-avatar { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-name { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-meta { color: #4b5563 !important; }
+:root[data-theme="light"] .ad-mini-label { color: #4b5563 !important; }
+:root[data-theme="light"] .ad-mini-value { color: #1a1f3a !important; }
+
+/* Right side - key/value pairs (Title / Javascript / Job ID) */
+:root[data-theme="light"] .ad-k { color: #4b5563 !important; }
+:root[data-theme="light"] .ad-v { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-url { color: #1e40bc !important; }
+
+/* Match score */
+:root[data-theme="light"] .ad-match-score { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-match-badge { color: #1e40bc !important; }
+:root[data-theme="light"] .ad-rank-badge {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #92400e !important;
+}
+
+/* Warnings + must-have */
+:root[data-theme="light"] .ad-warning {
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  background: rgba(245, 158, 11, 0.08) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .ad-warning-info {
+  background: rgba(99, 102, 241, 0.08) !important;
+  border-color: rgba(99, 102, 241, 0.32) !important;
+  color: #3730a3 !important;
+}
+
+/* Domain box */
+:root[data-theme="light"] .ad-domain-title { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-domain-caption { color: #4b5563 !important; }
+:root[data-theme="light"] .ad-domain-caption-muted { color: #6b7280 !important; }
+:root[data-theme="light"] .ad-domain-chip { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-domain-icon { color: #1e40bc !important; }
+
+/* Skill tags + scores */
+:root[data-theme="light"] .ad-tag-match {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.32) !important;
+  color: #166534 !important;
+}
+:root[data-theme="light"] .ad-tag-missing {
+  background: rgba(249, 115, 22, 0.12) !important;
+  border-color: rgba(249, 115, 22, 0.32) !important;
+  color: #9a3412 !important;
+}
+:root[data-theme="light"] .ad-tag-partial {
+  background: rgba(249, 115, 22, 0.12) !important;
+  border-color: rgba(249, 115, 22, 0.32) !important;
+  color: #9a3412 !important;
+}
+:root[data-theme="light"] .ad-empty { color: #6b7280 !important; }
+
+/* Requirement rows */
+:root[data-theme="light"] .ad-req-desc { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-req-evidence { color: #4b5563 !important; }
+:root[data-theme="light"] .ad-req-score-high { color: #166534 !important; }
+:root[data-theme="light"] .ad-req-score-mid  { color: #9a3412 !important; }
+:root[data-theme="light"] .ad-req-score-low  { color: #b91c1c !important; }
+:root[data-theme="light"] .ad-q-item { color: #1a1f3a !important; }
+
+/* Evidence/source tags */
+:root[data-theme="light"] .ad-ev-tag { color: #1e40bc !important; }
+:root[data-theme="light"] .ad-source-tag { color: #1e40bc !important; }
+:root[data-theme="light"] .ad-skill-reason { color: #6b7280 !important; }
+:root[data-theme="light"] .ad-skill-pct-match { color: #166534 !important; }
+:root[data-theme="light"] .ad-skill-pct-partial { color: #9a3412 !important; }
+:root[data-theme="light"] .ad-skill-pct-missing { color: #b91c1c !important; }
+
+/* AI / Signal buttons (the pill action buttons row) */
+:root[data-theme="light"] .btn-ai {
+  background: linear-gradient(135deg, rgba(99,102,241,0.10), rgba(30,64,188,0.12)) !important;
+  border-color: rgba(99,102,241,0.32) !important;
+  color: #1e40bc !important;
+}
+:root[data-theme="light"] .btn-ai:hover {
+  background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(30,64,188,0.22)) !important;
+  border-color: rgba(99,102,241,0.55) !important;
+}
+:root[data-theme="light"] .btn-signal {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.40) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .btn-signal:hover {
+  background: rgba(245, 158, 11, 0.20) !important;
+  border-color: rgba(245, 158, 11, 0.55) !important;
+}
+:root[data-theme="light"] .ad-linkbtn-ai { color: #1e40bc !important; }
+:root[data-theme="light"] .ad-linkbtn-signal { color: #92400e !important; }
+
+/* Pipeline steps */
+:root[data-theme="light"] .ad-pipeline-step { color: #6b7280 !important; }
+:root[data-theme="light"] .ad-pipeline-step.done { color: #166534 !important; }
+:root[data-theme="light"] .ad-pipeline-step.active { color: #1a1f3a !important; }
+
+/* Score explanation panel */
+:root[data-theme="light"] .ad-score-explanation { color: #4b5563 !important; }
+
+/* Status editor (the inline status select) */
+:root[data-theme="light"] .ad-status-edit select.input { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-status-edit::after { color: #4b5563 !important; }
+:root[data-theme="light"] .ad-status-final { color: #6b7280 !important; }
+
+/* Withdrawn note (banner above offer section) */
+:root[data-theme="light"] .ad-withdrawn-note { color: #3730a3 !important; }
+
+/* Interview cards */
+:root[data-theme="light"] .interview-status-pill {
+  background: rgba(99, 102, 241, 0.10) !important;
+  border-color: rgba(99, 102, 241, 0.32) !important;
+  color: #3730a3 !important;
+}
+:root[data-theme="light"] .interview-card.in_progress .interview-status-pill {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.40) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .interview-card.completed .interview-status-pill {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+  color: #166534 !important;
+}
+:root[data-theme="light"] .interview-card.cancelled .interview-status-pill {
+  background: rgba(248, 113, 113, 0.10) !important;
+  border-color: rgba(248, 113, 113, 0.30) !important;
+  color: #b91c1c !important;
+}
+:root[data-theme="light"] .interview-date { color: #4b5563 !important; }
+:root[data-theme="light"] .interview-room-label { color: #1e40bc !important; }
+:root[data-theme="light"] .interview-private-note { color: #6b7280 !important; }
+:root[data-theme="light"] .interview-request-sent { color: #166534 !important; }
+:root[data-theme="light"] .interview-state-msg,
+:root[data-theme="light"] .interview-empty { color: #6b7280 !important; }
+
+/* Recruiter invites */
+:root[data-theme="light"] .interview-invite-label { color: #1e40bc !important; }
+:root[data-theme="light"] .interview-invite-chip {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.32) !important;
+  color: #166534 !important;
+}
+:root[data-theme="light"] .interview-invite-empty { color: #6b7280 !important; }
+:root[data-theme="light"] .interview-invite-select { color: #1a1f3a !important; }
+:root[data-theme="light"] .interview-invite-select option {
+  background: #ffffff !important;
+  color: #1a1f3a !important;
+}
+:root[data-theme="light"] .interview-blocked-badge {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #92400e !important;
+}
+
+/* Delegation panel */
+:root[data-theme="light"] .interview-deleg-badge {
+  background: rgba(168, 132, 226, 0.14) !important;
+  border-color: rgba(168, 132, 226, 0.45) !important;
+  color: #5b21b6 !important;
+}
+:root[data-theme="light"] .interview-deleg-meta { color: #4b5563 !important; }
+:root[data-theme="light"] .interview-deleg-msg { color: #4b5563 !important; }
+
+/* Reschedule panel */
+:root[data-theme="light"] .interview-resched-badge {
+  background: rgba(99, 102, 241, 0.10) !important;
+  border-color: rgba(99, 102, 241, 0.32) !important;
+  color: #3730a3 !important;
+}
+:root[data-theme="light"] .interview-resched-panel--from-other .interview-resched-badge {
+  background: rgba(245, 158, 11, 0.14) !important;
+  border-color: rgba(245, 158, 11, 0.40) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .interview-resched-meta { color: #4b5563 !important; }
+:root[data-theme="light"] .interview-resched-msg { color: #4b5563 !important; }
+:root[data-theme="light"] .interview-resched-slot { color: #1a1f3a !important; }
+:root[data-theme="light"] .interview-resched-slot-day { color: #4b5563 !important; }
+:root[data-theme="light"] .interview-resched-slot-time { color: #1a1f3a !important; }
+:root[data-theme="light"] .interview-resched-slot-readonly { color: #1a1f3a !important; }
+
+/* Declined proposal panel */
+:root[data-theme="light"] .interview-declined-badge {
+  background: rgba(248, 113, 113, 0.12) !important;
+  border-color: rgba(248, 113, 113, 0.38) !important;
+  color: #b91c1c !important;
+}
+:root[data-theme="light"] .interview-declined-line { color: #1a1f3a !important; }
+:root[data-theme="light"] .interview-declined-slot-day { color: #4b5563 !important; }
+:root[data-theme="light"] .interview-declined-slot-time { color: #1a1f3a !important; }
+:root[data-theme="light"] .interview-declined-reason { color: #1a1f3a !important; }
+:root[data-theme="light"] .interview-declined-noreason,
+:root[data-theme="light"] .interview-declined-cta { color: #6b7280 !important; }
+
+/* Proposal panel */
+:root[data-theme="light"] .interview-proposal-badge {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.40) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .interview-proposal-meta { color: #4b5563 !important; }
+:root[data-theme="light"] .interview-proposal-slot { color: #1a1f3a !important; }
+
+/* Candidate history list (left panel) */
+:root[data-theme="light"] .ad-history-row { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-history-title { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-history-score { color: #1a1f3a !important; }
+:root[data-theme="light"] .ad-history-date { color: #6b7280 !important; }
+:root[data-theme="light"] .ad-history-empty { color: #6b7280 !important; }
+:root[data-theme="light"] .ad-history-status,
+:root[data-theme="light"] .ad-history-status-applied { color: #1e40bc !important; }
+:root[data-theme="light"] .ad-history-status-under_review { color: #92400e !important; }
+:root[data-theme="light"] .ad-history-status-interview_phase { color: #6b21a8 !important; }
+:root[data-theme="light"] .ad-history-status-offer,
+:root[data-theme="light"] .ad-history-status-hired { color: #166534 !important; }
+:root[data-theme="light"] .ad-history-status-rejected { color: #b91c1c !important; }
+:root[data-theme="light"] .ad-history-status-flagged,
+:root[data-theme="light"] .ad-history-status-blocked { color: #9d174d !important; }
+:root[data-theme="light"] .ad-history-status-withdrawn { color: #6b7280 !important; }
+
+/* Modal */
+:root[data-theme="light"] .modal-title { color: #92400e !important; }
+:root[data-theme="light"] .modal-desc { color: #4b5563 !important; }
+:root[data-theme="light"] .modal-desc strong { color: #1a1f3a !important; }
+:root[data-theme="light"] .modal-label { color: #4b5563 !important; }
+:root[data-theme="light"] .modal-required { color: #92400e !important; }
+:root[data-theme="light"] .modal-textarea { color: #1a1f3a !important; }
+:root[data-theme="light"] .modal-textarea::placeholder { color: #9ca3af !important; }
+:root[data-theme="light"] .modal-error {
+  background: rgba(248, 113, 113, 0.10) !important;
+  border-color: rgba(248, 113, 113, 0.35) !important;
+  color: #b91c1c !important;
+}
+:root[data-theme="light"] .modal-success {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+  color: #166534 !important;
+}

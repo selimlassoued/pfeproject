@@ -281,6 +281,146 @@
 }
 .swal-hireai-validation::before { display: none !important; }
 
+/* ── Synonyms editor dialog (Skills Catalog → SOFT row → Synonyms) ──────
+   The dialog is rendered into document.body by SweetAlert, so the
+   component-scoped CSS in skills-catalog.css can't reach the chip host,
+   input, or suggest button. Styling lives here and is global. */
+.hireai-syn-intro {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  text-align: left;
+  color: var(--text-muted);
+}
+.hireai-syn-host {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.65rem;
+  margin-bottom: 0.7rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  text-align: left;
+}
+.hireai-syn-input-row {
+  display: flex;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+.hireai-syn-input {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.hireai-syn-input::placeholder {
+  color: var(--text-soft);
+}
+.hireai-syn-input:focus {
+  outline: none;
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 0 3px var(--border-focus);
+}
+.hireai-syn-suggest {
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(168,132,226,0.55);
+  background: linear-gradient(135deg, rgba(168,132,226,0.30), rgba(124,99,196,0.40));
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 120ms ease, box-shadow 120ms ease;
+}
+.hireai-syn-suggest:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.hireai-syn-suggest:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+/* Chips inside the synonyms dialog. Same purple identity as the in-page
+   editor so the two feel like one tool. */
+.hireai-syn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(168,132,226,0.28);
+  border: 1px solid rgba(168,132,226,0.55);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #f3e8ff;
+}
+.hireai-syn-chip__x {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+  transition: color 120ms ease;
+}
+.hireai-syn-chip__x:hover {
+  color: #ff8a8a;
+}
+
+/* Light-mode overrides for the synonyms dialog. The container must use a
+   real white background (not a tinted token at 6-9% alpha that lets the
+   Swal backdrop bleed through). */
+:root[data-theme="light"] .hireai-syn-intro {
+  color: #475569 !important;
+}
+:root[data-theme="light"] .hireai-syn-host {
+  background: #f8fafc !important;
+  border: 1px solid #d1d5db !important;
+}
+:root[data-theme="light"] .hireai-syn-input {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  color: #0b1026 !important;
+}
+:root[data-theme="light"] .hireai-syn-input::placeholder {
+  color: #94a3b8 !important;
+}
+:root[data-theme="light"] .hireai-syn-input:focus {
+  border-color: #1e40bc !important;
+  box-shadow: 0 0 0 3px rgba(30, 64, 188, 0.15) !important;
+}
+:root[data-theme="light"] .hireai-syn-suggest {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  border: 1px solid transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.22) !important;
+}
+:root[data-theme="light"] .hireai-syn-suggest:hover:not(:disabled) {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.30) !important;
+}
+:root[data-theme="light"] .hireai-syn-chip {
+  background: rgba(139,92,246,0.10) !important;
+  border: 1px solid rgba(139,92,246,0.30) !important;
+  color: #6d28d9 !important;
+  font-weight: 600 !important;
+}
+:root[data-theme="light"] .hireai-syn-chip__x {
+  color: #94a3b8 !important;
+}
+:root[data-theme="light"] .hireai-syn-chip__x:hover {
+  color: #dc2626 !important;
+}
+
 /* Domain checkboxes inside the "Edit domains" SweetAlert (Skills Catalog
    admin page). Mirror the look of the inline domain checkboxes on the add
    form so the dialog feels native. */
@@ -306,4 +446,177 @@
   height: 16px;
   accent-color: var(--color-secondary);
   margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES
+   The popup is layered on top of SweetAlert's dark backdrop. The default
+   theme above uses semi-transparent surface tokens (good on the dark
+   page bg, wrong on white) so the dark backdrop bleeds through and the
+   dialog reads as dark-gray-on-darker-gray. Light mode needs an OPAQUE
+   white card, dark text, and proper button contrast.
+
+   This file is loaded globally via angular.json so ":root[data-theme]"
+   selectors apply without ViewEncapsulation interference.
+══════════════════════════════════════════════════════════════════════ */
+
+/* The backdrop itself: lighter dim so it doesn't fight the white card
+   visually. Same blur, just less darkness. */
+:root[data-theme="light"] .swal2-container {
+  background-color: rgba(15, 23, 42, 0.32) !important;
+}
+
+/* Popup: solid white card with brand-tinted border and shadow. NO
+   gradient - a flat surface reads cleaner in light mode and matches
+   the rest of the page chrome. */
+:root[data-theme="light"] .swal2-popup,
+:root[data-theme="light"] .swal-hireai-popup {
+  background: #ffffff !important;
+  border: 1px solid rgba(30, 64, 188, 0.18) !important;
+  box-shadow:
+    0 1px 2px rgba(30, 64, 188, 0.08),
+    0 18px 48px rgba(30, 64, 188, 0.18) !important;
+  color: #0b1026 !important;
+}
+
+/* Title: keep brand blue but bump weight so it reads as a deliberate
+   heading rather than a tinted label. */
+:root[data-theme="light"] .swal2-title,
+:root[data-theme="light"] .swal-hireai-title {
+  color: #1e40bc !important;
+  font-weight: 700 !important;
+}
+
+/* Body text: dark slate, fully readable on white. */
+:root[data-theme="light"] .swal2-html-container {
+  color: #334155 !important;
+}
+
+/* Inputs inside Swal: white field with light border. */
+:root[data-theme="light"] .swal2-input,
+:root[data-theme="light"] .swal2-textarea,
+:root[data-theme="light"] .swal2-select {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  color: #0b1026 !important;
+}
+:root[data-theme="light"] .swal2-input:focus,
+:root[data-theme="light"] .swal2-textarea:focus,
+:root[data-theme="light"] .swal2-select:focus {
+  border-color: #1e40bc !important;
+  box-shadow: 0 0 0 3px rgba(30, 64, 188, 0.18) !important;
+}
+:root[data-theme="light"] .swal2-input::placeholder,
+:root[data-theme="light"] .swal2-textarea::placeholder {
+  color: #94a3b8 !important;
+}
+:root[data-theme="light"] .swal2-select option {
+  background: #ffffff !important;
+  color: #0b1026 !important;
+}
+
+/* Confirm button: solid brand-blue gradient (looks the same in both
+   themes; explicitly listed here so the !important from the theme
+   doesn't cascade differently). */
+:root[data-theme="light"] .swal2-confirm,
+:root[data-theme="light"] .swal-hireai-confirm {
+  background: linear-gradient(135deg, #1e40bc, #4f6ed5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(30, 64, 188, 0.28) !important;
+}
+:root[data-theme="light"] .swal2-confirm:hover,
+:root[data-theme="light"] .swal-hireai-confirm:hover {
+  box-shadow: 0 6px 20px rgba(30, 64, 188, 0.38) !important;
+}
+
+/* Cancel button: white with gray border and dark text. The dark-mode
+   rule had a transparent bg which on white renders as invisible. */
+:root[data-theme="light"] .swal2-cancel,
+:root[data-theme="light"] .swal-hireai-cancel {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0b1026 !important;
+}
+:root[data-theme="light"] .swal2-cancel:hover,
+:root[data-theme="light"] .swal-hireai-cancel:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Deny / danger button: clear red so the destructive intent is obvious. */
+:root[data-theme="light"] .swal2-deny {
+  background: #fef2f2 !important;
+  border: 1px solid #fca5a5 !important;
+  color: #991b1b !important;
+}
+:root[data-theme="light"] .swal2-deny:hover {
+  background: #fee2e2 !important;
+  border-color: #ef4444 !important;
+}
+
+/* Validation message: light red banner. */
+:root[data-theme="light"] .swal2-validation-message,
+:root[data-theme="light"] .swal-hireai-validation {
+  background: rgba(220, 38, 38, 0.08) !important;
+  border: 1px solid rgba(220, 38, 38, 0.35) !important;
+  color: #991b1b !important;
+}
+
+/* Icon rings: tightened so the warning/info/success icons feel solid
+   instead of ghosted on white. */
+:root[data-theme="light"] .swal2-icon {
+  border-color: #cbd5e1 !important;
+}
+:root[data-theme="light"] .swal2-icon.swal2-warning {
+  border-color: rgba(217, 119, 6, 0.55) !important;
+  color: #d97706 !important;
+}
+:root[data-theme="light"] .swal2-icon.swal2-error {
+  border-color: rgba(220, 38, 38, 0.55) !important;
+  color: #dc2626 !important;
+}
+:root[data-theme="light"] .swal2-icon.swal2-success {
+  border-color: rgba(5, 150, 105, 0.55) !important;
+  color: #059669 !important;
+}
+:root[data-theme="light"] .swal2-icon.swal2-success [class^='swal2-success-line'] {
+  background: #059669 !important;
+}
+:root[data-theme="light"] .swal2-icon.swal2-success .swal2-success-ring {
+  border-color: rgba(5, 150, 105, 0.45) !important;
+}
+:root[data-theme="light"] .swal2-icon.swal2-error [class^='swal2-x-mark-line'] {
+  background: #dc2626 !important;
+}
+:root[data-theme="light"] .swal2-icon.swal2-info {
+  border-color: rgba(30, 64, 188, 0.55) !important;
+  color: #1e40bc !important;
+}
+
+/* Close button and timer bar. */
+:root[data-theme="light"] .swal2-close {
+  color: #64748b !important;
+}
+:root[data-theme="light"] .swal2-close:hover {
+  color: #0b1026 !important;
+}
+:root[data-theme="light"] .swal2-timer-progress-bar {
+  background: #1e40bc !important;
+}
+:root[data-theme="light"] .swal2-loader {
+  border-color: #1e40bc transparent #1e40bc transparent !important;
+}
+
+/* Edit-domains checkbox rows (skills catalog admin dialog). */
+:root[data-theme="light"] .hireai-edit-domain {
+  background: #f8fafc !important;
+  border: 1px solid #e5e7eb !important;
+  color: #0b1026 !important;
+}
+:root[data-theme="light"] .hireai-edit-domain:hover {
+  background: #eef2f7 !important;
+  border-color: #cbd5e1 !important;
+}
+:root[data-theme="light"] .hireai-edit-domain input[type="checkbox"] {
+  accent-color: #1e40bc !important;
 }

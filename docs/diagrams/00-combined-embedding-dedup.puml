@@ -1,0 +1,90 @@
+@startuml
+title Combined - Embedding and pgvector skill dedup across both applications
+
+skinparam activity {
+  BackgroundColor #F4F8FF
+  BorderColor #2C5AA0
+  DiamondBackgroundColor #FFF6E0
+  DiamondBorderColor #B8860B
+}
+skinparam partition {
+  BorderColor #2C5AA0
+}
+
+start
+:trigger received;
+
+if (trigger type?) then (job offer created)
+
+  partition "Application 1 - Job offer (Job Service)" {
+    :recruiter submits job offer
+    (title, description, requirements);
+    :persist JobOffer + JobRequirement rows;
+    :build job text (title + description + requirements);
+    :embed job text via Ollama (nomic-embed-text, 768-dim);
+    :UPDATE job_offer SET embedding = CAST(:vec AS vector);
+    while (more requirements?) is (yes)
+      :embed requirement description -> 768-dim;
+      :UPDATE job_requirement SET embedding = CAST(:vec AS vector);
+    endwhile (no)
+    :collect skills from all requirements -> skill queue;
+  }
+
+else (candidate applied)
+
+  partition "Application 2 - CV + GitHub (CV Parser Service)" {
+    :candidate applies (upload CV, optional GitHub URL);
+    :extract text from CV (PDF / DOCX);
+    fork
+      :LLM parse CV (skills, experience, projects, seniority);
+    fork again
+      :enrich from GitHub
+      (repo languages, frameworks, tech_stats);
+    end fork
+    :merge CV skills + GitHub skills
+    (attach recency / duration) -> skill queue;
+  }
+
+endif
+
+partition "Shared - Resolve skill vector (pgvector dedup in Skill Catalog)" {
+  while (more skills in queue?) is (yes)
+    :take next skill;
+    :normalize name (lowercase, trim);
+    :exact lookup in skill_catalog_entry (findById);
+    if (exact name exists and not removed?) then (yes)
+      :reuse stored vector (EXACT);
+    else (no)
+      :embed skill text via Ollama (768-dim);
+      :pgvector nearest-neighbour search
+      1 - (embedding <=> CAST(:vec AS vector)) AS score
+      ORDER BY embedding <=> :vec LIMIT k;
+      if (score >= 0.95 ?) then (auto-merge)
+        :reuse existing skill (AUTO_MERGE);
+      elseif (score >= 0.90 ?) then (0.90-0.95)
+        :ask LLM qwen2.5:7b "same skill?";
+        if (same?) then (yes)
+          :reuse existing skill (AUTO_MERGE);
+        else (no)
+          :create new SkillCatalogEntry
+          + persist embedding
+          (UPDATE SET embedding = CAST(:vec AS vector)) (NEW);
+        endif
+      elseif (score >= 0.85 ?) then (0.85-0.90)
+        :flag REVIEW for admin;
+        :create new SkillCatalogEntry
+        + persist embedding (NEW);
+      else (< 0.85)
+        :create new SkillCatalogEntry
+        + persist embedding (NEW);
+      endif
+    endif
+  endwhile (no)
+}
+
+:vectors cached
+(offer + requirement + skill vectors, or candidate skill vectors)
+ready for semantic matching;
+stop
+
+@enduml

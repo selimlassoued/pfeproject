@@ -420,6 +420,10 @@ public class CvParserClient {
             mapped.put("weight",          req.getWeight());
             mapped.put("min_years",       req.getMinYears());
             mapped.put("skill_level",     req.getSkillLevel());
+            // skill_type tells the cv-parser matcher which catalog (HARD or
+            // SOFT) to consult for this requirement. Null defaults to HARD on
+            // the Python side for backward compatibility with legacy rows.
+            mapped.put("skill_type",      req.getSkillType());
             mapped.put("degree_level",    req.getDegreeLevel());
             mapped.put("enrollment_type", req.getEnrollmentType());
             mapped.put("language_level",  req.getLanguageLevel());

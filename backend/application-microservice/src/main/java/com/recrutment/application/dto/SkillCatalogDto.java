@@ -25,6 +25,11 @@ public record SkillCatalogDto(
         String source,          // "EXTRACTED" | "MANUAL"
         boolean removed,
         String type,            // "HARD" | "SOFT" — drives which chip grid renders it
-        List<String> domains    // SOFTWARE_ENGINEERING / FINANCE_BANKING / etc.
+        List<String> domains,   // SOFTWARE_ENGINEERING / FINANCE_BANKING / etc.
                                 // empty list = universal (shown to every domain)
+        List<String> synonyms   // recruiter-curated paraphrases / aliases
+                                // primary use: SOFT skills, where CV phrasing
+                                // varies wildly ("team lead" → "leadership").
+                                // exact lookup on this list short-circuits the
+                                // embedding cascade. always lowercase.
 ) {}
