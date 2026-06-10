@@ -451,6 +451,52 @@ private readonly fb = inject(FormBuilder);
     };
   }
 
+  /**
+   * Build the HTML body for the "Catalog updated" toast. Same logic as the
+   * add-job version. Kept duplicated rather than extracted into a service
+   * because it's pure UI copy and never reused outside these two flows;
+   * a service-level helper would just push the markup further from the
+   * place that owns the message intent.
+   */
+  private buildEnrichmentToastHtml(
+    added: string[],
+    semanticSkipped: Array<{ typed: string; mappedTo: string; score: number }>,
+  ): string {
+    const parts: string[] = [];
+
+    if (added.length > 0) {
+      parts.push(
+        `<p style="margin:0 0 0.4rem;">` +
+          `Added ${added.length} new soft skill${added.length > 1 ? 's' : ''} ` +
+          `with AI-suggested synonyms:` +
+        `</p>` +
+        `<p style="margin:0 0 0.7rem;font-weight:600;color:#1e40bc;">` +
+          added.join(', ') +
+        `</p>`,
+      );
+    }
+
+    if (semanticSkipped.length > 0) {
+      const items = semanticSkipped.map(s =>
+        `<li><strong>${s.typed}</strong> ` +
+        `<span style="color:#64748b;">maps to</span> ` +
+        `<strong style="color:#1e40bc;">${s.mappedTo}</strong> ` +
+        `<span style="color:#64748b;">(${s.score.toFixed(2)})</span></li>`,
+      ).join('');
+      parts.push(
+        `<p style="margin:0.5rem 0 0.3rem;font-size:0.9rem;">` +
+          `Skipped as semantic duplicate${semanticSkipped.length > 1 ? 's' : ''} ` +
+          `(already covered by existing catalog rows):` +
+        `</p>` +
+        `<ul style="margin:0;padding-left:1.1rem;font-size:0.86rem;text-align:left;">` +
+          items +
+        `</ul>`,
+      );
+    }
+
+    return parts.join('');
+  }
+
   async submit() {
     this.error = null;
     clearServerErrors(this.form);
@@ -494,19 +540,14 @@ private readonly fb = inject(FormBuilder);
       // in the catalog before this edit gets added with AI synonyms. Runs
       // AFTER the job save so an Ollama hiccup can't roll back the edit.
       try {
-        const added = await this.catalogService
+        const result = await this.catalogService
           .enrichNewSoftSkillsFromRequirements(payload.requirements ?? []);
-        if (added.length > 0) {
+        if (result.added.length > 0 || result.semanticSkipped.length > 0) {
           await Swal.fire({
             icon: 'success',
             title: 'Catalog updated',
-            html:
-              `<p>Added ${added.length} new soft skill${added.length > 1 ? 's' : ''} ` +
-              `to the catalog with AI-suggested synonyms:</p>` +
-              `<p style="margin-top:0.6rem;font-weight:600;color:#1e40bc;">` +
-                `${added.join(', ')}` +
-              `</p>`,
-            timer: 3500,
+            html: this.buildEnrichmentToastHtml(result.added, result.semanticSkipped),
+            timer: 5000,
             timerProgressBar: true,
             showConfirmButton: false,
           });

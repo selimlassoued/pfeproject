@@ -48,6 +48,21 @@ export interface CatalogSnapshot {
   languages: CatalogItem[];
 }
 
+/**
+ * Return shape for enrichNewSoftSkillsFromRequirements. Lets the caller
+ * report all three buckets in the toast (created, semantic-skipped, exact-
+ * skipped) without re-querying the catalog or doing client-side bookkeeping.
+ */
+export interface SoftSkillEnrichmentResult {
+  /** New canonical names persisted to the catalog with AI synonyms attached. */
+  added: string[];
+  /** Names the recruiter typed that the pgvector NN search resolved to an
+   *  EXISTING canonical at score >= SEMANTIC_DEDUP_THRESHOLD. We skip
+   *  creating a new row because the existing one already covers them; the
+   *  recruiter's wording stays unchanged in the job_requirement table. */
+  semanticSkipped: Array<{ typed: string; mappedTo: string; score: number }>;
+}
+
 interface ExtractedResponse {
   skills:    Array<{ name: string; display_name: string; first_seen_at: string | null; current_demand_count: number; source: string; domains: string[] }>;
   languages: Array<{ name: string; display_name: string; first_seen_at: string | null; current_demand_count: number; source: string; domains: string[] }>;
@@ -362,35 +377,124 @@ export class CatalogService {
    * still resolve via embedding similarity, but cosine on abstract
    * concepts caps around 0.70 and we lose paraphrase recall.
    *
-   * Skips:
+   * Skips (treats as already-in-catalog, no new row created):
    *   - non-SKILL requirements
    *   - SKILL requirements where skillType is HARD (they go through a
    *     different flow - the candidate-CV upload triggers /resolve which
    *     grows the HARD catalog automatically)
    *   - blank descriptions
-   *   - names already in the catalog (case-insensitive by canonical key)
+   *   - names that exact-match an existing canonical name
+   *     (case-insensitive)
+   *   - names that exact-match any existing row's SYNONYM. The requirement
+   *     text stays as-is in job_requirement (recruiter's wording is
+   *     preserved) but no new catalog row is born, because the existing
+   *     row's synonym list already credits any CV phrasing that matches
+   *     it at /match-soft-skill time.
    *
    * Fails-soft on per-skill errors (one Ollama hiccup shouldn't prevent
    * the others from being added). Returns the displayName list of skills
    * actually persisted so the caller can show a toast.
    */
+  /**
+   * Cosine-similarity floor for the pgvector semantic-dedup check. ABOVE
+   * this score, /match-soft-skill is confident enough that the typed name
+   * and an existing canonical mean the same thing - we skip creating a
+   * new row.
+   *
+   * Why 0.85 and not 0.70 (the CV-match threshold):
+   *   - CV matching is INTENTIONALLY lenient (catch as many paraphrases as
+   *     possible at score time). 0.70 trades precision for recall.
+   *   - Dedup at catalog-write time is the OPPOSITE: we want high
+   *     precision so we don't silently reject a legitimately new skill
+   *     that just happens to be in the same semantic neighborhood (e.g.
+   *     "Empathy" embeds at ~0.72 vs "Communication" - they're related
+   *     but distinct; we want to create Empathy, not block it).
+   *   - 0.85 empirically holds only for very-close concept restatements
+   *     (e.g. "Diplomacy" vs "Negotiation" at ~0.88).
+   */
+  private static readonly SEMANTIC_DEDUP_THRESHOLD = 0.85;
+
+  /**
+   * Ask the matcher whether `text` resolves to an existing SOFT row above
+   * the dedup threshold. Returns the matched canonical or null when no
+   * row crosses the bar.
+   *
+   * Implementation: reuse the same /match-soft-skill endpoint the CV
+   * matcher uses. It already runs Layer 0 (synonym) + Layer 1 (pgvector
+   * cosine NN restricted to type=SOFT). Layer 0 hits we already caught
+   * earlier in the caller's logic; what we care about here is a Layer 1
+   * hit (pgvector confidence) on a string that DIDN'T exact-match a
+   * synonym.
+   *
+   * Fails soft: if the matcher errors or the endpoint is down, return
+   * null so the caller creates the row anyway. Better a duplicate than
+   * a dropped skill.
+   */
+  private async findSemanticDuplicate(
+    text: string,
+  ): Promise<{ canonical: string; score: number } | null> {
+    try {
+      const resp = await firstValueFrom(this.http.post<{
+        name?: string; displayName?: string; score?: number;
+      } | null>(
+        `${this.catalogUrl}/match-soft-skill`,
+        { text },
+        // observe: 'response' lets us tell 204 from 200 without parsing the
+        // body - 204 = no match, treat as null.
+        { observe: 'response' as const },
+      ));
+      if (!resp || resp.status === 204 || !resp.body) return null;
+      const body = resp.body;
+      const score = typeof body.score === 'number' ? body.score : 0;
+      if (score < CatalogService.SEMANTIC_DEDUP_THRESHOLD) return null;
+      return {
+        canonical: body.displayName || body.name || '',
+        score,
+      };
+    } catch (e) {
+      // Endpoint errored (Ollama down, matcher 500'd, network). Fail
+      // open - the caller will create the row anyway. Logged so we can
+      // see this in DevTools if catalog growth ever looks off.
+      console.warn('[CatalogService] semantic dedup probe failed:', e);
+      return null;
+    }
+  }
+
   async enrichNewSoftSkillsFromRequirements(
     requirements: Array<{ category?: string; skillType?: string | null;
                           description?: string | null }>,
-  ): Promise<string[]> {
+  ): Promise<SoftSkillEnrichmentResult> {
+    const empty: SoftSkillEnrichmentResult = { added: [], semanticSkipped: [] };
+
     const softReqs = (requirements || []).filter(r =>
       r?.category === 'SKILL' && r?.skillType === 'SOFT'
       && typeof r.description === 'string' && r.description.trim().length > 0,
     );
-    if (softReqs.length === 0) return [];
+    if (softReqs.length === 0) return empty;
 
     // Force a fresh snapshot so we don't redundantly create a row a
     // concurrent admin add just landed.
     this.invalidate();
     const snap = await this.getSnapshot();
-    const existing = new Set(
-      snap.skills.filter(s => s.type === 'SOFT').map(s => s.name.toLowerCase()),
-    );
+
+    // The "already exists" check covers TWO ways a typed name might
+    // already mean something in the catalog:
+    //   - it matches the canonical name (existingNames)
+    //   - it matches a synonym of some canonical name (synonymToCanonical)
+    // Both flavors get treated as "skip" so we don't create near-duplicate
+    // rows when the recruiter types one of the paraphrases the AI (or
+    // recruiter) already curated.
+    const existingNames = new Set<string>();
+    const synonymToCanonical = new Map<string, string>();
+    for (const s of snap.skills) {
+      if (s.type !== 'SOFT') continue;
+      existingNames.add(s.name.toLowerCase());
+      for (const syn of s.synonyms ?? []) {
+        if (typeof syn === 'string' && syn.trim()) {
+          synonymToCanonical.set(syn.trim().toLowerCase(), s.displayName);
+        }
+      }
+    }
 
     // Dedupe within this batch too - the recruiter could put the same
     // soft skill on two requirements with different levels of detail.
@@ -399,14 +503,47 @@ export class CatalogService {
     for (const r of softReqs) {
       const name = (r.description as string).trim();
       const key  = name.toLowerCase();
-      if (existing.has(key) || seen.has(key)) continue;
+      if (existingNames.has(key)) continue;          // canonical exact match
+      if (synonymToCanonical.has(key)) {             // synonym exact match
+        console.info(
+          `[CatalogService] "${name}" maps to existing "`
+          + `${synonymToCanonical.get(key)}" via synonym; not creating a new row.`,
+        );
+        continue;
+      }
+      if (seen.has(key)) continue;
       seen.add(key);
       queued.push(name);
     }
-    if (queued.length === 0) return [];
+    if (queued.length === 0) return empty;
 
-    const added: string[] = [];
+    // ── pgvector semantic dedup pass ──────────────────────────────────
+    // For each remaining candidate, probe /match-soft-skill. If the
+    // matcher comes back with a strong hit (score >= threshold) the
+    // recruiter's typed name and an existing canonical mean the same
+    // concept; we skip creating a duplicate row. The recruiter's exact
+    // wording still lives in job_requirement.description so the
+    // matcher's Layer 1 will recognize it at CV time via the same
+    // pgvector similarity. The skipped entry is reported back to the
+    // caller so the toast can explain why it didn't appear.
+    const semanticSkipped: SoftSkillEnrichmentResult['semanticSkipped'] = [];
+    const trulyNew: string[] = [];
     for (const name of queued) {
+      const hit = await this.findSemanticDuplicate(name);
+      if (hit && hit.canonical) {
+        console.info(
+          `[CatalogService] "${name}" embeds close to existing "${hit.canonical}"`
+          + ` (score ${hit.score.toFixed(2)}); not creating a new row.`,
+        );
+        semanticSkipped.push({ typed: name, mappedTo: hit.canonical, score: hit.score });
+      } else {
+        trulyNew.push(name);
+      }
+    }
+
+    // ── Create + AI synonyms for the genuinely-new ones ────────────────
+    const added: string[] = [];
+    for (const name of trulyNew) {
       try {
         const synonyms = await this.suggestSynonyms(name, 'SOFT');
         await this.addManual(name, {
@@ -421,7 +558,7 @@ export class CatalogService {
     // addManual already invalidates the cache; explicit invalidate is
     // harmless and keeps intent obvious.
     if (added.length > 0) this.invalidate();
-    return added;
+    return { added, semanticSkipped };
   }
 
   /** Returns just the display names of tombstoned skills - used by the
