@@ -277,6 +277,40 @@ public class SkillCatalogController {
         }
 
         SkillCatalogEntry saved = repo.save(entry);
+
+        // Eagerly embed the new (or restored) row's canonical name so the
+        // matcher's Layer 1 (pgvector cosine NN) can find it immediately.
+        // Without this, the row exists but stays invisible to embedding-
+        // based search until /backfill-embeddings is called manually -
+        // surfaced during integration testing as "Layer 1 returns 204 for
+        // everything because most rows have NULL embeddings".
+        //
+        // Fails soft: an Ollama hiccup leaves the row with a NULL embedding
+        // (recoverable via /backfill-embeddings later). The catalog row
+        // itself is still safe to save, so we don't roll back on embed
+        // failure - it's a degraded-but-still-useful state, not a corrupt
+        // one. Logged so it's visible in the application-microservice logs.
+        if (saved.getEmbedding() == null) {
+            try {
+                List<Float> vec = fetchEmbeddingFromCvParser(saved.getName());
+                if (vec != null && vec.size() == 768) {
+                    repo.updateEmbedding(
+                            saved.getName(),
+                            toVectorLiteral(vec),
+                            "nomic-embed-text",
+                            Instant.now());
+                    log.info("[skill-catalog/add] embedded '{}' on insert", saved.getName());
+                } else {
+                    log.warn("[skill-catalog/add] embedder unavailable for '{}', " +
+                            "row saved without vector (run /backfill-embeddings to fix)",
+                            saved.getName());
+                }
+            } catch (Exception e) {
+                log.warn("[skill-catalog/add] embed-on-insert failed for '{}': {}",
+                        saved.getName(), e.getMessage());
+            }
+        }
+
         return ResponseEntity.ok(new SkillCatalogDto(
                 saved.getName(),
                 saved.getDisplayName(),
