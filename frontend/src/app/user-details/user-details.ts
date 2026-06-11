@@ -279,7 +279,7 @@ export class UserDetails implements OnInit {
 
     const result = await Swal.fire({
       title: ' Signal candidate?',
-      html: `<p style="color:rgba(255,255,255,0.7);font-size:.9rem">
+      html: `<p style="font-size:.9rem">
         This will flag <strong>${this.user.firstName ?? this.user.username}</strong>'s
         applications and notify the admin for review.
       </p>`,

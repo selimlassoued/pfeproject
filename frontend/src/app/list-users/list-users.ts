@@ -333,7 +333,7 @@ export class ListUsers implements OnInit, OnDestroy {
       await this.adminUsers.createUser(formValues.email, formValues.role);
       await Swal.fire({
         title: 'Account created!',
-        html: `<p style="color:rgba(255,255,255,0.7)">
+        html: `<p>
           An invitation email has been sent to <strong>${formValues.email}</strong>.
           They can set their password and access the platform.
         </p>`,

@@ -218,7 +218,7 @@ export class OfferPanel implements OnInit, OnDestroy {
     if (!this.offer || this.saving) return;
     Swal.fire({
       title: 'Accept this offer?',
-      html: `<p style="color:rgba(255,255,255,0.75);font-size:.9rem">
+      html: `<p style="font-size:.9rem">
         You're accepting <strong>${this.offer.salary} ${this.offer.currency}</strong>
         starting <strong>${this.offer.startDate}</strong>
         as <strong>${this.offer.contractType}</strong>. Your application moves to <strong>HIRED</strong>.

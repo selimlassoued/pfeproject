@@ -259,7 +259,7 @@ export class ApplicationInterviewsPage implements OnInit, OnDestroy {
     const result = await Swal.fire({
       title: 'Delegate this interview',
       html: `
-        <p style="color:rgba(255,255,255,0.7);font-size:.9rem;text-align:left;margin-bottom:.85rem">
+        <p style="font-size:.9rem;text-align:left;margin-bottom:.85rem">
           Ask a colleague to take over. They'll get a request and can accept or decline.
           You'll stay as an observer.
         </p>

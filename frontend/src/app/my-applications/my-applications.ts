@@ -161,7 +161,7 @@ export class MyApplications implements OnInit, OnDestroy {
 
     const result = await Swal.fire({
       title: 'Withdraw application?',
-      html: `<p style="color:rgba(255,255,255,0.7);font-size:.9rem">
+      html: `<p style="font-size:.9rem">
         Your application for <strong>${app.jobTitle ?? 'this job'}</strong>
         will be withdrawn. You can re-apply later if you change your mind.
       </p>`,
