@@ -87,6 +87,25 @@ public interface SkillSynonymEmbeddingRepo
                                      @Param("limit") int limit);
 
     /**
+     * Fetch every indexed phrase for one skill, with its embedding text
+     * literal. Powers the cv-parser's synonym-evidence scoring path:
+     * the matcher pulls a SOFT skill's canonical + synonym vectors once,
+     * then runs max-cosine against the candidate's structured CV
+     * evidence pool locally.
+     *
+     * Returns Object[] columns: [phrase, phrase_type, embedding (text literal)].
+     * Phrases with NULL embedding are filtered out so the caller never
+     * has to handle missing vectors.
+     */
+    @Query(value = "SELECT phrase, phrase_type, embedding::text " +
+                   "FROM skill_synonym_embedding " +
+                   "WHERE skill_name = :skillName " +
+                   "  AND embedding IS NOT NULL " +
+                   "ORDER BY phrase_type DESC, phrase",
+           nativeQuery = true)
+    List<Object[]> findBySkillNameWithEmbeddings(@Param("skillName") String skillName);
+
+    /**
      * For the backfill job: list every active SOFT skill row that has at
      * least one phrase missing from the multi-vector store. Returns
      * (name, phrase, phrase_type) tuples for each missing row, so the

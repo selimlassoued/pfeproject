@@ -663,20 +663,53 @@ def _extract_required_skill_groups(
     for req in requirements:
         cat = (req.category or "").upper()
         if cat in ("SKILL", "TECHNICAL", "TECHNOLOGY", "COMPÉTENCE"):
+            # Carry skill_type (HARD / SOFT) onto each parsed group so the
+            # per-skill scorer can branch on it - SOFT skills with no direct
+            # CV declaration get a synonym-evidence path before the weak
+            # global-similarity fallback.
+            req_skill_type = (getattr(req, "skill_type", None) or "").upper() or None
+
+            # SOFT skill requirements are behavioural concepts whose
+            # catalog row is keyed on the full canonical name (a multi-word
+            # soft skill is one row, not two). Running the same tokenizer
+            # split HARD skills use would break that lookup by handing the
+            # scorer the head and tail words separately. Keep the whole
+            # description as ONE skill so the catalog row resolves and the
+            # synonym-evidence path can fire on its phrase vectors.
+            if req_skill_type == "SOFT":
+                desc = _normalize(req.description or "")
+                if desc:
+                    qualifier = (req.skill_level or "any").lower() if req.skill_level else "any"
+                    groups.append({
+                        "skills":     [desc],
+                        "qualifier":  qualifier,
+                        "logic":      "AND",
+                        "skill_type": req_skill_type,
+                    })
+                continue
+
             # Use structured skill_level if set by recruiter — no parsing needed
             if req.skill_level:
                 qualifier = req.skill_level.lower()  # BASIC→basic, INTERMEDIATE→intermediate, ADVANCED→advanced
                 parsed = _parse_description_to_groups(req.description)
                 for g in parsed:
                     g["qualifier"] = qualifier  # override parsed qualifier with structured one
+                    g["skill_type"] = req_skill_type
                 groups.extend(parsed)
             else:
-                groups.extend(_parse_description_to_groups(req.description))
+                parsed = _parse_description_to_groups(req.description)
+                for g in parsed:
+                    g["skill_type"] = req_skill_type
+                groups.extend(parsed)
 
     # Fallback: all requirements
     if not groups:
         for req in requirements:
-            groups.extend(_parse_description_to_groups(req.description))
+            req_skill_type = (getattr(req, "skill_type", None) or "").upper() or None
+            parsed = _parse_description_to_groups(req.description)
+            for g in parsed:
+                g["skill_type"] = req_skill_type
+            groups.extend(parsed)
 
     # Last fallback: job title + description
     if not groups:
@@ -1034,28 +1067,18 @@ def _build_skill_sources(cv: CvAnalysisResult) -> SkillSources:
             sources.github_confirmed.add("git")
 
     # ── Soft skills as first-class declared signals ──────────────────────────
-    # The CV's `soft_skills` field is extracted by a dedicated LLM call from
-    # the profile/skills sections and is the cleanest authoritative source of
-    # behavioral traits the candidate claims. Without registering it here,
-    # soft-skill requirements like "Leadership" or "Communication" never see
-    # the literal declaration even when the candidate explicitly listed them.
-    # The matcher then falls all the way through to weak global-similarity
-    # cosine and reports ~20-30% scores with the misleading reason "Not found
-    # in CV sources" - confusing for a candidate whose CV literally says
-    # "Leadership" in the soft_skills list.
+    # cv.soft_skills is the dedicated LLM extraction of behavioural traits
+    # the candidate explicitly claims. Without registering it here, any
+    # soft-skill requirement that matches a literally-extracted trait
+    # falls through to the weak global-similarity path with the misleading
+    # reason "Not found in CV sources", even though the trait IS on the CV.
     #
-    # Fix: add soft_skills tokens to the PRIMARY set so confidence()
-    # returns a real direct-declaration score (base 70). Also add to
-    # explicit_skills + declared_literal for evidence-tag / source-text
-    # consistency with the HARD skill flow. We do NOT add to
-    # implied_primary because a soft skill in cv.soft_skills is a literal
-    # candidate claim, not an implication.
-    #
-    # Empirically (Zaina Al Darras CV: IEEE Chairwoman, hackathon wins,
-    # explicit "Leadership" in soft_skills): without this fix, Leadership
-    # scores 29% with reason "Not found in CV sources" despite being
-    # literally extracted. With this fix it scores ~70% via the direct
-    # path with reason "Declared in CV soft skills".
+    # Register each token in PRIMARY so confidence() returns the direct-
+    # declaration base (70). Also mirror into explicit_skills +
+    # declared_literal for evidence-tag / source-text consistency with the
+    # HARD skill flow. We do NOT add to implied_primary because a soft
+    # skill in cv.soft_skills is a literal candidate claim, not an
+    # implication.
     for src in (cv.soft_skills or []):
         for tok in _expand_tokens(src):
             sources.explicit_skills.add(tok)
@@ -1130,6 +1153,98 @@ def _embed_soft_cached(text: str, cache: dict[str, list[float]]) -> list[float]:
 
 
 _logger = logging.getLogger(__name__)
+
+
+# ── Synonym-evidence scoring (SOFT-skill fallback) ────────────────────────────
+# Per-process cache of canonical + synonym phrase vectors fetched from the
+# catalog. Keyed by lowercased skill name. The catalog updates rarely (only on
+# recruiter PATCH), so a process-lifetime cache is safe — if the recruiter
+# adds a new synonym mid-process, the next container restart picks it up.
+_SOFT_PHRASE_CACHE: dict[str, list[tuple[str, list[float]]]] = {}
+
+
+def _fetch_skill_phrase_vectors(skill_name: str) -> list[tuple[str, list[float]]]:
+    """Return [(phrase, vec), ...] for one SOFT skill's canonical + synonyms.
+    Empty list on miss / error — caller falls back to its legacy path."""
+    if not skill_name:
+        return []
+    key = skill_name.strip().lower()
+    if not key:
+        return []
+    if key in _SOFT_PHRASE_CACHE:
+        return _SOFT_PHRASE_CACHE[key]
+
+    out: list[tuple[str, list[float]]] = []
+    try:
+        r = requests.get(
+            f"{SKILL_CATALOG_BASE}/{key}/synonym-phrases",
+            timeout=5,
+        )
+        if r.status_code == 200:
+            for row in (r.json() or []):
+                phrase = (row.get("phrase") or "").strip()
+                vec    = row.get("embedding") or []
+                if phrase and isinstance(vec, list) and len(vec) == 768:
+                    out.append((phrase, [float(x) for x in vec]))
+    except Exception as e:
+        _logger.warning("[soft-synonym] fetch failed for '%s': %s", key, e)
+
+    _SOFT_PHRASE_CACHE[key] = out
+    return out
+
+
+def _score_soft_skill_via_synonyms(
+    skill_name: str,
+    cv: 'CvAnalysisResult',
+    embed_cache: dict[str, list[float]],
+) -> tuple[int, str, str] | None:
+    """Multi-vector retrieval for one SOFT skill: max-cosine over the cross
+    product of (catalog phrase vectors x CV evidence snippets).
+
+    Why this exists. Single-vector matching of a soft-skill requirement
+    against a full CV document compares an abstract behavioral noun against
+    long prose, and abstract nouns embed weakly against concrete prose.
+    The catalog stores recruiter-curated synonyms as separate vectors per
+    skill (skill_synonym_embedding); those synonyms are phrased in
+    evidence-shaped language, so they align with concrete CV sections more
+    reliably than the canonical noun does.
+
+    Returns (score, best_phrase, best_evidence_label) when the best
+    cross-product cosine is above the document-window floor, else None.
+    Returning None lets the caller fall through to the legacy global-CV
+    similarity path, so any skill without catalog phrases or without any
+    above-floor evidence stays on the existing scoring behaviour.
+    """
+    phrase_vecs = _fetch_skill_phrase_vectors(skill_name)
+    if not phrase_vecs:
+        return None
+
+    pool = _gather_cv_evidence_pool(cv)
+    if not pool:
+        return None
+
+    best_sim       = 0.0
+    best_phrase    = ""
+    best_evidence  = ""
+    for label, text in pool:
+        snippet_vec = _embed_cached(text[:500], embed_cache)
+        if not snippet_vec:
+            continue
+        for phrase, phrase_vec in phrase_vecs:
+            sim = _cosine(phrase_vec, snippet_vec)
+            if sim > best_sim:
+                best_sim      = sim
+                best_phrase   = phrase
+                best_evidence = label
+
+    # Reuse the existing skill-vs-document rescaling window. The structural
+    # shape here (short phrase vs medium-length CV section) matches what
+    # _normalize_cosine was calibrated for, so we apply the same floor/ceil
+    # rather than introducing a second tuned window.
+    if best_sim <= _COSINE_FLOOR:
+        return None
+    score = round(_normalize_cosine(best_sim) * 100)
+    return score, best_phrase, best_evidence
 
 
 def _nearest_skill_in_catalog(req_vec: list[float], candidate_names: list[str]) -> dict | None:
@@ -2568,6 +2683,8 @@ def _build_skill_reason(
     mode: str,
     proxy: str | None = None,
     proxy_in_primary: bool = False,
+    synonym_phrase: str | None = None,
+    synonym_evidence: str | None = None,
 ) -> str:
     """Generate a human-readable explanation of why a skill received its score."""
     if mode == "DIRECT":
@@ -2639,6 +2756,19 @@ def _build_skill_reason(
         else:
             return f"Not listed directly — inferred from {display} in experience · {display} not in CV Skills (partial credit)"
 
+    elif mode == "SYNONYM":
+        # Recruiter-curated synonym (e.g. "facilitates team discussions") aligned
+        # with a structured CV evidence chunk (e.g. an extracurricular workshop
+        # entry). Surface both so the recruiter can audit the chain.
+        bits: list[str] = []
+        if synonym_phrase:
+            bits.append(f"Matched synonym \"{synonym_phrase}\"")
+        if synonym_evidence:
+            bits.append(f"evidence in {synonym_evidence}")
+        if not bits:
+            return "Matched a recruiter-curated synonym against CV evidence"
+        return " · ".join(bits)
+
     else:  # SEMANTIC
         return "Not found in CV sources — score reflects semantic similarity from overall CV context"
 
@@ -2651,6 +2781,7 @@ def _compute_skill_score(
     embed_cache: dict,
     cv_vec: list[float],
     matched_threshold: float = SKILL_SEM_THRESHOLD,
+    skill_type: str | None = None,
 ) -> tuple[int, str, str]:  # (score, status, reason)
     """
     Three-mode skill scoring — Score 1 and Score 2 are fully independent:
@@ -2774,12 +2905,32 @@ def _compute_skill_score(
         final  = proxy_final
         reason = _build_skill_reason(normalized, sources, "PROXY", best_proxy, proxy_in_primary)
     else:
-        if req_vec:
-            emb_sim = _cosine(req_vec, cv_vec)
-            final   = round(_normalize_cosine(emb_sim) * 100)
+        # SOFT-skill synonym-evidence path. The catalog stores per-phrase
+        # vectors for canonical + each curated synonym. We max-cosine each
+        # phrase vs the candidate's structured evidence pool (experience
+        # descriptions, projects, volunteer roles, hackathons, summary).
+        # This recovers recall on soft requirements where the abstract
+        # behavioural noun and the CV's concrete prose don't share tokens
+        # - a single-vector compare against the full CV blob would miss
+        # them, but a phrase-vs-section compare against any of the
+        # recruiter's synonym phrasings reliably picks them up.
+        synonym_result = None
+        if (skill_type or "").upper() == "SOFT":
+            synonym_result = _score_soft_skill_via_synonyms(normalized, cv, embed_cache)
+        if synonym_result is not None:
+            final, syn_phrase, syn_evidence = synonym_result
+            reason = _build_skill_reason(
+                normalized, sources, "SYNONYM",
+                synonym_phrase=syn_phrase,
+                synonym_evidence=syn_evidence,
+            )
         else:
-            final = 0
-        reason = _build_skill_reason(normalized, sources, "SEMANTIC")
+            if req_vec:
+                emb_sim = _cosine(req_vec, cv_vec)
+                final   = round(_normalize_cosine(emb_sim) * 100)
+            else:
+                final = 0
+            reason = _build_skill_reason(normalized, sources, "SEMANTIC")
 
     return final, _skill_status(final, matched_threshold), reason
 
@@ -2824,11 +2975,13 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
     missing: list[str] = []
     skill_scores: list[dict] = []
 
-    def _score_one_skill(skill: str, qualifier: str, threshold: float, prefix: str) -> tuple[int, int, str, dict]:
+    def _score_one_skill(skill: str, qualifier: str, threshold: float, prefix: str,
+                         skill_type: str | None = None) -> tuple[int, int, str, dict]:
         """Score one skill, apply the qualifier curve, and build the UI row.
         Returns (raw_score, effective_score, status, row_dict)."""
         raw, _, reason = _compute_skill_score(
-            skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, threshold
+            skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, threshold,
+            skill_type=skill_type,
         )
         effective = _apply_qualifier_curve(raw, qualifier)
         bar       = _QUALIFIER_BARS.get(qualifier, 0)
@@ -2855,9 +3008,10 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
 
     for group in required_skill_groups:
         threshold = _QUALIFIER_THRESHOLDS.get(group["qualifier"], SKILL_SEM_THRESHOLD)
-        logic     = group["logic"]
-        qualifier = group["qualifier"]
-        prefix    = f"[{qualifier.upper()}] " if qualifier != "any" else ""
+        logic      = group["logic"]
+        qualifier  = group["qualifier"]
+        skill_type = group.get("skill_type")
+        prefix     = f"[{qualifier.upper()}] " if qualifier != "any" else ""
 
         if logic == "OR":
             # Score every alternative independently and keep the one whose
@@ -2867,7 +3021,8 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
             best_row:  dict | None = None
             best_eff:  int        = -1
             for skill in group["skills"]:
-                _raw, eff, _status, row = _score_one_skill(skill, qualifier, threshold, prefix)
+                _raw, eff, _status, row = _score_one_skill(
+                    skill, qualifier, threshold, prefix, skill_type=skill_type)
                 if eff > best_eff:
                     best_eff = eff
                     best_row = row
@@ -2878,7 +3033,8 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
                 (matched if best_row["status"] == "matched" else missing).append(label)
         else:
             for skill in group["skills"]:
-                _raw, _eff, status, row = _score_one_skill(skill, qualifier, threshold, prefix)
+                _raw, _eff, status, row = _score_one_skill(
+                    skill, qualifier, threshold, prefix, skill_type=skill_type)
                 skill_scores.append(row)
                 (matched if status == "matched" else missing).append(skill)
 
@@ -2971,7 +3127,16 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
             # requirement-level `weight` (req.weight) is applied on top, lower
             # in this function, so both knobs compose.
             qualifier_for_req = (req.skill_level or "any").lower() if req.skill_level else None
-            groups = _parse_description_to_groups(req.description or "")
+            req_skill_type    = (getattr(req, "skill_type", None) or "").upper() or None
+            # SOFT skills are conceptual - keep the full description as ONE
+            # skill so the catalog lookup hits the right canonical row. Same
+            # rationale as in _extract_required_skill_groups above.
+            if req_skill_type == "SOFT":
+                desc = _normalize(req.description or "")
+                groups = ([{"skills": [desc], "qualifier": "any", "logic": "AND"}]
+                          if desc else [])
+            else:
+                groups = _parse_description_to_groups(req.description or "")
             weighted_total   = 0.0
             weight_total     = 0.0
             any_critical_gap = False
@@ -2989,7 +3154,9 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
                     best_eff = 0
                     best_raw = 0
                     for skill in g["skills"]:
-                        raw, _, _r = _compute_skill_score(skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh)
+                        raw, _, _r = _compute_skill_score(
+                            skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh,
+                            skill_type=req_skill_type)
                         eff = _apply_qualifier_curve(raw, qualifier)
                         if eff > best_eff:
                             best_eff = eff
@@ -3000,7 +3167,9 @@ def match_job_to_cv(request: SemanticMatchRequest) -> SemanticMatchResult:
                         any_critical_gap = True
                 else:
                     for skill in g["skills"]:
-                        raw, _, _r = _compute_skill_score(skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh)
+                        raw, _, _r = _compute_skill_score(
+                            skill, cv, cv_skills, skill_sources, embed_cache, cv_vec, thresh,
+                            skill_type=req_skill_type)
                         eff = _apply_qualifier_curve(raw, qualifier)
                         weighted_total += eff * q_w
                         weight_total   += q_w

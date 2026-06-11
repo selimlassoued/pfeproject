@@ -34,6 +34,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/applications/skill-catalog/nearest-of").permitAll()
                 // Matcher reads the SOFT signal list (with vectors) at the start of each match.
                 .requestMatchers("/api/applications/skill-catalog/by-type/*").permitAll()
+                // Matcher pulls a SOFT skill's canonical + synonym phrase vectors
+                // when scoring a soft requirement that has no direct CV evidence.
+                .requestMatchers("/api/applications/skill-catalog/*/synonym-phrases").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));

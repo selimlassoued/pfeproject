@@ -1277,6 +1277,50 @@ public class SkillCatalogController {
     }
 
     /**
+     * Return the multi-vector phrase index for one SOFT skill: the canonical
+     * row plus every indexed synonym, each with its 768-dim embedding. Used
+     * by the cv-parser matcher's synonym-evidence scoring path - when a SOFT
+     * requirement scores zero through the literal-declaration and proxy
+     * paths, the matcher pulls this list and runs max-cosine against the
+     * candidate's structured CV evidence (work experience, projects,
+     * extracurriculars) locally.
+     *
+     * Why this exists: the CV often expresses a soft skill through concrete
+     * acts that don't share tokens with the abstract noun ("organizing
+     * workshops" vs "communication"). The recruiter-curated synonyms close
+     * that gap because they describe the trait in evidence-shaped language
+     * ("facilitates team discussions"). Embedding each synonym separately
+     * lets the matcher find evidence that the canonical alone misses.
+     *
+     * Returns 200 with the phrase list (possibly empty) when the skill row
+     * exists. The cv-parser falls back to its legacy semantic-similarity
+     * path on any other status.
+     */
+    @GetMapping("/{name}/synonym-phrases")
+    public ResponseEntity<List<Map<String, Object>>> getSynonymPhrases(
+            @PathVariable("name") String name) {
+        if (name == null || name.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
+        }
+        String key = name.trim().toLowerCase();
+        List<Object[]> rows = phraseRepo.findBySkillNameWithEmbeddings(key);
+        List<Map<String, Object>> out = new ArrayList<>(rows.size());
+        for (Object[] r : rows) {
+            String phrase     = (String) r[0];
+            String phraseType = (String) r[1];
+            String vecLit     = (String) r[2];
+            List<Float> vec   = vecLit == null ? List.of() : parseVectorLiteral(vecLit);
+            if (vec.size() != 768) continue;   // skip malformed rows
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("phrase",     phrase);
+            entry.put("phraseType", phraseType);
+            entry.put("embedding",  vec);
+            out.add(entry);
+        }
+        return ResponseEntity.ok(out);
+    }
+
+    /**
      * Find the closest catalog skill to a query vector, restricted to a list
      * of candidate names. Replaces the cv-parser-service Track 1 proxy loop:
      * instead of fetching every CV-skill vector to Python and looping, the

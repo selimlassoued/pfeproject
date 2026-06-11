@@ -298,6 +298,11 @@ class JobRequirementInput(BaseModel):
     weight: Optional[float] = None
     min_years: Optional[int] = None
     skill_level: Optional[str] = None      # BASIC / INTERMEDIATE / ADVANCED
+    # HARD / SOFT - lets the matcher route SOFT requirements through the
+    # synonym-evidence path before falling back to weak global-CV semantic
+    # similarity. Optional for back-compat with callers that don't send it
+    # (those treat every SKILL requirement as HARD by default).
+    skill_type: Optional[str] = None
     degree_level: Optional[str] = None     # ANY / BAC / BTS_DUT / LICENCE_BACHELOR / MASTER / PHD
     enrollment_type: Optional[str] = None  # STUDENT / GRADUATE / BOTH
     language_level: Optional[str] = None   # A1 / A2 / B1 / B2 / C1 / C2
