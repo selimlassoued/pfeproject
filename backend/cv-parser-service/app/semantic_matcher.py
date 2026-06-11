@@ -22,6 +22,21 @@ OLLAMA_HOST      = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 EMBEDDING_MODEL  = os.getenv("SEMANTIC_MATCH_EMBED_MODEL", "nomic-embed-text")
 ANALYSIS_MODEL   = os.getenv("SEMANTIC_MATCH_ANALYSIS_MODEL", "qwen2.5:7b")
 
+# Dedicated embedder for SOFT-skill evidence pool matching. nomic-embed-text
+# was trained heavily on code/docs and embeds abstract behavioral concepts
+# poorly (Leadership-vs-Communication cosine ~0.55, CV-prose-vs-canonical
+# cosine ~0.50 on pure paraphrases). mxbai-embed-large was trained on broad
+# general-retrieval pairs (short-query / long-passage), which is exactly
+# the asymmetric pattern of "Leadership" (canonical) vs "Led a team of 5
+# engineers across 3 timezones" (CV prose).
+#
+# This embedder is used ONLY by the soft-skill evidence matcher inside
+# _semantic_evidence_for when use_soft_embedder=True is passed. Every other
+# embedding site (HARD skill resolution, job-requirement cache, whole-job
+# embedding) keeps using EMBEDDING_MODEL above so we don't reshape any
+# stored 768-dim vectors.
+SOFT_EMBEDDING_MODEL = os.getenv("SOFT_MATCH_EMBED_MODEL", "mxbai-embed-large")
+
 # Job-microservice base URL. The matcher uses this to read and write the cached
 # job embedding via GET/PUT /api/jobs/{id}/embedding so the same job vector is
 # computed once across all applicants instead of recomputed on every match.
@@ -1018,6 +1033,35 @@ def _build_skill_sources(cv: CvAnalysisResult) -> SkillSources:
             # "GitHub Verified" evidence tag flow naturally.
             sources.github_confirmed.add("git")
 
+    # ── Soft skills as first-class declared signals ──────────────────────────
+    # The CV's `soft_skills` field is extracted by a dedicated LLM call from
+    # the profile/skills sections and is the cleanest authoritative source of
+    # behavioral traits the candidate claims. Without registering it here,
+    # soft-skill requirements like "Leadership" or "Communication" never see
+    # the literal declaration even when the candidate explicitly listed them.
+    # The matcher then falls all the way through to weak global-similarity
+    # cosine and reports ~20-30% scores with the misleading reason "Not found
+    # in CV sources" - confusing for a candidate whose CV literally says
+    # "Leadership" in the soft_skills list.
+    #
+    # Fix: add soft_skills tokens to the PRIMARY set so confidence()
+    # returns a real direct-declaration score (base 70). Also add to
+    # explicit_skills + declared_literal for evidence-tag / source-text
+    # consistency with the HARD skill flow. We do NOT add to
+    # implied_primary because a soft skill in cv.soft_skills is a literal
+    # candidate claim, not an implication.
+    #
+    # Empirically (Zaina Al Darras CV: IEEE Chairwoman, hackathon wins,
+    # explicit "Leadership" in soft_skills): without this fix, Leadership
+    # scores 29% with reason "Not found in CV sources" despite being
+    # literally extracted. With this fix it scores ~70% via the direct
+    # path with reason "Declared in CV soft skills".
+    for src in (cv.soft_skills or []):
+        for tok in _expand_tokens(src):
+            sources.explicit_skills.add(tok)
+            sources.declared_literal.add(tok)
+            sources.primary.add(tok)
+
     return sources
 
 
@@ -1044,6 +1088,44 @@ def _embed_cached(text: str, cache: dict[str, list[float]]) -> list[float]:
         return []
     if key not in cache:
         cache[key] = _embed(key)
+    return cache[key]
+
+
+def _embed_soft(text: str) -> list[float]:
+    """Embed using SOFT_EMBEDDING_MODEL (mxbai-embed-large by default).
+    Used by _semantic_evidence_for when use_soft_embedder=True. Returns
+    a 1024-dim vector with mxbai or whatever dim the configured model uses.
+
+    Fails soft (empty list) so the caller can fall back to nomic via
+    _embed() if the SOFT embedder isn't available - keeps the matcher
+    running during a model rollout or after an Ollama hiccup."""
+    if not text:
+        return []
+    try:
+        resp = ollama_client.embeddings(model=SOFT_EMBEDDING_MODEL, prompt=text)
+        vec = resp.get("embedding") if isinstance(resp, dict) else getattr(resp, "embedding", None)
+        if not isinstance(vec, list) or not vec:
+            return []
+        return [float(x) for x in vec]
+    except Exception as e:
+        # Surfaced in the warning so a missing model pull shows up clearly
+        # in cv-parser-service logs without breaking the match.
+        logging.getLogger(__name__).warning(
+            "[soft-embed] '%s' embed failed (%s); falling back to nomic",
+            SOFT_EMBEDDING_MODEL, e.__class__.__name__,
+        )
+        return _embed(text)
+
+
+def _embed_soft_cached(text: str, cache: dict[str, list[float]]) -> list[float]:
+    """Cache wrapper for _embed_soft. Uses its own cache (mxbai vectors are
+    a different dimension than nomic vectors, so they MUST NOT share
+    storage with _embed_cached's cache or vectors would get mixed)."""
+    key = text.strip()
+    if not key:
+        return []
+    if key not in cache:
+        cache[key] = _embed_soft(key)
     return cache[key]
 
 
@@ -2238,23 +2320,48 @@ def _semantic_evidence_for(
     threshold: float = 0.55,
     top_n: int = 2,
     precomputed: dict[str, list[float]] | None = None,
+    use_soft_embedder: bool = False,
+    soft_embed_cache: dict[str, list[float]] | None = None,
 ) -> dict[str, list[dict]]:
     """For each query string, find the strongest matching passages in `pool`
     by cosine similarity. Returns {query: [{source, score, passage}, ...]},
     omitting queries with no above-threshold evidence.
 
     If `precomputed[query]` is present (from the catalog's pre-stored SOFT
-    embeddings), use it directly — saves an Ollama call per query."""
+    embeddings), use it directly — saves an Ollama call per query.
+
+    use_soft_embedder=True switches BOTH sides of the cosine compare
+    (query AND pool passages) to SOFT_EMBEDDING_MODEL (mxbai-embed-large)
+    via _embed_soft_cached. This is the right setting for soft-skill
+    evidence matching where the asymmetric pair (short canonical noun
+    vs verbose CV prose) is the model's strength. When True, the
+    `precomputed` shortcut is BYPASSED for any query because catalog
+    pre-embeddings were computed with nomic (768-dim) and can't be
+    compared to mxbai vectors (1024-dim).
+
+    A separate `soft_embed_cache` is used so mxbai vectors don't pollute
+    the nomic cache (different dimensions, would crash _cosine)."""
     if not pool:
         return {}
-    pool_vecs = [(label, text, _embed_cached(text[:500], embed_cache)) for label, text in pool]
+
+    if use_soft_embedder:
+        if soft_embed_cache is None:
+            soft_embed_cache = {}
+        pool_vecs = [(label, text, _embed_soft_cached(text[:500], soft_embed_cache))
+                     for label, text in pool]
+    else:
+        pool_vecs = [(label, text, _embed_cached(text[:500], embed_cache))
+                     for label, text in pool]
     out: dict[str, list[dict]] = {}
     pre = precomputed or {}
     for q in queries:
         q = q.strip()
         if not q:
             continue
-        qv = pre.get(q) or _embed_cached(q, embed_cache)
+        if use_soft_embedder:
+            qv = _embed_soft_cached(q, soft_embed_cache)
+        else:
+            qv = pre.get(q) or _embed_cached(q, embed_cache)
         if not qv:
             continue
         ranked = []
@@ -2305,9 +2412,21 @@ def _llm_analysis(
     for _r in (request.requirements or []):
         if _r.description and _r.description.strip():
             evidence_queries.append(_r.description.strip())
+    # Use the dedicated SOFT embedder (mxbai-embed-large) for evidence
+    # matching. This is THE call site where verbose CV prose meets short
+    # canonical soft-skill nouns - the exact asymmetric retrieval pattern
+    # mxbai is trained on. Empirically lifts cosine on pure-paraphrase
+    # CV phrasings (e.g. "led a team of 5 engineers" vs "Leadership")
+    # from ~0.50-0.60 (below the 0.55 threshold) to ~0.75-0.80.
+    #
+    # The catalog precomputed map is BYPASSED here (mxbai is 1024-dim,
+    # the cached catalog vectors are 768-dim nomic - they can't be
+    # compared). Each query gets re-embedded with mxbai instead, which
+    # is fine: there are typically only 10-15 SOFT queries per match.
     evidence_map = _semantic_evidence_for(
         evidence_queries, evidence_pool, embed_cache,
-        precomputed=catalog_soft,           # skip Ollama for catalog-backed signals
+        precomputed=catalog_soft,           # ignored under use_soft_embedder=True
+        use_soft_embedder=True,
     )
 
     payload = {
