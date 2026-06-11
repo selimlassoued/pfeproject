@@ -830,3 +830,53 @@
 }
 .cad-proposal-none:hover:not(:disabled) { color: rgba(255,200,200,0.95); }
 .cad-proposal-none:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Light-mode contrast bumps ───────────────────────────────────────────
+   The page CSS above uses --text-soft (50% alpha) and opacity 0.55 on
+   inactive progress steps. Both look correct on the dark surface in
+   dark mode and wash out against the white card surfaces in light mode.
+   These overrides re-anchor the affected elements to readable values
+   ONLY in light mode. Dark mode keeps every value above unchanged.    */
+
+/* Page subtitle / hints / file labels: --text-soft was rgba(11,16,38,0.50)
+   in light mode, which reads as light gray on white. Pin to slate-600
+   for clear hierarchy without being too heavy. */
+:root[data-theme="light"] .cad-hint,
+:root[data-theme="light"] .cad-file-type,
+:root[data-theme="light"] .cad-filepick,
+:root[data-theme="light"] .cad-meta-k {
+  color: #475569 !important;
+}
+
+/* Progress timeline: inactive steps were dimmed to opacity 0.55, which
+   in light mode makes "Under review", "Interview phase", "Offer",
+   "Hired", "Rejected" almost invisible against the card. Bump to 0.85
+   so labels stay readable while the active step still pops as primary
+   blue. */
+:root[data-theme="light"] .cad-step {
+  opacity: 0.85 !important;
+}
+
+/* APPLIED / UNDER_REVIEW status pills used --border-subtle (14% alpha
+   brand blue) for the background plus --color-secondary for text.
+   Faint blue on faint blue is invisible. Strengthen background tint,
+   border, and text to a confident brand-blue badge. */
+:root[data-theme="light"] .cad-status.applied,
+:root[data-theme="light"] .cad-status.under_review {
+  background: rgba(30, 64, 188, 0.14) !important;
+  border-color: rgba(30, 64, 188, 0.45) !important;
+  color: #1e40bc !important;
+}
+
+/* Withdraw button text was rgba(255,220,220,0.92) - light pink, designed
+   to read on the dark card. Against the white card it's near-invisible.
+   Pin to deep red on a slightly stronger pink tint with a clear border. */
+:root[data-theme="light"] .btn-withdraw {
+  background: rgba(220, 38, 38, 0.08) !important;
+  border-color: rgba(220, 38, 38, 0.45) !important;
+  color: #b91c1c !important;
+}
+:root[data-theme="light"] .btn-withdraw:hover {
+  background: rgba(220, 38, 38, 0.15) !important;
+  border-color: rgba(220, 38, 38, 0.65) !important;
+}

@@ -583,6 +583,416 @@ select.ng-invalid.ng-dirty:focus,
   border-color: rgba(239,68,68,0.95);
 }
 
+/* Same fix for the larger Withdraw button on the application-detail page
+   (.btn-withdraw, no -row suffix). Same root cause: the dark-mode default
+   uses near-white pink text on a soft red tint which becomes invisible
+   on the white card surface in light mode. Mirror the row variant's
+   saturated-crimson light-mode treatment so both Withdraw buttons read
+   the same across the app. */
+:root[data-theme="light"] .btn-withdraw {
+  border-color: rgba(239,68,68,0.85) !important;
+  background: rgba(239,68,68,0.22) !important;
+  color: #991b1b !important;
+}
+:root[data-theme="light"] .btn-withdraw:hover {
+  background: rgba(239,68,68,0.32) !important;
+  border-color: rgba(239,68,68,0.95) !important;
+}
+
+/* ─── Application detail (recruiter view) light-mode bumps ──────────────
+   The action row at the top of the application detail page uses several
+   pill-style buttons (.btn-ai, .btn-signal, .btn-danger) and a status
+   pill (.ad-status.applied / .under_review) whose dark-mode colors are
+   low-alpha tints over light text. On the white card surface in light
+   mode the text and background collapse into each other and become
+   nearly invisible. Each rule below picks a saturated background +
+   strong border + a deep text color so the action affordance reads as
+   a real button. Dark mode untouched.                                    */
+
+/* APPLIED / UNDER_REVIEW status pill at top right — faint blue on faint blue. */
+:root[data-theme="light"] .ad-status.applied,
+:root[data-theme="light"] .ad-status.under_review {
+  background: rgba(30, 64, 188, 0.14) !important;
+  border-color: rgba(30, 64, 188, 0.45) !important;
+  color: #1e40bc !important;
+}
+
+/* AI Analysis button — sky-blue text on a 15% sky-blue gradient. */
+:root[data-theme="light"] .btn-ai {
+  background: rgba(30, 64, 188, 0.10) !important;
+  border-color: rgba(30, 64, 188, 0.40) !important;
+  color: #1e40bc !important;
+}
+:root[data-theme="light"] .btn-ai:hover {
+  background: rgba(30, 64, 188, 0.18) !important;
+  border-color: rgba(30, 64, 188, 0.55) !important;
+}
+
+/* Signal Candidate button — orange text on 10% orange. */
+:root[data-theme="light"] .btn-signal {
+  background: rgba(217, 119, 6, 0.15) !important;
+  border-color: rgba(217, 119, 6, 0.55) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .btn-signal:hover {
+  background: rgba(217, 119, 6, 0.25) !important;
+  border-color: rgba(217, 119, 6, 0.75) !important;
+}
+
+/* Reject button (.btn-danger) — soft pink-red on faint pink. */
+:root[data-theme="light"] .btn-danger {
+  background: rgba(220, 38, 38, 0.12) !important;
+  border-color: rgba(220, 38, 38, 0.55) !important;
+  color: #991b1b !important;
+}
+:root[data-theme="light"] .btn-danger:hover {
+  background: rgba(220, 38, 38, 0.22) !important;
+  border-color: rgba(220, 38, 38, 0.75) !important;
+}
+
+/* View AI CV Analysis link-button (.ad-linkbtn-ai) on the candidate card. */
+:root[data-theme="light"] .ad-linkbtn-ai {
+  background: rgba(30, 64, 188, 0.08) !important;
+  border-color: rgba(30, 64, 188, 0.35) !important;
+  color: #1e40bc !important;
+}
+:root[data-theme="light"] .ad-linkbtn-ai:hover {
+  background: rgba(30, 64, 188, 0.16) !important;
+}
+
+/* Signal link-button on the candidate card (.ad-linkbtn-signal). */
+:root[data-theme="light"] .ad-linkbtn-signal {
+  background: rgba(217, 119, 6, 0.12) !important;
+  border-color: rgba(217, 119, 6, 0.45) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .ad-linkbtn-signal:hover {
+  background: rgba(217, 119, 6, 0.22) !important;
+}
+
+/* ─── Interview evaluation page light-mode bumps ────────────────────────
+   The big final-score number, journey-bubble numbers, and supporting
+   captions all used dark-mode-tuned colors (cream / sky-blue / amber /
+   muted-red) which are invisible on the white card surface in light
+   mode. scoreColor() in interview-evaluation.ts now returns saturated
+   variants in light mode for the dynamic colors; these rules handle the
+   static supporting text + the verdict-raised pill.                     */
+
+/* "FINAL RANKING SCORE" and "/ 100" denominators used --color-text-muted
+   which in light mode is rgba(11,16,38,0.70) — still readable but the
+   smaller uppercase tracking made it feel ghosted. Pin to slate-700. */
+:root[data-theme="light"] .ie-hero-eyebrow,
+:root[data-theme="light"] .ie-final-denom,
+:root[data-theme="light"] .ie-final-caption {
+  color: #334155 !important;
+}
+
+/* "Interview raised the verdict" pill used cream text on a 10% cream
+   background. In light mode the cream maps to brand-blue but the
+   background stays a near-invisible pale yellow tint. Strengthen the
+   amber background + give the text deep amber so it reads. */
+:root[data-theme="light"] .verdict-raised {
+  background: rgba(217, 119, 6, 0.15) !important;
+  border-color: rgba(217, 119, 6, 0.55) !important;
+  color: #92400e !important;
+}
+/* Same treatment for the lowered variant in light mode. */
+:root[data-theme="light"] .verdict-lowered {
+  background: rgba(220, 38, 38, 0.10) !important;
+  border-color: rgba(220, 38, 38, 0.45) !important;
+  color: #991b1b !important;
+}
+/* Confirmed variant uses --border-subtle + --color-secondary which is
+   faint blue on faint blue in light mode. Make it a proper brand pill. */
+:root[data-theme="light"] .verdict-confirmed {
+  background: rgba(30, 64, 188, 0.12) !important;
+  border-color: rgba(30, 64, 188, 0.45) !important;
+  color: #1e40bc !important;
+}
+
+/* Journey-step sub-labels under each bubble used --text-soft (50% alpha
+   black) which is too faint in light mode. Pin to slate-600. */
+:root[data-theme="light"] .ie-step-label {
+  color: #1e293b !important;
+}
+:root[data-theme="light"] .ie-step-sub {
+  color: #475569 !important;
+}
+
+/* Stat-card labels ("ASSESSMENT", "JOB FIT", "PRE-INTERVIEW VERDICT",
+   "GITHUB SIGNAL") use --color-text-muted (70% alpha black). The
+   uppercase + tight letter-spacing + small size makes them feel even
+   fainter. Pin to slate-700. */
+:root[data-theme="light"] .ie-stat-label,
+:root[data-theme="light"] .ie-pill-title {
+  color: #334155 !important;
+}
+
+/* Skill chips at the bottom of the pre-interview context section.
+   Defaults were all designed for the dark surface (light text on 6-10%
+   alpha background) and become near-invisible on the white card.
+   Replace with saturated tints + deep text per semantic category. */
+
+/* ie-pill-good (Required skills already covered) — brand blue accent. */
+:root[data-theme="light"] .ie-pill-good {
+  background: rgba(30, 64, 188, 0.12) !important;
+  border-color: rgba(30, 64, 188, 0.40) !important;
+  color: #1e40bc !important;
+}
+
+/* ie-pill-warn (Required skills the interview had to probe) — amber. */
+:root[data-theme="light"] .ie-pill-warn {
+  background: rgba(217, 119, 6, 0.15) !important;
+  border-color: rgba(217, 119, 6, 0.50) !important;
+  color: #92400e !important;
+}
+
+/* ie-pill-neutral (GitHub-confirmed frameworks) — slate. */
+:root[data-theme="light"] .ie-pill-neutral {
+  background: rgba(30, 64, 188, 0.08) !important;
+  border-color: rgba(30, 64, 188, 0.30) !important;
+  color: #1e40bc !important;
+}
+
+/* ie-pill-muted (Unverified CV claims the interview had to verify) —
+   muted rose so they read as "needs verification" without screaming. */
+:root[data-theme="light"] .ie-pill-muted {
+  background: rgba(220, 38, 38, 0.10) !important;
+  border-color: rgba(220, 38, 38, 0.40) !important;
+  color: #991b1b !important;
+}
+
+/* ─── Interview result page light-mode bumps ────────────────────────────
+   Same family of issues as the evaluation page. Bullet items in the
+   Strengths / Gaps lists were rgba(248,250,252,0.86) - near-white text
+   that disappears on the white card. The recommendation pill ("Yes" /
+   "Strong yes" / etc.) and the small supporting labels also relied on
+   dark-mode-only colors.                                                 */
+
+/* Strengths / Gaps / Questions list items - text was near-white. Pin
+   to slate-900 so the actual content is the most readable thing in the
+   card body. List markers use category colors below. */
+:root[data-theme="light"] .ir-list li {
+  color: #0f172a !important;
+}
+:root[data-theme="light"] .ir-list-strengths li::marker {
+  color: #1e40bc !important;
+}
+:root[data-theme="light"] .ir-list-weaknesses li::marker {
+  color: #991b1b !important;
+}
+:root[data-theme="light"] .ir-list-questions li::marker {
+  color: #92400e !important;
+}
+
+/* Small supporting labels around the score: "/100" denom, "FINAL
+   RANKING" caption, candidate-name eyebrow. */
+:root[data-theme="light"] .ir-score-denom,
+:root[data-theme="light"] .ir-score-caption,
+:root[data-theme="light"] .ir-hero-eyebrow {
+  color: #334155 !important;
+}
+
+/* Recommendation pill - "Strong yes" / "Yes" / "Maybe" / "No". Each
+   variant uses dark-mode tints (faint blue on faint blue for Yes,
+   cream-on-cream for Strong yes, etc.) that disappear on white. */
+:root[data-theme="light"] .rec-strong-yes {
+  background: rgba(34, 197, 94, 0.15) !important;
+  border-color: rgba(34, 197, 94, 0.55) !important;
+  color: #166534 !important;
+}
+:root[data-theme="light"] .rec-yes {
+  background: rgba(30, 64, 188, 0.13) !important;
+  border-color: rgba(30, 64, 188, 0.45) !important;
+  color: #1e40bc !important;
+}
+:root[data-theme="light"] .rec-maybe {
+  background: rgba(217, 119, 6, 0.15) !important;
+  border-color: rgba(217, 119, 6, 0.55) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .rec-no {
+  background: rgba(220, 38, 38, 0.12) !important;
+  border-color: rgba(220, 38, 38, 0.50) !important;
+  color: #991b1b !important;
+}
+
+/* ─── Job details page (recruiter view) light-mode bumps ──────────────────
+   Many pill / badge / table-header colors were designed for the dark
+   surface (low-alpha tints over light text). On the white card they
+   wash out. Per-class overrides below restore visible contrast.       */
+
+/* "Published" status pill + "Job" eyebrow pill at the top of the card -
+   .pill class is global; the version on this page sits on white. */
+:root[data-theme="light"] .pill {
+  background: rgba(30, 64, 188, 0.12) !important;
+  border-color: rgba(30, 64, 188, 0.40) !important;
+  color: #1e40bc !important;
+}
+
+/* AI score chip in the applications table - "46%" was faded orange. */
+:root[data-theme="light"] .score-high {
+  background: rgba(22, 163, 74, 0.15) !important;
+  border-color: rgba(22, 163, 74, 0.45) !important;
+  color: #166534 !important;
+}
+:root[data-theme="light"] .score-mid {
+  background: rgba(217, 119, 6, 0.18) !important;
+  border-color: rgba(217, 119, 6, 0.55) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .score-low {
+  background: rgba(220, 38, 38, 0.15) !important;
+  border-color: rgba(220, 38, 38, 0.50) !important;
+  color: #991b1b !important;
+}
+
+/* "2 total" badge in the Applications panel header. */
+:root[data-theme="light"] .apps-total-badge {
+  background: rgba(30, 64, 188, 0.12) !important;
+  border-color: rgba(30, 64, 188, 0.40) !important;
+  color: #1e40bc !important;
+}
+
+/* Status tabs (APPLIED 2, UNDER_REVIEW, INTERVIEW_PHASE, OFFER, HIRED,
+   REJECTED). Inactive tabs used --color-text-muted at 70% alpha black,
+   which still reads but feels ghosted. Slate-600 for the resting state.
+   Active tab keeps its dynamic --tab-color from the .ts file. */
+:root[data-theme="light"] .apps-status-tab {
+  color: #475569 !important;
+  border-color: rgba(30, 64, 188, 0.25) !important;
+}
+:root[data-theme="light"] .apps-status-tab:hover {
+  color: #0f172a !important;
+}
+
+/* Table column headers (RANK, CANDIDATE, AI SCORE, STATUS, APPLIED, CV).
+   Original was rgba(121,164,233,0.55) - very faded sky blue. */
+:root[data-theme="light"] .apps-table th {
+  color: #334155 !important;
+}
+
+/* Smart Shortlist button - yellow on faint yellow. Use amber. */
+:root[data-theme="light"] .btn-shortlist {
+  background: rgba(217, 119, 6, 0.18) !important;
+  border-color: rgba(217, 119, 6, 0.55) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .btn-shortlist:hover {
+  background: rgba(217, 119, 6, 0.28) !important;
+}
+
+/* "Close job" warning button (.btn-warn) - looks ok in the screenshot but
+   often shares the same faint-amber pattern. Bump to match. */
+:root[data-theme="light"] .btn-warn {
+  background: linear-gradient(135deg, #d97706, #b45309) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+/* "Locked for editing - 2 candidate(s) applied" notice - dark amber tint. */
+:root[data-theme="light"] .lock-notice,
+:root[data-theme="light"] .edit-locked-notice {
+  background: rgba(217, 119, 6, 0.12) !important;
+  border-color: rgba(217, 119, 6, 0.40) !important;
+  color: #92400e !important;
+}
+
+/* LEVEL pill that shows under language requirements (LEVEL B2 - Professional)
+   - uses .meta-chip on white background. */
+:root[data-theme="light"] .meta-chip {
+  background: rgba(30, 64, 188, 0.08) !important;
+  border-color: rgba(30, 64, 188, 0.35) !important;
+  color: #1e40bc !important;
+}
+:root[data-theme="light"] .meta-chip .meta-key {
+  color: #475569 !important;
+}
+
+/* ─── Application-detail "AI strengths/weaknesses" chips light-mode ──────
+   Component CSS already has light-mode rules for .ad-tag-match /
+   .ad-tag-missing but at only 12% alpha background they read as very
+   faint pastels on the white card surface, especially the green
+   strengths. Bump to 18-22% alpha and stronger borders so the chips
+   look like real chips, not ghosts. Dark mode untouched.              */
+:root[data-theme="light"] .ad-tag-match {
+  background: rgba(22, 163, 74, 0.18) !important;
+  border-color: rgba(22, 163, 74, 0.55) !important;
+  color: #166534 !important;
+}
+:root[data-theme="light"] .ad-tag-missing,
+:root[data-theme="light"] .ad-tag-partial {
+  background: rgba(217, 119, 6, 0.18) !important;
+  border-color: rgba(217, 119, 6, 0.55) !important;
+  color: #92400e !important;
+}
+
+/* Category labels (EDUCATION, LANGUAGE) inside requirement rows use the
+   same .ad-tag-match green tint and become invisible in light mode. The
+   override above already targets them via the shared class. Their score
+   text ("100%") was using cream which also disappears - pin to deep
+   green so the label and the percent read together. */
+:root[data-theme="light"] .ad-req-score {
+  color: #166534 !important;
+}
+
+/* "AI strengths" / "AI weaknesses" / "AI recommendation" section labels
+   used --color-text-muted at 70% alpha. The existing component rule
+   sets them to #4b5563 but a screenshot review shows they're still
+   feeling washed. Bump to slate-700. */
+:root[data-theme="light"] .ad-k {
+  color: #334155 !important;
+}
+
+/* Pipeline column (Applied / Review / Interview / Offer / Hired) under
+   the candidate card - inactive steps use --text-soft (50% alpha black)
+   which is too faint in light mode. Slate-600 keeps the hierarchy. */
+:root[data-theme="light"] .ad-pipeline-step {
+  color: #334155 !important;
+}
+:root[data-theme="light"] .ad-pipeline-step.is-current {
+  color: #1e40bc !important;
+  background: rgba(30, 64, 188, 0.10) !important;
+  border-color: rgba(30, 64, 188, 0.40) !important;
+}
+
+/* ─── Application-detail Semantic Matching block light-mode bumps ────────
+   The component CSS already declared light-mode rules for .ad-match-badge,
+   .ad-rank-badge, .ad-warning, but at only 8-12% alpha backgrounds the
+   chips look like ghost pills against the white card. Stronger backgrounds
+   + saturated borders here so they read as real chips.                 */
+
+/* "Partial fit" badge (or "Strong fit" / "Weak fit") next to the % score.
+   Existing rule only set text color, no background tint. */
+:root[data-theme="light"] .ad-match-badge {
+  background: rgba(30, 64, 188, 0.14) !important;
+  border-color: rgba(30, 64, 188, 0.45) !important;
+  color: #1e40bc !important;
+}
+
+/* "#1 of 2 applicants" rank badge - faint amber. */
+:root[data-theme="light"] .ad-rank-badge {
+  background: rgba(217, 119, 6, 0.18) !important;
+  border-color: rgba(217, 119, 6, 0.55) !important;
+  color: #92400e !important;
+}
+
+/* Advisory warning banners (Name mismatch / Distance / etc.) - amber by
+   default. Existing override is too faint at 8% alpha background. */
+:root[data-theme="light"] .ad-warning {
+  background: rgba(217, 119, 6, 0.15) !important;
+  border-color: rgba(217, 119, 6, 0.50) !important;
+  color: #92400e !important;
+}
+:root[data-theme="light"] .ad-warning-info {
+  background: rgba(30, 64, 188, 0.10) !important;
+  border-color: rgba(30, 64, 188, 0.40) !important;
+  color: #1e40bc !important;
+}
+:root[data-theme="light"] .ad-warning-icon {
+  color: inherit !important;
+}
+
 /* ─── Activity event pills (admin dashboard) ─────────────────────────────
    Dark mode: 100% controlled by HTML inline styles — DO NOT TOUCH.
 
@@ -1179,3 +1589,14 @@ select.ng-invalid.ng-dirty:focus,
   opacity: 1 !important;
   box-shadow: none !important;
 }
+
+/* Per-component light-mode contrast bumps live in each component's CSS
+   file (my-application-detail.css, user-details.css, application-detail.css,
+   job-details.css) so the next person reading those files finds the
+   overrides next to the rules they tune.
+
+   Angular's emulated ViewEncapsulation DOES support :root[data-theme]
+   selectors in component CSS (skills-catalog.css uses the same pattern
+   and it applies). Earlier confusion about that was wrong - the issue
+   with the Swal overrides was specifically that Swal renders into
+   document.body OUTSIDE the component tree, not encapsulation. */

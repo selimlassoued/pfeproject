@@ -92,14 +92,21 @@ export class InterviewEvaluation implements OnInit, OnDestroy {
   }
 
   // ── Color helper aligned to the app's semantic palette ────────────────
-  // Cream for top tier, secondary-blue for solid, amber for borderline,
-  // muted-red for weak. Stays inside the app's existing palette.
+  // Theme-aware tier colors. Dark mode keeps the original cream / sky-blue
+  // / amber / muted-red palette. Light mode swaps to saturated dark
+  // variants because the original light tones (cream especially) become
+  // invisible on the white surface - the big "80" final-score number was
+  // ghosting against the background in light mode for this exact reason.
   scoreColor(score: number | null | undefined): string {
-    if (score == null) return 'rgba(248,250,252,0.45)';
-    if (score >= 80) return '#fffce5';        // cream - top tier
-    if (score >= 65) return '#79a4e9';        // secondary-blue - strong
-    if (score >= 50) return '#f5c674';        // amber on dark - borderline
-    return '#e8889a';                          // muted-red on dark - weak
+    const isLight = typeof document !== 'undefined'
+      && document.documentElement.getAttribute('data-theme') === 'light';
+    if (score == null) {
+      return isLight ? 'rgba(11,16,38,0.45)' : 'rgba(248,250,252,0.45)';
+    }
+    if (score >= 80) return isLight ? '#92400e' : '#fffce5';  // deep amber / cream
+    if (score >= 65) return isLight ? '#1e40bc' : '#79a4e9';  // brand-blue / sky-blue
+    if (score >= 50) return isLight ? '#b45309' : '#f5c674';  // burnt amber / amber
+    return           isLight ? '#9f1239' : '#e8889a';         // deep rose / muted red
   }
 
 

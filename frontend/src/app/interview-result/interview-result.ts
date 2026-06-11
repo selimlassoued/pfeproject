@@ -49,14 +49,20 @@ export class InterviewResult implements OnInit, OnDestroy {
     });
   }
 
-  // ── Color helper - palette matches the rest of the app (cream / blue /
-  //    amber / muted-red on dark background) ──────────────────────────────
+  // Theme-aware tier colors. Dark mode keeps the cream / sky-blue / amber
+  // / muted-red palette; light mode swaps to saturated dark variants
+  // because cream and amber especially become invisible on the white
+  // card. Mirrors the same fix in interview-evaluation.ts.
   scoreColor(score: number | null | undefined): string {
-    if (score == null) return 'rgba(248,250,252,0.45)';
-    if (score >= 80) return '#fffce5';
-    if (score >= 65) return '#79a4e9';
-    if (score >= 50) return '#f5c674';
-    return '#e8889a';
+    const isLight = typeof document !== 'undefined'
+      && document.documentElement.getAttribute('data-theme') === 'light';
+    if (score == null) {
+      return isLight ? 'rgba(11,16,38,0.45)' : 'rgba(248,250,252,0.45)';
+    }
+    if (score >= 80) return isLight ? '#92400e' : '#fffce5';
+    if (score >= 65) return isLight ? '#1e40bc' : '#79a4e9';
+    if (score >= 50) return isLight ? '#b45309' : '#f5c674';
+    return           isLight ? '#9f1239' : '#e8889a';
   }
 
   // The headline score on this page is the unified final_score (0-100) when

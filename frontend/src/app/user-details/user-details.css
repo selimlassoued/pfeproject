@@ -169,3 +169,12 @@
 }
 
 .btn.danger { background: linear-gradient(135deg, #b91c1c, #ef4444); }
+
+/* ─── Light-mode contrast bumps ─────────────────────────────────────────
+   .moderation-desc used --text-soft which is 50% alpha black in light
+   mode — reads as washed-out gray against the white card. Pin to
+   slate-600 so the explanatory text under moderation controls stays
+   discoverable. Dark mode untouched. */
+:root[data-theme="light"] .moderation-desc {
+  color: #475569 !important;
+}

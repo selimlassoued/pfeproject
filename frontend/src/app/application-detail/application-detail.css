@@ -1684,3 +1684,13 @@
   border-color: rgba(34, 197, 94, 0.35) !important;
   color: #166534 !important;
 }
+
+/* ─── Light-mode contrast bumps ─────────────────────────────────────────
+   Secondary text spots on the application detail page used --text-soft /
+   --text-muted, which work in dark mode but read as washed-out gray on
+   the white surfaces in light mode. Pin to slate-600. Dark mode keeps
+   the originals. */
+:root[data-theme="light"] .ad-breadcrumb-sep,
+:root[data-theme="light"] .ad-meta {
+  color: #475569 !important;
+}

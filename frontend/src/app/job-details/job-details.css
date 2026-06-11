@@ -546,3 +546,17 @@
   font-weight: 700;
   font-size: .82rem;
 }
+
+/* ─── Light-mode contrast bumps ─────────────────────────────────────────
+   The metadata labels (.label) and uppercase section labels (.sl-label,
+   .sl-modal-desc) used --text-muted / --text-soft. On the white card
+   surface those read as washed-out gray. Anchor them at slate-700 /
+   slate-600 for clear hierarchy. Dark mode untouched. */
+:root[data-theme="light"] .label,
+:root[data-theme="light"] .sl-modal-desc {
+  color: #334155 !important;
+}
+:root[data-theme="light"] .sl-label,
+:root[data-theme="light"] .rank-badge {
+  color: #475569 !important;
+}
