@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,13 @@ import java.util.Set;
 public class SkillCatalogController {
 
     private final SkillCatalogRepo repo;
+    /**
+     * Multi-vector retrieval store for SOFT skill phrases (canonical + each
+     * synonym). The /match-soft-skill Layer 1 query joins it for max-score
+     * aggregation per skill. See SkillSynonymEmbedding javadoc for the
+     * empirical motivation.
+     */
+    private final com.recrutment.application.repos.SkillSynonymEmbeddingRepo phraseRepo;
     /** Non-load-balanced RestTemplate for talking to cv-parser-service. The
      *  default @LoadBalanced templates resolve hostnames as Eureka service IDs;
      *  cv-parser-service isn't in Eureka so they throw "No instances
@@ -72,8 +80,10 @@ public class SkillCatalogController {
     private String cvParserUrl;
 
     public SkillCatalogController(SkillCatalogRepo repo,
+                                  com.recrutment.application.repos.SkillSynonymEmbeddingRepo phraseRepo,
                                   @Qualifier("directRestTemplate") RestTemplate plainRestTemplate) {
         this.repo = repo;
+        this.phraseRepo = phraseRepo;
         this.plainRestTemplate = plainRestTemplate;
     }
 
@@ -311,6 +321,21 @@ public class SkillCatalogController {
             }
         }
 
+        // Multi-vector retrieval store for SOFT skills. The canonical AND
+        // each synonym get their own embedding row in skill_synonym_embedding
+        // so the /match-soft-skill Layer 1 query can pick the best-scoring
+        // phrase per skill (MAX aggregation). HARD skills skip this - they
+        // have a different cascade (abbreviation, Levenshtein, LLM
+        // tiebreaker) that handles paraphrase variation without needing
+        // multi-vector retrieval.
+        if ("SOFT".equals(saved.getType())) {
+            indexPhrasesForSkill(
+                    saved.getName(),
+                    saved.getDisplayName(),
+                    saved.getSynonyms() != null ? saved.getSynonyms() : new ArrayList<>(),
+                    /* replaceExisting= */ false);
+        }
+
         return ResponseEntity.ok(new SkillCatalogDto(
                 saved.getName(),
                 saved.getDisplayName(),
@@ -408,6 +433,18 @@ public class SkillCatalogController {
         if (hasDomains)  entry.setDomains(domains);     // REPLACE
         if (hasSynonyms) entry.setSynonyms(synonyms);   // REPLACE
         SkillCatalogEntry saved = repo.save(entry);
+
+        // If the synonyms list changed on a SOFT row, replace the multi-
+        // vector store entries for this skill: drop old phrase rows, embed
+        // canonical + every new synonym, insert fresh. The Layer 1 max-
+        // score query then immediately sees the new set.
+        if (hasSynonyms && "SOFT".equals(saved.getType())) {
+            indexPhrasesForSkill(
+                    saved.getName(),
+                    saved.getDisplayName(),
+                    saved.getSynonyms() != null ? saved.getSynonyms() : new ArrayList<>(),
+                    /* replaceExisting= */ true);
+        }
 
         return ResponseEntity.ok(new SkillCatalogDto(
                 saved.getName(),
@@ -1031,6 +1068,78 @@ public class SkillCatalogController {
     }
 
     /**
+     * Multi-vector retrieval indexing for a SOFT skill: embed the canonical
+     * name plus each curated synonym and upsert one row per phrase into
+     * skill_synonym_embedding. The Layer 1 query of /match-soft-skill then
+     * aggregates MAX cosine similarity across all phrases per skill,
+     * recovering recall on CV paraphrases that don't share tokens with the
+     * canonical (the empirical gap measured at cosine ~0.50 - 0.62 for pure
+     * paraphrases against a bare canonical name).
+     *
+     * @param replaceExisting when true (PATCH path), drop all existing
+     *        phrase rows for this skill before re-inserting. False on POST
+     *        because the row is new and we're just adding initial phrases.
+     *
+     * Fails soft per-phrase. An Ollama hiccup on synonym #3 doesn't roll
+     * back synonyms #1, #2, or the canonical row; we just log and move on.
+     * The next /backfill-phrase-embeddings call (or a re-PATCH) can fill
+     * any missing rows later.
+     */
+    private void indexPhrasesForSkill(String canonicalKey,
+                                      String displayName,
+                                      List<String> synonyms,
+                                      boolean replaceExisting) {
+        if (canonicalKey == null || canonicalKey.isBlank()) return;
+        try {
+            if (replaceExisting) {
+                int wiped = phraseRepo.deleteAllForSkill(canonicalKey);
+                if (wiped > 0) {
+                    log.info("[skill-catalog/phrase-index] wiped {} phrase rows for '{}' before re-index",
+                            wiped, canonicalKey);
+                }
+            }
+
+            // Canonical name first. We index it ALONGSIDE the synonyms in the
+            // multi-vector store too (not just in skill_catalog_entry.embedding)
+            // so the Layer 1 query has a single source of truth and doesn't
+            // need to UNION the parent table.
+            embedAndUpsertPhrase(canonicalKey, canonicalKey, "CANONICAL");
+
+            // Each synonym
+            for (String syn : synonyms) {
+                if (syn == null) continue;
+                String phrase = syn.trim().toLowerCase().replaceAll("\\s+", " ");
+                if (phrase.isEmpty() || phrase.equals(canonicalKey)) continue;
+                embedAndUpsertPhrase(canonicalKey, phrase, "SYNONYM");
+            }
+        } catch (Exception e) {
+            // Outer guard: never let phrase indexing failures bubble up and
+            // 500 a successful catalog write. The parent row is already
+            // saved at this point.
+            log.warn("[skill-catalog/phrase-index] outer failure for '{}': {}",
+                    canonicalKey, e.getMessage());
+        }
+    }
+
+    /** Embed one phrase and upsert it into the multi-vector store. */
+    private void embedAndUpsertPhrase(String skillName, String phrase, String type) {
+        try {
+            List<Float> vec = fetchEmbeddingFromCvParser(phrase);
+            if (vec == null || vec.size() != 768) {
+                log.warn("[skill-catalog/phrase-index] embed failed for '{}'/'{}' ({})",
+                        skillName, phrase, type);
+                return;
+            }
+            phraseRepo.upsertPhrase(
+                    skillName, phrase, type,
+                    toVectorLiteral(vec), "nomic-embed-text", Instant.now());
+        } catch (Exception e) {
+            log.warn("[skill-catalog/phrase-index] upsert failed for '{}'/'{}': {}",
+                    skillName, phrase, e.getMessage());
+        }
+    }
+
+    /**
      * Lazy embedding fetch. Called only when the cascade reaches Layer 4 and
      * the caller did not include a precomputed vector in the request. Talks to
      * cv-parser-service /embed-text which wraps Ollama nomic-embed-text.
@@ -1289,10 +1398,32 @@ public class SkillCatalogController {
             return ResponseEntity.noContent().build();
         }
 
-        // pgvector NN search restricted to type=SOFT. Reuse the existing
-        // findNearestSkillsByType repo method that powers Layer 4 of /resolve.
-        List<Object[]> rows = repo.findNearestSkillsByType(
-                toVectorLiteral(embedding), "SOFT", "", 1);
+        // Layer 1: MULTI-VECTOR retrieval against skill_synonym_embedding.
+        // For each parent SOFT skill the query aggregates MAX cosine
+        // similarity across all its indexed phrases (canonical + every
+        // synonym). The CV phrase is compared to each phrase's vector
+        // separately, then we take the best score per skill.
+        //
+        // Empirical motivation (see SkillSynonymEmbedding javadoc):
+        // canonical-vs-synonym cosine on nomic-embed-text is only 0.58 -
+        // 0.73. Pure CV paraphrases that don't share tokens with the
+        // canonical embed at 0.45 - 0.62, missing a single-vector query's
+        // 0.70 threshold. Indexing synonyms as their own vectors closes
+        // this gap because the CV phrase often embeds at 0.85+ to one of
+        // its synonym variants.
+        //
+        // Fallback: if the multi-vector store is empty for any reason
+        // (backfill not run yet, table just created), the query returns
+        // nothing; we fall through to the legacy single-canonical query
+        // below so the matcher stays useful during migration windows.
+        List<Object[]> rows = phraseRepo.nearestByMaxScore(
+                toVectorLiteral(embedding), "SOFT", 1);
+        if (rows.isEmpty()) {
+            log.info("[match-soft-skill] multi-vector store empty for '{}'; " +
+                    "falling back to single-canonical search", cleaned);
+            rows = repo.findNearestSkillsByType(
+                    toVectorLiteral(embedding), "SOFT", "", 1);
+        }
         if (rows.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
@@ -1357,6 +1488,55 @@ public class SkillCatalogController {
      *
      * Returns counts so the caller can verify how many rows changed.
      */
+    /**
+     * One-shot backfill for the multi-vector phrase store. Walks every
+     * SOFT skill row and inserts a phrase embedding for the canonical
+     * name + each curated synonym that doesn't already have one.
+     *
+     * Idempotent: only processes missing phrases. Safe to re-run after
+     * partial failures.
+     *
+     * Returns {totalMissing, filled, failed, failures}.
+     */
+    @SuppressWarnings("unchecked")
+    @PostMapping("/backfill-phrase-embeddings")
+    public ResponseEntity<Map<String, Object>> backfillPhraseEmbeddings() {
+        List<Object[]> missing = phraseRepo.findMissingPhrases();
+        int total = missing.size();
+        int filled = 0;
+        int failed = 0;
+        List<String> failures = new ArrayList<>();
+
+        for (Object[] row : missing) {
+            String skillName = (String) row[0];
+            String phrase    = (String) row[1];
+            String type      = (String) row[2];
+            try {
+                List<Float> vec = fetchEmbeddingFromCvParser(phrase);
+                if (vec == null || vec.size() != 768) {
+                    failed++;
+                    failures.add(skillName + "/" + phrase);
+                    continue;
+                }
+                phraseRepo.upsertPhrase(skillName, phrase, type,
+                        toVectorLiteral(vec), "nomic-embed-text", Instant.now());
+                filled++;
+            } catch (Exception e) {
+                log.warn("[backfill-phrase] embed failed for '{}'/'{}': {}",
+                        skillName, phrase, e.getMessage());
+                failed++;
+                failures.add(skillName + "/" + phrase);
+            }
+        }
+
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("totalMissing", total);
+        resp.put("filled", filled);
+        resp.put("failed", failed);
+        resp.put("failures", failures);
+        return ResponseEntity.ok(resp);
+    }
+
     @SuppressWarnings("unchecked")
     @PostMapping("/backfill-embeddings")
     public ResponseEntity<Map<String, Object>> backfillEmbeddings() {
