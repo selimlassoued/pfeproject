@@ -5,6 +5,7 @@ import com.recrutment.application.clients.JobClient.JobRequirementDto;
 import com.recrutment.application.dto.SemanticMatchDto;
 import com.recrutment.application.entities.CvAnalysis;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -27,7 +28,19 @@ public class CvParserClient {
     @Value("${cv.parser.url:http://cv-parser-service:8085}")
     private String cvParserUrl;
 
-    public CvParserClient(RestTemplate restTemplate) {
+    public CvParserClient(@Qualifier("directRestTemplate") RestTemplate restTemplate) {
+        // Use directRestTemplate (no @LoadBalanced) because cv-parser-service
+        // is a Python/FastAPI sidecar that isn't registered with Eureka. The
+        // primary RestTemplate bean is @LoadBalanced, which treats every
+        // hostname in a URI as a Spring Cloud service ID and looks it up via
+        // the load balancer registry. That throws "No instances available
+        // for cv-parser-service" because cv-parser doesn't speak Eureka.
+        //
+        // The directRestTemplate skips the LB interceptor and lets the URI's
+        // hostname resolve via plain Docker DNS, hitting cv-parser-service
+        // over the private network. Same fix we applied to
+        // SkillCatalogController earlier - this is the second place the
+        // same architectural assumption broke (CV analyze + match flow).
         this.restTemplate = restTemplate;
     }
 
